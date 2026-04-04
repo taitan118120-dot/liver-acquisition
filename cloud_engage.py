@@ -43,8 +43,13 @@ def is_ng(bio):
 
 
 def main():
+    # ベアラートークンのURLエンコードを修正
+    bearer = os.environ.get("TWITTER_BEARER_TOKEN", "")
+    import urllib.parse
+    bearer = urllib.parse.unquote(bearer)
+
     client = tweepy.Client(
-        bearer_token=os.environ["TWITTER_BEARER_TOKEN"],
+        bearer_token=bearer,
         consumer_key=os.environ["TWITTER_API_KEY"],
         consumer_secret=os.environ["TWITTER_API_SECRET"],
         access_token=os.environ["TWITTER_ACCESS_TOKEN"],
