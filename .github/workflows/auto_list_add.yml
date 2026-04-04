@@ -1,0 +1,38 @@
+name: リスト自動追加
+
+on:
+  schedule:
+    # JST 8:00に1日1回起動（スクリプト内で1日かけて処理）
+    - cron: '0 23 * * *'
+  workflow_dispatch:
+
+jobs:
+  list-add:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350  # 最大6時間弱（GitHub Actionsの上限）
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - run: pip install tweepy
+
+      - name: リスト追加実行
+        env:
+          TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
+          TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
+          TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
+          TWITTER_ACCESS_TOKEN_SECRET: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
+          TWITTER_BEARER_TOKEN: ${{ secrets.TWITTER_BEARER_TOKEN }}
+          X_LIST_ID: ${{ secrets.X_LIST_ID }}
+        run: python cloud_list_add.py
+
+      - name: 処理済みデータ保存
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add data/ || true
+          git diff --staged --quiet || git commit -m "リスト追加ログ更新"
+          git push || true
