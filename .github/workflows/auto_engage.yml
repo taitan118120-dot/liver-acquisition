@@ -2,9 +2,9 @@ name: 自動エンゲージメント
 
 on:
   schedule:
-    # 1日3回（JST 10:37, 15:37, 21:37）
+    # 1日3回（JST 10:37, 16:37, 21:37）いいね+リード発見
     - cron: '37 1 * * *'    # JST 10:37
-    - cron: '37 6 * * *'    # JST 15:37
+    - cron: '37 7 * * *'    # JST 16:37
     - cron: '37 12 * * *'   # JST 21:37
   workflow_dispatch:
 
@@ -20,7 +20,7 @@ jobs:
 
       - run: pip install tweepy
 
-      - name: フォロー+リプライ実行
+      - name: いいね+リード発見
         env:
           TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
           TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
