@@ -53,8 +53,34 @@ NG_WORDS = [
     "アフィリエイト", "物販", "せどり",
     # 企業
     "公式", "株式会社", "合同会社", "official", "PR",
-    # bot系
-    "相互フォロー", "相互100", "フォロバ100",
+    # bot系（フォローNGだがリプライには使わない）
+    "相互フォロー", "相互100",
+]
+
+# フォロー用キーワード（フォロバ率が高いやつ）
+FOLLOW_KEYWORDS = [
+    "#フォロバ100",
+    "#フォロバします",
+    "#いいねした人全員フォロー",
+    "#相互フォロー募集",
+    # 配信系
+    "#配信初心者",
+    "#Pococha",
+    "#ぽこちゃ始めました",
+    "初配信 緊張",
+]
+
+# リプライ用キーワード（リプ返しやすい人を探す）
+REPLY_KEYWORDS = [
+    "初配信 緊張",
+    "配信 楽しかった",
+    "Pococha 始めた",
+    "Pococha デビュー",
+    "#初配信",
+    "#配信初心者",
+    "石川県 配信",
+    "金沢 ライブ",
+    "何か新しいこと始めたい",
 ]
 
 FOLLOW_RANGE = (15, 30)
@@ -66,72 +92,71 @@ REPLY_PER_EXEC = REPLY_LIMIT_PER_DAY // EXECUTIONS_PER_DAY
 
 
 # ============================================================
-# リプライ生成（絵文字入り・口語体）
+# リプライ生成（フリック入力風・自然な口語）
 # ============================================================
 def generate_reply(tweet_text, user_name):
     """
-    相手の投稿の事実だけに触れる。
-    石川県の話題は最優先。エージェント視点。
-    絵文字入りで人間らしく。
+    相手の投稿の事実だけに触れる。石川県最優先。
+    エージェント視点。フリック入力で打ったような自然さ。
     """
     text = tweet_text.lower()
 
     # 石川県・金沢関連 → 最優先
     if any(w in text for w in ["石川", "金沢", "能登", "加賀", "兼六園"]):
         return random.choice([
-            "石川いいですよね〜！☺️ 配信者さんも最近増えてきてる印象あります✨",
-            "金沢住みなんですね！🏯 あのエリアまだ配信者少ないから注目されやすいかもです🙌",
-            "石川からの配信って珍しくて逆に目立つんですよね😊 応援してます！",
+            "え、石川なんですね！自分も石川なんで親近感わきました笑",
+            "金沢いいっすよね〜🙌 地元一緒かもです！",
+            "お、石川！自分も石川関わりあるんで勝手に嬉しいです笑",
         ])
 
     # Pococha関連
     if "pococha" in text or "ぽこちゃ" in text or "ポコチャ" in text:
         return random.choice([
-            "Pococha始めたんですね！🎉 最初の1ヶ月乗り越えたらめっちゃ楽しくなりますよ〜😊",
-            "ぽこちゃいいですよね✨ 時間ダイヤあるから続けやすいのが最高🙌",
-            "Pocochaのランク戦、慣れてくると戦略考えるのハマりますよ😆 頑張ってください！",
+            "ぽこちゃ自分もめっちゃ見てます〜！頑張ってください🙌",
+            "お、Pocochaやってるんですね！最初ほんとドキドキしますよね笑",
+            "ぽこちゃ楽しいですよね〜 応援してます！",
         ])
 
     # 初配信・初心者
     if any(w in text for w in ["初配信", "始めた", "初心者", "デビュー", "初めて"]):
         return random.choice([
-            "始めたばっかなんですね！✨ 一番伸びしろある時期だから楽しみ〜😊",
-            "初配信お疲れ様です🎉 最初ドキドキしますよね！でもすぐ慣れます💪",
-            "おお！始めたんですね😆 3ヶ月続けたらガチで世界変わりますよ〜🔥",
+            "お、始めたんすね！最初って緊張しますよね笑 応援してます🙌",
+            "おお〜！自分も最初そうだったなあ 頑張ってください！",
+            "始めたばっかの時って大変だけど一番楽しい時期ですよね😆",
         ])
 
     # 配信した・配信終わり
     if any(w in text for w in ["配信した", "配信終わり", "枠閉じ", "配信お疲れ"]):
         return random.choice([
-            "配信お疲れ様です！🙌 コンスタントに枠開けてるの素敵✨",
-            "お疲れ様〜！😊 今日の配信どうでした？楽しめてたら最高ですね🎵",
+            "おつかれさまです〜！今日もおつかれっす🙌",
+            "おつです！ちゃんと続けてるのほんとすごい",
         ])
 
     # 緊張・不安系
     if any(w in text for w in ["緊張", "不安", "怖い", "ドキドキ"]):
         return random.choice([
-            "緊張しますよね😂 でもそれだけ真剣ってことだから大丈夫！✨",
-            "最初はみんなそうですよ〜☺️ やってみたら意外となんとかなります🙌",
+            "わかります笑 でもやってみると意外と大丈夫ですよ！",
+            "それめっちゃわかる〜 最初誰でもそうなんで大丈夫っす🙌",
         ])
 
     # 楽しかった系
     if any(w in text for w in ["楽しかった", "楽しい", "嬉しい", "ありがとう"]):
         return random.choice([
-            "楽しめてるの最高ですね！😊✨ その気持ちが一番大事💪",
-            "いいですね〜！🎵 楽しんでる人のところにリスナーは集まりますよ☺️",
+            "いいっすね〜！楽しめてるのが一番😆",
+            "それ最高じゃないですか！🙌",
         ])
 
     # 挑戦・新しいこと
     if any(w in text for w in ["挑戦", "始めたい", "変えたい", "新しい"]):
         return random.choice([
-            "新しいこと始めるの素敵です！✨ 応援してます😊",
-            "いいですね！🔥 動き出した人が一番強いですよ💪",
+            "お〜いいっすね！応援してます🙌",
+            "動いてる人ほんと尊敬します！頑張ってください💪",
         ])
 
     # 汎用
     return random.choice([
-        "素敵ですね！✨ つい反応しちゃいました😊",
-        "いいですね〜！☺️ 気になったのでフォローさせてもらいました✨",
+        "わかります〜！気になったんでつい🙌",
+        "いいっすね！フォローさせてもらいました〜",
     ])
 
 
@@ -224,64 +249,79 @@ def main():
     )
     reply_target = min(REPLY_PER_EXEC, remaining_replies)
 
-    keyword = random.choice(TARGET_KEYWORDS)
-    print(f"🔍 検索: {keyword}")
-    print(f"📊 今日の残り → フォロー: {remaining_follows}  リプライ: {remaining_replies}")
-
-    tweets = client.search_recent_tweets(
-        query=f"{keyword} -is:retweet lang:ja",
-        max_results=min(follow_target + 10, 100),
-        tweet_fields=["author_id", "text"],
-        user_fields=["username", "name", "description", "public_metrics"],
-        expansions=["author_id"],
-    )
-
-    if not tweets.data:
-        print("検索結果なし")
-        return
-
-    users = {u.id: u for u in tweets.includes.get("users", [])}
     followed = 0
     replied = 0
 
-    for tweet in tweets.data:
-        if followed >= follow_target and replied >= reply_target:
-            break
+    # --- フォロー（フォロバ率高いキーワードで検索）---
+    if follow_target > 0:
+        fkw = random.choice(FOLLOW_KEYWORDS)
+        print(f"👤 フォロー検索: {fkw}")
 
-        user = users.get(tweet.author_id)
-        if not user:
-            continue
+        f_tweets = client.search_recent_tweets(
+            query=f"{fkw} -is:retweet lang:ja",
+            max_results=min(follow_target + 10, 100),
+            tweet_fields=["author_id"],
+            user_fields=["username", "name", "description", "public_metrics"],
+            expansions=["author_id"],
+        )
 
-        # 人間チェック
-        if not is_real_person(user):
-            print(f"  ❌ スキップ @{user.username}（業者/bot/非アクティブ）")
-            continue
+        if f_tweets.data:
+            f_users = {u.id: u for u in f_tweets.includes.get("users", [])}
+            for tweet in f_tweets.data:
+                if followed >= follow_target:
+                    break
+                user = f_users.get(tweet.author_id)
+                if not user or not is_real_person(user):
+                    continue
+                try:
+                    client.follow_user(user.id)
+                    followed += 1
+                    counts["follows"] += 1
+                    print(f"  ✅ フォロー @{user.username}")
+                    time.sleep(3)
+                except Exception as e:
+                    print(f"  ⚠️ @{user.username}: {e}")
 
-        # フォロー
-        if followed < follow_target:
-            try:
-                client.follow_user(user.id)
-                followed += 1
-                counts["follows"] += 1
-                print(f"  ✅ フォロー @{user.username}")
-                time.sleep(3)
-            except Exception as e:
-                print(f"  ⚠️ フォローエラー @{user.username}: {e}")
+    # --- リプライ（リプ返しやすい人を検索）---
+    if reply_target > 0:
+        rkw = random.choice(REPLY_KEYWORDS)
+        print(f"💬 リプライ検索: {rkw}")
 
-        # リプライ（40%の確率で選択）
-        if replied < reply_target and random.random() < 0.4:
-            reply_text = generate_reply(tweet.text, user.name)
-            try:
-                client.create_tweet(
-                    text=f"@{user.username} {reply_text}",
-                    in_reply_to_tweet_id=tweet.id,
-                )
-                replied += 1
-                counts["replies"] += 1
-                print(f"  💬 リプライ @{user.username}: {reply_text[:40]}...")
-                time.sleep(5)
-            except Exception as e:
-                print(f"  ⚠️ リプライエラー @{user.username}: {e}")
+        r_tweets = client.search_recent_tweets(
+            query=f"{rkw} -is:retweet lang:ja",
+            max_results=20,
+            tweet_fields=["author_id", "text"],
+            user_fields=["username", "name", "description"],
+            expansions=["author_id"],
+        )
+
+        if r_tweets.data:
+            r_users = {u.id: u for u in r_tweets.includes.get("users", [])}
+            for tweet in r_tweets.data:
+                if replied >= reply_target:
+                    break
+                user = r_users.get(tweet.author_id)
+                if not user:
+                    continue
+                if is_ng(user.description):
+                    continue
+                if random.random() < 0.5:
+                    continue  # 全員にリプしない、ランダムに選ぶ
+
+                reply_text = generate_reply(tweet.text, user.name)
+                try:
+                    client.create_tweet(
+                        text=f"@{user.username} {reply_text}",
+                        in_reply_to_tweet_id=tweet.id,
+                    )
+                    replied += 1
+                    counts["replies"] += 1
+                    print(f"  💬 @{user.username}: {reply_text[:40]}...")
+                    time.sleep(5)
+                except Exception as e:
+                    print(f"  ⚠️ @{user.username}: {e}")
+
+    # --- 完了 ---
 
     save_daily_counts(counts)
     print(f"\n🎯 完了 → フォロー: {followed}  リプライ: {replied}")
