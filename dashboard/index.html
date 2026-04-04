@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ライバー獲得ダッシュボード</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+        .header {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            padding: 24px 32px;
+            border-bottom: 1px solid #334155;
+        }
+        .header h1 { font-size: 24px; font-weight: 700; }
+        .header p { color: #94a3b8; margin-top: 4px; font-size: 14px; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .kpi-card {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #334155;
+        }
+        .kpi-card .label { color: #94a3b8; font-size: 13px; margin-bottom: 8px; }
+        .kpi-card .value { font-size: 32px; font-weight: 700; }
+        .kpi-card .sub { color: #64748b; font-size: 12px; margin-top: 4px; }
+        .kpi-card.accent .value { color: #38bdf8; }
+        .kpi-card.success .value { color: #4ade80; }
+        .kpi-card.warning .value { color: #fbbf24; }
+        .kpi-card.purple .value { color: #a78bfa; }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .chart-card {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #334155;
+        }
+        .chart-card h3 { font-size: 16px; margin-bottom: 16px; }
+
+        .leads-section {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #334155;
+        }
+        .leads-section h3 { font-size: 16px; margin-bottom: 16px; }
+
+        .filters {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .filter-btn {
+            background: #334155;
+            border: none;
+            color: #e2e8f0;
+            padding: 6px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+        .filter-btn:hover, .filter-btn.active {
+            background: #3b82f6;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            text-align: left;
+            padding: 10px 12px;
+            color: #94a3b8;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            border-bottom: 1px solid #334155;
+        }
+        td {
+            padding: 10px 12px;
+            font-size: 14px;
+            border-bottom: 1px solid #1e293b;
+        }
+        tr:hover td { background: #334155; }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-untouched { background: #374151; color: #9ca3af; }
+        .badge-sent { background: #1e3a5f; color: #60a5fa; }
+        .badge-replied { background: #14532d; color: #4ade80; }
+        .badge-meeting { background: #422006; color: #fbbf24; }
+        .badge-contracted { background: #3b0764; color: #c084fc; }
+        .badge-skipped { background: #450a0a; color: #f87171; }
+
+        .badge-twitter { background: #1d4ed8; color: #fff; }
+        .badge-instagram { background: #c026d3; color: #fff; }
+
+        .load-section {
+            text-align: center;
+            padding: 60px;
+        }
+        .load-btn {
+            background: #3b82f6;
+            color: #fff;
+            border: none;
+            padding: 12px 32px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .load-btn:hover { background: #2563eb; }
+
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+        }
+
+        @media (max-width: 768px) {
+            .charts-grid { grid-template-columns: 1fr; }
+            .container { padding: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>ライバー獲得ダッシュボード</h1>
+        <p id="updated-at">データを読み込んでください</p>
+    </div>
+
+    <div class="container">
+        <!-- KPI カード -->
+        <div class="kpi-grid">
+            <div class="kpi-card accent">
+                <div class="label">総リード数</div>
+                <div class="value" id="kpi-total">-</div>
+            </div>
+            <div class="kpi-card success">
+                <div class="label">DM送信済</div>
+                <div class="value" id="kpi-sent">-</div>
+            </div>
+            <div class="kpi-card warning">
+                <div class="label">返信率</div>
+                <div class="value" id="kpi-reply-rate">-</div>
+                <div class="sub" id="kpi-reply-detail"></div>
+            </div>
+            <div class="kpi-card purple">
+                <div class="label">契約数</div>
+                <div class="value" id="kpi-contracted">-</div>
+            </div>
+        </div>
+
+        <!-- チャート -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h3>ステータス分布</h3>
+                <canvas id="statusChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>ターゲットタイプ分布</h3>
+                <canvas id="typeChart"></canvas>
+            </div>
+        </div>
+
+        <!-- リード一覧 -->
+        <div class="leads-section">
+            <h3>リード一覧</h3>
+            <div class="filters">
+                <button class="filter-btn active" onclick="filterLeads('all')">すべて</button>
+                <button class="filter-btn" onclick="filterLeads('未接触')">未接触</button>
+                <button class="filter-btn" onclick="filterLeads('DM送信済')">DM送信済</button>
+                <button class="filter-btn" onclick="filterLeads('返信あり')">返信あり</button>
+                <button class="filter-btn" onclick="filterLeads('面談予定')">面談予定</button>
+                <button class="filter-btn" onclick="filterLeads('契約')">契約</button>
+            </div>
+            <div id="leads-table-container">
+                <div class="load-section">
+                    <p style="margin-bottom: 16px; color: #94a3b8;">
+                        先に <code>python run.py all</code> を実行してデータを生成してください
+                    </p>
+                    <input type="file" id="fileInput" accept=".json" style="display:none"
+                           onchange="loadFile(event)">
+                    <button class="load-btn" onclick="document.getElementById('fileInput').click()">
+                        dashboard_data.json を読み込む
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let dashboardData = null;
+        let statusChart = null;
+        let typeChart = null;
+
+        function loadFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    dashboardData = JSON.parse(e.target.result);
+                    renderDashboard();
+                } catch (err) {
+                    alert('JSONファイルの読み込みに失敗しました: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function renderDashboard() {
+            if (!dashboardData) return;
+
+            const d = dashboardData;
+            const sc = d.status_counts || {};
+
+            // 更新日時
+            document.getElementById('updated-at').textContent =
+                '最終更新: ' + (d.updated_at || '-');
+
+            // KPI
+            document.getElementById('kpi-total').textContent = d.total || 0;
+
+            const sent = (sc['DM送信済'] || 0) + (sc['返信あり'] || 0) +
+                         (sc['面談予定'] || 0) + (sc['面談済'] || 0) + (sc['契約'] || 0);
+            document.getElementById('kpi-sent').textContent = sent;
+
+            const replied = (sc['返信あり'] || 0) + (sc['面談予定'] || 0) +
+                           (sc['面談済'] || 0) + (sc['契約'] || 0);
+            const replyRate = sent > 0 ? (replied / sent * 100).toFixed(1) : '0';
+            document.getElementById('kpi-reply-rate').textContent = replyRate + '%';
+            document.getElementById('kpi-reply-detail').textContent =
+                replied + ' / ' + sent + '件';
+
+            document.getElementById('kpi-contracted').textContent = sc['契約'] || 0;
+
+            // ステータスチャート
+            renderStatusChart(sc);
+
+            // タイプチャート
+            renderTypeChart(d.type_counts || {});
+
+            // リード一覧
+            renderLeadsTable(d.leads || []);
+        }
+
+        function renderStatusChart(sc) {
+            const ctx = document.getElementById('statusChart').getContext('2d');
+            if (statusChart) statusChart.destroy();
+
+            const labels = ['未接触', 'DM送信済', '返信あり', '面談予定', '面談済', '契約', '見送り'];
+            const colors = ['#6b7280', '#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899', '#ef4444'];
+
+            statusChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: labels.map(l => sc[l] || 0),
+                        backgroundColor: colors,
+                        borderWidth: 0,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#94a3b8', padding: 12, font: { size: 12 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderTypeChart(tc) {
+            const ctx = document.getElementById('typeChart').getContext('2d');
+            if (typeChart) typeChart.destroy();
+
+            const labelMap = { beginner: '未経験者', existing: '既存ライバー', agency: '代理店' };
+            const labels = Object.keys(tc).map(k => labelMap[k] || k);
+            const colors = ['#38bdf8', '#4ade80', '#fbbf24'];
+
+            typeChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: Object.values(tc),
+                        backgroundColor: colors,
+                        borderWidth: 0,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#94a3b8', padding: 12, font: { size: 12 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        function getStatusBadge(status) {
+            const map = {
+                '未接触': 'badge-untouched',
+                'DM送信済': 'badge-sent',
+                '返信あり': 'badge-replied',
+                '面談予定': 'badge-meeting',
+                '面談済': 'badge-meeting',
+                '契約': 'badge-contracted',
+                '見送り': 'badge-skipped',
+            };
+            return `<span class="badge ${map[status] || ''}">${status}</span>`;
+        }
+
+        function getPlatformBadge(platform) {
+            const map = {
+                'twitter': 'badge-twitter',
+                'instagram': 'badge-instagram',
+            };
+            const label = platform === 'twitter' ? 'X' : 'IG';
+            return `<span class="badge ${map[platform] || ''}">${label}</span>`;
+        }
+
+        function renderLeadsTable(leads, filter) {
+            const filtered = filter && filter !== 'all'
+                ? leads.filter(l => l.status === filter)
+                : leads;
+
+            if (filtered.length === 0) {
+                document.getElementById('leads-table-container').innerHTML =
+                    '<div class="no-data">該当するリードがありません</div>';
+                return;
+            }
+
+            let html = `<table>
+                <thead><tr>
+                    <th>名前</th>
+                    <th>ユーザー名</th>
+                    <th>PF</th>
+                    <th>タイプ</th>
+                    <th>ステータス</th>
+                    <th>発見日</th>
+                    <th>DM送信日</th>
+                </tr></thead><tbody>`;
+
+            const typeLabel = { beginner: '未経験', existing: '既存', agency: '代理店' };
+
+            for (const l of filtered) {
+                html += `<tr>
+                    <td>${l.name || '-'}</td>
+                    <td><a href="${l.profile_url || '#'}" target="_blank"
+                           style="color:#60a5fa">@${l.username || '-'}</a></td>
+                    <td>${getPlatformBadge(l.platform)}</td>
+                    <td>${typeLabel[l.target_type] || l.target_type}</td>
+                    <td>${getStatusBadge(l.status)}</td>
+                    <td>${l.found_date || '-'}</td>
+                    <td>${l.dm_sent_date || '-'}</td>
+                </tr>`;
+            }
+
+            html += '</tbody></table>';
+            document.getElementById('leads-table-container').innerHTML = html;
+        }
+
+        function filterLeads(status) {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+
+            if (dashboardData && dashboardData.leads) {
+                renderLeadsTable(dashboardData.leads, status);
+            }
+        }
+    </script>
+</body>
+</html>

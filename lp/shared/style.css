@@ -1,0 +1,341 @@
+/* ========== TAITAN PRO LP 共通CSS ========== */
+:root {
+  --primary: #6C5CE7;
+  --primary-dark: #5A4BD1;
+  --accent: #FD79A8;
+  --bg-dark: #0F0A1A;
+  --bg-card: #1A1425;
+  --bg-section: #140E20;
+  --text-main: #FFFFFF;
+  --text-sub: #B8B0C8;
+  --text-muted: #7B7394;
+  --gradient-1: linear-gradient(135deg, #6C5CE7, #A29BFE);
+  --gradient-2: linear-gradient(135deg, #FD79A8, #FDCB6E);
+  --radius: 16px;
+  --radius-sm: 10px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-dark);
+  color: var(--text-main);
+  line-height: 1.8;
+  overflow-x: hidden;
+}
+
+.container {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* ===== Hero ===== */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 60px 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at 30% 40%, rgba(108, 92, 231, 0.15) 0%, transparent 50%),
+              radial-gradient(circle at 70% 60%, rgba(253, 121, 168, 0.1) 0%, transparent 50%);
+  animation: bgFloat 20s ease-in-out infinite;
+}
+
+@keyframes bgFloat {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-3%, 3%); }
+}
+
+.hero-content { position: relative; z-index: 1; }
+
+.hero-badge {
+  display: inline-block;
+  background: rgba(108, 92, 231, 0.2);
+  border: 1px solid rgba(108, 92, 231, 0.4);
+  color: #A29BFE;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 18px;
+  border-radius: 50px;
+  margin-bottom: 24px;
+  letter-spacing: 0.5px;
+}
+
+.hero h1 {
+  font-size: clamp(28px, 6vw, 44px);
+  font-weight: 800;
+  line-height: 1.3;
+  margin-bottom: 20px;
+}
+
+.hero h1 .highlight {
+  background: var(--gradient-2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero-sub {
+  font-size: 16px;
+  color: var(--text-sub);
+  margin-bottom: 36px;
+  line-height: 1.9;
+}
+
+/* ===== CTA Button ===== */
+.cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--gradient-1);
+  color: #fff;
+  font-size: 17px;
+  font-weight: 700;
+  padding: 18px 40px;
+  border-radius: 50px;
+  text-decoration: none;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 20px rgba(108, 92, 231, 0.4);
+}
+
+.cta-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(108, 92, 231, 0.5);
+}
+
+.cta-btn-secondary {
+  background: transparent;
+  border: 2px solid var(--primary);
+  color: #A29BFE;
+  box-shadow: none;
+}
+
+.cta-btn-secondary:hover {
+  background: rgba(108, 92, 231, 0.1);
+  box-shadow: none;
+}
+
+/* ===== Sections ===== */
+section {
+  padding: 80px 20px;
+}
+
+section:nth-child(even) {
+  background: var(--bg-section);
+}
+
+.section-title {
+  text-align: center;
+  font-size: clamp(22px, 5vw, 32px);
+  font-weight: 800;
+  margin-bottom: 12px;
+}
+
+.section-sub {
+  text-align: center;
+  color: var(--text-sub);
+  font-size: 15px;
+  margin-bottom: 48px;
+}
+
+/* ===== Pain Points ===== */
+.pain-list {
+  list-style: none;
+  max-width: 540px;
+  margin: 0 auto;
+}
+
+.pain-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 0;
+  font-size: 16px;
+  color: var(--text-sub);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.pain-list li::before {
+  content: '...';
+  color: var(--accent);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* ===== Feature Cards ===== */
+.features {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  max-width: 540px;
+  margin: 0 auto;
+}
+
+.feature-card {
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius);
+  padding: 32px 28px;
+  transition: transform 0.2s;
+}
+
+.feature-card:hover {
+  transform: translateY(-4px);
+}
+
+.feature-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  margin-bottom: 16px;
+  background: rgba(108, 92, 231, 0.15);
+}
+
+.feature-card h3 {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.feature-card p {
+  font-size: 14px;
+  color: var(--text-sub);
+  line-height: 1.8;
+}
+
+/* ===== Stats ===== */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  max-width: 540px;
+  margin: 0 auto;
+}
+
+.stat-card {
+  text-align: center;
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius);
+  padding: 28px 16px;
+}
+
+.stat-number {
+  font-size: clamp(28px, 6vw, 40px);
+  font-weight: 800;
+  background: var(--gradient-2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* ===== Q&A ===== */
+.qa-list {
+  max-width: 540px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.qa-item {
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius);
+  padding: 24px 28px;
+}
+
+.qa-item .q {
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 10px;
+  display: flex;
+  gap: 10px;
+}
+
+.qa-item .q::before {
+  content: 'Q';
+  color: var(--primary);
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.qa-item .a {
+  font-size: 14px;
+  color: var(--text-sub);
+  padding-left: 26px;
+  line-height: 1.8;
+}
+
+/* ===== Final CTA ===== */
+.final-cta {
+  text-align: center;
+  padding: 80px 20px;
+  background: linear-gradient(180deg, var(--bg-section) 0%, var(--bg-dark) 100%);
+}
+
+.final-cta h2 {
+  font-size: clamp(22px, 5vw, 32px);
+  font-weight: 800;
+  margin-bottom: 16px;
+}
+
+.final-cta p {
+  color: var(--text-sub);
+  margin-bottom: 36px;
+  font-size: 15px;
+}
+
+.cta-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.cta-note {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 12px;
+}
+
+/* ===== Footer ===== */
+footer {
+  text-align: center;
+  padding: 32px 20px;
+  font-size: 13px;
+  color: var(--text-muted);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 480px) {
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .cta-btn { width: 100%; justify-content: center; padding: 16px 24px; }
+}
