@@ -2,16 +2,11 @@ name: 自動エンゲージメント
 
 on:
   schedule:
-    # JST 9:37, 11:37, 13:37, 15:37, 17:37, 19:37, 21:37, 23:37（UTCで-9時間）
-    - cron: '37 0 * * *'    # JST 9:37
-    - cron: '37 2 * * *'    # JST 11:37
-    - cron: '37 4 * * *'    # JST 13:37
+    # 1日3回（JST 10:37, 15:37, 21:37）
+    - cron: '37 1 * * *'    # JST 10:37
     - cron: '37 6 * * *'    # JST 15:37
-    - cron: '37 8 * * *'    # JST 17:37
-    - cron: '37 10 * * *'   # JST 19:37
     - cron: '37 12 * * *'   # JST 21:37
-    - cron: '37 14 * * *'   # JST 23:37
-  workflow_dispatch:  # 手動実行も可能
+  workflow_dispatch:
 
 jobs:
   engage:
@@ -25,7 +20,7 @@ jobs:
 
       - run: pip install tweepy
 
-      - name: フォロー+いいね実行
+      - name: フォロー+リプライ実行
         env:
           TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
           TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
@@ -33,3 +28,11 @@ jobs:
           TWITTER_ACCESS_TOKEN_SECRET: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
           TWITTER_BEARER_TOKEN: ${{ secrets.TWITTER_BEARER_TOKEN }}
         run: python cloud_engage.py
+
+      - name: ログ保存
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add data/ || true
+          git diff --staged --quiet || git commit -m "エンゲージメントログ更新"
+          git push || true
