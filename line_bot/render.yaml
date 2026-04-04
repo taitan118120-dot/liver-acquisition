@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: taitan-pro-line-bot
+    runtime: python
+    buildCommand: ""
+    startCommand: python3 app.py
+    envVars:
+      - key: LINE_CHANNEL_SECRET
+        sync: false
+      - key: LINE_CHANNEL_ACCESS_TOKEN
+        sync: false
+      - key: PORT
+        value: 10000
