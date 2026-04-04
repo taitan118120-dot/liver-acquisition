@@ -1,0 +1,59 @@
+{
+  "updated_at": "2026-04-03 23:59:46",
+  "total": 3,
+  "status_counts": {
+    "未接触": 3
+  },
+  "platform_counts": {
+    "twitter": 2,
+    "instagram": 1
+  },
+  "type_counts": {
+    "beginner": 2,
+    "existing": 1
+  },
+  "leads": [
+    {
+      "id": "tw_demo_001",
+      "name": "テストユーザー1",
+      "username": "test_user_1",
+      "platform": "twitter",
+      "profile_url": "https://x.com/test_user_1",
+      "bio": "ライブ配信に興味あります！",
+      "followers": "150",
+      "target_type": "beginner",
+      "status": "未接触",
+      "found_date": "2026-04-03",
+      "dm_sent_date": "",
+      "notes": "キーワード: ライブ配信 興味"
+    },
+    {
+      "id": "tw_demo_002",
+      "name": "テストユーザー2",
+      "username": "test_liver_2",
+      "platform": "twitter",
+      "profile_url": "https://x.com/test_liver_2",
+      "bio": "Pocochaで毎日配信中！",
+      "followers": "2300",
+      "target_type": "existing",
+      "status": "未接触",
+      "found_date": "2026-04-03",
+      "dm_sent_date": "",
+      "notes": "キーワード: Pococha 配信"
+    },
+    {
+      "id": "ig_demo_001",
+      "name": "IGテストユーザー",
+      "username": "ig_test_user",
+      "platform": "instagram",
+      "profile_url": "https://instagram.com/ig_test_user",
+      "bio": "配信者になりたい！",
+      "followers": "500",
+      "target_type": "beginner",
+      "status": "未接触",
+      "found_date": "2026-04-03",
+      "dm_sent_date": "",
+      "notes": "ハッシュタグ: #ライバー募集"
+    }
+  ]
+}
