@@ -151,10 +151,8 @@ def save_daily_counts(counts):
 # メイン
 # ============================================================
 def main():
-    bearer = urllib.parse.unquote(os.environ.get("TWITTER_BEARER_TOKEN", ""))
-
+    # OAuth 1.0aのみで認証（ベアラートークンは使わない）
     client = tweepy.Client(
-        bearer_token=bearer,
         consumer_key=os.environ["TWITTER_API_KEY"],
         consumer_secret=os.environ["TWITTER_API_SECRET"],
         access_token=os.environ["TWITTER_ACCESS_TOKEN"],
