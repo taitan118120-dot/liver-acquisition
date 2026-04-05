@@ -2,3 +2,5 @@ __pycache__/
 *.pyc
 config.py
 *.command
+instagram/token_info.json
+.DS_Store
