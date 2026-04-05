@@ -1,0 +1,54 @@
+name: Instagram自動投稿
+
+on:
+  schedule:
+    # JST 12:00, 20:00（UTCで-9時間）
+    - cron: '0 3 * * *'    # JST 12:00
+    - cron: '0 11 * * *'   # JST 20:00
+  workflow_dispatch:  # 手動実行も可能
+    inputs:
+      generate:
+        description: 'コンテンツも自動生成する'
+        type: boolean
+        default: false
+      dry_run:
+        description: 'テスト実行（投稿しない）'
+        type: boolean
+        default: false
+
+jobs:
+  instagram-post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 依存パッケージをインストール
+        run: pip install requests google-generativeai
+
+      - name: Instagram投稿実行
+        working-directory: instagram
+        env:
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          INSTAGRAM_BUSINESS_ID: ${{ secrets.INSTAGRAM_BUSINESS_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          IMGBB_API_KEY: ${{ secrets.IMGBB_API_KEY }}
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            python ig_scheduler.py --test
+          elif [ "${{ inputs.generate }}" = "true" ]; then
+            python ig_scheduler.py --generate
+          else
+            python ig_scheduler.py
+          fi
+
+      - name: 投稿データを保存
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add data/ instagram/ig_posts.json instagram/images/ || true
+          git diff --staged --quiet || git commit -m "Instagram投稿ログ更新"
+          git push || true

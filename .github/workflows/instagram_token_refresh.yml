@@ -1,0 +1,52 @@
+name: Instagramトークン自動更新
+
+on:
+  schedule:
+    # 毎月1日と15日の9:00 JST（UTC 0:00）に実行
+    - cron: '0 0 1,15 * *'
+  workflow_dispatch:  # 手動実行も可能
+    inputs:
+      force:
+        description: '強制更新（期限に関係なく更新）'
+        type: boolean
+        default: false
+
+jobs:
+  refresh-token:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - run: pip install requests
+
+      - name: gh CLI 認証
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: echo "GH_TOKEN=$GH_TOKEN" >> $GITHUB_ENV
+
+      - name: トークン更新
+        working-directory: instagram
+        env:
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          META_APP_ID: ${{ secrets.META_APP_ID }}
+          META_APP_SECRET: ${{ secrets.META_APP_SECRET }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          if [ "${{ inputs.force }}" = "true" ]; then
+            python ig_token_refresh.py --force-refresh
+          else
+            python ig_token_refresh.py --refresh
+          fi
+
+      - name: トークン情報を保存
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add instagram/token_info.json || true
+          git diff --staged --quiet || git commit -m "Instagramトークン情報更新"
+          git push || true
