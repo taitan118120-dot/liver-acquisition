@@ -12,7 +12,7 @@ import hmac
 import base64
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
@@ -76,7 +76,7 @@ def send_line_message(user_id, text):
         print(f"[ERROR] send failed: {e.code} {e.read().decode()}")
 
 
-def reply_line_message(reply_token, text):
+def reply_line_message(reply_token, text, user_id="unknown"):
     """LINE Messaging APIでリプライメッセージを送信"""
     url = "https://api.line.me/v2/bot/message/reply"
     headers = {
@@ -91,31 +91,112 @@ def reply_line_message(reply_token, text):
     req = Request(url, data=body, headers=headers, method="POST")
     try:
         urlopen(req)
-        log_message("reply", "send", text)
+        log_message(user_id, "send", text)
     except HTTPError as e:
         print(f"[ERROR] reply failed: {e.code} {e.read().decode()}")
 
 
-# --- ステップ配信 ---
+# --- ステップ配信（永続化対応）---
+SCHEDULE_FILE = os.path.join(DATA_DIR, "step_schedule.json")
+
+
+def _send_step_if_active(user_id, step_name, text):
+    """ステップ送信前にユーザーがまだアクティブか確認"""
+    try:
+        users = load_json(USERS_FILE)
+        user = users.get(user_id, {})
+        if user.get("unfollowed"):
+            print(f"[STEP] Skipped '{step_name}' for {user_id[:8]}... (unfollowed)")
+            _remove_schedule(user_id, step_name)
+            return
+        send_line_message(user_id, text)
+        # step_sent を記録
+        if user_id in users:
+            sent = users[user_id].get("step_sent", [])
+            sent.append(step_name)
+            users[user_id]["step_sent"] = sent
+            save_json(USERS_FILE, users)
+        _remove_schedule(user_id, step_name)
+    except Exception as e:
+        print(f"[ERROR] Step '{step_name}' failed for {user_id[:8]}...: {e}")
+
+
+def _remove_schedule(user_id, step_name):
+    """送信済みのスケジュールを削除"""
+    schedules = load_json(SCHEDULE_FILE, [])
+    schedules = [s for s in schedules if not (s["user_id"] == user_id and s["step"] == step_name)]
+    save_json(SCHEDULE_FILE, schedules)
+
+
 def schedule_step_messages(user_id):
-    """友だち追加時にステップ配信をスケジュール"""
+    """友だち追加時にステップ配信をスケジュール（永続化対応）"""
+    schedules = load_json(SCHEDULE_FILE, [])
+    now = datetime.now()
+
     for step_name, delay in STEP_DELAYS.items():
         if step_name == "welcome":
             continue  # welcomeはfollow eventで即送信
         msg = STEP_MESSAGES.get(step_name)
-        if msg:
-            t = threading.Timer(delay, send_line_message, args=[user_id, msg["text"]])
+        if not msg:
+            continue
+
+        send_at = (now + timedelta(seconds=delay)).isoformat()
+        schedules.append({
+            "user_id": user_id,
+            "step": step_name,
+            "send_at": send_at,
+        })
+
+        # Timer もセット（サーバーが落ちなければTimerで送信）
+        t = threading.Timer(delay, _send_step_if_active, args=[user_id, step_name, msg["text"]])
+        t.daemon = True
+        t.start()
+        print(f"[STEP] Scheduled '{step_name}' for {user_id[:8]}... at {send_at}")
+
+    save_json(SCHEDULE_FILE, schedules)
+
+
+def restore_pending_steps():
+    """サーバー起動時に未送信のステップ配信を復元"""
+    schedules = load_json(SCHEDULE_FILE, [])
+    if not schedules:
+        return
+
+    now = datetime.now()
+    restored = 0
+    immediate = 0
+
+    for s in schedules:
+        send_at = datetime.fromisoformat(s["send_at"])
+        msg = STEP_MESSAGES.get(s["step"])
+        if not msg:
+            continue
+
+        if send_at <= now:
+            # 送信時刻を過ぎている → 即送信
+            threading.Thread(
+                target=_send_step_if_active,
+                args=[s["user_id"], s["step"], msg["text"]],
+                daemon=True,
+            ).start()
+            immediate += 1
+        else:
+            # まだ先 → Timerで再スケジュール
+            delay = (send_at - now).total_seconds()
+            t = threading.Timer(delay, _send_step_if_active, args=[s["user_id"], s["step"], msg["text"]])
             t.daemon = True
             t.start()
-            print(f"[STEP] Scheduled '{step_name}' for {user_id[:8]}... in {delay}s")
+            restored += 1
+
+    print(f"[STEP] Restored {restored} pending, {immediate} immediate sends")
 
 
 # --- キーワード応答 ---
 def find_auto_reply(text):
     """ユーザーメッセージからキーワードを探して自動返信テキストを返す"""
-    text_lower = text.strip()
+    text_normalized = text.strip().lower()
     for keyword, reply in AUTO_REPLIES.items():
-        if keyword in text_lower:
+        if keyword.lower() in text_normalized:
             return reply
     return None
 
@@ -148,7 +229,10 @@ class WebhookHandler(BaseHTTPRequestHandler):
 
         # 署名検証
         signature = self.headers.get("X-Line-Signature", "")
-        if LINE_CHANNEL_SECRET and not verify_signature(body, signature):
+        if not LINE_CHANNEL_SECRET:
+            print("[WARN] LINE_CHANNEL_SECRET is not set - signature verification skipped")
+        elif not verify_signature(body, signature):
+            print("[SECURITY] Invalid signature rejected")
             self.send_response(403)
             self.end_headers()
             return
@@ -170,19 +254,30 @@ class WebhookHandler(BaseHTTPRequestHandler):
             user_id = event.get("source", {}).get("userId", "")
             reply_token = event.get("replyToken", "")
 
-            if event_type == "follow":
+            if event_type == "unfollow":
+                # ブロック/友だち解除
+                print(f"[UNFOLLOW] User left: {user_id[:8]}...")
+                users = load_json(USERS_FILE)
+                if user_id in users:
+                    users[user_id]["unfollowed"] = True
+                    users[user_id]["unfollow_date"] = datetime.now().isoformat()
+                    save_json(USERS_FILE, users)
+                continue
+
+            elif event_type == "follow":
                 # 友だち追加
                 print(f"[FOLLOW] New user: {user_id[:8]}...")
                 users = load_json(USERS_FILE)
                 users[user_id] = {
                     "follow_date": datetime.now().isoformat(),
                     "step_sent": ["welcome"],
+                    "unfollowed": False,
                 }
                 save_json(USERS_FILE, users)
 
                 # Welcome メッセージ即送信
                 welcome = STEP_MESSAGES["welcome"]["text"]
-                reply_line_message(reply_token, welcome)
+                reply_line_message(reply_token, welcome, user_id)
                 log_message(user_id, "send", welcome)
 
                 # ステップ配信スケジュール
@@ -200,9 +295,9 @@ class WebhookHandler(BaseHTTPRequestHandler):
                 # キーワード自動応答
                 auto_reply = find_auto_reply(text)
                 if auto_reply:
-                    reply_line_message(reply_token, auto_reply)
+                    reply_line_message(reply_token, auto_reply, user_id)
                 else:
-                    reply_line_message(reply_token, DEFAULT_REPLY)
+                    reply_line_message(reply_token, DEFAULT_REPLY, user_id)
 
     def log_message(self, format, *args):
         """アクセスログを簡略化"""
@@ -228,6 +323,10 @@ def main():
         return
 
     port = int(os.environ.get("PORT", 8080))
+
+    # 未送信のステップ配信を復元
+    restore_pending_steps()
+
     server = HTTPServer(("0.0.0.0", port), WebhookHandler)
     print(f"[START] TAITAN PRO LINE Bot running on port {port}")
     print(f"[INFO] Webhook URL: https://your-domain.com/")
