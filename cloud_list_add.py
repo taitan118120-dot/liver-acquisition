@@ -52,30 +52,76 @@ WAIT_MAX = 60 * 60   # 60分
 QUIET_HOUR_START = 2   # 02:00
 QUIET_HOUR_END = 7     # 07:00
 
-# 検索キーワード
+# 検索キーワード（ライバー・配信者に特化）
 SEARCH_KEYWORDS = [
-    "配信初心者",
+    # Pococha 関連（最も有効）
     "Pococha 始めた",
     "Pococha デビュー",
-    "#初配信",
-    "#配信初心者",
+    "Pococha 配信",
+    "Pococha ランク",
+    "ぽこちゃ 配信",
     "#ぽこちゃ始めました",
-    "#ぽこちゃ",
-    "石川県 配信",
-    "金沢 ライブ",
-    "配信 楽しかった",
-    "初配信 緊張",
-    "配信 始めた",
+    "#ぽこちゃ初心者",
+    "#Pococha配信者",
+    "#Pococha好きと繋がりたい",
+    # 17LIVE 関連
+    "17LIVE 配信",
+    "17LIVE 始めた",
+    "イチナナ 配信",
+    "#17LIVE配信者",
+    "#イチナナライバー",
+    # SHOWROOM 関連
+    "SHOWROOM 配信",
+    "#SHOWROOM配信",
+    # IRIAM / Vライバー 関連
+    "IRIAM 配信",
+    "#IRIAM配信者",
+    "#Vライバー初心者",
+    # ライバー全般（具体的なプラットフォーム言及あり）
+    "#ライバー初心者",
+    "#ライバーさんと繋がりたい",
+    "#ライバー仲間募集",
+    "#新人ライバー",
+    "#駆け出しライバー",
+    "ライバー始めました",
+    "ライバーデビュー",
+    "ライブ配信 始めた 事務所",
+    "配信アプリ 始めた",
+    # イベント関連（実際に配信している証拠）
+    "Pococha イベント",
+    "配信 ランクアップ",
+    "#今日の配信枠",
 ]
 
-# NGワード（プロフィールにこれがある人はスキップ）
+# NGワード（プロフィール・ツイートにこれがある人はスキップ）
 NG_WORDS = [
+    # 既存事務所所属
     "所属", "専属", "カーブアウト", "carveout",
+    # ビジネス系
     "起業家", "事業家", "ceo", "代表取締役", "経営者", "社長",
     "副業", "稼ぐ", "稼げる", "月収", "不労所得", "自動収益",
     "コンサル", "投資", "fx", "仮想通貨", "バイナリー", "mlm",
     "ネットワークビジネス", "情報商材",
+    # 法人・公式
     "公式", "株式会社", "合同会社", "official",
+    # TikTok・ポイ活系（広告ユーザー除外）
+    "tiktok", "ティックトック", "tiktok lite", "ティックトックライト",
+    "ポイ活", "ポイント", "招待コード", "招待リンク",
+    "キャンペーン", "お小遣い", "懸賞",
+    # YouTube系（ターゲット外）
+    "youtuber", "ユーチューバー",
+    # スパム系
+    "プレゼント企画", "amazon", "アマゾン", "楽天",
+    "ギフト券", "当選", "抽選",
+]
+
+# ツイート本文のNGワード（検索結果のツイートにこれが含まれていたらスキップ）
+TWEET_NG_WORDS = [
+    "tiktok", "ティックトック", "tiktok lite", "ティックトックライト",
+    "ポイ活", "招待コード", "招待リンク", "キャンペーン",
+    "お小遣い", "懸賞", "プレゼント企画", "当選", "抽選",
+    "amazon", "楽天", "ギフト券",
+    "youtube", "ユーチューブ",
 ]
 
 # ============================================================
@@ -199,7 +245,7 @@ def main():
 
         try:
             tweets = client.search_recent_tweets(
-                query=f"{keyword} -is:retweet lang:ja",
+                query=f"{keyword} -is:retweet -tiktok -ティックトック -ポイ活 -招待コード -キャンペーン lang:ja",
                 max_results=20,
                 tweet_fields=["author_id"],
                 user_fields=["username", "name", "description", "public_metrics"],
@@ -234,9 +280,16 @@ def main():
             if str(user.id) in processed:
                 continue
 
-            # NGフィルター
+            # ツイート本文NGフィルター（TikTok広告等を除外）
+            tweet_text = (tweet.text or "").lower()
+            if any(w in tweet_text for w in TWEET_NG_WORDS):
+                log.info(f"  ❌ ツイートNG @{user.username}: {tweet.text[:50]}")
+                processed.add(str(user.id))
+                continue
+
+            # プロフィールNGフィルター
             if is_ng_user(user):
-                log.info(f"  ❌ NG @{user.username}")
+                log.info(f"  ❌ プロフィールNG @{user.username}")
                 processed.add(str(user.id))
                 continue
 
