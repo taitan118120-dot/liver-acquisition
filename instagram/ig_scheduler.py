@@ -21,6 +21,8 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import config  # noqa: F401 - configを先にimportしてキャッシュに載せる
+
 from ig_content_generator import generate_posts, load_posts
 from ig_poster import post_next
 
