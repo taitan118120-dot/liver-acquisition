@@ -42,6 +42,7 @@ jobs:
           IMGBB_API_KEY: ${{ secrets.IMGBB_API_KEY }}
           PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/instagram
         run: |
+          export PYTHONPATH="${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}/instagram:${PYTHONPATH}"
           SOURCE="${{ inputs.source || 'auto' }}"
           if [ "${{ inputs.dry_run }}" = "true" ]; then
             python instagram/ig_scheduler.py --generate --source "$SOURCE" --test
