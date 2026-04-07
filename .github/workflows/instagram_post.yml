@@ -40,7 +40,6 @@ jobs:
           INSTAGRAM_BUSINESS_ID: ${{ secrets.INSTAGRAM_BUSINESS_ID }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           IMGBB_API_KEY: ${{ secrets.IMGBB_API_KEY }}
-          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/instagram
         run: |
           SOURCE="${{ inputs.source || 'auto' }}"
           export PYTHONPATH="$PWD:$PWD/instagram"
