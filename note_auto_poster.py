@@ -292,21 +292,56 @@ async def create_article(page, title, body, hashtags):
     await body_el.click()
     await random_delay(0.5, 1.0)
 
-    # クリップボード経由でペースト（高速・書式保持）
-    await page.evaluate("""(text) => {
-        navigator.clipboard.writeText(text);
+    # 本文をJavaScript経由で直接入力（CI headless環境でも動作する）
+    # ProseMirrorエディタに対してdispatchEventでテキストを挿入
+    paste_success = await page.evaluate("""(text) => {
+        const editor = document.querySelector('.ProseMirror, [contenteditable="true"]');
+        if (!editor) return false;
+        editor.focus();
+
+        // DataTransfer経由でペーストイベントをシミュレート
+        const dt = new DataTransfer();
+        dt.setData('text/plain', text);
+        const pasteEvent = new ClipboardEvent('paste', {
+            clipboardData: dt,
+            bubbles: true,
+            cancelable: true,
+        });
+        editor.dispatchEvent(pasteEvent);
+        return true;
     }""", body)
-    await page.keyboard.press("Control+KeyV")
     await random_delay(2, 3)
 
-    # ペーストが失敗した場合のフォールバック: insertText
+    # ペーストイベントが効かなかった場合のフォールバック
     body_content = await body_el.text_content()
     if not body_content or len(body_content.strip()) < 100:
-        print("  クリップボードペースト失敗、insertTextで再試行...")
+        print("  ペーストイベント失敗、insertTextで再試行...")
+        await body_el.click()
+        # execCommandでinsertText（Playwright insert_textの代替）
+        await page.evaluate("""(text) => {
+            const editor = document.querySelector('.ProseMirror, [contenteditable="true"]');
+            if (editor) {
+                editor.focus();
+                document.execCommand('selectAll', false, null);
+                document.execCommand('delete', false, null);
+                document.execCommand('insertText', false, text);
+            }
+        }""", body)
+        await random_delay(2, 3)
+
+    # それでもダメならキーボード入力（最終手段）
+    body_content = await body_el.text_content()
+    if not body_content or len(body_content.strip()) < 100:
+        print("  execCommand失敗、keyboard.typeで再試行（低速）...")
         await body_el.click()
         await page.keyboard.press("Control+KeyA")
         await page.keyboard.press("Delete")
-        await page.keyboard.insert_text(body)
+        # 長文はチャンクに分割して入力
+        chunk_size = 500
+        for i in range(0, len(body), chunk_size):
+            chunk = body[i:i+chunk_size]
+            await page.keyboard.insert_text(chunk)
+            await random_delay(0.2, 0.5)
         await random_delay(2, 3)
 
     # 公開設定
@@ -392,6 +427,7 @@ async def post_article(article_num, headless=True, dry_run=False):
         context = await browser.new_context(
             viewport={"width": 1280, "height": 800},
             locale="ja-JP",
+            permissions=["clipboard-read", "clipboard-write"],
         )
         page = await context.new_page()
 
