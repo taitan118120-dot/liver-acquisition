@@ -42,12 +42,10 @@ jobs:
           IMGBB_API_KEY: ${{ secrets.IMGBB_API_KEY }}
         run: |
           SOURCE="${{ inputs.source || 'auto' }}"
-          export PYTHONPATH="$PWD:$PWD/instagram"
-          cd instagram
           if [ "${{ inputs.dry_run }}" = "true" ]; then
-            python ig_scheduler.py --generate --source "$SOURCE" --test
+            PYTHONPATH=".:instagram" python instagram/ig_scheduler.py --generate --source "$SOURCE" --test
           else
-            python ig_scheduler.py --generate --source "$SOURCE"
+            PYTHONPATH=".:instagram" python instagram/ig_scheduler.py --generate --source "$SOURCE"
           fi
 
       - name: 投稿データを保存
