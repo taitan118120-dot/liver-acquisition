@@ -357,11 +357,11 @@ async def create_article(page, title, body, hashtags):
         # ハッシュタグ入力
         tag_input = await try_selector(page, SELECTORS["hashtag_input"], timeout=5000)
         if tag_input:
-            for tag in hashtags[:5]:  # Note.comはタグ5個まで
+            for tag in hashtags[:10]:  # Note.comはタグ10個まで
                 await tag_input.fill(tag)
                 await page.keyboard.press("Enter")
                 await random_delay(0.3, 0.5)
-            print(f"  ハッシュタグ設定: {' '.join('#' + t for t in hashtags[:5])}")
+            print(f"  ハッシュタグ設定: {' '.join('#' + t for t in hashtags[:10])}")
 
     # 投稿ボタンクリック
     print("  投稿中...")
@@ -411,7 +411,7 @@ async def post_article(article_num, headless=True, dry_run=False):
     print(f"  記事: #{article_num}")
     print(f"  タイトル: {title}")
     print(f"  文字数: {len(formatted_body)}文字")
-    print(f"  ハッシュタグ: {' '.join('#' + t for t in hashtags[:5])}")
+    print(f"  ハッシュタグ: {' '.join('#' + t for t in hashtags[:10])}")
 
     if dry_run:
         print("\n  [dry-run] 投稿スキップ")
