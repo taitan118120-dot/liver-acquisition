@@ -1,6 +1,6 @@
 __pycache__/
 *.pyc
-config.py
+# config.py は環境変数参照のみなのでGit追跡対象
 *.command
 instagram/token_info.json
 .DS_Store
