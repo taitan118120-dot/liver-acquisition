@@ -36,13 +36,13 @@ jobs:
           playwright install chromium
           playwright install-deps chromium
 
-      - name: 記事生成（Gemini）
+      - name: "記事生成（Gemini）"
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           python note_article_generator.py --generate -n ${{ github.event.inputs.count || '1' }}
 
-      - name: Note.comに投稿
+      - name: "Note.comに投稿"
         if: github.event.inputs.dry_run != 'true'
         env:
           NOTE_EMAIL: ${{ secrets.NOTE_EMAIL }}
@@ -50,7 +50,7 @@ jobs:
         run: |
           python note_auto_poster.py --post-latest
 
-      - name: デバッグ: スクリーンショット保存
+      - name: "デバッグ: スクリーンショット保存"
         if: failure()
         uses: actions/upload-artifact@v4
         with:
