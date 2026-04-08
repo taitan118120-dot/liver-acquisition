@@ -27,8 +27,8 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
 
-POSTS_FILE = os.path.join(os.path.dirname(__file__), "ig_posts.json")
-IMAGES_DIR = os.path.join(os.path.dirname(__file__), "images")
+POSTS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ig_posts.json")
+IMAGES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "images")
 BLOG_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "blog", "articles_note")
 TWITTER_POSTS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "posts", "twitter_posts.json")
 
@@ -390,13 +390,18 @@ def generate_posts(source_type="auto", count=1, dry_run=False):
         # 画像生成
         image_path = generate_image(article, len(existing_posts) + len(new_posts), dry_run=dry_run)
 
+        # 画像パスを相対パスで保存（GitHub Actions互換）
+        relative_image_path = None
+        if image_path:
+            relative_image_path = os.path.relpath(image_path, os.path.dirname(os.path.dirname(IMAGES_DIR)))
+
         post = {
             "id": f"ig_auto_{len(existing_posts) + len(new_posts):03d}",
             "source_file": article["filename"],
             "source_type": article["source"],
             "title": article["title"],
             "caption": caption,
-            "image_path": image_path,
+            "image_path": relative_image_path,
             "posted": False,
         }
         new_posts.append(post)

@@ -1,0 +1,60 @@
+{
+  "keyword": "ライバー収入現実",
+  "pattern": "質問回答1",
+  "persona": null,
+  "duration": 19.0,
+  "slides": 5,
+  "segments": [
+    {
+      "text": "ライバーって実際いくら稼げるの？",
+      "start": 0.0,
+      "end": 3.5,
+      "font_size": 72,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "center",
+      "type": "hook"
+    },
+    {
+      "text": "月5万円以上稼いでいる人は全体の25%程度",
+      "start": 3.5,
+      "end": 7.0,
+      "font_size": 80,
+      "color": "#FFE135",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "number"
+    },
+    {
+      "text": "トップ層 月50万〜600万円以上 約3%",
+      "start": 7.0,
+      "end": 11.0,
+      "font_size": 52,
+      "color": "#FFFFFF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "point"
+    },
+    {
+      "text": "上位層 月15万〜50万円 約7%",
+      "start": 11.0,
+      "end": 15.0,
+      "font_size": 52,
+      "color": "#FFFFFF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "point"
+    },
+    {
+      "text": "詳しくはプロフのリンクから！LINEで無料相談できるよ",
+      "start": 15.0,
+      "end": 19.0,
+      "font_size": 56,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "bottom",
+      "type": "cta"
+    }
+  ],
+  "hashtags": "#ライバー #ライバー収入現実 #Pococha #副業 #ライブ配信"
+}

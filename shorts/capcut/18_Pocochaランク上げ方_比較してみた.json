@@ -1,0 +1,60 @@
+{
+  "keyword": "Pocochaランク上げ方",
+  "pattern": "比較してみた",
+  "persona": null,
+  "duration": 18.0,
+  "slides": 5,
+  "segments": [
+    {
+      "text": "時間ダイヤ（1時間） vs 月収目安（4時間×20日）、どっちがいい？",
+      "start": 0.0,
+      "end": 3.5,
+      "font_size": 72,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "center",
+      "type": "hook"
+    },
+    {
+      "text": "E1〜E3：30〜50円 vs 2,400〜4,000円",
+      "start": 3.5,
+      "end": 7.0,
+      "font_size": 48,
+      "color": "#00F5FF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "compare"
+    },
+    {
+      "text": "D1〜D3：50〜150円 vs 4,000〜12,000円",
+      "start": 7.0,
+      "end": 10.5,
+      "font_size": 48,
+      "color": "#00F5FF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "compare"
+    },
+    {
+      "text": "C1〜C3：400〜800円 vs 32,000〜64,000円",
+      "start": 10.5,
+      "end": 14.0,
+      "font_size": 48,
+      "color": "#00F5FF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "compare"
+    },
+    {
+      "text": "詳しくはプロフのリンクから！LINEで無料相談できるよ",
+      "start": 14.0,
+      "end": 18.0,
+      "font_size": 56,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "bottom",
+      "type": "cta"
+    }
+  ],
+  "hashtags": "#ライバー #Pocochaランク上げ方 #Pococha #副業 #ライブ配信"
+}

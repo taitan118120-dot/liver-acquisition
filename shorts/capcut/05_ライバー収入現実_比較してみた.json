@@ -1,0 +1,60 @@
+{
+  "keyword": "ライバー収入現実",
+  "pattern": "比較してみた",
+  "persona": null,
+  "duration": 18.0,
+  "slides": 5,
+  "segments": [
+    {
+      "text": "月収目安 vs 割合、どっちがいい？",
+      "start": 0.0,
+      "end": 3.5,
+      "font_size": 72,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "center",
+      "type": "hook"
+    },
+    {
+      "text": "トップ層：月50万〜600万円以上 vs 約3%",
+      "start": 3.5,
+      "end": 7.0,
+      "font_size": 48,
+      "color": "#00F5FF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "compare"
+    },
+    {
+      "text": "上位層：月15万〜50万円 vs 約7%",
+      "start": 7.0,
+      "end": 10.5,
+      "font_size": 48,
+      "color": "#00F5FF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "compare"
+    },
+    {
+      "text": "中間層：月5万〜15万円 vs 約15%",
+      "start": 10.5,
+      "end": 14.0,
+      "font_size": 48,
+      "color": "#00F5FF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "compare"
+    },
+    {
+      "text": "詳しくはプロフのリンクから！LINEで無料相談できるよ",
+      "start": 14.0,
+      "end": 18.0,
+      "font_size": 56,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "bottom",
+      "type": "cta"
+    }
+  ],
+  "hashtags": "#ライバー #ライバー収入現実 #Pococha #副業 #ライブ配信"
+}

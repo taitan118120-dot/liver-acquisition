@@ -1,0 +1,60 @@
+{
+  "keyword": "ライバー男性",
+  "pattern": "質問回答2",
+  "persona": "男性",
+  "duration": 19.0,
+  "slides": 5,
+  "segments": [
+    {
+      "text": "男でも本当に稼げるの？",
+      "start": 0.0,
+      "end": 3.5,
+      "font_size": 72,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "center",
+      "type": "hook"
+    },
+    {
+      "text": "男性ライバーも十分に稼げます。",
+      "start": 3.5,
+      "end": 7.0,
+      "font_size": 80,
+      "color": "#FFE135",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "number"
+    },
+    {
+      "text": "TAITAN PROの代表自身がミクチャで8,000人中ミスターコン1位を獲得し",
+      "start": 7.0,
+      "end": 11.0,
+      "font_size": 52,
+      "color": "#FFFFFF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "point"
+    },
+    {
+      "text": "月10万円以上を稼ぐための具体的な方法を解説します",
+      "start": 11.0,
+      "end": 15.0,
+      "font_size": 52,
+      "color": "#FFFFFF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "point"
+    },
+    {
+      "text": "詳しくはプロフのリンクから！LINEで無料相談できるよ",
+      "start": 15.0,
+      "end": 19.0,
+      "font_size": 56,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "bottom",
+      "type": "cta"
+    }
+  ],
+  "hashtags": "#ライバー #ライバー男性 #Pococha #副業 #ライブ配信"
+}

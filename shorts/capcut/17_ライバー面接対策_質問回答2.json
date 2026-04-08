@@ -1,0 +1,60 @@
+{
+  "keyword": "ライバー面接対策",
+  "pattern": "質問回答2",
+  "persona": null,
+  "duration": 19.0,
+  "slides": 5,
+  "segments": [
+    {
+      "text": "面接で落とされたらどうしよう…",
+      "start": 0.0,
+      "end": 3.5,
+      "font_size": 72,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "center",
+      "type": "hook"
+    },
+    {
+      "text": "「絶対稼げる」と断言する",
+      "start": 3.5,
+      "end": 7.0,
+      "font_size": 80,
+      "color": "#FFE135",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "number"
+    },
+    {
+      "text": "TAITAN PROに所属する150人以上のライバーのうち",
+      "start": 7.0,
+      "end": 11.0,
+      "font_size": 52,
+      "color": "#FFFFFF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "point"
+    },
+    {
+      "text": "1日2〜4時間ですが",
+      "start": 11.0,
+      "end": 15.0,
+      "font_size": 52,
+      "color": "#FFFFFF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "point"
+    },
+    {
+      "text": "詳しくはプロフのリンクから！LINEで無料相談できるよ",
+      "start": 15.0,
+      "end": 19.0,
+      "font_size": 56,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "bottom",
+      "type": "cta"
+    }
+  ],
+  "hashtags": "#ライバー #ライバー面接対策 #Pococha #副業 #ライブ配信"
+}

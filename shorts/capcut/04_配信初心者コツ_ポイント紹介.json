@@ -1,0 +1,70 @@
+{
+  "keyword": "配信初心者コツ",
+  "pattern": "ポイント紹介",
+  "persona": null,
+  "duration": 23.0,
+  "slides": 6,
+  "segments": [
+    {
+      "text": "配信初心者コツ、4つだけ覚えて！",
+      "start": 0.0,
+      "end": 3.5,
+      "font_size": 72,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "center",
+      "type": "hook"
+    },
+    {
+      "text": "① プロフィールを「3秒で伝わる」ように設定する",
+      "start": 3.5,
+      "end": 7.0,
+      "font_size": 80,
+      "color": "#FFE135",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "number"
+    },
+    {
+      "text": "② 配信環境を最低限整える",
+      "start": 7.0,
+      "end": 11.0,
+      "font_size": 52,
+      "color": "#FFFFFF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "point"
+    },
+    {
+      "text": "③ 最初の1週間の配信テーマを決めておく",
+      "start": 11.0,
+      "end": 15.0,
+      "font_size": 52,
+      "color": "#FFFFFF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "point"
+    },
+    {
+      "text": "④ 最初の30秒で「歓迎感」を出す",
+      "start": 15.0,
+      "end": 19.0,
+      "font_size": 52,
+      "color": "#FFFFFF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "point"
+    },
+    {
+      "text": "詳しくはプロフのリンクから！LINEで無料相談できるよ",
+      "start": 19.0,
+      "end": 23.0,
+      "font_size": 56,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "bottom",
+      "type": "cta"
+    }
+  ],
+  "hashtags": "#ライバー #配信初心者コツ #Pococha #副業 #ライブ配信"
+}

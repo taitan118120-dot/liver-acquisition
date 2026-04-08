@@ -1,0 +1,70 @@
+{
+  "keyword": "顔出しなしライバー",
+  "pattern": "ポイント紹介",
+  "persona": "顔出しなし",
+  "duration": 23.0,
+  "slides": 6,
+  "segments": [
+    {
+      "text": "顔出しNGの人！4つだけ覚えて",
+      "start": 0.0,
+      "end": 3.5,
+      "font_size": 72,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "center",
+      "type": "hook"
+    },
+    {
+      "text": "① Pocochaのラジオ配信",
+      "start": 3.5,
+      "end": 7.0,
+      "font_size": 80,
+      "color": "#FFE135",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "number"
+    },
+    {
+      "text": "② IRIAM（イリアム）でVtuber配信",
+      "start": 7.0,
+      "end": 11.0,
+      "font_size": 52,
+      "color": "#FFFFFF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "point"
+    },
+    {
+      "text": "③ TwitCasting（ツイキャス）で音声配信",
+      "start": 11.0,
+      "end": 15.0,
+      "font_size": 52,
+      "color": "#FFFFFF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "point"
+    },
+    {
+      "text": "④ 声のトーンを意識する",
+      "start": 15.0,
+      "end": 19.0,
+      "font_size": 52,
+      "color": "#FFFFFF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "point"
+    },
+    {
+      "text": "詳しくはプロフのリンクから！LINEで無料相談できるよ",
+      "start": 19.0,
+      "end": 23.0,
+      "font_size": 56,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "bottom",
+      "type": "cta"
+    }
+  ],
+  "hashtags": "#ライバー #顔出しなしライバー #Pococha #副業 #ライブ配信"
+}

@@ -1,0 +1,60 @@
+{
+  "keyword": "Pococha稼げる",
+  "pattern": "数字インパクト",
+  "persona": null,
+  "duration": 18.5,
+  "slides": 5,
+  "segments": [
+    {
+      "text": "稼げるの現実、知ってる？",
+      "start": 0.0,
+      "end": 3.5,
+      "font_size": 72,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "center",
+      "type": "hook"
+    },
+    {
+      "text": "月10万円",
+      "start": 3.5,
+      "end": 7.0,
+      "font_size": 80,
+      "color": "#FFE135",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "number"
+    },
+    {
+      "text": "月10万円を達成するための具体的な戦略まで詳しく解説します",
+      "start": 7.0,
+      "end": 11.0,
+      "font_size": 52,
+      "color": "#FFFFFF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "point"
+    },
+    {
+      "text": "E1 30円 60円 90円",
+      "start": 11.0,
+      "end": 14.5,
+      "font_size": 80,
+      "color": "#FFE135",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "number"
+    },
+    {
+      "text": "詳しくはプロフのリンクから！LINEで無料相談できるよ",
+      "start": 14.5,
+      "end": 18.5,
+      "font_size": 56,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "bottom",
+      "type": "cta"
+    }
+  ],
+  "hashtags": "#ライバー #Pococha稼げる #Pococha #副業 #ライブ配信"
+}

@@ -1,0 +1,60 @@
+{
+  "keyword": "事務所選び方",
+  "pattern": "比較してみた",
+  "persona": null,
+  "duration": 18.0,
+  "slides": 5,
+  "segments": [
+    {
+      "text": "事務所選び方、比較すると全然違う",
+      "start": 0.0,
+      "end": 3.5,
+      "font_size": 72,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "center",
+      "type": "hook"
+    },
+    {
+      "text": "専属マネージャー → ★★★★★",
+      "start": 3.5,
+      "end": 7.0,
+      "font_size": 48,
+      "color": "#00F5FF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "compare"
+    },
+    {
+      "text": "配信戦略アドバイス → ★★★★★",
+      "start": 7.0,
+      "end": 10.5,
+      "font_size": 48,
+      "color": "#00F5FF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "compare"
+    },
+    {
+      "text": "24時間トラブル対応 → ★★★★☆",
+      "start": 10.5,
+      "end": 14.0,
+      "font_size": 48,
+      "color": "#00F5FF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "compare"
+    },
+    {
+      "text": "詳しくはプロフのリンクから！LINEで無料相談できるよ",
+      "start": 14.0,
+      "end": 18.0,
+      "font_size": 56,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "bottom",
+      "type": "cta"
+    }
+  ],
+  "hashtags": "#ライバー #事務所選び方 #Pococha #副業 #ライブ配信"
+}

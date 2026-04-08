@@ -1,0 +1,60 @@
+{
+  "keyword": "ライバーイベント攻略",
+  "pattern": "数字インパクト",
+  "persona": null,
+  "duration": 18.5,
+  "slides": 5,
+  "segments": [
+    {
+      "text": "イベントの現実、知ってる？",
+      "start": 0.0,
+      "end": 3.5,
+      "font_size": 72,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "center",
+      "type": "hook"
+    },
+    {
+      "text": "約70%",
+      "start": 3.5,
+      "end": 7.0,
+      "font_size": 80,
+      "color": "#FFE135",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "number"
+    },
+    {
+      "text": "Pocochaでイベント入賞を経験したライバーの約70%が「初心者の頃に",
+      "start": 7.0,
+      "end": 11.0,
+      "font_size": 52,
+      "color": "#FFFFFF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "point"
+    },
+    {
+      "text": "150人以上のライバーが所属するTAITAN PROの知見",
+      "start": 11.0,
+      "end": 14.5,
+      "font_size": 80,
+      "color": "#FFE135",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "number"
+    },
+    {
+      "text": "詳しくはプロフのリンクから！LINEで無料相談できるよ",
+      "start": 14.5,
+      "end": 18.5,
+      "font_size": 56,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "bottom",
+      "type": "cta"
+    }
+  ],
+  "hashtags": "#ライバー #ライバーイベント攻略 #Pococha #副業 #ライブ配信"
+}

@@ -1,0 +1,60 @@
+{
+  "keyword": "ライバー伸びない原因",
+  "pattern": "質問回答1",
+  "persona": null,
+  "duration": 19.0,
+  "slides": 5,
+  "segments": [
+    {
+      "text": "毎日配信しているのに全然伸びない…",
+      "start": 0.0,
+      "end": 3.5,
+      "font_size": 72,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "center",
+      "type": "hook"
+    },
+    {
+      "text": "。大切なのは、伸びない時期に辞めずに改善を続けること。\n\n伸びない → 原因を",
+      "start": 3.5,
+      "end": 7.0,
+      "font_size": 80,
+      "color": "#FFE135",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "number"
+    },
+    {
+      "text": "1回30分〜1時間の配信では",
+      "start": 7.0,
+      "end": 11.0,
+      "font_size": 52,
+      "color": "#FFFFFF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "point"
+    },
+    {
+      "text": "- 1回の配信は最低2時間を目標にする",
+      "start": 11.0,
+      "end": 15.0,
+      "font_size": 52,
+      "color": "#FFFFFF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "point"
+    },
+    {
+      "text": "詳しくはプロフのリンクから！LINEで無料相談できるよ",
+      "start": 15.0,
+      "end": 19.0,
+      "font_size": 56,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "bottom",
+      "type": "cta"
+    }
+  ],
+  "hashtags": "#ライバー #ライバー伸びない原因 #Pococha #副業 #ライブ配信"
+}

@@ -1,0 +1,60 @@
+{
+  "keyword": "事務所選び方",
+  "pattern": "TOP3",
+  "persona": null,
+  "duration": 19.0,
+  "slides": 5,
+  "segments": [
+    {
+      "text": "事務所選び方のコツTOP3！",
+      "start": 0.0,
+      "end": 3.5,
+      "font_size": 72,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "center",
+      "type": "hook"
+    },
+    {
+      "text": "第3位：イベント攻略ノウハウ",
+      "start": 3.5,
+      "end": 7.5,
+      "font_size": 52,
+      "color": "#FFFFFF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "point"
+    },
+    {
+      "text": "第2位：還元率の優遇",
+      "start": 7.5,
+      "end": 11.5,
+      "font_size": 52,
+      "color": "#FFFFFF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "point"
+    },
+    {
+      "text": "第1位：専属マネージャーによるサポート",
+      "start": 11.5,
+      "end": 15.0,
+      "font_size": 80,
+      "color": "#FFE135",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "number"
+    },
+    {
+      "text": "詳しくはプロフのリンクから！LINEで無料相談できるよ",
+      "start": 15.0,
+      "end": 19.0,
+      "font_size": 56,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "bottom",
+      "type": "cta"
+    }
+  ],
+  "hashtags": "#ライバー #事務所選び方 #Pococha #副業 #ライブ配信"
+}

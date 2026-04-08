@@ -1,0 +1,60 @@
+{
+  "keyword": "ライバー機材おすすめ",
+  "pattern": "よくある誤解",
+  "persona": null,
+  "duration": 19.0,
+  "slides": 5,
+  "segments": [
+    {
+      "text": "機材を揃えたいけど、何を買えばいいかわからない",
+      "start": 0.0,
+      "end": 3.5,
+      "font_size": 72,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "center",
+      "type": "hook"
+    },
+    {
+      "text": "って思ってない？実はそれ間違い！",
+      "start": 3.5,
+      "end": 7.5,
+      "font_size": 52,
+      "color": "#FFFFFF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "point"
+    },
+    {
+      "text": ": 初心者はこれで十分。三脚付きのものが便利\n-",
+      "start": 7.5,
+      "end": 11.0,
+      "font_size": 80,
+      "color": "#FFE135",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "number"
+    },
+    {
+      "text": "- 10インチ リングライト（2,000〜3,000円）: 初心者はこれで十分",
+      "start": 11.0,
+      "end": 15.0,
+      "font_size": 52,
+      "color": "#FFFFFF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "point"
+    },
+    {
+      "text": "詳しくはプロフのリンクから！LINEで無料相談できるよ",
+      "start": 15.0,
+      "end": 19.0,
+      "font_size": 56,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "bottom",
+      "type": "cta"
+    }
+  ],
+  "hashtags": "#ライバー #ライバー機材おすすめ #Pococha #副業 #ライブ配信"
+}

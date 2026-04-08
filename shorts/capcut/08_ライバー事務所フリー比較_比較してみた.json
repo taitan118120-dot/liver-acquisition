@@ -1,0 +1,60 @@
+{
+  "keyword": "ライバー事務所フリー比較",
+  "pattern": "比較してみた",
+  "persona": null,
+  "duration": 18.0,
+  "slides": 5,
+  "segments": [
+    {
+      "text": "フリーライバー vs 事務所所属、どっちがいい？",
+      "start": 0.0,
+      "end": 3.5,
+      "font_size": 72,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "center",
+      "type": "hook"
+    },
+    {
+      "text": "初月の目安：月1〜2万円 vs 月10〜25万円",
+      "start": 3.5,
+      "end": 7.0,
+      "font_size": 48,
+      "color": "#00F5FF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "compare"
+    },
+    {
+      "text": "3ヶ月目：月3〜5万円 vs 月25〜40万円",
+      "start": 7.0,
+      "end": 10.5,
+      "font_size": 48,
+      "color": "#00F5FF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "compare"
+    },
+    {
+      "text": "ランクアップ速度：遅い（手探り） vs 速い（戦略的）",
+      "start": 10.5,
+      "end": 14.0,
+      "font_size": 48,
+      "color": "#00F5FF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "compare"
+    },
+    {
+      "text": "詳しくはプロフのリンクから！LINEで無料相談できるよ",
+      "start": 14.0,
+      "end": 18.0,
+      "font_size": 56,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "bottom",
+      "type": "cta"
+    }
+  ],
+  "hashtags": "#ライバー #ライバー事務所フリー比較 #Pococha #副業 #ライブ配信"
+}

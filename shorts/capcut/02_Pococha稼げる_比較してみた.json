@@ -1,0 +1,60 @@
+{
+  "keyword": "Pococha稼げる",
+  "pattern": "比較してみた",
+  "persona": null,
+  "duration": 18.0,
+  "slides": 5,
+  "segments": [
+    {
+      "text": "通常 vs 2位・3位、どっちがいい？",
+      "start": 0.0,
+      "end": 3.5,
+      "font_size": 72,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "center",
+      "type": "hook"
+    },
+    {
+      "text": "E1：30円 vs 60円",
+      "start": 3.5,
+      "end": 7.0,
+      "font_size": 48,
+      "color": "#00F5FF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "compare"
+    },
+    {
+      "text": "D1：50円 vs 100円",
+      "start": 7.0,
+      "end": 10.5,
+      "font_size": 48,
+      "color": "#00F5FF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "compare"
+    },
+    {
+      "text": "D2：100円 vs 200円",
+      "start": 10.5,
+      "end": 14.0,
+      "font_size": 48,
+      "color": "#00F5FF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "compare"
+    },
+    {
+      "text": "詳しくはプロフのリンクから！LINEで無料相談できるよ",
+      "start": 14.0,
+      "end": 18.0,
+      "font_size": 56,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "bottom",
+      "type": "cta"
+    }
+  ],
+  "hashtags": "#ライバー #Pococha稼げる #Pococha #副業 #ライブ配信"
+}

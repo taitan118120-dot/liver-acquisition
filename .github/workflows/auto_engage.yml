@@ -1,11 +1,10 @@
-name: 自動エンゲージメント
+name: リード検索
 
 on:
   schedule:
-    # 1日3回（JST 10:37, 16:37, 21:37）いいね+リード発見
-    - cron: '37 1 * * *'    # JST 10:37
-    - cron: '37 7 * * *'    # JST 16:37
-    - cron: '37 12 * * *'   # JST 21:37
+    # 1日2回リード検索（JST 10:17, 20:37）
+    - cron: '17 1 * * *'    # JST 10:17
+    - cron: '37 11 * * *'   # JST 20:37
   workflow_dispatch:
 
 jobs:
@@ -20,7 +19,7 @@ jobs:
 
       - run: pip install tweepy
 
-      - name: いいね+リード発見
+      - name: リード検索
         env:
           TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
           TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
@@ -34,5 +33,5 @@ jobs:
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add data/ || true
-          git diff --staged --quiet || git commit -m "エンゲージメントログ更新"
+          git diff --staged --quiet || git commit -m "リード検索ログ更新"
           git push || true

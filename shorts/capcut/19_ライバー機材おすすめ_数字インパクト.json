@@ -1,0 +1,60 @@
+{
+  "keyword": "ライバー機材おすすめ",
+  "pattern": "数字インパクト",
+  "persona": null,
+  "duration": 18.5,
+  "slides": 5,
+  "segments": [
+    {
+      "text": "機材おすすめの現実、知ってる？",
+      "start": 0.0,
+      "end": 3.5,
+      "font_size": 72,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "center",
+      "type": "hook"
+    },
+    {
+      "text": "3,000円",
+      "start": 3.5,
+      "end": 7.0,
+      "font_size": 80,
+      "color": "#FFE135",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "number"
+    },
+    {
+      "text": "- 10インチ リングライト（2,000〜3,000円）: 初心者はこれで十分",
+      "start": 7.0,
+      "end": 11.0,
+      "font_size": 52,
+      "color": "#FFFFFF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "point"
+    },
+    {
+      "text": "- LEDパネルライト（3,000〜5,000円）: より自然な光が欲しい方に",
+      "start": 11.0,
+      "end": 14.5,
+      "font_size": 80,
+      "color": "#FFE135",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "number"
+    },
+    {
+      "text": "詳しくはプロフのリンクから！LINEで無料相談できるよ",
+      "start": 14.5,
+      "end": 18.5,
+      "font_size": 56,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "bottom",
+      "type": "cta"
+    }
+  ],
+  "hashtags": "#ライバー #ライバー機材おすすめ #Pococha #副業 #ライブ配信"
+}

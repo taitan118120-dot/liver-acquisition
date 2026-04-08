@@ -1,0 +1,70 @@
+{
+  "keyword": "ライバー始め方",
+  "pattern": "ポイント紹介",
+  "persona": null,
+  "duration": 23.0,
+  "slides": 6,
+  "segments": [
+    {
+      "text": "ライバー始め方、4つだけ覚えて！",
+      "start": 0.0,
+      "end": 3.5,
+      "font_size": 72,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "center",
+      "type": "hook"
+    },
+    {
+      "text": "① 配信アプリをダウンロード（所要時間: 3分）",
+      "start": 3.5,
+      "end": 7.0,
+      "font_size": 80,
+      "color": "#FFE135",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "number"
+    },
+    {
+      "text": "② プロフィールを設定する（所要時間: 10分）",
+      "start": 7.0,
+      "end": 11.0,
+      "font_size": 52,
+      "color": "#FFFFFF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "point"
+    },
+    {
+      "text": "③ 初配信をやってみる（まずは15分でOK）",
+      "start": 11.0,
+      "end": 15.0,
+      "font_size": 52,
+      "color": "#FFFFFF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "point"
+    },
+    {
+      "text": "④ 配信を習慣化する（週3〜5回を目標に）",
+      "start": 15.0,
+      "end": 19.0,
+      "font_size": 52,
+      "color": "#FFFFFF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "point"
+    },
+    {
+      "text": "詳しくはプロフのリンクから！LINEで無料相談できるよ",
+      "start": 19.0,
+      "end": 23.0,
+      "font_size": 56,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "bottom",
+      "type": "cta"
+    }
+  ],
+  "hashtags": "#ライバー #ライバー始め方 #Pococha #副業 #ライブ配信"
+}

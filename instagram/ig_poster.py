@@ -23,8 +23,27 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
 
 GRAPH_API_BASE = "https://graph.facebook.com/v21.0"
-POSTS_FILE = os.path.join(os.path.dirname(__file__), "ig_posts.json")
-POST_LOG_CSV = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "ig_post_log.csv")
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
+POSTS_FILE = os.path.join(SCRIPT_DIR, "ig_posts.json")
+POST_LOG_CSV = os.path.join(PROJECT_ROOT, "data", "ig_post_log.csv")
+
+
+def _resolve_image_path(image_path):
+    """画像パスを解決（相対パスならプロジェクトルートからの相対パスとして処理）"""
+    if not image_path:
+        return None
+    if os.path.isabs(image_path):
+        return image_path
+    # 相対パスならプロジェクトルートから解決
+    resolved = os.path.join(PROJECT_ROOT, image_path)
+    if os.path.exists(resolved):
+        return resolved
+    # スクリプトディレクトリからも試す
+    resolved2 = os.path.join(SCRIPT_DIR, os.path.basename(image_path))
+    if os.path.exists(resolved2):
+        return resolved2
+    return os.path.join(PROJECT_ROOT, image_path)
 
 
 def upload_image_to_imgbb(image_path):
@@ -200,9 +219,9 @@ def post_by_id(post_id, dry_run=False):
 
     print(f"投稿: {target['title']}")
 
-    image_path = target.get("image_path")
+    image_path = _resolve_image_path(target.get("image_path"))
     if not image_path or not os.path.exists(image_path):
-        print(f"[ERROR] 画像ファイルが見つかりません: {image_path}")
+        print(f"[ERROR] 画像ファイルが見つかりません: {target.get('image_path')}")
         return False
 
     success = post_to_instagram(image_path, target["caption"], dry_run=dry_run)
@@ -227,7 +246,12 @@ def post_next(dry_run=False):
     target = unposted[0]
     print(f"次の投稿: {target['title']}")
 
-    success = post_to_instagram(target["image_path"], target["caption"], dry_run=dry_run)
+    resolved_path = _resolve_image_path(target["image_path"])
+    if not resolved_path or not os.path.exists(resolved_path):
+        print(f"[ERROR] 画像ファイルが見つかりません: {target['image_path']}")
+        return False
+
+    success = post_to_instagram(resolved_path, target["caption"], dry_run=dry_run)
     log_post(target["id"], target["caption"], success)
 
     if success and not dry_run:

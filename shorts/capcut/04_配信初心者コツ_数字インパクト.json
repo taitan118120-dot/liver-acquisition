@@ -1,0 +1,60 @@
+{
+  "keyword": "配信初心者コツ",
+  "pattern": "数字インパクト",
+  "persona": null,
+  "duration": 18.5,
+  "slides": 5,
+  "segments": [
+    {
+      "text": "配信初心者コツの現実、知ってる？",
+      "start": 0.0,
+      "end": 3.5,
+      "font_size": 72,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "center",
+      "type": "hook"
+    },
+    {
+      "text": "1ヶ月",
+      "start": 3.5,
+      "end": 7.0,
+      "font_size": 80,
+      "color": "#FFE135",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "number"
+    },
+    {
+      "text": "最初の1ヶ月を正しく過ごせば",
+      "start": 7.0,
+      "end": 11.0,
+      "font_size": 52,
+      "color": "#FFFFFF",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "point"
+    },
+    {
+      "text": "初心者がいきなり2〜3時間配信するのはハードルが高いです",
+      "start": 11.0,
+      "end": 14.5,
+      "font_size": 80,
+      "color": "#FFE135",
+      "bg_color": "#1A1A2E",
+      "position": "center",
+      "type": "number"
+    },
+    {
+      "text": "詳しくはプロフのリンクから！LINEで無料相談できるよ",
+      "start": 14.5,
+      "end": 18.5,
+      "font_size": 56,
+      "color": "#FFFFFF",
+      "bg_color": "#FF0050",
+      "position": "bottom",
+      "type": "cta"
+    }
+  ],
+  "hashtags": "#ライバー #配信初心者コツ #Pococha #副業 #ライブ配信"
+}

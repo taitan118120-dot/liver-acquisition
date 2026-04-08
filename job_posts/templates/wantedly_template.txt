@@ -1,0 +1,27 @@
+## なにをやっているのか
+
+{what_we_do}
+
+## なぜやるのか
+
+{why_we_do}
+
+## どうやっているのか
+
+{how_we_do}
+
+## こんなことやります
+
+{job_description}
+
+### 歓迎するひと
+
+{ideal_person}
+
+### 待遇
+
+{benefits}
+
+### 話を聞きに行くとどうなる？
+
+{meeting_info}
