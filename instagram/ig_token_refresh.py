@@ -209,8 +209,8 @@ def auto_refresh():
 
     remaining = info.get("remaining_days", 0)
 
-    if remaining > 14:
-        print(f"\n残り{remaining}日。更新不要です（14日以内になったら自動更新）。")
+    if remaining > 30:
+        print(f"\n残り{remaining}日。更新不要です（30日以内になったら自動更新）。")
         return True
 
     print(f"\n残り{remaining}日。トークンを更新します...")
