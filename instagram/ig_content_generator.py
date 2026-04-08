@@ -136,10 +136,9 @@ def generate_caption(article, dry_run=False):
     if dry_run:
         return f"【{article['title']}】\n\nこの記事の要約キャプションがここに入ります。\n\n#ライバー #ライブ配信 #副業 #在宅ワーク"
 
-    import google.generativeai as genai
+    from google import genai
 
-    genai.configure(api_key=config.GEMINI_API_KEY)
-    model = genai.GenerativeModel("gemini-2.5-flash")
+    client = genai.Client(api_key=config.GEMINI_API_KEY)
 
     is_remix = article.get("remix", False)
     is_twitter = article.get("source") == "twitter"
@@ -204,8 +203,98 @@ X投稿:
 
 キャプションのみを出力してください。"""
 
-    response = model.generate_content(prompt)
-    return response.text.strip()
+    import time as _time
+    for attempt in range(3):
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+            )
+            return response.text.strip()
+        except Exception as e:
+            if attempt < 2:
+                wait = 10 * (attempt + 1)
+                print(f"  [RETRY] キャプション生成失敗({e})、{wait}秒後にリトライ...")
+                _time.sleep(wait)
+            else:
+                raise
+
+
+def _build_image_prompt(article):
+    """記事内容に応じた画像生成プロンプトを構築"""
+    title = article["title"]
+
+    # タイトルから短いキャッチコピーを抽出・生成
+    catchcopy_map = {
+        "始め方": "スマホ1台で今日からスタート",
+        "稼": "好きなことで収入GET",
+        "事務所": "あなたに合う事務所が見つかる",
+        "初心者": "未経験でも大丈夫",
+        "収入": "自分らしく稼ぐ新しい働き方",
+        "副業": "おうち時間を収入に変える",
+        "コツ": "人気ライバーの秘密を公開",
+        "ランク": "トップライバーへの道",
+        "ダイヤ": "報酬のしくみを徹底解説",
+        "機材": "必要なのはスマホだけ",
+        "ネタ": "配信が楽しくなるアイデア集",
+        "伸びない": "伸び悩みを突破する方法",
+        "ファン": "ファンに愛されるライバーに",
+        "男性": "男性ライバーの可能性は無限大",
+        "大学生": "学生×ライバーの新しい生き方",
+        "主婦": "ママでもできる在宅ワーク",
+        "確定申告": "ライバーのお金まわり完全ガイド",
+        "辞めたい": "もう悩まない！次のステップへ",
+        "還元率": "知らないと損する報酬のしくみ",
+        "イベント": "イベント攻略で一気にランクUP",
+        "スケジュール": "ムリなく続けるコツ",
+        "メンタル": "配信疲れを防ぐセルフケア",
+        "移籍": "事務所移籍のベストタイミング",
+        "容姿": "見た目じゃない！トーク力が武器",
+        "契約": "損しない契約書チェックポイント",
+        "コラボ": "コラボで一気にファン拡大",
+        "将来": "ライブ配信市場はまだまだ成長中",
+        "マネージャー": "プロのサポートで成長が加速",
+        "怪しい": "安全な事務所の見分け方",
+        "バレ": "身バレを防いで安心配信",
+        "30代": "30代から始める新しい挑戦",
+        "比較": "アプリ選びで差がつく",
+        "顔出し": "顔出しなしでも稼げる方法",
+    }
+
+    catchcopy = "あなたの魅力を、収入に変えよう"
+    for keyword, copy in catchcopy_map.items():
+        if keyword in title:
+            catchcopy = copy
+            break
+
+    # タイトルを短く整形（数字プレフィックスを除去）
+    short_title = re.sub(r"^\d+_", "", title)
+
+    return f"""おしゃれなInstagram投稿画像を生成してください。
+
+【画像内テキスト（必ず日本語で大きく表示）】
+メインタイトル: 「{short_title}」
+キャッチコピー: 「{catchcopy}」
+
+【デザインスタイル】
+- 韓国風・カフェ風のおしゃれなイラスト調
+- パステルカラー（ラベンダー、ミントグリーン、ピーチピンク、クリームイエローなど）
+- フラットデザインのかわいいイラスト要素（スマホ、星、ハート、吹き出しなど）
+- 手描き風の装飾線やフレーム
+- 20代女性が思わず保存したくなるデザイン
+
+【レイアウト】
+- 正方形（1080x1080）
+- メインタイトルは画像中央〜上部に大きく配置
+- キャッチコピーはタイトル下にサブテキストとして配置
+- 背景は淡いグラデーションまたは単色
+- 余白を十分にとってすっきりさせる
+
+【禁止事項】
+- リアルな人物の顔は描かない
+- 英語のテキストは使わない
+- ごちゃごちゃした複雑な構成にしない
+- ダークカラーは使わない""", short_title, catchcopy
 
 
 def generate_image(article, index, dry_run=False):
@@ -221,40 +310,42 @@ def generate_image(article, index, dry_run=False):
 
     client = genai.Client(api_key=config.GEMINI_API_KEY)
 
-    prompt = f"""Create a clean, modern Instagram post image for a Japanese live streaming talent agency.
-Topic: {article['title']}
-Style: Minimalist, pastel colors, professional.
-Include subtle Japanese text elements.
-Square format (1080x1080).
-Do NOT include any human faces or realistic people.
-Use abstract shapes, icons, or illustrations instead."""
+    prompt, short_title, catchcopy = _build_image_prompt(article)
+    print(f"  タイトル: {short_title} / キャッチ: {catchcopy}")
 
-    # Imagen 4.0で画像生成
-    try:
-        response = client.models.generate_images(
-            model="imagen-4.0-generate-001",
-            prompt=prompt,
-            config=genai.types.GenerateImagesConfig(
-                number_of_images=1,
-                aspect_ratio="1:1",
-            ),
-        )
+    import time as _time
 
-        if response.generated_images:
-            image_data = response.generated_images[0].image.image_bytes
-            with open(image_path, "wb") as f:
-                f.write(image_data)
-            print(f"  画像生成完了: {image_path}")
-            return image_path
-    except Exception as e:
-        print(f"  [WARNING] Imagen 4.0生成失敗、フォールバック: {e}")
+    # Imagen 4.0で画像生成（リトライ付き）
+    for attempt in range(3):
+        try:
+            response = client.models.generate_images(
+                model="imagen-4.0-generate-001",
+                prompt=prompt,
+                config=genai.types.GenerateImagesConfig(
+                    number_of_images=1,
+                    aspect_ratio="1:1",
+                ),
+            )
+
+            if response.generated_images:
+                image_data = response.generated_images[0].image.image_bytes
+                with open(image_path, "wb") as f:
+                    f.write(image_data)
+                print(f"  画像生成完了: {image_path}")
+                return image_path
+        except Exception as e:
+            if attempt < 2:
+                wait = 15 * (attempt + 1)
+                print(f"  [RETRY] Imagen 4.0失敗({e})、{wait}秒後にリトライ...")
+                _time.sleep(wait)
+            else:
+                print(f"  [WARNING] Imagen 4.0生成失敗、フォールバック: {e}")
 
     # フォールバック: Gemini 2.5 Flash Imageで画像生成
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash-image",
-            contents=f"Generate a simple, clean illustration for an Instagram post about: {article['title']}. "
-            "Use pastel colors, minimalist style. Square format. No text overlay.",
+            model="gemini-2.5-flash-preview-05-20",
+            contents=prompt,
             config=genai.types.GenerateContentConfig(
                 response_modalities=["IMAGE"],
             ),

@@ -2,10 +2,9 @@ name: Instagram自動投稿
 
 on:
   schedule:
-    # JST 8:30, 12:30, 20:30（UTCで-9時間）
-    - cron: '30 23 * * *'   # JST 8:30
-    - cron: '30 3 * * *'    # JST 12:30
-    - cron: '30 11 * * *'   # JST 20:30
+    # JST 7:30, 20:00（UTCで-9時間）1日2回
+    - cron: '30 22 * * *'   # JST 7:30
+    - cron: '0 11 * * *'    # JST 20:00
   workflow_dispatch:  # 手動実行も可能
     inputs:
       source:
