@@ -27,20 +27,34 @@ from ig_content_generator import generate_posts, load_posts
 from ig_poster import post_next
 
 
+MAX_RETRY = 3  # この回数失敗したら投稿をスキップ
+
+
 def run(generate_if_empty=False, source_type="auto", dry_run=False):
     """スケジュール実行のメイン処理"""
     posts = load_posts()
-    unposted = [p for p in posts if not p["posted"] and p.get("image_path")]
 
-    print(f"投稿キュー: 全{len(posts)}件 / 未投稿{len(unposted)}件\n")
+    # 失敗回数が上限に達した投稿をスキップ対象にする
+    unposted = [
+        p for p in posts
+        if not p["posted"] and p.get("image_path") and p.get("fail_count", 0) < MAX_RETRY
+    ]
+    failed = [p for p in posts if not p["posted"] and p.get("fail_count", 0) >= MAX_RETRY]
 
-    # 未投稿がなければ生成
+    print(f"投稿キュー: 全{len(posts)}件 / 未投稿{len(unposted)}件 / スキップ済{len(failed)}件\n")
+    for fp in failed:
+        print(f"  [SKIP] {fp['id']}: {fp.get('fail_count', 0)}回失敗 - {fp.get('last_error', '不明')}")
+
+    # 未投稿がなければ生成（スキップ済みは数えない）
     if not unposted and generate_if_empty:
         print("未投稿コンテンツがないため、新規生成します...\n")
         generate_posts(source_type=source_type, count=1, dry_run=dry_run)
         # 再読み込み
         posts = load_posts()
-        unposted = [p for p in posts if not p["posted"] and p.get("image_path")]
+        unposted = [
+            p for p in posts
+            if not p["posted"] and p.get("image_path") and p.get("fail_count", 0) < MAX_RETRY
+        ]
 
     if not unposted:
         print("[INFO] 投稿するコンテンツがありません。")

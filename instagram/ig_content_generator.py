@@ -341,24 +341,28 @@ def generate_image(article, index, dry_run=False):
             else:
                 print(f"  [WARNING] Imagen 4.0生成失敗、フォールバック: {e}")
 
-    # フォールバック: Gemini 2.5 Flash Imageで画像生成
-    try:
-        response = client.models.generate_content(
-            model="gemini-2.5-flash-preview-05-20",
-            contents=prompt,
-            config=genai.types.GenerateContentConfig(
-                response_modalities=["IMAGE"],
-            ),
-        )
-        if response.candidates and response.candidates[0].content.parts:
-            for part in response.candidates[0].content.parts:
-                if part.inline_data and part.inline_data.data:
-                    with open(image_path, "wb") as f:
-                        f.write(part.inline_data.data)
-                    print(f"  画像生成完了 (フォールバック): {image_path}")
-                    return image_path
-    except Exception as e:
-        print(f"  [ERROR] 画像生成失敗: {e}")
+    # フォールバック: Gemini 2.5 Flashで画像生成
+    for fb_model in ["gemini-2.5-flash", "gemini-2.0-flash"]:
+        try:
+            print(f"  [FALLBACK] {fb_model} で画像生成を試行...")
+            response = client.models.generate_content(
+                model=fb_model,
+                contents=prompt,
+                config=genai.types.GenerateContentConfig(
+                    response_modalities=["IMAGE"],
+                ),
+            )
+            if response.candidates and response.candidates[0].content.parts:
+                for part in response.candidates[0].content.parts:
+                    if part.inline_data and part.inline_data.data:
+                        with open(image_path, "wb") as f:
+                            f.write(part.inline_data.data)
+                        print(f"  画像生成完了 (フォールバック {fb_model}): {image_path}")
+                        return image_path
+        except Exception as e:
+            print(f"  [WARNING] {fb_model} 画像生成失敗: {e}")
+
+    print("  [ERROR] 全ての画像生成方法が失敗しました")
 
     return None
 

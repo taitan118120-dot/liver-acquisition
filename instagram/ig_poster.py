@@ -142,35 +142,37 @@ def check_container_status(container_id):
 
 
 def post_to_instagram(image_path, caption, dry_run=False):
-    """Instagram Graph APIでフィード投稿を実行"""
+    """Instagram Graph APIでフィード投稿を実行。(success, error_msg) を返す。"""
     if dry_run:
         print(f"[DRY RUN] Instagram投稿:")
         print(f"  画像: {image_path}")
         print(f"  キャプション: {caption[:100]}...")
-        return True
+        return True, None
 
     if not config.INSTAGRAM_ACCESS_TOKEN or not config.INSTAGRAM_BUSINESS_ID:
-        print("[ERROR] Instagram Graph API の認証情報が設定されていません。")
-        print("  INSTAGRAM_ACCESS_TOKEN と INSTAGRAM_BUSINESS_ID を環境変数に設定してください。")
-        return False
+        msg = "INSTAGRAM_ACCESS_TOKEN または INSTAGRAM_BUSINESS_ID が未設定"
+        print(f"[ERROR] {msg}")
+        return False, msg
 
     # 1. 画像を公開URLにアップロード
     image_url = upload_image_to_imgbb(image_path)
     if not image_url:
-        return False
+        return False, "imgBBへの画像アップロード失敗"
 
     # 2. メディアコンテナを作成
     container_id = create_media_container(image_url, caption)
     if not container_id:
-        return False
+        return False, "Instagramメディアコンテナ作成失敗"
 
     # 3. コンテナの処理完了を待つ
     if not check_container_status(container_id):
-        return False
+        return False, "コンテナ処理タイムアウトまたはエラー"
 
     # 4. 公開
     post_id = publish_media(container_id)
-    return post_id is not None
+    if post_id:
+        return True, None
+    return False, "Instagram投稿公開失敗"
 
 
 def log_post(post_id, caption, success):
@@ -224,7 +226,7 @@ def post_by_id(post_id, dry_run=False):
         print(f"[ERROR] 画像ファイルが見つかりません: {target.get('image_path')}")
         return False
 
-    success = post_to_instagram(image_path, target["caption"], dry_run=dry_run)
+    success, error_msg = post_to_instagram(image_path, target["caption"], dry_run=dry_run)
     log_post(post_id, target["caption"], success)
 
     if success and not dry_run:
@@ -234,29 +236,49 @@ def post_by_id(post_id, dry_run=False):
     return success
 
 
+MAX_RETRY = 3  # この回数失敗したらスキップ
+
+
 def post_next(dry_run=False):
-    """未投稿の次のコンテンツを投稿"""
+    """未投稿の次のコンテンツを投稿（失敗回数が上限に達したものはスキップ）"""
     posts = load_posts()
-    unposted = [p for p in posts if not p["posted"] and p.get("image_path")]
+    unposted = [
+        p for p in posts
+        if not p["posted"] and p.get("image_path") and p.get("fail_count", 0) < MAX_RETRY
+    ]
 
     if not unposted:
-        print("[INFO] 未投稿のコンテンツがありません。")
+        print("[INFO] 投稿可能なコンテンツがありません。")
         return False
 
     target = unposted[0]
-    print(f"次の投稿: {target['title']}")
+    print(f"次の投稿: {target['title']} (失敗{target.get('fail_count', 0)}回目)")
 
     resolved_path = _resolve_image_path(target["image_path"])
     if not resolved_path or not os.path.exists(resolved_path):
-        print(f"[ERROR] 画像ファイルが見つかりません: {target['image_path']}")
+        error_msg = f"画像ファイルが見つかりません: {target['image_path']}"
+        print(f"[ERROR] {error_msg}")
+        target["fail_count"] = target.get("fail_count", 0) + 1
+        target["last_error"] = error_msg
+        save_posts(posts)
         return False
 
-    success = post_to_instagram(resolved_path, target["caption"], dry_run=dry_run)
-    log_post(target["id"], target["caption"], success)
+    success, error_msg = post_to_instagram(resolved_path, target["caption"], dry_run=dry_run)
+    if not dry_run:
+        log_post(target["id"], target["caption"], success)
 
     if success and not dry_run:
         target["posted"] = True
+        target.pop("fail_count", None)
+        target.pop("last_error", None)
         save_posts(posts)
+    elif not success and not dry_run:
+        target["fail_count"] = target.get("fail_count", 0) + 1
+        target["last_error"] = error_msg or "不明なエラー"
+        save_posts(posts)
+        print(f"[WARNING] 投稿失敗 ({target['fail_count']}/{MAX_RETRY}回): {error_msg}")
+        if target["fail_count"] >= MAX_RETRY:
+            print(f"[SKIP] {target['id']} は{MAX_RETRY}回失敗したため、以降スキップします。")
 
     return success
 
