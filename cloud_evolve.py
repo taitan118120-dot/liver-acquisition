@@ -157,60 +157,77 @@ EVOLUTION_CONTENT = {
 }
 
 
-def main():
-    client = tweepy.Client(
-        bearer_token=os.environ.get("TWITTER_BEARER_TOKEN", ""),
-        consumer_key=os.environ["TWITTER_API_KEY"],
-        consumer_secret=os.environ["TWITTER_API_SECRET"],
-        access_token=os.environ["TWITTER_ACCESS_TOKEN"],
-        access_token_secret=os.environ["TWITTER_ACCESS_TOKEN_SECRET"],
-    )
-
-    # --- 1. 過去の投稿を分析 ---
-    me = client.get_me()
-    tweets = client.get_users_tweets(
-        id=me.data.id,
-        max_results=50,
-        tweet_fields=["public_metrics", "text"],
-    )
-
-    if not tweets.data:
-        print("ツイートなし。分析スキップ。")
-        return
-
-    # スコア計算
-    scored = []
-    for t in tweets.data:
-        m = t.public_metrics
-        score = (
-            m["like_count"] * 1
-            + m["retweet_count"] * 3
-            + m["reply_count"] * 2
-            + m["impression_count"] * 0.001
+def analyze_tweets():
+    """過去の投稿を分析して伸びたパターンを特定する。API制限で失敗したらNoneを返す。"""
+    try:
+        client = tweepy.Client(
+            bearer_token=os.environ.get("TWITTER_BEARER_TOKEN", ""),
+            consumer_key=os.environ.get("TWITTER_API_KEY", ""),
+            consumer_secret=os.environ.get("TWITTER_API_SECRET", ""),
+            access_token=os.environ.get("TWITTER_ACCESS_TOKEN", ""),
+            access_token_secret=os.environ.get("TWITTER_ACCESS_TOKEN_SECRET", ""),
         )
-        scored.append({"text": t.text, "score": score})
 
-    scored.sort(key=lambda x: x["score"], reverse=True)
+        me = client.get_me()
+        tweets = client.get_users_tweets(
+            id=me.data.id,
+            max_results=50,
+            tweet_fields=["public_metrics", "text"],
+        )
 
-    # --- 2. 伸びたパターンを特定 ---
-    top_texts = [s["text"] for s in scored[:10]]
-    pattern_scores = {
-        "あるある": sum(1 for t in top_texts if "あるある" in t or "・" in t and len(t.split("・")) > 3),
-        "質問": sum(1 for t in top_texts if "？" in t and ("❤️" in t or "🔁" in t)),
-        "リスト": sum(1 for t in top_texts if "→" in t or (t.count("・") >= 3)),
-        "ストーリー": sum(1 for t in top_texts if "ヶ月" in t or "の話" in t),
-        "ぶっちゃけ": sum(1 for t in top_texts if "ぶっちゃけ" in t or "正直" in t or "リアル" in t),
-        "副業比較": sum(1 for t in top_texts if "副業" in t or "比較" in t or "在宅" in t),
-        "お金リアル": sum(1 for t in top_texts if "手取り" in t or "給料" in t or "万円" in t or "月" in t and "稼" in t),
-    }
+        if not tweets.data:
+            print("ツイートなし。")
+            return None
 
-    # 上位2パターンを重点的に生成
-    top_patterns = sorted(pattern_scores.items(), key=lambda x: -x[1])
-    print(f"パターン分析: {dict(top_patterns)}")
+        scored = []
+        for t in tweets.data:
+            m = t.public_metrics
+            score = (
+                m["like_count"] * 1
+                + m["retweet_count"] * 3
+                + m["reply_count"] * 2
+                + m["impression_count"] * 0.001
+            )
+            scored.append({"text": t.text, "score": score})
 
-    winning_patterns = [p[0] for p in top_patterns[:2]]
-    if not any(pattern_scores[p] > 0 for p in winning_patterns):
-        winning_patterns = ["あるある", "ぶっちゃけ"]  # デフォルト
+        scored.sort(key=lambda x: x["score"], reverse=True)
+
+        top_texts = [s["text"] for s in scored[:10]]
+        pattern_scores = {
+            "あるある": sum(1 for t in top_texts if "あるある" in t or "・" in t and len(t.split("・")) > 3),
+            "質問": sum(1 for t in top_texts if "？" in t and ("❤️" in t or "🔁" in t)),
+            "リスト": sum(1 for t in top_texts if "→" in t or (t.count("・") >= 3)),
+            "ストーリー": sum(1 for t in top_texts if "ヶ月" in t or "の話" in t),
+            "ぶっちゃけ": sum(1 for t in top_texts if "ぶっちゃけ" in t or "正直" in t or "リアル" in t),
+            "副業比較": sum(1 for t in top_texts if "副業" in t or "比較" in t or "在宅" in t),
+            "お金リアル": sum(1 for t in top_texts if "手取り" in t or "給料" in t or "万円" in t or "月" in t and "稼" in t),
+        }
+
+        return scored, pattern_scores
+
+    except Exception as e:
+        print(f"Twitter API分析をスキップ（{type(e).__name__}: {e}）")
+        return None
+
+
+def main():
+    # --- 1. 過去の投稿を分析 ---
+    result = analyze_tweets()
+
+    if result:
+        scored, pattern_scores = result
+        top_patterns = sorted(pattern_scores.items(), key=lambda x: -x[1])
+        print(f"パターン分析: {dict(top_patterns)}")
+        winning_patterns = [p[0] for p in top_patterns[:2]]
+        if not any(pattern_scores[p] > 0 for p in winning_patterns):
+            winning_patterns = ["あるある", "ぶっちゃけ"]
+    else:
+        scored = []
+        pattern_scores = {}
+        # API使えない場合は全パターンからランダムに2つ選択
+        all_patterns = list(EVOLUTION_CONTENT.keys())
+        winning_patterns = random.sample(all_patterns, min(2, len(all_patterns)))
+        print(f"API分析不可。ランダムパターンで生成。")
 
     print(f"重点パターン: {winning_patterns}")
 
@@ -218,7 +235,7 @@ def main():
     with open("posts/twitter_posts.json", "r", encoding="utf-8") as f:
         existing = json.load(f)
 
-    existing_texts = {p["text"][:30] for p in existing}
+    existing_texts = {p["text"][:30] for p in existing if "text" in p}
     new_count = 0
     next_id = len(existing) + 1
 
