@@ -31,7 +31,7 @@ MAX_RETRY = 3  # この回数失敗したら投稿をスキップ
 
 
 def run(generate_if_empty=False, source_type="auto", dry_run=False):
-    """スケジュール実行のメイン処理"""
+    """スケジュール実行のメイン処理。(success, has_content) を返す。"""
     posts = load_posts()
 
     # 失敗回数が上限に達した投稿をスキップ対象にする
@@ -59,10 +59,10 @@ def run(generate_if_empty=False, source_type="auto", dry_run=False):
     if not unposted:
         print("[INFO] 投稿するコンテンツがありません。")
         print("  `python ig_content_generator.py --generate` でコンテンツを生成してください。")
-        return False
+        return False, False
 
     # 次の1件を投稿
-    return post_next(dry_run=dry_run)
+    return post_next(dry_run=dry_run), True
 
 
 def main():
@@ -76,7 +76,7 @@ def main():
     args = parser.parse_args()
 
     dry_run = args.test
-    success = run(
+    success, had_content = run(
         generate_if_empty=args.generate,
         source_type=args.source,
         dry_run=dry_run,
@@ -84,6 +84,8 @@ def main():
 
     if success:
         print("\n投稿完了!")
+    elif not had_content:
+        print("\n投稿対象がありませんでした。")
     elif not dry_run:
         print("\n投稿に失敗しました。ログを確認してください。")
         sys.exit(1)

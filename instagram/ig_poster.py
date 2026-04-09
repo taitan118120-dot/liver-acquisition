@@ -92,7 +92,13 @@ def create_media_container(image_url, caption):
         print(f"  メディアコンテナ作成: {data['id']}")
         return data["id"]
 
-    print(f"[ERROR] コンテナ作成失敗: {data}")
+    error = data.get("error", {})
+    error_msg = error.get("message", str(data))
+    error_code = error.get("code", "N/A")
+    error_subcode = error.get("error_subcode", "N/A")
+    print(f"[ERROR] コンテナ作成失敗 (code={error_code}, subcode={error_subcode}): {error_msg}")
+    if error_code == 190:
+        print("  → アクセストークンが無効または期限切れです。トークンを更新してください。")
     return None
 
 
@@ -111,7 +117,10 @@ def publish_media(container_id):
         print(f"  投稿公開成功: {data['id']}")
         return data["id"]
 
-    print(f"[ERROR] 投稿公開失敗: {data}")
+    error = data.get("error", {})
+    error_msg = error.get("message", str(data))
+    error_code = error.get("code", "N/A")
+    print(f"[ERROR] 投稿公開失敗 (code={error_code}): {error_msg}")
     return None
 
 
@@ -149,10 +158,18 @@ def post_to_instagram(image_path, caption, dry_run=False):
         print(f"  キャプション: {caption[:100]}...")
         return True, None
 
-    if not config.INSTAGRAM_ACCESS_TOKEN or not config.INSTAGRAM_BUSINESS_ID:
-        msg = "INSTAGRAM_ACCESS_TOKEN または INSTAGRAM_BUSINESS_ID が未設定"
+    if not config.INSTAGRAM_ACCESS_TOKEN:
+        msg = "INSTAGRAM_ACCESS_TOKEN が未設定（環境変数を確認してください）"
         print(f"[ERROR] {msg}")
         return False, msg
+
+    if not config.INSTAGRAM_BUSINESS_ID:
+        msg = "INSTAGRAM_BUSINESS_ID が未設定（環境変数を確認してください）"
+        print(f"[ERROR] {msg}")
+        return False, msg
+
+    print(f"  トークン先頭: {config.INSTAGRAM_ACCESS_TOKEN[:10]}...")
+    print(f"  ビジネスID: {config.INSTAGRAM_BUSINESS_ID}")
 
     # 1. 画像を公開URLにアップロード
     image_url = upload_image_to_imgbb(image_path)
