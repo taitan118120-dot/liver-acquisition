@@ -312,22 +312,20 @@ def api_publish(session, note_id):
 
     # 複数のエンドポイントとメソッドを試行
     publish_attempts = [
-        ("PUT", f"{NOTE_API_BASE}/v1/text_notes/{note_id}/publish"),
-        ("POST", f"{NOTE_API_BASE}/v1/text_notes/{note_id}/publish"),
-        ("PUT", f"{NOTE_API_BASE}/v2/text_notes/{note_id}/publish"),
-        ("POST", f"{NOTE_API_BASE}/v2/text_notes/{note_id}/publish"),
-        ("PATCH", f"{NOTE_API_BASE}/v1/text_notes/{note_id}"),
+        ("PUT", f"{NOTE_API_BASE}/v1/text_notes/{note_id}", {"note": {"status": "published"}}),
+        ("PUT", f"{NOTE_API_BASE}/v1/text_notes/{note_id}/publish", {}),
+        ("POST", f"{NOTE_API_BASE}/v1/text_notes/{note_id}/publish", {}),
+        ("PUT", f"{NOTE_API_BASE}/v3/text_notes/{note_id}/publish", {}),
+        ("POST", f"{NOTE_API_BASE}/v3/text_notes/{note_id}/publish", {}),
     ]
 
     last_resp = None
-    for method, url in publish_attempts:
+    for method, url, body in publish_attempts:
         try:
             if method == "PUT":
-                resp = session.put(url, json={}, timeout=30)
+                resp = session.put(url, json=body, timeout=30)
             elif method == "POST":
-                resp = session.post(url, json={}, timeout=30)
-            elif method == "PATCH":
-                resp = session.patch(url, json={"note": {"status": "published"}}, timeout=30)
+                resp = session.post(url, json=body, timeout=30)
             else:
                 continue
 
