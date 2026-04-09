@@ -258,8 +258,8 @@ def api_create_draft(session, title, body_text, hashtags):
             text = stripped.replace("**", "")
             body_html += f"<p>{text}</p>"
 
-    # 下書き作成
-    draft_data = {
+    # 記事作成（公開ステータスで直接投稿）
+    note_data = {
         "note": {
             "name": title,
             "body": body_html,
@@ -267,23 +267,35 @@ def api_create_draft(session, title, body_text, hashtags):
                 {"hashtag_attributes": {"name": tag}} for tag in hashtags[:10]
             ],
             "publish_at": None,
-            "status": "draft",
+            "status": "published",
         }
     }
 
+    # まず公開ステータスで試行
     resp = session.post(
         f"{NOTE_API_BASE}/v1/text_notes",
-        json=draft_data,
+        json=note_data,
         timeout=30,
     )
 
     if resp.status_code not in [200, 201]:
-        raise Exception(f"下書き作成失敗: HTTP {resp.status_code} - {resp.text[:300]}")
+        # 公開ステータスがダメなら下書きで作成
+        print(f"  公開直接投稿失敗（HTTP {resp.status_code}）、下書き作成に切替...")
+        note_data["note"]["status"] = "draft"
+        resp = session.post(
+            f"{NOTE_API_BASE}/v1/text_notes",
+            json=note_data,
+            timeout=30,
+        )
+
+    if resp.status_code not in [200, 201]:
+        raise Exception(f"記事作成失敗: HTTP {resp.status_code} - {resp.text[:300]}")
 
     data = resp.json()
     note_id = data.get("data", {}).get("id") or data.get("id")
-    print(f"  下書き作成成功: ID={note_id}")
-    return note_id, data
+    status = data.get("data", {}).get("status", "unknown")
+    print(f"  記事作成成功: ID={note_id}, status={status}")
+    return note_id, data, status
 
 
 def api_publish(session, note_id):
@@ -365,11 +377,24 @@ def post_article(article_num, dry_run=False):
         # APIでログイン
         session = api_login(email, password)
 
-        # 下書き作成
-        note_id, draft_data = api_create_draft(session, title, formatted_body, hashtags)
+        # 記事作成（公開 or 下書き）
+        note_id, result_data, status = api_create_draft(session, title, formatted_body, hashtags)
 
-        # 公開
-        article_url = api_publish(session, note_id)
+        # 公開ステータスで作成できた場合はそのまま成功
+        if status == "published":
+            key = result_data.get("data", {}).get("key", "")
+            user = result_data.get("data", {}).get("user", {}).get("urlname", "")
+            if key and user:
+                article_url = f"https://note.com/{user}/n/{key}"
+            else:
+                article_url = f"https://note.com/n/{note_id}"
+            print(f"  公開成功: {article_url}")
+        else:
+            # 下書きの場合は公開を試行
+            article_url = api_publish(session, note_id)
+            if not article_url:
+                print(f"  ⚠ 下書きとして保存済み（ID={note_id}）。手動で公開してください。")
+                article_url = f"https://note.com/notes/{note_id}/edit"
 
         # 成功ログ
         log_result(article_num, title, article_url, True)
