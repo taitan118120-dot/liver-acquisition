@@ -250,16 +250,44 @@ async def login_to_note(page, email, password):
     await random_delay(0.5, 1.0)
 
     # reCAPTCHAチェックボックスがある場合はクリック
+    recaptcha_clicked = False
     try:
-        recaptcha_frame = page.frame_locator("iframe[src*='recaptcha'], iframe[title*='reCAPTCHA']")
-        recaptcha_checkbox = recaptcha_frame.locator("#recaptcha-anchor, .recaptcha-checkbox-border")
-        if await recaptcha_checkbox.count() > 0:
-            print("  reCAPTCHA検出、チェックボックスをクリック...")
-            await recaptcha_checkbox.first.click()
-            await random_delay(2, 4)
-            await save_screenshot(page, "after_recaptcha_click")
+        # reCAPTCHAはiframe内にある → 全フレームを探索
+        for frame in page.frames:
+            if "recaptcha" in (frame.url or ""):
+                checkbox = frame.locator(".recaptcha-checkbox-border, #recaptcha-anchor")
+                if await checkbox.count() > 0:
+                    print("  reCAPTCHA検出、チェックボックスをクリック...")
+                    await checkbox.first.click()
+                    recaptcha_clicked = True
+                    await random_delay(3, 5)
+                    await save_screenshot(page, "after_recaptcha_click")
+                    break
+        if not recaptcha_clicked:
+            # frame_locatorでも試行
+            for selector in [
+                "iframe[src*='recaptcha']",
+                "iframe[title*='reCAPTCHA']",
+                "iframe[title*='ロボット']",
+            ]:
+                try:
+                    frame = page.frame_locator(selector)
+                    checkbox = frame.locator(".recaptcha-checkbox-border, #recaptcha-anchor")
+                    if await checkbox.count() > 0:
+                        print(f"  reCAPTCHA検出（{selector}）、クリック...")
+                        await checkbox.first.click()
+                        recaptcha_clicked = True
+                        await random_delay(3, 5)
+                        await save_screenshot(page, "after_recaptcha_click")
+                        break
+                except Exception:
+                    continue
+        if not recaptcha_clicked:
+            print("  reCAPTCHA未検出（iframe探索失敗）")
+            await save_screenshot(page, "recaptcha_not_found")
     except Exception as e:
-        print(f"  reCAPTCHA処理スキップ: {e}")
+        print(f"  reCAPTCHA処理エラー: {e}")
+        await save_screenshot(page, "recaptcha_error")
 
     # ログインボタンクリック
     submit_el = await try_selector(page, SELECTORS["login_submit"])
@@ -268,7 +296,7 @@ async def login_to_note(page, email, password):
         raise Exception("ログインボタンが見つかりません")
 
     await submit_el.click()
-    await random_delay(2, 3)
+    await random_delay(3, 5)
 
     # ログイン完了を待つ（複数パターンに対応）
     try:
