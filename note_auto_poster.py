@@ -25,8 +25,8 @@ import csv
 import glob
 import json
 import argparse
-import time
 import requests
+from urllib.parse import unquote
 from datetime import datetime
 
 # ─── パス設定 ─────────────────────────────────────────
@@ -41,7 +41,6 @@ NOTE_API_BASE = "https://note.com/api"
 # ─── ユーティリティ ───────────────────────────────────
 
 def get_credentials():
-    """Note.comのログイン情報を取得"""
     email = os.environ.get("NOTE_EMAIL", "")
     password = os.environ.get("NOTE_PASSWORD", "")
     if not email or not password:
@@ -51,26 +50,21 @@ def get_credentials():
 
 
 def parse_article(filepath):
-    """Markdownファイルからタイトル・本文を抽出"""
     with open(filepath, "r", encoding="utf-8") as f:
         content = f.read()
-
     lines = content.split("\n")
     title = ""
     body_start = 0
-
     for i, line in enumerate(lines):
         if line.startswith("# "):
             title = line.lstrip("# ").strip()
             body_start = i + 1
             break
-
     body = "\n".join(lines[body_start:]).strip()
     return title, body
 
 
 def get_hashtags_for_article(article_num):
-    """記事番号に対応するハッシュタグを取得"""
     if os.path.exists(TRACKER_FILE):
         with open(TRACKER_FILE, "r", encoding="utf-8") as f:
             tracker = json.load(f)
@@ -84,26 +78,22 @@ def get_hashtags_for_article(article_num):
                                 return kw["hashtags"]
                 except ImportError:
                     pass
-
     try:
         from note_publisher import HASHTAG_MAP, DEFAULT_HASHTAGS
         basename = os.path.splitext(os.path.basename(get_article_file(article_num)))[0]
         return HASHTAG_MAP.get(basename, DEFAULT_HASHTAGS)
     except ImportError:
         pass
-
     return ["ライバー", "ライブ配信", "副業", "Pococha"]
 
 
 def get_article_file(article_num):
-    """記事番号からファイルパスを取得"""
     pattern = os.path.join(ARTICLES_DIR, f"{article_num:02d}_*.md")
     files = glob.glob(pattern)
     return files[0] if files else None
 
 
 def get_latest_unpublished():
-    """最新の未投稿記事を取得"""
     if not os.path.exists(TRACKER_FILE):
         pattern = os.path.join(ARTICLES_DIR, "*.md")
         files = sorted(glob.glob(pattern))
@@ -111,10 +101,8 @@ def get_latest_unpublished():
             match = re.match(r"(\d+)_", os.path.basename(files[-1]))
             return int(match.group(1)) if match else None
         return None
-
     with open(TRACKER_FILE, "r", encoding="utf-8") as f:
         tracker = json.load(f)
-
     for item in reversed(tracker.get("used", [])):
         if not item.get("published", False):
             return item["article_number"]
@@ -122,7 +110,6 @@ def get_latest_unpublished():
 
 
 def format_body_for_note(body):
-    """Note.com向けにMarkdownを整形"""
     try:
         sys.path.insert(0, BASE_DIR)
         from note_publisher import convert_table_to_list, format_for_note
@@ -134,21 +121,16 @@ def format_body_for_note(body):
 
 
 def log_result(article_num, title, url, success, error_msg=""):
-    """投稿結果をCSVに記録"""
     os.makedirs(DATA_DIR, exist_ok=True)
     file_exists = os.path.exists(LOG_FILE)
     with open(LOG_FILE, "a", encoding="utf-8", newline="") as f:
         writer = csv.writer(f)
         if not file_exists:
             writer.writerow(["article_num", "title", "url", "success", "error", "posted_at"])
-        writer.writerow([
-            article_num, title[:50], url or "", success, error_msg,
-            datetime.now().isoformat()
-        ])
+        writer.writerow([article_num, title[:50], url or "", success, error_msg, datetime.now().isoformat()])
 
 
 def mark_as_published(article_num):
-    """トラッカーで記事を公開済みにする"""
     if not os.path.exists(TRACKER_FILE):
         return
     with open(TRACKER_FILE, "r", encoding="utf-8") as f:
@@ -161,42 +143,47 @@ def mark_as_published(article_num):
         json.dump(tracker, f, ensure_ascii=False, indent=2)
 
 
-def markdown_to_note_body(body):
-    """MarkdownをNote.com API用のJSONボディ構造に変換"""
-    lines = body.split("\n")
-    blocks = []
-
-    for line in lines:
+def markdown_to_html(body_text):
+    """MarkdownをNote.com用HTMLに変換"""
+    html = ""
+    for line in body_text.split("\n"):
         stripped = line.strip()
         if not stripped:
-            continue
+            html += "<br>"
         elif stripped.startswith("## "):
-            blocks.append({"type": "heading", "text": stripped[3:].strip()})
+            html += f"<h2>{stripped[3:].strip()}</h2>"
         elif stripped.startswith("### "):
-            blocks.append({"type": "heading", "text": stripped[4:].strip()})
+            html += f"<h3>{stripped[4:].strip()}</h3>"
         elif stripped.startswith("- "):
-            blocks.append({"type": "p", "text": "・" + stripped[2:].strip()})
+            html += f"<p>・{stripped[2:].strip()}</p>"
         elif stripped.startswith("---"):
-            blocks.append({"type": "separator"})
+            html += "<hr>"
         elif stripped.startswith("**["):
-            # CTAリンク: **[テキスト](URL)** → リンク付きテキスト
             match = re.match(r"\*\*\[(.+?)\]\((.+?)\)\*\*", stripped)
             if match:
-                blocks.append({"type": "p", "text": f"{match.group(1)}: {match.group(2)}"})
+                html += f'<p><a href="{match.group(2)}">{match.group(1)}</a></p>'
             else:
-                blocks.append({"type": "p", "text": stripped.replace("**", "")})
+                html += f"<p>{stripped.replace('**', '')}</p>"
         else:
-            # 太字マーカーを除去
-            text = stripped.replace("**", "")
-            blocks.append({"type": "p", "text": text})
-
-    return blocks
+            html += f"<p>{stripped.replace('**', '')}</p>"
+    return html
 
 
 # ─── Note.com API ────────────────────────────────────
 
+def setup_xsrf_token(session):
+    """Cookie内のXSRF-TOKENをリクエストヘッダーに設定"""
+    for cookie in session.cookies:
+        if cookie.name == "XSRF-TOKEN":
+            token = unquote(cookie.value)
+            session.headers["X-XSRF-TOKEN"] = token
+            print(f"  X-XSRF-TOKEN設定済み")
+            return
+    print("  ⚠ XSRF-TOKENがCookieに見つかりません")
+
+
 def api_login(email, password):
-    """Note.com APIでログイン、セッションCookieを取得"""
+    """Note.com APIでログイン"""
     session = requests.Session()
     session.headers.update({
         "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
@@ -206,59 +193,31 @@ def api_login(email, password):
         "Origin": "https://note.com",
     })
 
-    # ログインAPIを呼び出し
-    login_data = {
-        "login": email,
-        "password": password,
-    }
+    # まずログインページにアクセスしてXSRF-TOKENを取得
+    session.get("https://note.com/login", timeout=15)
+    setup_xsrf_token(session)
 
     print("  APIログイン中...")
     resp = session.post(
         f"{NOTE_API_BASE}/v1/sessions/sign_in",
-        json=login_data,
+        json={"login": email, "password": password},
         timeout=30,
     )
 
     if resp.status_code not in [200, 201]:
         raise Exception(f"ログイン失敗: HTTP {resp.status_code} - {resp.text[:200]}")
 
-    data = resp.json()
-    if data.get("error"):
-        raise Exception(f"ログインエラー: {data}")
+    # ログイン後にXSRF-TOKENが更新されている可能性
+    setup_xsrf_token(session)
 
     print("  APIログイン成功")
     return session
 
 
-def api_create_draft(session, title, body_text, hashtags):
-    """Note.com APIで下書きを作成"""
+def api_create_draft(session, title, body_html, hashtags):
+    """下書きを作成"""
     print("  下書き作成中...")
 
-    # 本文をプレーンテキストとして構成
-    body_html = ""
-    for line in body_text.split("\n"):
-        stripped = line.strip()
-        if not stripped:
-            body_html += "<br>"
-        elif stripped.startswith("## "):
-            body_html += f"<h2>{stripped[3:].strip()}</h2>"
-        elif stripped.startswith("### "):
-            body_html += f"<h3>{stripped[4:].strip()}</h3>"
-        elif stripped.startswith("- "):
-            body_html += f"<p>・{stripped[2:].strip()}</p>"
-        elif stripped.startswith("---"):
-            body_html += "<hr>"
-        elif stripped.startswith("**["):
-            match = re.match(r"\*\*\[(.+?)\]\((.+?)\)\*\*", stripped)
-            if match:
-                body_html += f'<p><a href="{match.group(2)}">{match.group(1)}</a></p>'
-            else:
-                body_html += f"<p>{stripped.replace('**', '')}</p>"
-        else:
-            text = stripped.replace("**", "")
-            body_html += f"<p>{text}</p>"
-
-    # 記事作成（公開ステータスで直接投稿）
     note_data = {
         "note": {
             "name": title,
@@ -267,95 +226,75 @@ def api_create_draft(session, title, body_text, hashtags):
                 {"hashtag_attributes": {"name": tag}} for tag in hashtags[:10]
             ],
             "publish_at": None,
-            "status": "published",
+            "status": "draft",
         }
     }
 
-    # まず公開ステータスで試行
-    resp = session.post(
-        f"{NOTE_API_BASE}/v1/text_notes",
-        json=note_data,
-        timeout=30,
-    )
+    resp = session.post(f"{NOTE_API_BASE}/v1/text_notes", json=note_data, timeout=30)
 
     if resp.status_code not in [200, 201]:
-        # 公開ステータスがダメなら下書きで作成
-        print(f"  公開直接投稿失敗（HTTP {resp.status_code}）、下書き作成に切替...")
-        note_data["note"]["status"] = "draft"
-        resp = session.post(
-            f"{NOTE_API_BASE}/v1/text_notes",
-            json=note_data,
-            timeout=30,
-        )
-
-    if resp.status_code not in [200, 201]:
-        raise Exception(f"記事作成失敗: HTTP {resp.status_code} - {resp.text[:300]}")
+        raise Exception(f"下書き作成失敗: HTTP {resp.status_code} - {resp.text[:300]}")
 
     data = resp.json()
-    # レスポンス構造をログ出力（デバッグ用）
-    data_keys = list(data.keys()) if isinstance(data, dict) else "not dict"
     inner = data.get("data", {})
-    inner_keys = list(inner.keys())[:20] if isinstance(inner, dict) else "not dict"
-    print(f"  APIレスポンス: keys={data_keys}, data.keys={inner_keys}")
-
-    note_id = inner.get("id") or data.get("id")
-    status = inner.get("status") or inner.get("note_status") or data.get("status", "unknown")
-    key = inner.get("key", "")
-    urlname = inner.get("user", {}).get("urlname", "") if isinstance(inner.get("user"), dict) else ""
-    print(f"  記事作成成功: ID={note_id}, status={status}, key={key}, urlname={urlname}")
-    return note_id, data, status
+    note_id = inner.get("id")
+    note_key = inner.get("key", "")
+    print(f"  下書き作成成功: ID={note_id}, key={note_key}")
+    return note_id, note_key, data
 
 
-def api_publish(session, note_id):
-    """下書きを公開する"""
-    print("  記事公開中...")
+def api_publish(session, note_key):
+    """下書きを公開する（note_keyを使用）"""
+    print(f"  記事公開中... (key={note_key})")
 
-    # 複数のエンドポイントとメソッドを試行
+    # 正しいエンドポイント: PUT /api/v2/notes/{note_key}/publish
     publish_attempts = [
-        ("PUT", f"{NOTE_API_BASE}/v1/text_notes/{note_id}", {"note": {"status": "published"}}),
-        ("PUT", f"{NOTE_API_BASE}/v1/text_notes/{note_id}/publish", {}),
-        ("POST", f"{NOTE_API_BASE}/v1/text_notes/{note_id}/publish", {}),
-        ("PUT", f"{NOTE_API_BASE}/v3/text_notes/{note_id}/publish", {}),
-        ("POST", f"{NOTE_API_BASE}/v3/text_notes/{note_id}/publish", {}),
+        ("PUT",  f"{NOTE_API_BASE}/v2/notes/{note_key}/publish"),
+        ("POST", f"{NOTE_API_BASE}/v2/notes/{note_key}/publish"),
+        ("PUT",  f"{NOTE_API_BASE}/v1/notes/{note_key}/publish"),
+        ("POST", f"{NOTE_API_BASE}/v1/notes/{note_key}/publish"),
+        ("PUT",  f"{NOTE_API_BASE}/v3/notes/{note_key}/publish"),
+        ("POST", f"{NOTE_API_BASE}/v3/notes/{note_key}/publish"),
     ]
 
     last_resp = None
-    for method, url, body in publish_attempts:
+    for method, url in publish_attempts:
         try:
             if method == "PUT":
-                resp = session.put(url, json=body, timeout=30)
-            elif method == "POST":
-                resp = session.post(url, json=body, timeout=30)
+                resp = session.put(url, json={}, timeout=30)
             else:
-                continue
+                resp = session.post(url, json={}, timeout=30)
 
             last_resp = resp
             print(f"  試行 {method} {url} → HTTP {resp.status_code}")
 
             if resp.status_code in [200, 201]:
                 data = resp.json()
-                key = data.get("data", {}).get("key", "")
-                user = data.get("data", {}).get("user", {}).get("urlname", "")
+                inner = data.get("data", {})
+                key = inner.get("key", note_key)
+                user = inner.get("user", {}).get("urlname", "") if isinstance(inner.get("user"), dict) else ""
                 if key and user:
                     article_url = f"https://note.com/{user}/n/{key}"
+                elif key:
+                    article_url = f"https://note.com/n/{key}"
                 else:
-                    article_url = f"https://note.com/n/{note_id}"
+                    article_url = f"https://note.com/n/{note_key}"
                 print(f"  公開成功: {article_url}")
                 return article_url
+            elif resp.status_code == 422:
+                print(f"  422レスポンス: {resp.text[:200]}")
         except Exception as e:
             print(f"  試行失敗 {method} {url}: {e}")
             continue
 
-    # 全試行失敗
     resp_text = last_resp.text[:300] if last_resp else "no response"
     resp_code = last_resp.status_code if last_resp else "N/A"
-    raise Exception(f"公開失敗（全エンドポイント試行済み）: HTTP {resp_code} - {resp_text}")
+    raise Exception(f"公開失敗: HTTP {resp_code} - {resp_text}")
 
 
 # ─── メイン投稿処理 ──────────────────────────────────
 
 def post_article(article_num, dry_run=False):
-    """メインの投稿処理（API方式）"""
     filepath = get_article_file(article_num)
     if not filepath:
         print(f"記事ファイルが見つかりません: #{article_num}")
@@ -364,6 +303,7 @@ def post_article(article_num, dry_run=False):
     title, body = parse_article(filepath)
     hashtags = get_hashtags_for_article(article_num)
     formatted_body = format_body_for_note(body)
+    body_html = markdown_to_html(formatted_body)
 
     print(f"\n{'='*50}")
     print(f"  Note.com 自動投稿（API方式）")
@@ -383,31 +323,18 @@ def post_article(article_num, dry_run=False):
         # APIでログイン
         session = api_login(email, password)
 
-        # 記事作成（下書き保存）
-        note_id, result_data, status = api_create_draft(session, title, formatted_body, hashtags)
-        inner = result_data.get("data", {})
-        key = inner.get("key", "")
+        # 下書き作成
+        note_id, note_key, result_data = api_create_draft(session, title, body_html, hashtags)
 
-        # 公開を試行
-        article_url = None
-        try:
-            article_url = api_publish(session, note_id)
-        except Exception as pub_err:
-            print(f"  ⚠ 公開API失敗: {pub_err}")
+        if not note_key:
+            raise Exception("note_keyが取得できませんでした")
 
-        if not article_url:
-            # 下書き保存成功として扱う（公開は手動で）
-            if key:
-                article_url = f"https://note.com/taitan_118/n/{key}"
-            else:
-                article_url = f"https://note.com/notes/{note_id}/edit"
-            print(f"  下書き保存成功: {article_url}")
-            print(f"  ※ 手動で公開してください")
+        # 公開
+        article_url = api_publish(session, note_key)
 
         # 成功ログ
         log_result(article_num, title, article_url, True)
         mark_as_published(article_num)
-
         return {"success": True, "url": article_url}
 
     except Exception as e:
@@ -424,7 +351,6 @@ def main():
     parser.add_argument("--post", type=int, help="指定番号の記事を投稿")
     parser.add_argument("--post-latest", action="store_true", help="最新未投稿記事を投稿")
     parser.add_argument("--dry-run", action="store_true", help="投稿せず確認のみ")
-
     args = parser.parse_args()
 
     if args.post:
@@ -439,7 +365,6 @@ def main():
         return
 
     result = post_article(article_num, dry_run=args.dry_run)
-
     if result.get("success"):
         print("\n投稿完了!")
     else:
