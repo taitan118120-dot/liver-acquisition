@@ -360,6 +360,9 @@ def resolve_note_ids(session, urlname="taitan_118"):
                 id_map[key] = note_id
         page += 1
     print(f"  {len(id_map)}件の記事IDを取得")
+    # デバッグ: 最初の3件のkeyを表示
+    for k, v in list(id_map.items())[:3]:
+        print(f"    key={k} → id={v}")
     return id_map
 
 
@@ -423,6 +426,8 @@ def update_article(article_num, session=None, note_id_map=None, dry_run=False):
     note_id = note_id_map.get(note_key) if note_id_map else None
     if not note_id and not dry_run:
         print(f"  ⚠ 数値IDが見つかりません (key={note_key})")
+        print(f"    id_map keys sample: {list(note_id_map.keys())[:5]}")
+        print(f"    looking for: {note_key}")
         return {"success": False, "error": "note_id_not_found"}
 
     filepath = get_article_file(article_num)
