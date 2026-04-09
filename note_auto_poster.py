@@ -215,19 +215,7 @@ def api_login(email, password):
         "Origin": "https://note.com",
     })
 
-    # ログイン前にログインページGETでXSRF-TOKEN Cookieを取得
-    print("  XSRF-TOKEN取得中...")
-    try:
-        pre_resp = session.get("https://note.com/login", timeout=15, allow_redirects=True)
-        print(f"  GET /login → HTTP {pre_resp.status_code}")
-        # Cookieを表示
-        for c in session.cookies:
-            if "xsrf" in c.name.lower() or "csrf" in c.name.lower() or "token" in c.name.lower():
-                print(f"  Cookie: {c.name} = {c.value[:20]}...")
-        setup_xsrf_token(session)
-    except Exception as e:
-        print(f"  ⚠ 事前GET失敗: {e}")
-
+    # ログイン前のGETは422の原因になるので行わない (commit 628180c)
     print("  APIログイン中...")
     resp = session.post(
         f"{NOTE_API_BASE}/v1/sessions/sign_in",
@@ -235,18 +223,20 @@ def api_login(email, password):
         timeout=30,
     )
 
-    print(f"  sign_in → HTTP {resp.status_code}")
     if resp.status_code not in [200, 201]:
-        # 422でもログイン成功している場合がある（Cookieが設定されていれば）
-        # セッションCookieの有無で判定
-        has_session = any(c.name in ("_note_session", "_session_id", "remember_token") for c in session.cookies)
-        if has_session:
-            print(f"  ⚠ sign_in HTTP {resp.status_code} だがセッションCookieあり、続行")
-        else:
-            raise Exception(f"ログイン失敗: HTTP {resp.status_code} - {resp.text[:200]}")
+        raise Exception(f"ログイン失敗: HTTP {resp.status_code} - {resp.text[:200]}")
 
-    # ログイン後にXSRF-TOKENを再設定
+    # ログイン後のCookieを全表示（デバッグ用）
+    print(f"  Cookies: {[c.name for c in session.cookies]}")
+
+    # XSRF-TOKENを設定
     setup_xsrf_token(session)
+
+    # XSRF-TOKENが無い場合、GETで取得を試みる（ログイン後なら安全）
+    if "X-XSRF-TOKEN" not in session.headers:
+        print("  XSRF-TOKEN未取得、GET /api/v2/creators/my_page で再取得...")
+        session.get(f"{NOTE_API_BASE}/v2/creators/my_page", timeout=15)
+        setup_xsrf_token(session)
 
     print("  APIログイン成功")
     return session
