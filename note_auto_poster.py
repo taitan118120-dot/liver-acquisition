@@ -193,10 +193,6 @@ def api_login(email, password):
         "Origin": "https://note.com",
     })
 
-    # まずログインページにアクセスしてXSRF-TOKENを取得
-    session.get("https://note.com/login", timeout=15)
-    setup_xsrf_token(session)
-
     print("  APIログイン中...")
     resp = session.post(
         f"{NOTE_API_BASE}/v1/sessions/sign_in",
@@ -207,7 +203,7 @@ def api_login(email, password):
     if resp.status_code not in [200, 201]:
         raise Exception(f"ログイン失敗: HTTP {resp.status_code} - {resp.text[:200]}")
 
-    # ログイン後にXSRF-TOKENが更新されている可能性
+    # ログイン後にXSRF-TOKENを設定
     setup_xsrf_token(session)
 
     print("  APIログイン成功")
