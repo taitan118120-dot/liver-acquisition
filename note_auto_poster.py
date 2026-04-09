@@ -320,18 +320,12 @@ def api_publish(session, note_key):
 
 
 # ─── 投稿済み記事のキーマッピング ─────────────────────
+# 実際に公開済みの記事のみ（API確認済み 2026-04-09）
 PUBLISHED_KEYS = {
-    5: "n31f7f5d3ba48", 6: "n37b2e994b9b2", 7: "n19a9e86e6019",
-    8: "nb1b3f5bd6cc3", 9: "n78acd5d8f43e", 10: "n2be76b2b0c1a",
-    11: "nd74263b56cae", 12: "n8e969fafe3a0", 13: "n460d10f2e1f6",
-    14: "ne44420f9b831", 15: "n434daa26e8a1", 16: "n59a8a10dc58f",
-    17: "n9461e5e71d6d", 18: "n8f3f5e3cb15e", 19: "nfe4de4feea5f",
-    20: "n1e8e1bbab7e9", 21: "na4f9b5f4f42d", 22: "n0f9e5e3c33c5",
-    23: "n48d6e4ecaebb", 24: "nc998ae516bdf", 25: "ne7911c5b9ce9",
-    26: "n9197ae57ed8a", 27: "ncf76e2e16aff", 28: "n86c0f997ca68",
-    29: "na737000db46a", 30: "n7d6b128296e8", 31: "n04dff5a7bd9c",
-    32: "n84121e6b7eab", 33: "ne57e6ea14042", 34: "n6b2f4704cdcc",
-    35: "n699ef655effb", 36: "nc02030acfe75",
+    25: "ne7911c5b9ce9", 26: "n9197ae57ed8a", 27: "ncf76e2e16aff",
+    28: "n86c0f997ca68", 29: "na737000db46a", 30: "n7d6b128296e8",
+    31: "n04dff5a7bd9c", 32: "n84121e6b7eab", 33: "ne57e6ea14042",
+    34: "n6b2f4704cdcc", 35: "n699ef655effb", 36: "nc02030acfe75",
 }
 
 
