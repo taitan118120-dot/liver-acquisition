@@ -383,24 +383,26 @@ def post_article(article_num, dry_run=False):
         # APIでログイン
         session = api_login(email, password)
 
-        # 記事作成（公開 or 下書き）
+        # 記事作成（下書き保存）
         note_id, result_data, status = api_create_draft(session, title, formatted_body, hashtags)
+        inner = result_data.get("data", {})
+        key = inner.get("key", "")
 
-        # 公開ステータスで作成できた場合はそのまま成功
-        if status == "published":
-            key = result_data.get("data", {}).get("key", "")
-            user = result_data.get("data", {}).get("user", {}).get("urlname", "")
-            if key and user:
-                article_url = f"https://note.com/{user}/n/{key}"
-            else:
-                article_url = f"https://note.com/n/{note_id}"
-            print(f"  公開成功: {article_url}")
-        else:
-            # 下書きの場合は公開を試行
+        # 公開を試行
+        article_url = None
+        try:
             article_url = api_publish(session, note_id)
-            if not article_url:
-                print(f"  ⚠ 下書きとして保存済み（ID={note_id}）。手動で公開してください。")
+        except Exception as pub_err:
+            print(f"  ⚠ 公開API失敗: {pub_err}")
+
+        if not article_url:
+            # 下書き保存成功として扱う（公開は手動で）
+            if key:
+                article_url = f"https://note.com/taitan_118/n/{key}"
+            else:
                 article_url = f"https://note.com/notes/{note_id}/edit"
+            print(f"  下書き保存成功: {article_url}")
+            print(f"  ※ 手動で公開してください")
 
         # 成功ログ
         log_result(article_num, title, article_url, True)
