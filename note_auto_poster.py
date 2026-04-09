@@ -410,20 +410,7 @@ def api_update_article(session, note_key, note_id, title, body_html, hashtags):
 
 
 def update_article(article_num, session=None, note_id_map=None, dry_run=False):
-    """既存記事を更新"""
-    note_key = PUBLISHED_KEYS.get(article_num)
-    if not note_key:
-        print(f"  記事#{article_num} はPUBLISHED_KEYSに登録されていません")
-        return {"success": False, "error": "not_published"}
-
-    # 数値IDを解決
-    note_id = note_id_map.get(note_key) if note_id_map else None
-    if not note_id and not dry_run:
-        print(f"  ⚠ 数値IDが見つかりません (key={note_key})")
-        print(f"    id_map keys sample: {list(note_id_map.keys())[:5]}")
-        print(f"    looking for: {note_key}")
-        return {"success": False, "error": "note_id_not_found"}
-
+    """既存記事を更新（新規下書き作成→公開で実質置換）"""
     filepath = get_article_file(article_num)
     if not filepath:
         print(f"  記事ファイルが見つかりません: #{article_num}")
@@ -442,11 +429,19 @@ def update_article(article_num, session=None, note_id_map=None, dry_run=False):
         return {"success": True, "dry_run": True}
 
     try:
-        success = api_update_article(session, note_key, note_id, title, body_html, hashtags)
-        if success:
-            return {"success": True, "key": note_key}
+        # 新規下書き作成→公開（既存記事と同じタイトルで再投稿）
+        note_id, note_key, _ = api_create_draft(session, title, body_html, hashtags)
+        if not note_key:
+            return {"success": False, "error": "draft_create_failed"}
+
+        article_url = api_publish(session, note_key)
+        if article_url:
+            print(f"  再投稿成功: {article_url}")
+            return {"success": True, "url": article_url}
         else:
-            return {"success": False, "error": "api_update_failed"}
+            draft_url = f"https://note.com/notes/{note_key}/edit"
+            print(f"  下書き保存済み（手動公開が必要）: {draft_url}")
+            return {"success": True, "url": draft_url, "draft_only": True}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
