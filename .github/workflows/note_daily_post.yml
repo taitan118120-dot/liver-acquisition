@@ -32,9 +32,7 @@ jobs:
 
       - name: 依存パッケージインストール
         run: |
-          pip install google-genai playwright
-          playwright install chromium
-          playwright install-deps chromium
+          pip install google-genai requests
 
       - name: "記事生成（Gemini）"
         id: generate
