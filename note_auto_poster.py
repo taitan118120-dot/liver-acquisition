@@ -215,6 +215,13 @@ def api_login(email, password):
         "Origin": "https://note.com",
     })
 
+    # ログイン前にトップページGETでXSRF-TOKEN Cookieを取得
+    try:
+        session.get("https://note.com", timeout=15)
+        setup_xsrf_token(session)
+    except Exception:
+        pass
+
     print("  APIログイン中...")
     resp = session.post(
         f"{NOTE_API_BASE}/v1/sessions/sign_in",
@@ -225,7 +232,7 @@ def api_login(email, password):
     if resp.status_code not in [200, 201]:
         raise Exception(f"ログイン失敗: HTTP {resp.status_code} - {resp.text[:200]}")
 
-    # ログイン後にXSRF-TOKENを設定
+    # ログイン後にXSRF-TOKENを再設定（ログインで新しいトークンが発行される場合がある）
     setup_xsrf_token(session)
 
     print("  APIログイン成功")
@@ -325,9 +332,37 @@ PUBLISHED_KEYS = {
 }
 
 
-def api_update_article(session, note_key, title, body_html, hashtags):
-    """既存記事をAPIで更新"""
-    print(f"  記事更新中... (key={note_key})")
+def resolve_note_ids(session, urlname="taitan_118"):
+    """投稿済み記事の数値IDを取得"""
+    print(f"  投稿済み記事のID解決中...")
+    id_map = {}
+    page = 1
+    while True:
+        resp = session.get(
+            f"{NOTE_API_BASE}/v2/creators/{urlname}/contents",
+            params={"kind": "note", "page": page, "size": 50},
+            timeout=30,
+        )
+        if resp.status_code != 200:
+            print(f"  ⚠ 記事一覧取得失敗: HTTP {resp.status_code}")
+            break
+        data = resp.json()
+        contents = data.get("data", {}).get("contents", [])
+        if not contents:
+            break
+        for note in contents:
+            key = note.get("key", "")
+            note_id = note.get("id")
+            if key and note_id:
+                id_map[key] = note_id
+        page += 1
+    print(f"  {len(id_map)}件の記事IDを取得")
+    return id_map
+
+
+def api_update_article(session, note_key, note_id, title, body_html, hashtags):
+    """既存記事をAPIで更新（数値IDを使用）"""
+    print(f"  記事更新中... (key={note_key}, id={note_id})")
 
     note_data = {
         "note": {
@@ -339,12 +374,11 @@ def api_update_article(session, note_key, title, body_html, hashtags):
         }
     }
 
-    # 複数エンドポイントを試行
+    # 数値IDで更新（note_keyでは404になる）
     update_attempts = [
-        ("PUT",  f"{NOTE_API_BASE}/v1/text_notes/{note_key}"),
-        ("PUT",  f"{NOTE_API_BASE}/v2/notes/{note_key}"),
-        ("PATCH", f"{NOTE_API_BASE}/v1/text_notes/{note_key}"),
-        ("PUT",  f"{NOTE_API_BASE}/v1/notes/{note_key}"),
+        ("PUT",   f"{NOTE_API_BASE}/v1/text_notes/{note_id}"),
+        ("PATCH", f"{NOTE_API_BASE}/v1/text_notes/{note_id}"),
+        ("PUT",   f"{NOTE_API_BASE}/v1/notes/{note_id}"),
     ]
 
     for method, url in update_attempts:
@@ -356,13 +390,17 @@ def api_update_article(session, note_key, title, body_html, hashtags):
             else:
                 resp = session.post(url, json=note_data, timeout=30)
 
-            print(f"    {method} {url} → HTTP {resp.status_code}")
+            print(f"    {method} .../{note_id} → HTTP {resp.status_code}")
 
             if resp.status_code in [200, 201]:
                 print(f"  更新成功")
                 return True
             elif resp.status_code == 422:
-                print(f"    422: {resp.text[:200]}")
+                detail = resp.text[:200]
+                print(f"    422: {detail}")
+                # XSRF-TOKEN不足の場合、再取得を試みる
+                if "invalid" in detail.lower() or "不正" in detail:
+                    setup_xsrf_token(session)
         except Exception as e:
             print(f"    失敗: {e}")
             continue
@@ -371,12 +409,18 @@ def api_update_article(session, note_key, title, body_html, hashtags):
     return False
 
 
-def update_article(article_num, session=None, dry_run=False):
+def update_article(article_num, session=None, note_id_map=None, dry_run=False):
     """既存記事を更新"""
     note_key = PUBLISHED_KEYS.get(article_num)
     if not note_key:
         print(f"  記事#{article_num} はPUBLISHED_KEYSに登録されていません")
         return {"success": False, "error": "not_published"}
+
+    # 数値IDを解決
+    note_id = note_id_map.get(note_key) if note_id_map else None
+    if not note_id and not dry_run:
+        print(f"  ⚠ 数値IDが見つかりません (key={note_key})")
+        return {"success": False, "error": "note_id_not_found"}
 
     filepath = get_article_file(article_num)
     if not filepath:
@@ -396,7 +440,7 @@ def update_article(article_num, session=None, dry_run=False):
         return {"success": True, "dry_run": True}
 
     try:
-        success = api_update_article(session, note_key, title, body_html, hashtags)
+        success = api_update_article(session, note_key, note_id, title, body_html, hashtags)
         if success:
             return {"success": True, "key": note_key}
         else:
@@ -410,6 +454,9 @@ def update_all_articles(dry_run=False):
     email, password = get_credentials()
     session = api_login(email, password)
 
+    # 数値IDを一括取得
+    note_id_map = {} if dry_run else resolve_note_ids(session)
+
     results = {"success": 0, "fail": 0, "skip": 0}
     total = len(PUBLISHED_KEYS)
 
@@ -420,7 +467,7 @@ def update_all_articles(dry_run=False):
 
     for i, (num, key) in enumerate(sorted(PUBLISHED_KEYS.items()), 1):
         print(f"── {i}/{total} ──────────────────────────")
-        result = update_article(num, session=session, dry_run=dry_run)
+        result = update_article(num, session=session, note_id_map=note_id_map, dry_run=dry_run)
 
         if result.get("dry_run"):
             results["skip"] += 1
@@ -516,11 +563,13 @@ def main():
 
     if args.update:
         session = None
+        note_id_map = {}
         if not args.dry_run:
             email, password = get_credentials()
             session = api_login(email, password)
+            note_id_map = resolve_note_ids(session)
         for num in args.update:
-            result = update_article(num, session=session, dry_run=args.dry_run)
+            result = update_article(num, session=session, note_id_map=note_id_map, dry_run=args.dry_run)
             if not result.get("success") and not result.get("dry_run"):
                 print(f"  更新失敗: {result.get('error')}")
         return
