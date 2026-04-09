@@ -324,7 +324,7 @@ def generate_article(api_key, keyword_info):
     prompt = ARTICLE_PROMPT.format(keyword=keyword_info["keyword"])
 
     # 複数モデルを順に試行（503/429エラー時はフォールバック）
-    models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
+    models = ["gemini-2.5-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash"]
     max_retries_per_model = 2
     last_error = None
 

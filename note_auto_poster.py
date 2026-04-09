@@ -292,9 +292,17 @@ def api_create_draft(session, title, body_text, hashtags):
         raise Exception(f"記事作成失敗: HTTP {resp.status_code} - {resp.text[:300]}")
 
     data = resp.json()
-    note_id = data.get("data", {}).get("id") or data.get("id")
-    status = data.get("data", {}).get("status", "unknown")
-    print(f"  記事作成成功: ID={note_id}, status={status}")
+    # レスポンス構造をログ出力（デバッグ用）
+    data_keys = list(data.keys()) if isinstance(data, dict) else "not dict"
+    inner = data.get("data", {})
+    inner_keys = list(inner.keys())[:20] if isinstance(inner, dict) else "not dict"
+    print(f"  APIレスポンス: keys={data_keys}, data.keys={inner_keys}")
+
+    note_id = inner.get("id") or data.get("id")
+    status = inner.get("status") or inner.get("note_status") or data.get("status", "unknown")
+    key = inner.get("key", "")
+    urlname = inner.get("user", {}).get("urlname", "") if isinstance(inner.get("user"), dict) else ""
+    print(f"  記事作成成功: ID={note_id}, status={status}, key={key}, urlname={urlname}")
     return note_id, data, status
 
 
