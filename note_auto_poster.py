@@ -240,17 +240,14 @@ def api_create_draft(session, title, body_html, hashtags):
 
 
 def api_publish(session, note_key):
-    """下書きを公開する（note_keyを使用）"""
+    """下書きを公開する（note_keyを使用）。公開失敗時はNoneを返す（下書き保存は成功扱い）"""
     print(f"  記事公開中... (key={note_key})")
 
-    # 正しいエンドポイント: PUT /api/v2/notes/{note_key}/publish
     publish_attempts = [
         ("PUT",  f"{NOTE_API_BASE}/v2/notes/{note_key}/publish"),
         ("POST", f"{NOTE_API_BASE}/v2/notes/{note_key}/publish"),
         ("PUT",  f"{NOTE_API_BASE}/v1/notes/{note_key}/publish"),
         ("POST", f"{NOTE_API_BASE}/v1/notes/{note_key}/publish"),
-        ("PUT",  f"{NOTE_API_BASE}/v3/notes/{note_key}/publish"),
-        ("POST", f"{NOTE_API_BASE}/v3/notes/{note_key}/publish"),
     ]
 
     last_resp = None
@@ -283,9 +280,11 @@ def api_publish(session, note_key):
             print(f"  試行失敗 {method} {url}: {e}")
             continue
 
+    # 公開API失敗 → 下書き保存は成功しているのでNoneを返す（例外を投げない）
     resp_text = last_resp.text[:300] if last_resp else "no response"
     resp_code = last_resp.status_code if last_resp else "N/A"
-    raise Exception(f"公開失敗: HTTP {resp_code} - {resp_text}")
+    print(f"  ⚠ 公開API失敗（HTTP {resp_code}）。下書きとして保存済み。手動で公開してください。")
+    return None
 
 
 # ─── メイン投稿処理 ──────────────────────────────────
@@ -325,13 +324,20 @@ def post_article(article_num, dry_run=False):
         if not note_key:
             raise Exception("note_keyが取得できませんでした")
 
-        # 公開
+        # 公開（失敗してもNoneが返るだけで例外にならない）
         article_url = api_publish(session, note_key)
 
-        # 成功ログ
-        log_result(article_num, title, article_url, True)
-        mark_as_published(article_num)
-        return {"success": True, "url": article_url}
+        if article_url:
+            # 公開成功
+            log_result(article_num, title, article_url, True)
+            mark_as_published(article_num)
+            return {"success": True, "url": article_url}
+        else:
+            # 下書き保存成功（公開は手動で）
+            draft_url = f"https://note.com/notes/{note_key}/edit"
+            log_result(article_num, title, draft_url, True, "下書き保存済み（手動公開が必要）")
+            mark_as_published(article_num)
+            return {"success": True, "url": draft_url, "draft_only": True}
 
     except Exception as e:
         error_msg = str(e)
@@ -362,7 +368,10 @@ def main():
 
     result = post_article(article_num, dry_run=args.dry_run)
     if result.get("success"):
-        print("\n投稿完了!")
+        if result.get("draft_only"):
+            print("\n下書き保存完了（公開APIが利用不可のため手動公開が必要です）")
+        else:
+            print("\n投稿完了!")
     else:
         print(f"\n投稿失敗: {result.get('error', 'unknown')}")
         sys.exit(1)
