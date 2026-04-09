@@ -290,33 +290,48 @@ def api_publish(session, note_id):
     """下書きを公開する"""
     print("  記事公開中...")
 
-    resp = session.put(
-        f"{NOTE_API_BASE}/v1/text_notes/{note_id}/publish",
-        json={},
-        timeout=30,
-    )
+    # 複数のエンドポイントとメソッドを試行
+    publish_attempts = [
+        ("PUT", f"{NOTE_API_BASE}/v1/text_notes/{note_id}/publish"),
+        ("POST", f"{NOTE_API_BASE}/v1/text_notes/{note_id}/publish"),
+        ("PUT", f"{NOTE_API_BASE}/v2/text_notes/{note_id}/publish"),
+        ("POST", f"{NOTE_API_BASE}/v2/text_notes/{note_id}/publish"),
+        ("PATCH", f"{NOTE_API_BASE}/v1/text_notes/{note_id}"),
+    ]
 
-    if resp.status_code not in [200, 201]:
-        # publishエンドポイントが別の形式かもしれない → PATCH試行
-        resp = session.patch(
-            f"{NOTE_API_BASE}/v1/text_notes/{note_id}",
-            json={"note": {"status": "published"}},
-            timeout=30,
-        )
+    last_resp = None
+    for method, url in publish_attempts:
+        try:
+            if method == "PUT":
+                resp = session.put(url, json={}, timeout=30)
+            elif method == "POST":
+                resp = session.post(url, json={}, timeout=30)
+            elif method == "PATCH":
+                resp = session.patch(url, json={"note": {"status": "published"}}, timeout=30)
+            else:
+                continue
 
-    if resp.status_code not in [200, 201]:
-        raise Exception(f"公開失敗: HTTP {resp.status_code} - {resp.text[:300]}")
+            last_resp = resp
+            print(f"  試行 {method} {url} → HTTP {resp.status_code}")
 
-    data = resp.json()
-    key = data.get("data", {}).get("key", "")
-    user = data.get("data", {}).get("user", {}).get("urlname", "")
-    if key and user:
-        article_url = f"https://note.com/{user}/n/{key}"
-    else:
-        article_url = f"https://note.com/n/{note_id}"
+            if resp.status_code in [200, 201]:
+                data = resp.json()
+                key = data.get("data", {}).get("key", "")
+                user = data.get("data", {}).get("user", {}).get("urlname", "")
+                if key and user:
+                    article_url = f"https://note.com/{user}/n/{key}"
+                else:
+                    article_url = f"https://note.com/n/{note_id}"
+                print(f"  公開成功: {article_url}")
+                return article_url
+        except Exception as e:
+            print(f"  試行失敗 {method} {url}: {e}")
+            continue
 
-    print(f"  公開成功: {article_url}")
-    return article_url
+    # 全試行失敗
+    resp_text = last_resp.text[:300] if last_resp else "no response"
+    resp_code = last_resp.status_code if last_resp else "N/A"
+    raise Exception(f"公開失敗（全エンドポイント試行済み）: HTTP {resp_code} - {resp_text}")
 
 
 # ─── メイン投稿処理 ──────────────────────────────────
