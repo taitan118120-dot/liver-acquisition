@@ -249,6 +249,18 @@ async def login_to_note(page, email, password):
     await pass_el.fill(password)
     await random_delay(0.5, 1.0)
 
+    # reCAPTCHAチェックボックスがある場合はクリック
+    try:
+        recaptcha_frame = page.frame_locator("iframe[src*='recaptcha'], iframe[title*='reCAPTCHA']")
+        recaptcha_checkbox = recaptcha_frame.locator("#recaptcha-anchor, .recaptcha-checkbox-border")
+        if await recaptcha_checkbox.count() > 0:
+            print("  reCAPTCHA検出、チェックボックスをクリック...")
+            await recaptcha_checkbox.first.click()
+            await random_delay(2, 4)
+            await save_screenshot(page, "after_recaptcha_click")
+    except Exception as e:
+        print(f"  reCAPTCHA処理スキップ: {e}")
+
     # ログインボタンクリック
     submit_el = await try_selector(page, SELECTORS["login_submit"])
     if not submit_el:
@@ -256,13 +268,17 @@ async def login_to_note(page, email, password):
         raise Exception("ログインボタンが見つかりません")
 
     await submit_el.click()
+    await random_delay(2, 3)
 
-    # ログイン完了を待つ
+    # ログイン完了を待つ（複数パターンに対応）
     try:
-        await page.wait_for_url("**/dashboard**", timeout=15000)
+        await page.wait_for_url("**/dashboard**", timeout=20000)
     except Exception:
-        # ダッシュボードに遷移しない場合もあるのでURLチェック
-        if "login" in page.url:
+        # ダッシュボードではなくトップページや別ページに遷移する場合もある
+        current_url = page.url
+        if "login" not in current_url:
+            print(f"  ログイン成功（リダイレクト先: {current_url}）")
+        else:
             await save_screenshot(page, "login_fail_redirect")
             raise Exception("ログインに失敗しました（ログインページのまま）")
 
@@ -429,13 +445,22 @@ async def post_article(article_num, headless=True, dry_run=False):
     async with async_playwright() as p:
         browser = await p.chromium.launch(
             headless=headless,
-            args=["--no-sandbox", "--disable-setuid-sandbox"],
+            args=[
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-blink-features=AutomationControlled",
+            ],
         )
         context = await browser.new_context(
             viewport={"width": 1280, "height": 800},
             locale="ja-JP",
             permissions=["clipboard-read", "clipboard-write"],
+            user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
         )
+        # webdriver検知を回避
+        await context.add_init_script("""
+            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+        """)
         page = await context.new_page()
 
         try:
