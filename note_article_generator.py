@@ -323,11 +323,13 @@ def generate_article(api_key, keyword_info):
 
     prompt = ARTICLE_PROMPT.format(keyword=keyword_info["keyword"])
 
-    # プライマリモデル → フォールバックモデルの順で試行
-    models = ["gemini-2.5-flash", "gemini-2.0-flash"]
-    max_retries_per_model = 3
+    # 複数モデルを順に試行（503/429エラー時はフォールバック）
+    models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
+    max_retries_per_model = 2
+    last_error = None
 
-    for model_name in models:
+    for model_idx, model_name in enumerate(models):
+        is_last_model = (model_idx == len(models) - 1)
         print(f"  Gemini生成中（{model_name}）... キーワード: {keyword_info['keyword']}")
         for attempt in range(max_retries_per_model):
             try:
@@ -337,17 +339,21 @@ def generate_article(api_key, keyword_info):
                 )
                 return response.text
             except Exception as e:
+                last_error = e
                 error_str = str(e)
                 is_retryable = any(code in error_str for code in ["503", "429", "UNAVAILABLE", "RESOURCE_EXHAUSTED", "high demand"])
                 if is_retryable and attempt < max_retries_per_model - 1:
-                    wait_sec = (attempt + 1) * 15  # 15s, 30s
+                    wait_sec = (attempt + 1) * 20  # 20s, 40s
                     print(f"  ⚠ {model_name} 一時エラー（リトライ {attempt+1}/{max_retries_per_model-1}、{wait_sec}秒後）: {error_str[:80]}")
                     time.sleep(wait_sec)
-                elif is_retryable and model_name != models[-1]:
-                    print(f"  ⚠ {model_name} が利用不可、フォールバックモデルに切替...")
+                elif is_retryable and not is_last_model:
+                    print(f"  ⚠ {model_name} が利用不可、次のモデルに切替...")
                     break  # 次のモデルへ
                 else:
                     raise
+
+    # 全モデル失敗時
+    raise last_error
 
 
 def save_article(number, slug, content):

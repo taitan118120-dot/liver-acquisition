@@ -37,6 +37,8 @@ jobs:
           playwright install-deps chromium
 
       - name: "記事生成（Gemini）"
+        id: generate
+        continue-on-error: true
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
@@ -49,6 +51,11 @@ jobs:
           NOTE_PASSWORD: ${{ secrets.NOTE_PASSWORD }}
         run: |
           python note_auto_poster.py --post-latest
+
+      - name: "生成失敗時はエラー報告"
+        if: steps.generate.outcome == 'failure'
+        run: |
+          echo "::warning::記事生成に失敗しました（Gemini API障害の可能性）。未投稿記事があれば投稿を試みました。"
 
       - name: "デバッグ: スクリーンショット保存"
         if: failure()
