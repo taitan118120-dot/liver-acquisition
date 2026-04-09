@@ -24,6 +24,7 @@ import sys
 import csv
 import glob
 import json
+import time
 import argparse
 import requests
 from urllib.parse import unquote
@@ -155,18 +156,39 @@ def markdown_to_html(body_text):
         elif stripped.startswith("### "):
             html += f"<h3>{stripped[4:].strip()}</h3>"
         elif stripped.startswith("- "):
-            html += f"<p>・{stripped[2:].strip()}</p>"
+            item_text = convert_inline_markdown(stripped[2:].strip())
+            html += f"<p>・{item_text}</p>"
         elif stripped.startswith("---"):
             html += "<hr>"
-        elif stripped.startswith("**["):
-            match = re.match(r"\*\*\[(.+?)\]\((.+?)\)\*\*", stripped)
-            if match:
-                html += f'<p><a href="{match.group(2)}">{match.group(1)}</a></p>'
-            else:
-                html += f"<p>{stripped.replace('**', '')}</p>"
         else:
-            html += f"<p>{stripped.replace('**', '')}</p>"
+            converted = convert_inline_markdown(stripped)
+            html += f"<p>{converted}</p>"
     return html
+
+
+def convert_inline_markdown(text):
+    """Markdownのインライン要素（太字・リンク）をHTMLに変換"""
+    # 太字リンク: **[text](url)** → <a href="url"><strong>text</strong></a>
+    text = re.sub(
+        r"\*\*\[(.+?)\]\((.+?)\)\*\*",
+        r'<a href="\2"><strong>\1</strong></a>',
+        text,
+    )
+    # 通常リンク: [text](url) → <a href="url">text</a>
+    text = re.sub(
+        r"\[(.+?)\]\((.+?)\)",
+        r'<a href="\2">\1</a>',
+        text,
+    )
+    # ベアURL（https://...）→ <a href="url">url</a>
+    text = re.sub(
+        r'(?<!["\(])(?<!=)(https?://[^\s<>\)]+)',
+        r'<a href="\1">\1</a>',
+        text,
+    )
+    # 太字: **text** → <strong>text</strong>
+    text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
+    return text
 
 
 # ─── Note.com API ────────────────────────────────────
@@ -287,6 +309,137 @@ def api_publish(session, note_key):
     return None
 
 
+# ─── 投稿済み記事のキーマッピング ─────────────────────
+PUBLISHED_KEYS = {
+    5: "n31f7f5d3ba48", 6: "n37b2e994b9b2", 7: "n19a9e86e6019",
+    8: "nb1b3f5bd6cc3", 9: "n78acd5d8f43e", 10: "n2be76b2b0c1a",
+    11: "nd74263b56cae", 12: "n8e969fafe3a0", 13: "n460d10f2e1f6",
+    14: "ne44420f9b831", 15: "n434daa26e8a1", 16: "n59a8a10dc58f",
+    17: "n9461e5e71d6d", 18: "n8f3f5e3cb15e", 19: "nfe4de4feea5f",
+    20: "n1e8e1bbab7e9", 21: "na4f9b5f4f42d", 22: "n0f9e5e3c33c5",
+    23: "n48d6e4ecaebb", 24: "nc998ae516bdf", 25: "ne7911c5b9ce9",
+    26: "n9197ae57ed8a", 27: "ncf76e2e16aff", 28: "n86c0f997ca68",
+    29: "na737000db46a", 30: "n7d6b128296e8", 31: "n04dff5a7bd9c",
+    32: "n84121e6b7eab", 33: "ne57e6ea14042", 34: "n6b2f4704cdcc",
+    35: "n699ef655effb", 36: "nc02030acfe75",
+}
+
+
+def api_update_article(session, note_key, title, body_html, hashtags):
+    """既存記事をAPIで更新"""
+    print(f"  記事更新中... (key={note_key})")
+
+    note_data = {
+        "note": {
+            "name": title,
+            "body": body_html,
+            "hashtag_notes_attributes": [
+                {"hashtag_attributes": {"name": tag}} for tag in hashtags[:10]
+            ],
+        }
+    }
+
+    # 複数エンドポイントを試行
+    update_attempts = [
+        ("PUT",  f"{NOTE_API_BASE}/v1/text_notes/{note_key}"),
+        ("PUT",  f"{NOTE_API_BASE}/v2/notes/{note_key}"),
+        ("PATCH", f"{NOTE_API_BASE}/v1/text_notes/{note_key}"),
+        ("PUT",  f"{NOTE_API_BASE}/v1/notes/{note_key}"),
+    ]
+
+    for method, url in update_attempts:
+        try:
+            if method == "PUT":
+                resp = session.put(url, json=note_data, timeout=30)
+            elif method == "PATCH":
+                resp = session.patch(url, json=note_data, timeout=30)
+            else:
+                resp = session.post(url, json=note_data, timeout=30)
+
+            print(f"    {method} {url} → HTTP {resp.status_code}")
+
+            if resp.status_code in [200, 201]:
+                print(f"  更新成功")
+                return True
+            elif resp.status_code == 422:
+                print(f"    422: {resp.text[:200]}")
+        except Exception as e:
+            print(f"    失敗: {e}")
+            continue
+
+    print(f"  ⚠ API更新失敗")
+    return False
+
+
+def update_article(article_num, session=None, dry_run=False):
+    """既存記事を更新"""
+    note_key = PUBLISHED_KEYS.get(article_num)
+    if not note_key:
+        print(f"  記事#{article_num} はPUBLISHED_KEYSに登録されていません")
+        return {"success": False, "error": "not_published"}
+
+    filepath = get_article_file(article_num)
+    if not filepath:
+        print(f"  記事ファイルが見つかりません: #{article_num}")
+        return {"success": False, "error": "file_not_found"}
+
+    title, body = parse_article(filepath)
+    hashtags = get_hashtags_for_article(article_num)
+    formatted_body = format_body_for_note(body)
+    body_html = markdown_to_html(formatted_body)
+
+    print(f"  #{article_num:02d} {title[:50]}")
+    print(f"  文字数: {len(formatted_body)}文字 / HTML: {len(body_html)}文字")
+
+    if dry_run:
+        print("  [dry-run] 更新スキップ")
+        return {"success": True, "dry_run": True}
+
+    try:
+        success = api_update_article(session, note_key, title, body_html, hashtags)
+        if success:
+            return {"success": True, "key": note_key}
+        else:
+            return {"success": False, "error": "api_update_failed"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def update_all_articles(dry_run=False):
+    """全投稿済み記事を更新"""
+    email, password = get_credentials()
+    session = api_login(email, password)
+
+    results = {"success": 0, "fail": 0, "skip": 0}
+    total = len(PUBLISHED_KEYS)
+
+    print(f"\n{'='*50}")
+    print(f"  Note.com 記事一括更新（API方式）")
+    print(f"  対象: {total}記事")
+    print(f"{'='*50}\n")
+
+    for i, (num, key) in enumerate(sorted(PUBLISHED_KEYS.items()), 1):
+        print(f"── {i}/{total} ──────────────────────────")
+        result = update_article(num, session=session, dry_run=dry_run)
+
+        if result.get("dry_run"):
+            results["skip"] += 1
+        elif result.get("success"):
+            results["success"] += 1
+        else:
+            results["fail"] += 1
+            print(f"  エラー: {result.get('error')}")
+
+        # レート制限対策
+        if i < total and not dry_run:
+            time.sleep(2)
+
+    print(f"\n{'='*50}")
+    print(f"  完了: 成功 {results['success']} / 失敗 {results['fail']} / スキップ {results['skip']}")
+    print(f"{'='*50}")
+    return results
+
+
 # ─── メイン投稿処理 ──────────────────────────────────
 
 def post_article(article_num, dry_run=False):
@@ -349,11 +502,28 @@ def post_article(article_num, dry_run=False):
 # ─── CLI ──────────────────────────────────────────────
 
 def main():
-    parser = argparse.ArgumentParser(description="Note.com 自動投稿（API方式）")
+    parser = argparse.ArgumentParser(description="Note.com 自動投稿・更新（API方式）")
     parser.add_argument("--post", type=int, help="指定番号の記事を投稿")
     parser.add_argument("--post-latest", action="store_true", help="最新未投稿記事を投稿")
-    parser.add_argument("--dry-run", action="store_true", help="投稿せず確認のみ")
+    parser.add_argument("--update", type=int, nargs="+", help="指定番号の記事を更新")
+    parser.add_argument("--update-all", action="store_true", help="全投稿済み記事を更新")
+    parser.add_argument("--dry-run", action="store_true", help="投稿/更新せず確認のみ")
     args = parser.parse_args()
+
+    if args.update_all:
+        update_all_articles(dry_run=args.dry_run)
+        return
+
+    if args.update:
+        session = None
+        if not args.dry_run:
+            email, password = get_credentials()
+            session = api_login(email, password)
+        for num in args.update:
+            result = update_article(num, session=session, dry_run=args.dry_run)
+            if not result.get("success") and not result.get("dry_run"):
+                print(f"  更新失敗: {result.get('error')}")
+        return
 
     if args.post:
         article_num = args.post
