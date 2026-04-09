@@ -9,18 +9,14 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: 'Dry run（投稿せず生成のみ）'
+        description: 'Dry run（投稿せず確認のみ）'
         required: false
         default: 'false'
-      count:
-        description: '生成記事数'
-        required: false
-        default: '1'
 
 jobs:
-  generate-and-post:
+  post-article:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
@@ -31,45 +27,21 @@ jobs:
           python-version: '3.11'
 
       - name: 依存パッケージインストール
-        run: |
-          pip install google-genai requests
-
-      - name: "記事生成（Gemini）"
-        id: generate
-        continue-on-error: true
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: |
-          python note_article_generator.py --generate -n ${{ github.event.inputs.count || '1' }}
+        run: pip install requests
 
       - name: "Note.comに投稿"
         if: github.event.inputs.dry_run != 'true'
         env:
           NOTE_EMAIL: ${{ secrets.NOTE_EMAIL }}
           NOTE_PASSWORD: ${{ secrets.NOTE_PASSWORD }}
-        run: |
-          python note_auto_poster.py --post-latest
+        run: python note_auto_poster.py --post-latest
 
-      - name: "生成失敗時はエラー報告"
-        if: steps.generate.outcome == 'failure'
-        run: |
-          echo "::warning::記事生成に失敗しました（Gemini API障害の可能性）。未投稿記事があれば投稿を試みました。"
-
-      - name: "デバッグ: スクリーンショット保存"
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: note-debug-screenshots
-          path: data/note_screenshots/
-          retention-days: 3
-          if-no-files-found: ignore
-
-      - name: ログ・記事を保存
+      - name: ログを保存
         if: always()
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git pull --rebase || true
-          git add blog/articles_note/ data/ || true
-          git diff --staged --quiet || git commit -m "Note記事自動投稿 $(TZ=Asia/Tokyo date +'%Y-%m-%d %H:%M')"
+          git add data/ || true
+          git diff --staged --quiet || git commit -m "Note自動投稿ログ $(TZ=Asia/Tokyo date +'%Y-%m-%d %H:%M')"
           git push || true
