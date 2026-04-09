@@ -219,7 +219,7 @@ def api_login(email, password):
         timeout=30,
     )
 
-    if resp.status_code != 200:
+    if resp.status_code not in [200, 201]:
         raise Exception(f"ログイン失敗: HTTP {resp.status_code} - {resp.text[:200]}")
 
     data = resp.json()
