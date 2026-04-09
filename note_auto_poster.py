@@ -42,10 +42,10 @@ SESSION_FILE = os.path.join(DATA_DIR, "note_session.json")
 # ─── Note.com セレクタ ────────────────────────────────
 # Note.comのUI変更時はここを修正
 SELECTORS = {
-    # ログイン
-    "login_email": 'input[name="login"], input[type="email"], input[placeholder*="メール"]',
-    "login_password": 'input[name="password"], input[type="password"]',
-    "login_submit": 'button[type="submit"], button:has-text("ログイン")',
+    # ログイン（Note.com 2026年版セレクタ）
+    "login_email": '.o-login__mailField input, input[name="login"], input[type="email"], input[placeholder*="メール"], input[placeholder*="アドレス"]',
+    "login_password": '.o-login__mailField input[type="password"], input[name="password"], input[type="password"]',
+    "login_submit": '.o-login__button, button[data-type="primary"], button[type="submit"], button:has-text("ログイン")',
 
     # エディタ
     "editor_title": '.p-editor__title textarea, [placeholder*="タイトル"], .o-noteContentHeader__title textarea',
@@ -221,11 +221,18 @@ async def login_to_note(page, email, password):
     """Note.comにログイン"""
     print("  ログイン中...")
 
-    await page.goto("https://note.com/login", wait_until="networkidle")
-    await random_delay(1, 2)
+    # networkidleはCI環境で不安定なのでdomcontentloadedで待機後に追加待機
+    await page.goto("https://note.com/login", wait_until="domcontentloaded")
+    await random_delay(3, 5)
 
-    # メールアドレス入力
-    email_el = await try_selector(page, SELECTORS["login_email"])
+    # メールアドレス入力（リトライ付き）
+    email_el = await try_selector(page, SELECTORS["login_email"], timeout=15000)
+    if not email_el:
+        # ページが完全にロードされていない可能性 → 追加待機してリトライ
+        print("  メール欄が見つからないため5秒追加待機してリトライ...")
+        await save_screenshot(page, "login_retry_wait")
+        await asyncio.sleep(5)
+        email_el = await try_selector(page, SELECTORS["login_email"], timeout=15000)
     if not email_el:
         await save_screenshot(page, "login_fail_email")
         raise Exception("ログインフォームのメール欄が見つかりません")

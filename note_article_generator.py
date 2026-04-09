@@ -315,7 +315,8 @@ def post_process_article(body):
 
 
 def generate_article(api_key, keyword_info):
-    """Gemini APIで記事を生成"""
+    """Gemini APIで記事を生成（503/429エラー時は自動リトライ）"""
+    import time
     from google import genai
 
     client = genai.Client(api_key=api_key)
@@ -324,12 +325,23 @@ def generate_article(api_key, keyword_info):
 
     print(f"  Gemini生成中... キーワード: {keyword_info['keyword']}")
 
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt,
-    )
-
-    return response.text
+    max_retries = 4
+    for attempt in range(max_retries):
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+            )
+            return response.text
+        except Exception as e:
+            error_str = str(e)
+            is_retryable = any(code in error_str for code in ["503", "429", "UNAVAILABLE", "RESOURCE_EXHAUSTED", "high demand"])
+            if is_retryable and attempt < max_retries - 1:
+                wait_sec = (attempt + 1) * 15  # 15s, 30s, 45s
+                print(f"  ⚠ Gemini API一時エラー（リトライ {attempt+1}/{max_retries-1}、{wait_sec}秒後）: {error_str[:80]}")
+                time.sleep(wait_sec)
+            else:
+                raise
 
 
 def save_article(number, slug, content):
