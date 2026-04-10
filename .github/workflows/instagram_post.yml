@@ -25,6 +25,9 @@ concurrency:
   group: instagram-post
   cancel-in-progress: false
 
+permissions:
+  contents: write
+
 jobs:
   instagram-post:
     runs-on: ubuntu-latest
