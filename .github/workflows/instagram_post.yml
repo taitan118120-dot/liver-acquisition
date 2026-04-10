@@ -38,7 +38,7 @@ jobs:
           python-version: '3.11'
 
       - name: 依存パッケージをインストール
-        run: pip install requests google-genai
+        run: pip install requests google-genai Pillow
 
       - name: 最新の投稿データを取得
         run: git pull --rebase origin main || true

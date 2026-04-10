@@ -29,6 +29,7 @@ import config
 
 POSTS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ig_posts.json")
 IMAGES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "images")
+FONTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")
 BLOG_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "blog", "articles_note")
 TWITTER_POSTS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "posts", "twitter_posts.json")
 
@@ -270,31 +271,404 @@ def _build_image_prompt(article):
     # タイトルを短く整形（数字プレフィックスを除去）
     short_title = re.sub(r"^\d+_", "", title)
 
-    return f"""おしゃれなInstagram投稿画像を生成してください。
+    # ⚠️ 画像モデル（Imagen / Gemini）は日本語テキストを正しく描画できないため、
+    # プロンプトでは「テキストを一切入れない背景イラスト」のみ生成させる。
+    # タイトル・キャッチコピーは後段の _overlay_text_on_image() でPillowで描画する。
+    return f"""Create an aesthetic Instagram post background illustration (1080x1080, square).
 
-【画像内テキスト（必ず日本語で大きく表示）】
-メインタイトル: 「{short_title}」
-キャッチコピー: 「{catchcopy}」
+STYLE:
+- Korean-cafe-style, soft pastel illustration (lavender, mint green, peach pink, cream yellow)
+- Flat-design cute elements: smartphone, stars, hearts, speech bubbles, sparkles, flowers
+- Hand-drawn decorative lines, dotted borders, or floral frames
+- A single light gradient or solid pastel background
+- Generous empty space in the CENTER of the image (this is critical — text will be overlaid there later)
+- Aesthetic that young women in their 20s would save and share
 
-【デザインスタイル】
-- 韓国風・カフェ風のおしゃれなイラスト調
-- パステルカラー（ラベンダー、ミントグリーン、ピーチピンク、クリームイエローなど）
-- フラットデザインのかわいいイラスト要素（スマホ、星、ハート、吹き出しなど）
-- 手描き風の装飾線やフレーム
-- 20代女性が思わず保存したくなるデザイン
+LAYOUT:
+- Decorative elements arranged around the edges/corners, NEVER in the center
+- The center 60% of the image must be clean, light, and unobstructed
+- Soft and airy, not cluttered
 
-【レイアウト】
-- 正方形（1080x1080）
-- メインタイトルは画像中央〜上部に大きく配置
-- キャッチコピーはタイトル下にサブテキストとして配置
-- 背景は淡いグラデーションまたは単色
-- 余白を十分にとってすっきりさせる
+STRICT RULES:
+- ABSOLUTELY NO TEXT, NO LETTERS, NO CHARACTERS of any language (no Japanese, no English, no numbers, no symbols that look like letters)
+- No realistic human faces or photorealistic people
+- No dark colors, no busy compositions
+- No watermarks, no logos""", short_title, catchcopy
 
-【禁止事項】
-- リアルな人物の顔は描かない
-- 英語のテキストは使わない
-- ごちゃごちゃした複雑な構成にしない
-- ダークカラーは使わない""", short_title, catchcopy
+
+def _create_pastel_background(size=1080, seed=None):
+    """Pillowでパステル装飾背景を生成（API不要・完全ローカル）。
+    Imagen失敗時のフォールバック、および崩壊画像の修復に使用。"""
+    import random as _rd
+    from PIL import Image, ImageDraw, ImageFilter
+
+    rng = _rd.Random(seed)
+
+    # --- パレット候補（バズる女性向けSNSカラー） ---
+    palettes = [
+        # lavender → peach pink
+        [(237, 225, 248), (251, 225, 232), (255, 236, 224)],
+        # mint → cream
+        [(224, 245, 235), (240, 248, 228), (255, 243, 224)],
+        # peach → rose
+        [(255, 232, 224), (253, 220, 230), (245, 225, 245)],
+        # sky blue → lavender
+        [(224, 236, 250), (234, 228, 248), (248, 228, 240)],
+    ]
+    palette = rng.choice(palettes)
+
+    img = Image.new("RGB", (size, size), palette[0])
+
+    # --- 1. 対角グラデーション ---
+    grad = Image.new("RGB", (size, size), palette[0])
+    for y in range(size):
+        t = y / size
+        # 3点補間
+        if t < 0.5:
+            ratio = t * 2
+            c = tuple(int(palette[0][k] * (1 - ratio) + palette[1][k] * ratio) for k in range(3))
+        else:
+            ratio = (t - 0.5) * 2
+            c = tuple(int(palette[1][k] * (1 - ratio) + palette[2][k] * ratio) for k in range(3))
+        ImageDraw.Draw(grad).line([(0, y), (size, y)], fill=c)
+    img = grad
+
+    draw = ImageDraw.Draw(img, "RGBA")
+
+    # --- 2. 大きなぼかし円（雰囲気作り、コーナー配置） ---
+    blob_layer = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    bdraw = ImageDraw.Draw(blob_layer)
+    blob_colors = [
+        (255, 200, 220, 90),  # pink
+        (220, 200, 250, 90),  # lavender
+        (200, 240, 220, 80),  # mint
+        (255, 230, 190, 90),  # peach
+    ]
+    corners = [(0, 0), (size, 0), (0, size), (size, size)]
+    for (cx, cy), col in zip(corners, blob_colors):
+        r = rng.randint(260, 360)
+        bdraw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=col)
+    blob_layer = blob_layer.filter(ImageFilter.GaussianBlur(radius=60))
+    img = Image.alpha_composite(img.convert("RGBA"), blob_layer).convert("RGB")
+
+    draw = ImageDraw.Draw(img, "RGBA")
+
+    # --- 3. 小さな装飾（星・ドット・ハート風円） ---
+    # コーナー領域のみ（中央のテキストエリアは避ける）
+    accent_colors = [
+        (255, 180, 200, 220),
+        (255, 215, 180, 220),
+        (200, 190, 240, 220),
+        (180, 220, 205, 220),
+        (255, 235, 180, 220),
+    ]
+    forbidden_cx, forbidden_cy = size // 2, size // 2
+    forbidden_r = int(size * 0.32)  # 中央を避ける
+
+    def _in_forbidden(x, y):
+        return (x - forbidden_cx) ** 2 + (y - forbidden_cy) ** 2 < forbidden_r ** 2
+
+    placed = 0
+    attempts = 0
+    while placed < 45 and attempts < 400:
+        attempts += 1
+        x = rng.randint(30, size - 30)
+        y = rng.randint(30, size - 30)
+        if _in_forbidden(x, y):
+            continue
+        color = rng.choice(accent_colors)
+        kind = rng.choice(["dot", "dot", "dot", "ring", "star"])
+        if kind == "dot":
+            r = rng.randint(4, 12)
+            draw.ellipse([x - r, y - r, x + r, y + r], fill=color)
+        elif kind == "ring":
+            r = rng.randint(10, 22)
+            draw.ellipse([x - r, y - r, x + r, y + r],
+                         outline=color, width=3)
+        else:  # star = simple 4-point (plus sign)
+            r = rng.randint(6, 14)
+            draw.line([(x - r, y), (x + r, y)], fill=color, width=3)
+            draw.line([(x, y - r), (x, y + r)], fill=color, width=3)
+        placed += 1
+
+    # --- 4. 外周の薄い点線フレーム ---
+    frame_color = (255, 255, 255, 180)
+    margin = 24
+    dot_r = 3
+    gap = 18
+    for x in range(margin, size - margin, gap):
+        draw.ellipse([x - dot_r, margin - dot_r, x + dot_r, margin + dot_r], fill=frame_color)
+        draw.ellipse([x - dot_r, size - margin - dot_r, x + dot_r, size - margin + dot_r], fill=frame_color)
+    for y in range(margin, size - margin, gap):
+        draw.ellipse([margin - dot_r, y - dot_r, margin + dot_r, y + dot_r], fill=frame_color)
+        draw.ellipse([size - margin - dot_r, y - dot_r, size - margin + dot_r, y + dot_r], fill=frame_color)
+
+    return img
+
+
+def _wrap_japanese(text, max_chars_per_line):
+    """日本語テキストを賢く折り返す。
+    - カタカナ連続の途中では切らない
+    - 助詞・句読点の後ろで優先的に切る
+    - 英数字連続の途中では切らない
+    """
+    if len(text) <= max_chars_per_line:
+        return [text]
+
+    def _is_kana(ch):
+        return "\u30A0" <= ch <= "\u30FF" or ch == "ー"
+
+    def _is_alnum(ch):
+        return ch.isascii() and ch.isalnum()
+
+    # 2文字助詞・熟語（途中で切らない）
+    two_char_atoms = {
+        "から", "まで", "より", "への", "には", "では", "とは", "でも",
+        "って", "けど", "のに", "ので", "から", "ため", "こと", "もの",
+    }
+
+    # 切断してはいけない境界: カタカナ↔カタカナ / 英数字↔英数字 / 2文字助詞の内部
+    def _is_breakable_at(i):
+        if i <= 0 or i >= len(text):
+            return False
+        prev, nxt = text[i - 1], text[i]
+        if _is_kana(prev) and _is_kana(nxt):
+            return False
+        if _is_alnum(prev) and _is_alnum(nxt):
+            return False
+        # 2文字助詞の途中ではない
+        if i - 1 >= 0 and i + 1 <= len(text):
+            if text[i - 1:i + 1] in two_char_atoms:
+                return False
+        return True
+
+    # 優先的に切りたい位置: 助詞の後、句読点の後
+    particles = set("をにはがでとへもやのか、。！？・")
+    def _priority_at(i):
+        if i <= 0 or i >= len(text):
+            return 0
+        return 2 if text[i - 1] in particles else 1
+
+    lines = []
+    start = 0
+    while start < len(text):
+        end_ideal = start + max_chars_per_line
+        if end_ideal >= len(text):
+            lines.append(text[start:])
+            break
+
+        # end_ideal 付近で最適な break point を探す
+        # 1. end_ideal から後ろ方向に、優先度の高い位置を探す
+        best = None
+        for i in range(end_ideal, max(start + 1, end_ideal - max_chars_per_line // 2), -1):
+            if _is_breakable_at(i):
+                pr = _priority_at(i)
+                if best is None or pr > best[1]:
+                    best = (i, pr)
+                if pr >= 2:
+                    break
+
+        if best is None:
+            # fallback: ハード切断（本当に切れる位置が見つからなければ理想位置）
+            cut = end_ideal
+        else:
+            cut = best[0]
+
+        lines.append(text[start:cut])
+        start = cut
+
+    return lines
+
+
+def _get_font(weight, size):
+    """Noto Sans JP（可変フォント）を指定ウェイトで読み込む。"""
+    from PIL import ImageFont
+
+    vf_path = os.path.join(FONTS_DIR, "NotoSansJP-VF.ttf")
+    if os.path.exists(vf_path):
+        font = ImageFont.truetype(vf_path, size=size)
+        try:
+            # 可変フォントのウェイト軸を設定（100-900）
+            font.set_variation_by_axes([weight])
+        except Exception:
+            pass
+        return font
+
+    # フォールバック（macOSシステムフォント）
+    for p in [
+        "/System/Library/Fonts/ヒラギノ角ゴシック W6.ttc",
+        "/System/Library/Fonts/ヒラギノ角ゴシック W8.ttc",
+        "/Library/Fonts/Arial Unicode.ttf",
+    ]:
+        if os.path.exists(p):
+            return ImageFont.truetype(p, size=size)
+
+    return ImageFont.load_default()
+
+
+def _overlay_text_on_image(image_path, title, catchcopy, category="LIVER GUIDE", brand="@taitan_pro"):
+    """生成された背景画像にPillowで日本語タイトル＋キャッチコピーを合成。
+    Instagramで保存されるカルーセル投稿を意識したバズる構成:
+      [カテゴリバッジ] → [HUGEタイトル（マーカーハイライト）] → [区切り] → [キャッチコピー] → [ブランド名]
+    """
+    from PIL import Image, ImageDraw, ImageFilter
+
+    img = Image.open(image_path).convert("RGBA")
+    W, H = img.size
+
+    # --- 1. 中央に半透明白パネル＋影 ---
+    panel_margin_x = int(W * 0.07)
+    panel_margin_y = int(H * 0.15)
+    panel_box = [panel_margin_x, panel_margin_y, W - panel_margin_x, H - panel_margin_y]
+
+    # 影（下方向にオフセット）
+    shadow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    sdraw = ImageDraw.Draw(shadow)
+    shadow_offset = 14
+    sdraw.rounded_rectangle(
+        [panel_box[0] + 4, panel_box[1] + shadow_offset,
+         panel_box[2] + 4, panel_box[3] + shadow_offset],
+        radius=int(W * 0.045),
+        fill=(150, 120, 140, 70),
+    )
+    shadow = shadow.filter(ImageFilter.GaussianBlur(radius=18))
+    img = Image.alpha_composite(img, shadow)
+
+    # 白パネル
+    panel = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    pdraw = ImageDraw.Draw(panel)
+    pdraw.rounded_rectangle(panel_box, radius=int(W * 0.045), fill=(255, 255, 255, 232))
+    img = Image.alpha_composite(img, panel)
+
+    draw = ImageDraw.Draw(img, "RGBA")
+
+    # --- 2. カテゴリバッジ（パネル上部、ピル型） ---
+    badge_font = _get_font(weight=800, size=int(W * 0.028))
+    badge_text = category
+    b_bbox = draw.textbbox((0, 0), badge_text, font=badge_font)
+    b_w = b_bbox[2] - b_bbox[0]
+    b_h = b_bbox[3] - b_bbox[1]
+    badge_pad_x = int(W * 0.025)
+    badge_pad_y = int(W * 0.012)
+    badge_w = b_w + 2 * badge_pad_x
+    badge_h = b_h + 2 * badge_pad_y + 4
+    badge_x = (W - badge_w) // 2
+    badge_y = panel_margin_y + int(H * 0.06)
+    badge_color = (90, 65, 120, 255)  # 深いパープル
+    draw.rounded_rectangle(
+        [badge_x, badge_y, badge_x + badge_w, badge_y + badge_h],
+        radius=badge_h // 2, fill=badge_color,
+    )
+    draw.text(
+        (badge_x + badge_pad_x, badge_y + badge_pad_y - 2),
+        badge_text, font=badge_font, fill=(255, 255, 255, 255),
+    )
+
+    # --- 3. タイトル準備 ---
+    inner_width = (W - 2 * panel_margin_x) - int(W * 0.10)
+
+    max_chars = 10 if len(title) > 11 else max(len(title), 8)
+    title_lines = _wrap_japanese(title, max_chars)
+
+    if len(title_lines) == 1:
+        title_size = int(W * 0.115)
+    elif len(title_lines) == 2:
+        title_size = int(W * 0.095)
+    else:
+        title_size = int(W * 0.075)
+
+    title_font = _get_font(weight=900, size=title_size)
+
+    for _ in range(12):
+        max_line_w = max(
+            draw.textbbox((0, 0), line, font=title_font)[2] for line in title_lines
+        )
+        if max_line_w <= inner_width:
+            break
+        title_size = int(title_size * 0.92)
+        title_font = _get_font(weight=900, size=title_size)
+
+    line_height = int(title_size * 1.22)
+    total_title_h = line_height * len(title_lines)
+
+    # --- 4. キャッチコピー準備 ---
+    catch_size = int(W * 0.038)
+    catch_font = _get_font(weight=700, size=catch_size)
+    catch_lines = _wrap_japanese(catchcopy, 18)
+    catch_line_h = int(catch_size * 1.5)
+    total_catch_h = catch_line_h * len(catch_lines)
+
+    divider_gap = int(W * 0.035)
+
+    # 全体ブロックの中心を、バッジより下かつブランドより上の領域の中央に配置
+    brand_font_size = int(W * 0.026)
+    brand_bottom_margin = int(H * 0.065)
+    content_top = badge_y + badge_h + int(H * 0.04)
+    content_bottom = H - panel_margin_y - brand_bottom_margin - brand_font_size - 10
+    content_h = content_bottom - content_top
+
+    block_total_h = total_title_h + divider_gap * 2 + int(W * 0.008) + total_catch_h
+    block_start_y = content_top + (content_h - block_total_h) // 2
+
+    # --- 5. タイトル描画（マーカーハイライトを最後の行の背景に敷く） ---
+    y = block_start_y
+    title_color = (45, 38, 65)  # 濃いモーブ
+    highlight_color = (255, 224, 130, 200)  # イエローマーカー
+
+    for i, line in enumerate(title_lines):
+        bbox = draw.textbbox((0, 0), line, font=title_font)
+        line_w = bbox[2] - bbox[0]
+        line_h = bbox[3] - bbox[1]
+        x = (W - line_w) // 2
+
+        # マーカー（最終行にだけ敷く、目を引く）
+        if i == len(title_lines) - 1:
+            mk_pad_x = int(title_size * 0.12)
+            mk_top = y + int(title_size * 0.55)
+            mk_bot = y + int(title_size * 1.05)
+            draw.rectangle(
+                [x - mk_pad_x, mk_top, x + line_w + mk_pad_x, mk_bot],
+                fill=highlight_color,
+            )
+
+        draw.text((x, y), line, font=title_font, fill=title_color,
+                  stroke_width=2, stroke_fill=(255, 255, 255, 255))
+        y += line_height
+
+    # --- 6. 区切り（ドット3つ） ---
+    divider_y = y + divider_gap // 2
+    dot_r = int(W * 0.008)
+    dot_gap = int(W * 0.035)
+    dot_color = (220, 140, 170, 255)
+    for k in (-1, 0, 1):
+        cx = W // 2 + k * dot_gap
+        draw.ellipse([cx - dot_r, divider_y - dot_r, cx + dot_r, divider_y + dot_r],
+                     fill=dot_color)
+
+    # --- 7. キャッチコピー描画 ---
+    catch_y = divider_y + int(catch_size * 1.1)
+    catch_color = (105, 88, 125)
+    for line in catch_lines:
+        bbox = draw.textbbox((0, 0), line, font=catch_font)
+        line_w = bbox[2] - bbox[0]
+        x = (W - line_w) // 2
+        draw.text((x, catch_y), line, font=catch_font, fill=catch_color,
+                  stroke_width=1, stroke_fill=(255, 255, 255, 255))
+        catch_y += catch_line_h
+
+    # --- 8. ブランド名（パネル下部） ---
+    brand_font = _get_font(weight=700, size=brand_font_size)
+    bbox = draw.textbbox((0, 0), brand, font=brand_font)
+    brand_w = bbox[2] - bbox[0]
+    brand_x = (W - brand_w) // 2
+    brand_y = H - panel_margin_y - brand_bottom_margin - brand_font_size
+    draw.text((brand_x, brand_y), brand, font=brand_font,
+              fill=(150, 125, 165, 255))
+
+    # 保存（PNG）
+    img.convert("RGB").save(image_path, "PNG", optimize=True)
+    print(f"  テキスト合成完了: {os.path.basename(image_path)} "
+          f"(title={len(title_lines)}行 @{title_size}px)")
 
 
 def generate_image(article, index, dry_run=False):
@@ -332,6 +706,10 @@ def generate_image(article, index, dry_run=False):
                 with open(image_path, "wb") as f:
                     f.write(image_data)
                 print(f"  画像生成完了: {image_path}")
+                try:
+                    _overlay_text_on_image(image_path, short_title, catchcopy)
+                except Exception as e:
+                    print(f"  [WARNING] テキスト合成失敗: {e}")
                 return image_path
         except Exception as e:
             if attempt < 2:
@@ -358,13 +736,24 @@ def generate_image(article, index, dry_run=False):
                         with open(image_path, "wb") as f:
                             f.write(part.inline_data.data)
                         print(f"  画像生成完了 (フォールバック {fb_model}): {image_path}")
+                        try:
+                            _overlay_text_on_image(image_path, short_title, catchcopy)
+                        except Exception as e:
+                            print(f"  [WARNING] テキスト合成失敗: {e}")
                         return image_path
         except Exception as e:
             print(f"  [WARNING] {fb_model} 画像生成失敗: {e}")
 
-    print("  [ERROR] 全ての画像生成方法が失敗しました")
-
-    return None
+    print("  [WARNING] Imagen/Gemini画像生成失敗 → Pillowフォールバック背景を使用")
+    try:
+        bg = _create_pastel_background(size=1080, seed=hash(short_title) & 0xFFFFFFFF)
+        bg.save(image_path)
+        _overlay_text_on_image(image_path, short_title, catchcopy)
+        print(f"  フォールバック画像生成完了: {image_path}")
+        return image_path
+    except Exception as e:
+        print(f"  [ERROR] フォールバック背景生成も失敗: {e}")
+        return None
 
 
 def generate_posts(source_type="auto", count=1, dry_run=False):
