@@ -221,55 +221,180 @@ X投稿:
                 raise
 
 
+# =====================================================================
+# カテゴリ別ビジュアル体系（全投稿を統一感のある高品質デザインに）
+# =====================================================================
+# 各カテゴリ: badge / badge_color / bg_palette / accent / marker / category_icons
+CATEGORY_THEMES = {
+    "BEGINNER": {
+        "badge": "BEGINNER",
+        "badge_bg": (70, 120, 180),          # 深いブルー
+        "bg_palette": [(224, 236, 250), (230, 240, 252), (240, 232, 250)],
+        "blob_colors": [
+            (180, 210, 250, 110),
+            (200, 220, 252, 100),
+            (220, 225, 250, 110),
+            (200, 240, 250, 100),
+        ],
+        "accent": (255, 215, 100, 210),      # ゴールド系マーカー
+        "divider": (100, 150, 210, 255),
+        "title_color": (30, 45, 85),
+        "catch_color": (95, 115, 155),
+        "brand_color": (130, 155, 200, 255),
+    },
+    "EARN": {
+        "badge": "EARN",
+        "badge_bg": (200, 145, 40),          # 深いゴールド
+        "bg_palette": [(255, 242, 212), (255, 232, 210), (255, 224, 228)],
+        "blob_colors": [
+            (255, 215, 150, 120),
+            (255, 225, 170, 110),
+            (255, 205, 180, 110),
+            (255, 235, 190, 110),
+        ],
+        "accent": (255, 200, 120, 220),
+        "divider": (220, 160, 60, 255),
+        "title_color": (70, 45, 20),
+        "catch_color": (135, 100, 60),
+        "brand_color": (185, 140, 70, 255),
+    },
+    "AGENCY": {
+        "badge": "AGENCY",
+        "badge_bg": (110, 80, 145),          # モーブパープル
+        "bg_palette": [(238, 228, 250), (244, 226, 248), (251, 228, 240)],
+        "blob_colors": [
+            (220, 195, 250, 110),
+            (240, 210, 248, 100),
+            (230, 200, 245, 110),
+            (250, 225, 245, 100),
+        ],
+        "accent": (255, 220, 140, 215),
+        "divider": (175, 130, 205, 255),
+        "title_color": (55, 35, 80),
+        "catch_color": (120, 95, 145),
+        "brand_color": (155, 120, 180, 255),
+    },
+    "GROW": {
+        "badge": "GROW",
+        "badge_bg": (55, 140, 110),          # 深いミント
+        "bg_palette": [(222, 246, 232), (232, 248, 226), (245, 252, 228)],
+        "blob_colors": [
+            (180, 230, 200, 110),
+            (200, 240, 210, 110),
+            (215, 245, 200, 100),
+            (235, 250, 215, 100),
+        ],
+        "accent": (255, 225, 130, 215),
+        "divider": (90, 170, 130, 255),
+        "title_color": (25, 60, 45),
+        "catch_color": (85, 130, 100),
+        "brand_color": (110, 160, 130, 255),
+    },
+    "LIFESTYLE": {
+        "badge": "LIFESTYLE",
+        "badge_bg": (205, 100, 130),         # ローズピンク
+        "bg_palette": [(255, 228, 232), (255, 218, 230), (248, 224, 245)],
+        "blob_colors": [
+            (255, 200, 215, 120),
+            (255, 215, 225, 110),
+            (250, 210, 235, 110),
+            (255, 225, 240, 100),
+        ],
+        "accent": (255, 220, 140, 220),
+        "divider": (225, 140, 165, 255),
+        "title_color": (85, 30, 55),
+        "catch_color": (140, 85, 105),
+        "brand_color": (200, 125, 155, 255),
+    },
+}
+
+# キーワード → カテゴリ（先に一致したものを採用、順序重要）
+CATEGORY_RULES = [
+    # AGENCY（事務所関連を最優先）
+    ("AGENCY", ["事務所", "マネージャー", "契約", "移籍", "代理店", "面接", "怪しい"]),
+    # EARN（稼ぎ・収入）
+    ("EARN", ["稼", "収入", "副業", "ダイヤ", "還元", "お金", "確定申告", "月10万", "月5万"]),
+    # BEGINNER（始め方・属性）
+    ("BEGINNER", ["始め方", "初心者", "機材", "主婦", "大学生", "学生", "30代", "始める", "未経験"]),
+    # GROW（スキル・成長）
+    ("GROW", ["コツ", "ランク", "ネタ", "ファン", "イベント", "伸び", "コラボ", "スケジュール", "攻略", "上げ"]),
+    # LIFESTYLE（ライフスタイル・メンタル）
+    ("LIFESTYLE", ["辞めたい", "メンタル", "顔出し", "バレ", "男性", "容姿", "将来", "比較", "市場", "アプリ"]),
+]
+
+# キャッチコピー辞書（先に一致したキーが採用されるため、具体的なキーワードを先に配置）
+CATCHCOPY_MAP = {
+    # --- 最も具体的な複合キーワード（優先） ---
+    "怪しい": "安全な事務所の見分け方",
+    "契約": "損しない契約書チェックポイント",
+    "面接": "事務所面接のよくある質問と答え方",
+    "代理店": "ライバー事務所と代理店の違い",
+    "ランキング": "人気事務所の選び方ガイド",
+    "移籍": "事務所移籍のベストタイミング",
+    "マネージャー": "プロのサポートで成長が加速",
+    "確定申告": "ライバーのお金まわり完全ガイド",
+    "還元率": "知らないと損する報酬のしくみ",
+    "時間ダイヤ": "報酬のしくみを徹底解説",
+    "ダイヤ": "報酬のしくみを徹底解説",
+    "フリー比較": "事務所と個人、どっちが得？",
+    "上げ方": "最短でランクを上げる戦略",
+    "伸びない": "伸び悩みを突破する方法",
+    "辞めたい": "もう悩まない！次のステップへ",
+    "メンタル": "配信疲れを防ぐセルフケア",
+    "副業バレ": "本業にバレずに副業する方法",
+    "バレない": "身バレを防いで安心配信",
+    "バレ": "身バレを防いで安心配信",
+    "顔出し": "顔出しなしでも稼げる方法",
+    "容姿": "見た目じゃない！トーク力が武器",
+    "始め方": "スマホ1台で今日からスタート",
+    "主婦": "ママでもできる在宅ワーク",
+    "大学生": "学生×ライバーの新しい生き方",
+    "30代": "30代から始める新しい挑戦",
+    "男性": "男性ライバーの可能性は無限大",
+    "機材": "必要なのはスマホだけ",
+    "スケジュール": "ムリなく続けるコツ",
+    "イベント": "イベント攻略で一気にランクUP",
+    "コラボ": "コラボで一気にファン拡大",
+    "ファン": "ファンに愛されるライバーに",
+    "ネタ": "配信が楽しくなるアイデア集",
+    "初心者": "未経験でも大丈夫",
+    "アプリ比較": "アプリ選びで差がつく",
+    "将来": "ライブ配信市場はまだまだ成長中",
+    "副業": "おうち時間を収入に変える",
+    "収入": "自分らしく稼ぐ新しい働き方",
+    "稼": "好きなことで収入GET",
+    "コツ": "人気ライバーの秘密を公開",
+    "ランク": "トップライバーへの道",
+    "比較": "アプリ選びで差がつく",
+    # --- 最終フォールバック（ジェネリック） ---
+    "事務所": "あなたに合う事務所が見つかる",
+}
+
+
+def _detect_category(title):
+    """タイトルからカテゴリを判定。どれにも当たらなければ BEGINNER をデフォルト。"""
+    for cat, keywords in CATEGORY_RULES:
+        if any(k in title for k in keywords):
+            return cat
+    return "BEGINNER"
+
+
 def _build_image_prompt(article):
-    """記事内容に応じた画像生成プロンプトを構築"""
+    """記事内容に応じた画像生成プロンプトを構築。
+    戻り値: (prompt, short_title, catchcopy, category)
+    """
     title = article["title"]
 
-    # タイトルから短いキャッチコピーを抽出・生成
-    catchcopy_map = {
-        "始め方": "スマホ1台で今日からスタート",
-        "稼": "好きなことで収入GET",
-        "事務所": "あなたに合う事務所が見つかる",
-        "初心者": "未経験でも大丈夫",
-        "収入": "自分らしく稼ぐ新しい働き方",
-        "副業": "おうち時間を収入に変える",
-        "コツ": "人気ライバーの秘密を公開",
-        "ランク": "トップライバーへの道",
-        "ダイヤ": "報酬のしくみを徹底解説",
-        "機材": "必要なのはスマホだけ",
-        "ネタ": "配信が楽しくなるアイデア集",
-        "伸びない": "伸び悩みを突破する方法",
-        "ファン": "ファンに愛されるライバーに",
-        "男性": "男性ライバーの可能性は無限大",
-        "大学生": "学生×ライバーの新しい生き方",
-        "主婦": "ママでもできる在宅ワーク",
-        "確定申告": "ライバーのお金まわり完全ガイド",
-        "辞めたい": "もう悩まない！次のステップへ",
-        "還元率": "知らないと損する報酬のしくみ",
-        "イベント": "イベント攻略で一気にランクUP",
-        "スケジュール": "ムリなく続けるコツ",
-        "メンタル": "配信疲れを防ぐセルフケア",
-        "移籍": "事務所移籍のベストタイミング",
-        "容姿": "見た目じゃない！トーク力が武器",
-        "契約": "損しない契約書チェックポイント",
-        "コラボ": "コラボで一気にファン拡大",
-        "将来": "ライブ配信市場はまだまだ成長中",
-        "マネージャー": "プロのサポートで成長が加速",
-        "怪しい": "安全な事務所の見分け方",
-        "バレ": "身バレを防いで安心配信",
-        "30代": "30代から始める新しい挑戦",
-        "比較": "アプリ選びで差がつく",
-        "顔出し": "顔出しなしでも稼げる方法",
-    }
-
     catchcopy = "あなたの魅力を、収入に変えよう"
-    for keyword, copy in catchcopy_map.items():
+    for keyword, copy in CATCHCOPY_MAP.items():
         if keyword in title:
             catchcopy = copy
             break
 
     # タイトルを短く整形（数字プレフィックスを除去）
     short_title = re.sub(r"^\d+_", "", title)
+
+    category = _detect_category(title)
 
     # ⚠️ 画像モデル（Imagen / Gemini）は日本語テキストを正しく描画できないため、
     # プロンプトでは「テキストを一切入れない背景イラスト」のみ生成させる。
@@ -293,29 +418,20 @@ STRICT RULES:
 - ABSOLUTELY NO TEXT, NO LETTERS, NO CHARACTERS of any language (no Japanese, no English, no numbers, no symbols that look like letters)
 - No realistic human faces or photorealistic people
 - No dark colors, no busy compositions
-- No watermarks, no logos""", short_title, catchcopy
+- No watermarks, no logos""", short_title, catchcopy, category
 
 
-def _create_pastel_background(size=1080, seed=None):
-    """Pillowでパステル装飾背景を生成（API不要・完全ローカル）。
+def _create_pastel_background(size=1080, seed=None, category="BEGINNER"):
+    """Pillowでカテゴリ別パステル装飾背景を生成（API不要・完全ローカル）。
     Imagen失敗時のフォールバック、および崩壊画像の修復に使用。"""
     import random as _rd
     from PIL import Image, ImageDraw, ImageFilter
 
     rng = _rd.Random(seed)
 
-    # --- パレット候補（バズる女性向けSNSカラー） ---
-    palettes = [
-        # lavender → peach pink
-        [(237, 225, 248), (251, 225, 232), (255, 236, 224)],
-        # mint → cream
-        [(224, 245, 235), (240, 248, 228), (255, 243, 224)],
-        # peach → rose
-        [(255, 232, 224), (253, 220, 230), (245, 225, 245)],
-        # sky blue → lavender
-        [(224, 236, 250), (234, 228, 248), (248, 228, 240)],
-    ]
-    palette = rng.choice(palettes)
+    theme = CATEGORY_THEMES.get(category, CATEGORY_THEMES["BEGINNER"])
+    palette = theme["bg_palette"]
+    blob_colors = theme["blob_colors"]
 
     img = Image.new("RGB", (size, size), palette[0])
 
@@ -338,12 +454,6 @@ def _create_pastel_background(size=1080, seed=None):
     # --- 2. 大きなぼかし円（雰囲気作り、コーナー配置） ---
     blob_layer = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     bdraw = ImageDraw.Draw(blob_layer)
-    blob_colors = [
-        (255, 200, 220, 90),  # pink
-        (220, 200, 250, 90),  # lavender
-        (200, 240, 220, 80),  # mint
-        (255, 230, 190, 90),  # peach
-    ]
     corners = [(0, 0), (size, 0), (0, size), (size, size)]
     for (cx, cy), col in zip(corners, blob_colors):
         r = rng.randint(260, 360)
@@ -506,12 +616,14 @@ def _get_font(weight, size):
     return ImageFont.load_default()
 
 
-def _overlay_text_on_image(image_path, title, catchcopy, category="LIVER GUIDE", brand="@taitan_pro"):
+def _overlay_text_on_image(image_path, title, catchcopy, category="BEGINNER", brand="@taitan_pro"):
     """生成された背景画像にPillowで日本語タイトル＋キャッチコピーを合成。
     Instagramで保存されるカルーセル投稿を意識したバズる構成:
       [カテゴリバッジ] → [HUGEタイトル（マーカーハイライト）] → [区切り] → [キャッチコピー] → [ブランド名]
     """
     from PIL import Image, ImageDraw, ImageFilter
+
+    theme = CATEGORY_THEMES.get(category, CATEGORY_THEMES["BEGINNER"])
 
     img = Image.open(image_path).convert("RGBA")
     W, H = img.size
@@ -544,17 +656,17 @@ def _overlay_text_on_image(image_path, title, catchcopy, category="LIVER GUIDE",
 
     # --- 2. カテゴリバッジ（パネル上部、ピル型） ---
     badge_font = _get_font(weight=800, size=int(W * 0.028))
-    badge_text = category
+    badge_text = theme["badge"]
     b_bbox = draw.textbbox((0, 0), badge_text, font=badge_font)
     b_w = b_bbox[2] - b_bbox[0]
     b_h = b_bbox[3] - b_bbox[1]
-    badge_pad_x = int(W * 0.025)
-    badge_pad_y = int(W * 0.012)
+    badge_pad_x = int(W * 0.028)
+    badge_pad_y = int(W * 0.013)
     badge_w = b_w + 2 * badge_pad_x
     badge_h = b_h + 2 * badge_pad_y + 4
     badge_x = (W - badge_w) // 2
-    badge_y = panel_margin_y + int(H * 0.06)
-    badge_color = (90, 65, 120, 255)  # 深いパープル
+    badge_y = panel_margin_y + int(H * 0.055)
+    badge_color = theme["badge_bg"] + (255,)
     draw.rounded_rectangle(
         [badge_x, badge_y, badge_x + badge_w, badge_y + badge_h],
         radius=badge_h // 2, fill=badge_color,
@@ -612,8 +724,8 @@ def _overlay_text_on_image(image_path, title, catchcopy, category="LIVER GUIDE",
 
     # --- 5. タイトル描画（マーカーハイライトを最後の行の背景に敷く） ---
     y = block_start_y
-    title_color = (45, 38, 65)  # 濃いモーブ
-    highlight_color = (255, 224, 130, 200)  # イエローマーカー
+    title_color = theme["title_color"]
+    highlight_color = theme["accent"]
 
     for i, line in enumerate(title_lines):
         bbox = draw.textbbox((0, 0), line, font=title_font)
@@ -639,7 +751,7 @@ def _overlay_text_on_image(image_path, title, catchcopy, category="LIVER GUIDE",
     divider_y = y + divider_gap // 2
     dot_r = int(W * 0.008)
     dot_gap = int(W * 0.035)
-    dot_color = (220, 140, 170, 255)
+    dot_color = theme["divider"]
     for k in (-1, 0, 1):
         cx = W // 2 + k * dot_gap
         draw.ellipse([cx - dot_r, divider_y - dot_r, cx + dot_r, divider_y + dot_r],
@@ -647,7 +759,7 @@ def _overlay_text_on_image(image_path, title, catchcopy, category="LIVER GUIDE",
 
     # --- 7. キャッチコピー描画 ---
     catch_y = divider_y + int(catch_size * 1.1)
-    catch_color = (105, 88, 125)
+    catch_color = theme["catch_color"]
     for line in catch_lines:
         bbox = draw.textbbox((0, 0), line, font=catch_font)
         line_w = bbox[2] - bbox[0]
@@ -663,12 +775,12 @@ def _overlay_text_on_image(image_path, title, catchcopy, category="LIVER GUIDE",
     brand_x = (W - brand_w) // 2
     brand_y = H - panel_margin_y - brand_bottom_margin - brand_font_size
     draw.text((brand_x, brand_y), brand, font=brand_font,
-              fill=(150, 125, 165, 255))
+              fill=theme["brand_color"])
 
     # 保存（PNG）
     img.convert("RGB").save(image_path, "PNG", optimize=True)
     print(f"  テキスト合成完了: {os.path.basename(image_path)} "
-          f"(title={len(title_lines)}行 @{title_size}px)")
+          f"[{category}] (title={len(title_lines)}行 @{title_size}px)")
 
 
 def generate_image(article, index, dry_run=False):
@@ -684,8 +796,8 @@ def generate_image(article, index, dry_run=False):
 
     client = genai.Client(api_key=config.GEMINI_API_KEY)
 
-    prompt, short_title, catchcopy = _build_image_prompt(article)
-    print(f"  タイトル: {short_title} / キャッチ: {catchcopy}")
+    prompt, short_title, catchcopy, category = _build_image_prompt(article)
+    print(f"  タイトル: {short_title} / キャッチ: {catchcopy} / [{category}]")
 
     import time as _time
 
@@ -707,7 +819,7 @@ def generate_image(article, index, dry_run=False):
                     f.write(image_data)
                 print(f"  画像生成完了: {image_path}")
                 try:
-                    _overlay_text_on_image(image_path, short_title, catchcopy)
+                    _overlay_text_on_image(image_path, short_title, catchcopy, category=category)
                 except Exception as e:
                     print(f"  [WARNING] テキスト合成失敗: {e}")
                 return image_path
@@ -737,7 +849,7 @@ def generate_image(article, index, dry_run=False):
                             f.write(part.inline_data.data)
                         print(f"  画像生成完了 (フォールバック {fb_model}): {image_path}")
                         try:
-                            _overlay_text_on_image(image_path, short_title, catchcopy)
+                            _overlay_text_on_image(image_path, short_title, catchcopy, category=category)
                         except Exception as e:
                             print(f"  [WARNING] テキスト合成失敗: {e}")
                         return image_path
@@ -746,9 +858,9 @@ def generate_image(article, index, dry_run=False):
 
     print("  [WARNING] Imagen/Gemini画像生成失敗 → Pillowフォールバック背景を使用")
     try:
-        bg = _create_pastel_background(size=1080, seed=hash(short_title) & 0xFFFFFFFF)
+        bg = _create_pastel_background(size=1080, seed=hash(short_title) & 0xFFFFFFFF, category=category)
         bg.save(image_path)
-        _overlay_text_on_image(image_path, short_title, catchcopy)
+        _overlay_text_on_image(image_path, short_title, catchcopy, category=category)
         print(f"  フォールバック画像生成完了: {image_path}")
         return image_path
     except Exception as e:
