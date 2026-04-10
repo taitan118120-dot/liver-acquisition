@@ -156,7 +156,7 @@ def generate_caption(article, dry_run=False):
 - ハッシュタグは15〜20個（ライバー、副業、在宅ワーク系）
 - 絵文字は控えめに（1行に1個まで）
 - 事務所名: {config.OFFICE_NAME}
-- LINE: {config.CONTACT_LINE}
+- LINE友だち追加URL: {config.CONTACT_LINE}（必ずこの完全なURLをそのまま記載すること。短縮や @ID 形式にしない）
 - 元の文章をそのままコピーしない。新しい表現で。
 
 元の内容:
@@ -177,7 +177,7 @@ def generate_caption(article, dry_run=False):
 - ハッシュタグは15〜20個（ライバー、副業、在宅ワーク系）
 - 絵文字は控えめに（1行に1個まで）
 - 事務所名: {config.OFFICE_NAME}
-- LINE: {config.CONTACT_LINE}
+- LINE友だち追加URL: {config.CONTACT_LINE}（必ずこの完全なURLをそのまま記載すること。短縮や @ID 形式にしない）
 
 X投稿:
 {article['body']}
@@ -195,7 +195,7 @@ X投稿:
 - ハッシュタグは15〜20個（ライバー、副業、在宅ワーク系）
 - 絵文字は控えめに（1行に1個まで）
 - 事務所名: {config.OFFICE_NAME}
-- LINE: {config.CONTACT_LINE}
+- LINE友だち追加URL: {config.CONTACT_LINE}（必ずこの完全なURLをそのまま記載すること。短縮や @ID 形式にしない）
 
 記事タイトル: {article['title']}
 

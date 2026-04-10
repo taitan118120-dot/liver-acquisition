@@ -46,7 +46,7 @@ OFFICE_NAME = "TAITAN PRO"
 OFFICE_URL = "https://taitan-pro-lp.netlify.app/#apply"
 OFFICE_TWITTER = "@taitan_LIVER"
 OFFICE_INSTAGRAM = "@taitan_pro"
-CONTACT_LINE = "@816qtxyj"
+CONTACT_LINE = "https://lin.ee/xchCfdn"
 
 # ============================================================
 # リード検索設定
