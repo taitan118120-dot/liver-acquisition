@@ -29,6 +29,7 @@ BAD_USERNAMES = [
 
 def main():
     client = tweepy.Client(
+        bearer_token=os.environ.get("TWITTER_BEARER_TOKEN", ""),
         consumer_key=os.environ["TWITTER_API_KEY"],
         consumer_secret=os.environ["TWITTER_API_SECRET"],
         access_token=os.environ["TWITTER_ACCESS_TOKEN"],
@@ -38,12 +39,13 @@ def main():
 
     for username in BAD_USERNAMES:
         try:
-            user = client.get_user(username=username)
+            # user_auth=True を明示しないと bearer token が先行して 401 になる
+            user = client.get_user(username=username, user_auth=True)
             if not user.data:
                 log.warning(f"取得失敗: @{username}")
                 continue
             client.unfollow_user(user.data.id)
-            log.info(f"  🗑 unfollow @{username}")
+            log.info(f"  🗑 unfollow @{username} (id={user.data.id})")
             time.sleep(5)
         except tweepy.TooManyRequests:
             log.warning("Rate Limit。10分待機")
