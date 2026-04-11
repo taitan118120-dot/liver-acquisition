@@ -1,16 +1,18 @@
 """
 自動フォロースクリプト（安全版）
-リスト追加と同じ安全基準で1日20人フォロー
+リスト追加と同じ安全基準で1ラン15人フォロー
 
-- アクション数はランダム変動
+- 日本語bio/名前を必須化（海外bot排除）
 - 深夜帯(JST 02:00-07:00)は停止
-- 30〜60分間隔で1人ずつ
+- 8〜15分間隔で1人ずつ（350分timeout内で完走）
 - 業者・bot排除フィルター
+- 処理済みは逐次保存（キャンセル耐性）
 """
 
 import os
 import json
 import random
+import re
 import time
 import logging
 from datetime import datetime, timezone, timedelta
@@ -26,19 +28,22 @@ log = logging.getLogger(__name__)
 
 JST = timezone(timedelta(hours=9))
 
-# 1日のフォロー数
-DAILY_MIN = 18
-DAILY_MAX = 22
+# 1ランのフォロー数（2ラン/日 → 実質30人/日）
+DAILY_MIN = 13
+DAILY_MAX = 17
 
-# 待機時間（秒）
-WAIT_MIN = 30 * 60
-WAIT_MAX = 60 * 60
+# 待機時間（秒）— 15人 × 12分平均 = 180分で timeout 350分に収まる
+WAIT_MIN = 8 * 60
+WAIT_MAX = 15 * 60
 
 QUIET_HOUR_START = 2
 QUIET_HOUR_END = 7
 
+# 日本語(ひらがな・カタカナ)検出用
+JP_KANA_RE = re.compile(r"[ぁ-んァ-ヶー]")
+
 SEARCH_KEYWORDS = [
-    # 配信系（既存ターゲット）
+    # 配信系（主力ターゲット）
     "配信初心者",
     "Pococha 始めた",
     "#初配信",
@@ -47,22 +52,20 @@ SEARCH_KEYWORDS = [
     "配信 始めた",
     "配信 楽しかった",
     "ライバー 頑張る",
-    # 副業・在宅層（新規ターゲット）
+    "ライブ配信 はじめた",
+    "初見さん歓迎",
+    # 副業・在宅層（意図ワード必須、単独地名は使わない）
     "副業 始めたい",
-    "在宅 副業 探してる",
+    "在宅ワーク 探してる",
     "#副業初心者",
-    "#在宅ワーク",
-    "副業 おすすめ 教えて",
-    "スマホ 副業",
-    # お金・仕事の不満層（潜在ターゲット）
+    "スマホ 副業 初心者",
+    # 仕事の不満層
     "給料 少ない つらい",
     "仕事 辞めたい",
     "バイト 掛け持ち きつい",
-    "#転職したい",
-    # 地方系
-    "石川県",
-    "金沢",
-    "#北陸",
+    # 地方×配信の複合（単独地名は業者/観光が多いので廃止）
+    "石川 配信",
+    "金沢 ライバー",
 ]
 
 NG_WORDS = [
@@ -117,8 +120,19 @@ def is_quiet_hours():
 
 def is_good_target(user, tweet_text=""):
     """フォローすべき人間らしいアカウントか判定（勧誘業者フィルター強化版）"""
-    bio = (user.description or "").lower()
-    name = (user.name or "").lower()
+    bio_raw = user.description or ""
+    name_raw = user.name or ""
+    bio = bio_raw.lower()
+    name = name_raw.lower()
+
+    # 日本語話者チェック: bio or 名前に ひらがな/カタカナ が無ければ除外
+    # (lang:ja はツイート言語でありユーザー言語ではない → 海外botが通過するのを塞ぐ)
+    if not (JP_KANA_RE.search(bio_raw) or JP_KANA_RE.search(name_raw)):
+        return False
+
+    # bioが空 or 極端に短い = 素性不明、フォロバ期待薄
+    if len(bio_raw.strip()) < 8:
+        return False
 
     # プロフィールNGワード
     if any(w in bio for w in NG_WORDS):
@@ -150,11 +164,16 @@ def is_good_target(user, tweet_text=""):
         following = metrics.get("following_count", 0)
         tweets = metrics.get("tweet_count", 0)
 
-        if followers == 0 and tweets < 3:
+        # 投稿数が少なすぎる = 休眠/新規bot
+        if tweets < 10:
             return False
+        # フォロー過多（相互狙いbot）
         if following > 0 and followers > 0 and following / followers > 8:
             return False
         if followers > 10000:
+            return False
+        # フォロワー0はほぼ無反応
+        if followers < 3:
             return False
 
         # フォロワー多いのにフォロー少ない = インフルエンサーか業者
@@ -239,9 +258,10 @@ def main():
                 client.follow_user(user.id)
                 followed += 1
                 processed.add(str(user.id))
+                save_processed(processed)  # キャンセル耐性のため逐次保存
                 log.info(f"  ✅ [{followed}/{daily_target}] @{user.username}")
 
-                wait = random.randint(WAIT_MIN, WAIT_MAX) + random.randint(-120, 120)
+                wait = random.randint(WAIT_MIN, WAIT_MAX) + random.randint(-60, 60)
                 wait = max(wait, 60)
                 log.info(f"  ⏳ {wait // 60}分待機")
                 time.sleep(wait)
@@ -254,6 +274,8 @@ def main():
                 processed.add(str(user.id))
             except Exception as e:
                 log.error(f"  ⚠️ @{user.username}: {e}")
+
+        save_processed(processed)  # 検索キーワード単位でも保存
 
     save_processed(processed)
     log.info(f"\n完了: {followed}人フォロー")
