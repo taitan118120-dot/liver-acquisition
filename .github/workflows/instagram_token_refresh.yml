@@ -2,8 +2,8 @@ name: Instagramトークン自動更新
 
 on:
   schedule:
-    # 毎週月曜 9:00 JST（UTC 0:00）に実行
-    - cron: '0 0 * * 1'
+    # 毎日 9:00 JST（UTC 0:00）に実行 — 期限切れ防止
+    - cron: '0 0 * * *'
   workflow_dispatch:  # 手動実行も可能
     inputs:
       force:

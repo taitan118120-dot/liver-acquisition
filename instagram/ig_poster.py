@@ -76,8 +76,15 @@ def upload_image_to_imgbb(image_path):
     return None
 
 
+class TokenExpiredError(Exception):
+    """アクセストークン期限切れ（永続エラー）"""
+    pass
+
+
 def create_media_container(image_url, caption, max_retries=3):
-    """Instagram Graph APIでメディアコンテナを作成（リトライ付き）"""
+    """Instagram Graph APIでメディアコンテナを作成（リトライ付き）。
+    TokenExpiredError: トークン期限切れ時に送出。
+    """
     url = f"{GRAPH_API_BASE}/{config.INSTAGRAM_BUSINESS_ID}/media"
     payload = {
         "image_url": image_url,
@@ -111,6 +118,11 @@ def create_media_container(image_url, caption, max_retries=3):
         error_code = error.get("code", "N/A")
         error_subcode = error.get("error_subcode", "N/A")
 
+        # トークン期限切れは即座にraiseしてリトライしない
+        if error_code == 190:
+            print(f"[ERROR] トークン期限切れ (code={error_code}, subcode={error_subcode}): {error_msg}")
+            raise TokenExpiredError(error_msg)
+
         # タイムアウト系エラーはリトライ（code=-2はGraph APIのタイムアウト）
         if error_code in (-2, 2) or "timeout" in error_msg.lower():
             print(f"  [RETRY] タイムアウト ({attempt + 1}/{max_retries}): {error_msg}")
@@ -119,8 +131,6 @@ def create_media_container(image_url, caption, max_retries=3):
                 continue
 
         print(f"[ERROR] コンテナ作成失敗 (code={error_code}, subcode={error_subcode}): {error_msg}")
-        if error_code == 190:
-            print("  → アクセストークンが無効または期限切れです。トークンを更新してください。")
         return None
 
     return None
@@ -192,22 +202,25 @@ def check_container_status(container_id):
 
 
 def post_to_instagram(image_path, caption, dry_run=False):
-    """Instagram Graph APIでフィード投稿を実行。(success, error_msg) を返す。"""
+    """Instagram Graph APIでフィード投稿を実行。(success, error_msg, is_transient) を返す。
+    is_transient=True: タイムアウト等の一時エラー（リトライ価値あり）
+    is_transient=False: トークン切れ等の永続エラー（設定修正が必要）
+    """
     if dry_run:
         print(f"[DRY RUN] Instagram投稿:")
         print(f"  画像: {image_path}")
         print(f"  キャプション: {caption[:100]}...")
-        return True, None
+        return True, None, False
 
     if not config.INSTAGRAM_ACCESS_TOKEN:
         msg = "INSTAGRAM_ACCESS_TOKEN が未設定（環境変数を確認してください）"
         print(f"[ERROR] {msg}")
-        return False, msg
+        return False, msg, False
 
     if not config.INSTAGRAM_BUSINESS_ID:
         msg = "INSTAGRAM_BUSINESS_ID が未設定（環境変数を確認してください）"
         print(f"[ERROR] {msg}")
-        return False, msg
+        return False, msg, False
 
     print(f"  トークン先頭: {config.INSTAGRAM_ACCESS_TOKEN[:10]}...")
     print(f"  ビジネスID: {config.INSTAGRAM_BUSINESS_ID}")
@@ -215,22 +228,25 @@ def post_to_instagram(image_path, caption, dry_run=False):
     # 1. 画像を公開URLにアップロード
     image_url = upload_image_to_imgbb(image_path)
     if not image_url:
-        return False, "imgBBへの画像アップロード失敗"
+        return False, "imgBBへの画像アップロード失敗", True  # imgBB障害は一時的
 
     # 2. メディアコンテナを作成
-    container_id = create_media_container(image_url, caption)
+    try:
+        container_id = create_media_container(image_url, caption)
+    except TokenExpiredError as e:
+        return False, f"トークン期限切れ: {e}", False  # 永続エラー
     if not container_id:
-        return False, "Instagramメディアコンテナ作成失敗"
+        return False, "Instagramメディアコンテナ作成失敗", True  # タイムアウト系
 
     # 3. コンテナの処理完了を待つ
     if not check_container_status(container_id):
-        return False, "コンテナ処理タイムアウトまたはエラー"
+        return False, "コンテナ処理タイムアウトまたはエラー", True
 
     # 4. 公開
     post_id = publish_media(container_id)
     if post_id:
-        return True, None
-    return False, "Instagram投稿公開失敗"
+        return True, None, False
+    return False, "Instagram投稿公開失敗", True
 
 
 def log_post(post_id, caption, success):
@@ -284,7 +300,7 @@ def post_by_id(post_id, dry_run=False):
         print(f"[ERROR] 画像ファイルが見つかりません: {target.get('image_path')}")
         return False
 
-    success, error_msg = post_to_instagram(image_path, target["caption"], dry_run=dry_run)
+    success, error_msg, _ = post_to_instagram(image_path, target["caption"], dry_run=dry_run)
     log_post(post_id, target["caption"], success)
 
     if success and not dry_run:
@@ -294,11 +310,13 @@ def post_by_id(post_id, dry_run=False):
     return success
 
 
-MAX_RETRY = 3  # この回数失敗したらスキップ
+MAX_RETRY = 5  # 永続エラーのみカウント（一時エラーはカウントしない）
 
 
 def post_next(dry_run=False):
-    """未投稿の次のコンテンツを投稿（失敗回数が上限に達したものはスキップ）"""
+    """未投稿の次のコンテンツを投稿。(success, is_transient) を返す。
+    is_transient: 一時エラーかどうか（スケジューラのリトライ判断に使う）
+    """
     posts = load_posts()
     unposted = [
         p for p in posts
@@ -307,10 +325,10 @@ def post_next(dry_run=False):
 
     if not unposted:
         print("[INFO] 投稿可能なコンテンツがありません。")
-        return False
+        return False, False
 
     target = unposted[0]
-    print(f"次の投稿: {target['title']} (失敗{target.get('fail_count', 0)}回目)")
+    print(f"次の投稿: {target['title']} (永続エラー{target.get('fail_count', 0)}回)")
 
     resolved_path = _resolve_image_path(target["image_path"])
     if not resolved_path or not os.path.exists(resolved_path):
@@ -319,26 +337,35 @@ def post_next(dry_run=False):
         target["fail_count"] = target.get("fail_count", 0) + 1
         target["last_error"] = error_msg
         save_posts(posts)
-        return False
+        return False, False  # 永続エラー
 
-    success, error_msg = post_to_instagram(resolved_path, target["caption"], dry_run=dry_run)
+    success, error_msg, is_transient = post_to_instagram(
+        resolved_path, target["caption"], dry_run=dry_run
+    )
     if not dry_run:
         log_post(target["id"], target["caption"], success)
 
     if success and not dry_run:
         target["posted"] = True
+        target["posted_at"] = datetime.now().astimezone().isoformat()
         target.pop("fail_count", None)
         target.pop("last_error", None)
         save_posts(posts)
     elif not success and not dry_run:
-        target["fail_count"] = target.get("fail_count", 0) + 1
-        target["last_error"] = error_msg or "不明なエラー"
+        if is_transient:
+            # 一時エラーはfail_countを増やさない（次回リトライ可能）
+            target["last_error"] = f"[一時] {error_msg or '不明'}"
+            print(f"[TRANSIENT] 一時エラー（fail_count据え置き）: {error_msg}")
+        else:
+            # 永続エラーのみfail_countを増やす
+            target["fail_count"] = target.get("fail_count", 0) + 1
+            target["last_error"] = error_msg or "不明なエラー"
+            print(f"[PERMANENT] 永続エラー ({target['fail_count']}/{MAX_RETRY}回): {error_msg}")
+            if target["fail_count"] >= MAX_RETRY:
+                print(f"[SKIP] {target['id']} は{MAX_RETRY}回永続エラーのため、以降スキップ。")
         save_posts(posts)
-        print(f"[WARNING] 投稿失敗 ({target['fail_count']}/{MAX_RETRY}回): {error_msg}")
-        if target["fail_count"] >= MAX_RETRY:
-            print(f"[SKIP] {target['id']} は{MAX_RETRY}回失敗したため、以降スキップします。")
 
-    return success
+    return success, is_transient
 
 
 def main():
