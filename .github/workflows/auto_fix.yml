@@ -1,0 +1,56 @@
+name: エラー自動修復
+
+on:
+  workflow_run:
+    workflows:
+      - 週次分析
+      - リード検索
+      - 投稿自動進化
+      - 自動フォロー
+      - リスト自動追加
+      - 自動投稿
+      - Instagram自動投稿
+      - Instagramトークン自動更新
+      - Note記事 自動投稿
+      - Note記事 一括更新
+      - 誤フォロー除去(ワンショット)
+    types: [completed]
+
+jobs:
+  auto-fix:
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch || 'main' }}
+          fetch-depth: 0
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            GitHub Actionsワークフロー「${{ github.event.workflow_run.name }}」が失敗しました。
+
+            - ブランチ: ${{ github.event.workflow_run.head_branch }}
+            - Run ID: ${{ github.event.workflow_run.id }}
+            - URL: ${{ github.event.workflow_run.html_url }}
+
+            以下の手順で対処してください：
+            1. `gh run view ${{ github.event.workflow_run.id }} --log-failed` でエラーログを確認
+            2. エラーの根本原因を特定
+            3. 修正可能な場合はコードを修正してコミット
+            4. 修正できない場合（API制限、外部サービス障害など）はGitHub Issueを作成して報告
+            5. secrets/環境変数の問題の場合はIssueで報告のみ（secretsは変更しない）
+
+            注意:
+            - 最小限の変更で修正すること
+            - テストがあれば実行して確認すること
+            - 不要な機能追加やリファクタリングはしないこと
+          claude_args: "--max-turns 15"
