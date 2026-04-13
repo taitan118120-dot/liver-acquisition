@@ -76,51 +76,92 @@ def upload_image_to_imgbb(image_path):
     return None
 
 
-def create_media_container(image_url, caption):
-    """Instagram Graph APIでメディアコンテナを作成"""
+def create_media_container(image_url, caption, max_retries=3):
+    """Instagram Graph APIでメディアコンテナを作成（リトライ付き）"""
     url = f"{GRAPH_API_BASE}/{config.INSTAGRAM_BUSINESS_ID}/media"
-    params = {
+    payload = {
         "image_url": image_url,
         "caption": caption,
         "access_token": config.INSTAGRAM_ACCESS_TOKEN,
     }
 
-    response = requests.post(url, params=params)
-    data = response.json()
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(url, data=payload, timeout=60)
+            data = response.json()
+        except requests.exceptions.Timeout:
+            print(f"  [RETRY] リクエストタイムアウト ({attempt + 1}/{max_retries})")
+            if attempt < max_retries - 1:
+                time.sleep(5 * (attempt + 1))
+                continue
+            return None
+        except requests.exceptions.RequestException as e:
+            print(f"  [RETRY] リクエストエラー: {e} ({attempt + 1}/{max_retries})")
+            if attempt < max_retries - 1:
+                time.sleep(5 * (attempt + 1))
+                continue
+            return None
 
-    if "id" in data:
-        print(f"  メディアコンテナ作成: {data['id']}")
-        return data["id"]
+        if "id" in data:
+            print(f"  メディアコンテナ作成: {data['id']}")
+            return data["id"]
 
-    error = data.get("error", {})
-    error_msg = error.get("message", str(data))
-    error_code = error.get("code", "N/A")
-    error_subcode = error.get("error_subcode", "N/A")
-    print(f"[ERROR] コンテナ作成失敗 (code={error_code}, subcode={error_subcode}): {error_msg}")
-    if error_code == 190:
-        print("  → アクセストークンが無効または期限切れです。トークンを更新してください。")
+        error = data.get("error", {})
+        error_msg = error.get("message", str(data))
+        error_code = error.get("code", "N/A")
+        error_subcode = error.get("error_subcode", "N/A")
+
+        # タイムアウト系エラーはリトライ（code=-2はGraph APIのタイムアウト）
+        if error_code in (-2, 2) or "timeout" in error_msg.lower():
+            print(f"  [RETRY] タイムアウト ({attempt + 1}/{max_retries}): {error_msg}")
+            if attempt < max_retries - 1:
+                time.sleep(10 * (attempt + 1))
+                continue
+
+        print(f"[ERROR] コンテナ作成失敗 (code={error_code}, subcode={error_subcode}): {error_msg}")
+        if error_code == 190:
+            print("  → アクセストークンが無効または期限切れです。トークンを更新してください。")
+        return None
+
     return None
 
 
-def publish_media(container_id):
-    """メディアコンテナを公開（実際の投稿）"""
+def publish_media(container_id, max_retries=3):
+    """メディアコンテナを公開（実際の投稿、リトライ付き）"""
     url = f"{GRAPH_API_BASE}/{config.INSTAGRAM_BUSINESS_ID}/media_publish"
-    params = {
+    payload = {
         "creation_id": container_id,
         "access_token": config.INSTAGRAM_ACCESS_TOKEN,
     }
 
-    response = requests.post(url, params=params)
-    data = response.json()
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(url, data=payload, timeout=60)
+            data = response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"  [RETRY] 公開リクエストエラー: {e} ({attempt + 1}/{max_retries})")
+            if attempt < max_retries - 1:
+                time.sleep(5 * (attempt + 1))
+                continue
+            return None
 
-    if "id" in data:
-        print(f"  投稿公開成功: {data['id']}")
-        return data["id"]
+        if "id" in data:
+            print(f"  投稿公開成功: {data['id']}")
+            return data["id"]
 
-    error = data.get("error", {})
-    error_msg = error.get("message", str(data))
-    error_code = error.get("code", "N/A")
-    print(f"[ERROR] 投稿公開失敗 (code={error_code}): {error_msg}")
+        error = data.get("error", {})
+        error_msg = error.get("message", str(data))
+        error_code = error.get("code", "N/A")
+
+        if error_code in (-2, 2) or "timeout" in error_msg.lower():
+            print(f"  [RETRY] 公開タイムアウト ({attempt + 1}/{max_retries}): {error_msg}")
+            if attempt < max_retries - 1:
+                time.sleep(10 * (attempt + 1))
+                continue
+
+        print(f"[ERROR] 投稿公開失敗 (code={error_code}): {error_msg}")
+        return None
+
     return None
 
 
@@ -133,7 +174,7 @@ def check_container_status(container_id):
     }
 
     for attempt in range(10):
-        response = requests.get(url, params=params)
+        response = requests.get(url, params=params, timeout=30)
         data = response.json()
         status = data.get("status_code", "UNKNOWN")
 

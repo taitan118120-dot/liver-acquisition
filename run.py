@@ -51,6 +51,12 @@ def main():
     find_parser.add_argument("--dry-run", action="store_true")
     find_parser.add_argument("--twitter-only", action="store_true")
     find_parser.add_argument("--instagram-only", action="store_true")
+    find_parser.add_argument(
+        "--target",
+        choices=["liver", "agency", "both"],
+        default="liver",
+        help="検索対象: liver=ライバー候補(デフォルト), agency=代理店志望者, both=両方",
+    )
 
     # dm
     dm_parser = sub.add_parser("dm", help="DM送信")
@@ -107,6 +113,7 @@ def main():
             sys.argv.append("--twitter-only")
         if args.instagram_only:
             sys.argv.append("--instagram-only")
+        sys.argv.extend(["--target", args.target])
         finder_main()
 
     elif args.command == "dm":

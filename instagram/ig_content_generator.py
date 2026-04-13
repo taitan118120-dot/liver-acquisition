@@ -144,68 +144,103 @@ def generate_caption(article, dry_run=False):
     is_remix = article.get("remix", False)
     is_twitter = article.get("source") == "twitter"
 
+    # =====================================================================
+    # 共通の品質ルール（保存・シェアされる高品質キャプションを生成するための型）
+    # =====================================================================
+    common_rules = f"""【絶対遵守の構成テンプレート】
+以下の7ブロック構成を必ず守ること。各ブロックの間は空行1つで区切る。
+
+①フック（1行目・最重要）
+   - 【】で囲んだ短いキャッチ。15〜22文字。
+   - 必ず以下のいずれかのパターンを使う:
+     a) 数字 +「実は…」「9割が知らない」「やってはいけない」型
+     b) 損失回避型「知らないと損する○○」「○○で失敗する人の共通点」
+     c) ギャップ型「○○なのに△△」「未経験から○ヶ月で○万円」
+   - 抽象的な美辞麗句や絵文字だらけのタイトルは禁止。
+
+②共感の2行（読者の悩みを言語化）
+   - 「○○って思ってませんか？」「こんな経験ないですか？」型
+   - 1行目で悩みを提示、2行目で「わかります、私も同じでした」と寄り添う
+   - 絵文字なし、淡々と短く
+
+③結論（PREP法のP：1〜2行）
+   - 「結論、○○です。」と言い切る
+   - ふわっとした一般論ではなく、具体的な答えを先出しする
+
+④根拠と具体例（数字・実体験を必ず1つ以上入れる）
+   - 「事務所所属で平均○％アップ」「Pocochaの時給は最大○円」など具体数値
+   - 元記事に数字があれば必ず拾う。なければ業界の一般値を使う
+   - 3〜4行で簡潔に
+
+⑤実践リスト（保存される最重要パート）
+   - 「✅ ○○する」形式で4〜6項目
+   - 各項目は1行25文字以内、動詞で終わる行動指示にする
+   - 各項目の下に1行だけ補足（理由・コツ）を入れてOK
+   - 抽象論NG。「明日からできる」レベルの具体性
+
+⑥CTA（固定文）
+   - 必ず以下の3行を改行込みで入れる（一字一句変えない）:
+     ━━━━━━━━━━━━━━━
+     ✨ {config.OFFICE_NAME}の無料相談はプロフィール（@taitan_pro）のリンクから
+     ━━━━━━━━━━━━━━━
+
+⑦保存促進＋ハッシュタグ
+   - 「📌 後で見返せるように保存推奨」の1行を入れる
+   - その後に空行をはさんでハッシュタグを以下の比率で出す:
+     ・大ボリューム(投稿100万件以上): 4個 例 #ライバー #副業 #ライブ配信 #在宅ワーク
+     ・中ボリューム(10万〜100万): 8個 例 #ライバー募集 #Pococha #ポコチャ #副業女子 #ライバー事務所 #ライバーになりたい #スマホ副業 #フリーランス
+     ・スモール/ニッチ(〜10万): 6個 例 #ライバーデビュー #ポコチャ初心者 #時間ダイヤ #ライバーママ #副業始めたい #タイタンプロ
+   - 計18個。記事内容に合わせて入れ替えて構わないが、必ずこのボリューム別構成。
+   - ハッシュタグは1行にまとめず、改行で大→中→小の3グループに分ける。
+
+【厳守事項】
+- 全体の文字数は1200〜1700文字（ベスト）。2200文字を超えない。
+- 絵文字は1ブロックにつき最大1個。フック行と実践リストの先頭以外では使わない。
+   許可絵文字のみ: ✨📌✅━ あとは🎯💡のみOK。😌🤗😊💕🚀💰📈🌟など顔文字・装飾系は禁止。
+- URL（https://... lin.ee/... 等）絶対に書かない。リンクは「プロフィールから」のみ。
+- LINE IDや@から始まる識別子は @taitan_pro 以外書かない。
+- 「絶対稼げる」「必ず儲かる」など断定的な誇大表現を避ける（景表法対策）
+- 元記事の文章を丸コピーしない。要約・再構成すること。
+- 事務所名は {config.OFFICE_NAME}（混入させる場合もこの表記）。
+- 出力はキャプション本文のみ。前置き「以下に作成しました」等は不要。
+"""
+
     if is_remix:
-        prompt = f"""以下の内容を元に、新しい切り口でInstagramのフィード投稿用キャプションを作成してください。
-元の内容とは違う視点・表現で書き直してください。
+        prompt = f"""あなたは月100万Instagram投稿を量産するライバー業界専門コピーライターです。
+以下の素材を元に、まったく新しい切り口でInstagramフィード投稿のキャプションを作成してください。
+元の文章は参考程度にし、視点・表現・例え話を変えて再構成すること。
 
-ルール:
-- 最大2200文字以内
-- 冒頭に目を引くタイトル行（【】で囲む）
-- 箇条書きで要点を3〜5個
-- 最後のCTAは必ず「✨ 詳しくはプロフィール（@taitan_pro）のリンクからLINEで無料相談！」形式にする
-- ハッシュタグは15〜20個（ライバー、副業、在宅ワーク系）
-- 絵文字は控えめに（1行に1個まで）
-- 事務所名: {config.OFFICE_NAME}
-- ⚠️ 絶対にキャプション本文にURL（https://... や lin.ee/... 等）を書かないこと。Instagramのキャプションはリンクが押せないので、「プロフィールのリンクから」と案内するのみ。
-- ⚠️ LINE IDや@から始まる識別子も書かないこと（混乱の元）
-- 元の文章をそのままコピーしない。新しい表現で。
+{common_rules}
 
-元の内容:
+【素材】
 {article['body']}
-
-キャプションのみを出力してください。"""
+"""
 
     elif is_twitter:
-        prompt = f"""以下のX（Twitter）投稿をInstagramのフィード投稿用キャプションに変換してください。
-短いツイートをInstagram向けに膨らませてください。
+        prompt = f"""あなたは月100万Instagram投稿を量産するライバー業界専門コピーライターです。
+以下の短いX投稿を素材に、保存価値の高いInstagramフィード投稿用キャプションに膨らませてください。
+ツイートの主張を軸にしつつ、根拠・具体例・実践ステップを補強すること。
 
-ルール:
-- 最大2200文字以内
-- 冒頭に目を引くタイトル行（【】で囲む）
-- ツイートの内容を深掘りして詳しく説明
-- 箇条書きで要点を3〜5個
-- 最後のCTAは必ず「✨ 詳しくはプロフィール（@taitan_pro）のリンクからLINEで無料相談！」形式にする
-- ハッシュタグは15〜20個（ライバー、副業、在宅ワーク系）
-- 絵文字は控えめに（1行に1個まで）
-- 事務所名: {config.OFFICE_NAME}
-- ⚠️ 絶対にキャプション本文にURL（https://... や lin.ee/... 等）を書かないこと。Instagramのキャプションはリンクが押せないので、「プロフィールのリンクから」と案内するのみ。
-- ⚠️ LINE IDや@から始まる識別子も書かないこと（混乱の元）
+{common_rules}
 
-X投稿:
+【元のX投稿】
 {article['body']}
-
-キャプションのみを出力してください。"""
+"""
 
     else:
-        prompt = f"""以下のブログ記事をInstagramのフィード投稿用キャプションに変換してください。
+        prompt = f"""あなたは月100万Instagram投稿を量産するライバー業界専門コピーライターです。
+以下のブログ記事を素材に、Instagramフィード投稿用の高品質キャプションを作成してください。
+ブログをただ要約するのではなく、Instagram読者（20〜30代女性中心、スマホで流し見）が
+「保存して後で読みたい」と思う構成と密度に再編集すること。
 
-ルール:
-- 最大2200文字以内
-- 冒頭に目を引くタイトル行（【】で囲む）
-- 箇条書きで要点を3〜5個
-- 最後のCTAは必ず「✨ 詳しくはプロフィール（@taitan_pro）のリンクからLINEで無料相談！」形式にする
-- ハッシュタグは15〜20個（ライバー、副業、在宅ワーク系）
-- 絵文字は控えめに（1行に1個まで）
-- 事務所名: {config.OFFICE_NAME}
-- ⚠️ 絶対にキャプション本文にURL（https://... や lin.ee/... 等）を書かないこと。Instagramのキャプションはリンクが押せないので、「プロフィールのリンクから」と案内するのみ。
-- ⚠️ LINE IDや@から始まる識別子も書かないこと（混乱の元）
+{common_rules}
 
-記事タイトル: {article['title']}
+【記事タイトル】
+{article['title']}
 
-記事本文:
+【記事本文】
 {article['body']}
-
-キャプションのみを出力してください。"""
+"""
 
     import time as _time
     for attempt in range(3):
@@ -213,8 +248,12 @@ X投稿:
             response = client.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=prompt,
+                config=genai.types.GenerateContentConfig(
+                    temperature=0.85,  # 構成は固定だが文体に多様性を出す
+                ),
             )
-            return response.text.strip()
+            text = response.text.strip()
+            return _polish_caption(text)
         except Exception as e:
             if attempt < 2:
                 wait = 10 * (attempt + 1)
@@ -222,6 +261,139 @@ X投稿:
                 _time.sleep(wait)
             else:
                 raise
+
+
+# =====================================================================
+# キャプション後処理（プロンプトに従わない部分を機械的に補正・検証）
+# =====================================================================
+
+# 残してよい絵文字（プロンプトの「許可絵文字」と一致させる）
+_ALLOWED_EMOJIS = set("✨📌✅━🎯💡【】")
+
+# 削除したい装飾絵文字（プロンプトで禁止しているもの＋頻出のフリクション）
+_BANNED_EMOJI_RE = re.compile(
+    "["
+    "\U0001F300-\U0001F5FF"   # symbols & pictographs
+    "\U0001F600-\U0001F64F"   # emoticons
+    "\U0001F680-\U0001F6FF"   # transport
+    "\U0001F700-\U0001F77F"
+    "\U0001F900-\U0001F9FF"   # supplemental symbols
+    "\U0001FA70-\U0001FAFF"
+    "\u2600-\u26FF"             # misc symbols
+    "\u2700-\u27BF"             # dingbats
+    "]"
+)
+
+# 必ず入れたい固定CTAブロック
+_REQUIRED_CTA = (
+    "━━━━━━━━━━━━━━━\n"
+    f"✨ {config.OFFICE_NAME}の無料相談はプロフィール（@taitan_pro）のリンクから\n"
+    "━━━━━━━━━━━━━━━"
+)
+
+_SAVE_HINT = "📌 後で見返せるように保存推奨"
+
+_URL_RE = re.compile(r"https?://\S+|lin\.ee/\S+|bit\.ly/\S+", re.IGNORECASE)
+_HASHTAG_RE = re.compile(r"#[\wぁ-んァ-ヶー一-龥0-9_]+")
+
+
+def _strip_banned_emojis(text):
+    """許可外絵文字を全削除（許可リストの文字は残す）"""
+    def _repl(m):
+        ch = m.group(0)
+        return ch if ch in _ALLOWED_EMOJIS else ""
+    return _BANNED_EMOJI_RE.sub(_repl, text)
+
+
+def _polish_caption(text):
+    """生成キャプションを品質基準に合わせて補正する。
+    - URL/外部リンクの除去
+    - 禁止絵文字の削除
+    - 固定CTAの強制差し込み
+    - 保存促進行の確保
+    - 末尾ハッシュタグの個数チェック（不足時は警告）
+    - 文字数オーバーの軽量カット
+    """
+    if not text:
+        return text
+
+    # 1. URL除去
+    cleaned = _URL_RE.sub("", text)
+
+    # 2. 禁止絵文字除去
+    cleaned = _strip_banned_emojis(cleaned)
+
+    # 3. 連続空行を最大1つに圧縮
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned).strip()
+
+    # 4. ハッシュタグを末尾から抽出（後で再付与するため一度切り離す）
+    lines = cleaned.split("\n")
+    tag_start = len(lines)
+    for i in range(len(lines) - 1, -1, -1):
+        line = lines[i].strip()
+        if not line:
+            continue
+        if _HASHTAG_RE.search(line) and not re.search(r"[。！？]", line):
+            tag_start = i
+        else:
+            break
+    body_part = "\n".join(lines[:tag_start]).rstrip()
+    tag_part = "\n".join(lines[tag_start:]).strip()
+
+    # 5. CTAが含まれているかチェック。不足/破損していれば差し替え
+    has_cta = (
+        f"{config.OFFICE_NAME}の無料相談はプロフィール" in body_part
+        and "━━━" in body_part
+    )
+    if not has_cta:
+        # 既存の弱いCTA行を除去
+        body_part = re.sub(
+            r"(?m)^.*(無料相談|プロフィール.*リンク|DM.*お問い合わせ|お気軽に).*$",
+            "",
+            body_part,
+        )
+        body_part = re.sub(r"\n{3,}", "\n\n", body_part).rstrip()
+        body_part += "\n\n" + _REQUIRED_CTA
+
+    # 6. 保存促進行
+    if _SAVE_HINT not in body_part and _SAVE_HINT not in tag_part:
+        body_part += "\n\n" + _SAVE_HINT
+
+    # 7. ハッシュタグの個数チェック
+    tags = _HASHTAG_RE.findall(tag_part)
+    if len(tags) < 12:
+        # 不足時はライバー業界の汎用補完タグを足す
+        fallback_tags = [
+            "#ライバー", "#副業", "#ライブ配信", "#在宅ワーク",
+            "#ライバー募集", "#Pococha", "#ポコチャ", "#ライバー事務所",
+            "#ライバーになりたい", "#スマホ副業", "#副業女子", "#フリーランス",
+            "#ライバーデビュー", "#ポコチャ初心者", "#副業始めたい",
+            "#タイタンプロ", "#おうち時間", "#夢を叶える",
+        ]
+        seen = set(tags)
+        for t in fallback_tags:
+            if t not in seen:
+                tags.append(t)
+                seen.add(t)
+            if len(tags) >= 18:
+                break
+        # 大/中/小の3行に分けて再構築
+        tag_part = (
+            " ".join(tags[:4]) + "\n"
+            + " ".join(tags[4:12]) + "\n"
+            + " ".join(tags[12:18])
+        )
+
+    polished = body_part.rstrip() + "\n\n" + tag_part.strip()
+
+    # 8. 2200文字制限（Instagram上限）
+    if len(polished) > 2150:
+        # 本文を末尾から削って収める
+        excess = len(polished) - 2150
+        body_part = body_part[: max(0, len(body_part) - excess - 20)].rstrip()
+        polished = body_part + "\n\n" + tag_part.strip()
+
+    return polished
 
 
 # =====================================================================

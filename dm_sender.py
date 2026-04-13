@@ -21,6 +21,9 @@ def load_template(target_type):
         "beginner": "templates/dm_beginner.txt",
         "existing": "templates/dm_existing.txt",
         "agency": "templates/dm_agency.txt",
+        # 代理店志望者（副業・独立志向の一般人）向け
+        "agency_prospect": "templates/dm_agency_prospect.txt",
+        "agency_prospect_hot": "templates/dm_agency_prospect.txt",
     }
     path = template_map.get(target_type, template_map["beginner"])
 

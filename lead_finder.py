@@ -35,8 +35,15 @@ def load_existing_ids():
         return {row["id"] for row in reader}
 
 
+LEADS_CSV_FIELDS = [
+    "id", "name", "username", "platform", "profile_url",
+    "bio", "followers", "target_type", "gender", "status",
+    "found_date", "dm_sent_date", "likes_sent", "notes",
+]
+
+
 def save_leads(leads):
-    """リードをCSVに追記"""
+    """リードをCSVに追記（ヘッダー14列に完全一致）"""
     existing_ids = load_existing_ids()
     new_leads = [l for l in leads if l["id"] not in existing_ids]
 
@@ -45,13 +52,11 @@ def save_leads(leads):
         return 0
 
     with open(config.LEADS_CSV, "a", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=[
-            "id", "name", "username", "platform", "profile_url",
-            "bio", "followers", "target_type", "status",
-            "found_date", "dm_sent_date", "notes"
-        ])
+        writer = csv.DictWriter(f, fieldnames=LEADS_CSV_FIELDS, extrasaction="ignore")
         for lead in new_leads:
-            writer.writerow(lead)
+            # 欠けているカラムは空文字で埋める
+            row = {k: lead.get(k, "") for k in LEADS_CSV_FIELDS}
+            writer.writerow(row)
 
     print(f"{len(new_leads)}件の新規リードを保存しました。")
     return len(new_leads)
@@ -75,7 +80,7 @@ def is_agency_member(bio):
 
 
 def classify_target(bio):
-    """プロフィールからターゲットタイプを推定"""
+    """プロフィールからターゲットタイプを推定（ライバー向けフロー）"""
     bio_lower = bio.lower() if bio else ""
 
     agency_keywords = ["代理店", "エージェント", "マネジメント", "事務所", "プロダクション", "法人"]
@@ -92,13 +97,64 @@ def classify_target(bio):
     return "beginner"
 
 
+def classify_agency_prospect(bio):
+    """代理店志望者かどうかを簡易判定して target_type を返す
+
+    - 副業・脱サラ・起業・独立・フリーランス・営業など、AGENCY_TARGET_BIO_KEYWORDS
+      にヒットした場合は "agency_prospect_hot"（本命）
+    - ヒットしなければ "agency_prospect"（キーワード検索に引っかかった広義の候補）
+    """
+    if not bio:
+        return "agency_prospect"
+    bio_lower = bio.lower()
+    for kw in getattr(config, "AGENCY_TARGET_BIO_KEYWORDS", []):
+        if kw.lower() in bio_lower:
+            return "agency_prospect_hot"
+    return "agency_prospect"
+
+
 # ============================================================
 # X (Twitter) 検索
 # ============================================================
-def search_twitter(dry_run=False):
-    """Xでキーワード検索してリード候補を取得"""
+def search_twitter(dry_run=False, target="liver"):
+    """Xでキーワード検索してリード候補を取得
+
+    target="liver"  : ライバー候補を探す（既存フロー）
+    target="agency" : 代理店パートナー候補（副業・独立志向の人）を探す
+    """
     if dry_run:
-        print("[DRY RUN] Twitter検索をシミュレート")
+        print(f"[DRY RUN] Twitter検索をシミュレート (target={target})")
+        if target == "agency":
+            return [
+                {
+                    "id": "tw_demo_agency_001",
+                    "name": "テスト副業ユーザー",
+                    "username": "test_sidejob_1",
+                    "platform": "twitter",
+                    "profile_url": "https://x.com/test_sidejob_1",
+                    "bio": "副業で月10万目指してます。独立したい30代",
+                    "followers": 420,
+                    "target_type": "agency_prospect_hot",
+                    "status": "未接触",
+                    "found_date": datetime.now().strftime("%Y-%m-%d"),
+                    "dm_sent_date": "",
+                    "notes": "キーワード: 副業 月10万 (agency)",
+                },
+                {
+                    "id": "tw_demo_agency_002",
+                    "name": "テスト営業マン",
+                    "username": "test_sales_2",
+                    "platform": "twitter",
+                    "profile_url": "https://x.com/test_sales_2",
+                    "bio": "営業12年目。ストック収入ほしい",
+                    "followers": 1200,
+                    "target_type": "agency_prospect_hot",
+                    "status": "未接触",
+                    "found_date": datetime.now().strftime("%Y-%m-%d"),
+                    "dm_sent_date": "",
+                    "notes": "キーワード: ストック収入 (agency)",
+                },
+            ]
         return [
             {
                 "id": "tw_demo_001",
@@ -139,7 +195,20 @@ def search_twitter(dry_run=False):
     client = tweepy.Client(bearer_token=config.TWITTER_BEARER_TOKEN)
     leads = []
 
-    for keyword in config.TWITTER_SEARCH_KEYWORDS:
+    if target == "agency":
+        keywords = getattr(config, "AGENCY_TWITTER_KEYWORDS", [])
+        # 代理店志望者を探すフローでは「ライバー事務所所属者スキップ」は不要
+        # （むしろライバー経験者は代理店として強い）
+        skip_agency_members = False
+    else:
+        keywords = getattr(config, "TWITTER_SEARCH_KEYWORDS", [])
+        skip_agency_members = True
+
+    if not keywords:
+        print(f"[Twitter] 検索キーワードが設定されていません (target={target})")
+        return []
+
+    for keyword in keywords:
         try:
             response = client.search_recent_tweets(
                 query=f"{keyword} -is:retweet lang:ja",
@@ -159,12 +228,18 @@ def search_twitter(dry_run=False):
                 if not user:
                     continue
 
-                # 事務所所属ライバーはスキップ（法的リスク回避）
-                if is_agency_member(user.description or ""):
+                # 事務所所属ライバーはスキップ（ライバー勧誘時のみ、法的リスク回避）
+                if skip_agency_members and is_agency_member(user.description or ""):
                     print(f"  [スキップ] @{user.username} - 事務所所属の可能性あり")
                     continue
 
-                target_type = classify_target(user.description or "")
+                if target == "agency":
+                    target_type = classify_agency_prospect(user.description or "")
+                    note_suffix = " (agency)"
+                else:
+                    target_type = classify_target(user.description or "")
+                    note_suffix = ""
+
                 leads.append({
                     "id": f"tw_{user.id}",
                     "name": user.name,
@@ -177,7 +252,7 @@ def search_twitter(dry_run=False):
                     "status": "未接触",
                     "found_date": datetime.now().strftime("%Y-%m-%d"),
                     "dm_sent_date": "",
-                    "notes": f"キーワード: {keyword}",
+                    "notes": f"キーワード: {keyword}{note_suffix}",
                 })
 
             print(f"[Twitter] '{keyword}' で {len(response.data)} 件取得")
@@ -191,10 +266,31 @@ def search_twitter(dry_run=False):
 # ============================================================
 # Instagram 検索
 # ============================================================
-def search_instagram(dry_run=False):
-    """Instagramでハッシュタグ検索してリード候補を取得"""
+def search_instagram(dry_run=False, target="liver"):
+    """Instagramでハッシュタグ検索してリード候補を取得
+
+    target="liver"  : ライバー候補（既存フロー、INSTAGRAM_HASHTAGS を使用）
+    target="agency" : 代理店パートナー候補（AGENCY_INSTAGRAM_HASHTAGS を使用）
+    """
     if dry_run:
-        print("[DRY RUN] Instagram検索をシミュレート")
+        print(f"[DRY RUN] Instagram検索をシミュレート (target={target})")
+        if target == "agency":
+            return [
+                {
+                    "id": "ig_demo_agency_001",
+                    "name": "副業準備中のテスト",
+                    "username": "ig_sidejob_test",
+                    "platform": "instagram",
+                    "profile_url": "https://instagram.com/ig_sidejob_test",
+                    "bio": "副業女子｜在宅ワークで月10万目指す",
+                    "followers": 680,
+                    "target_type": "agency_prospect_hot",
+                    "status": "未接触",
+                    "found_date": datetime.now().strftime("%Y-%m-%d"),
+                    "dm_sent_date": "",
+                    "notes": "ハッシュタグ: #副業女子 (agency)",
+                },
+            ]
         return [
             {
                 "id": "ig_demo_001",
@@ -227,7 +323,16 @@ def search_instagram(dry_run=False):
 
     leads = []
 
-    for hashtag in config.INSTAGRAM_HASHTAGS:
+    if target == "agency":
+        hashtags = getattr(config, "AGENCY_INSTAGRAM_HASHTAGS", [])
+    else:
+        hashtags = getattr(config, "INSTAGRAM_HASHTAGS", [])
+
+    if not hashtags:
+        print(f"[Instagram] ハッシュタグが設定されていません (target={target})")
+        return []
+
+    for hashtag in hashtags:
         try:
             medias = cl.hashtag_medias_recent(hashtag, amount=20)
 
@@ -243,7 +348,13 @@ def search_instagram(dry_run=False):
                 except Exception:
                     continue
 
-                target_type = classify_target(user_info.biography or "")
+                if target == "agency":
+                    target_type = classify_agency_prospect(user_info.biography or "")
+                    note_suffix = " (agency)"
+                else:
+                    target_type = classify_target(user_info.biography or "")
+                    note_suffix = ""
+
                 leads.append({
                     "id": f"ig_{user_id}",
                     "name": user_info.full_name or user_info.username,
@@ -256,7 +367,7 @@ def search_instagram(dry_run=False):
                     "status": "未接触",
                     "found_date": datetime.now().strftime("%Y-%m-%d"),
                     "dm_sent_date": "",
-                    "notes": f"ハッシュタグ: #{hashtag}",
+                    "notes": f"ハッシュタグ: #{hashtag}{note_suffix}",
                 })
 
             print(f"[Instagram] '#{hashtag}' で {len(seen_users)} 件取得")
@@ -268,27 +379,37 @@ def search_instagram(dry_run=False):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="ライバー候補リード検索")
+    parser = argparse.ArgumentParser(description="ライバー・代理店パートナー候補リード検索")
     parser.add_argument("--dry-run", action="store_true", help="APIを呼ばずにテスト実行")
     parser.add_argument("--twitter-only", action="store_true", help="Twitterのみ検索")
     parser.add_argument("--instagram-only", action="store_true", help="Instagramのみ検索")
+    parser.add_argument(
+        "--target",
+        choices=["liver", "agency", "both"],
+        default="liver",
+        help="検索対象: liver=ライバー候補(デフォルト), agency=代理店志望者, both=両方",
+    )
     args = parser.parse_args()
 
     init_leads_csv()
 
+    targets = ["liver", "agency"] if args.target == "both" else [args.target]
     all_leads = []
 
-    if not args.instagram_only:
-        print("=== X (Twitter) 検索開始 ===")
-        tw_leads = search_twitter(dry_run=args.dry_run)
-        all_leads.extend(tw_leads)
-        print(f"Twitter: {len(tw_leads)}件のリード候補")
+    for t in targets:
+        print(f"\n########## target={t} ##########")
 
-    if not args.twitter_only:
-        print("\n=== Instagram 検索開始 ===")
-        ig_leads = search_instagram(dry_run=args.dry_run)
-        all_leads.extend(ig_leads)
-        print(f"Instagram: {len(ig_leads)}件のリード候補")
+        if not args.instagram_only:
+            print(f"=== X (Twitter) 検索開始 [{t}] ===")
+            tw_leads = search_twitter(dry_run=args.dry_run, target=t)
+            all_leads.extend(tw_leads)
+            print(f"Twitter[{t}]: {len(tw_leads)}件のリード候補")
+
+        if not args.twitter_only:
+            print(f"\n=== Instagram 検索開始 [{t}] ===")
+            ig_leads = search_instagram(dry_run=args.dry_run, target=t)
+            all_leads.extend(ig_leads)
+            print(f"Instagram[{t}]: {len(ig_leads)}件のリード候補")
 
     print(f"\n=== 合計: {len(all_leads)}件のリード候補 ===")
     saved = save_leads(all_leads)
