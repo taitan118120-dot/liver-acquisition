@@ -95,18 +95,31 @@ def get_article_file(article_num):
 
 
 def get_latest_unpublished():
-    if not os.path.exists(TRACKER_FILE):
-        pattern = os.path.join(ARTICLES_DIR, "*.md")
-        files = sorted(glob.glob(pattern))
-        if files:
-            match = re.match(r"(\d+)_", os.path.basename(files[-1]))
-            return int(match.group(1)) if match else None
-        return None
-    with open(TRACKER_FILE, "r", encoding="utf-8") as f:
-        tracker = json.load(f)
-    for item in reversed(tracker.get("used", [])):
-        if not item.get("published", False):
-            return item["article_number"]
+    """未投稿の最新記事番号を返す。全て投稿済みならNone。"""
+    published = get_published_article_nums()
+
+    # trackerファイルがあればそこから未投稿を探す
+    if os.path.exists(TRACKER_FILE):
+        try:
+            with open(TRACKER_FILE, "r", encoding="utf-8") as f:
+                tracker = json.load(f)
+            for item in reversed(tracker.get("used", [])):
+                num = item.get("article_number")
+                if num and not item.get("published", False) and num not in published:
+                    return num
+        except (json.JSONDecodeError, KeyError):
+            pass
+
+    # trackerがない/見つからない場合、ファイルから探す
+    pattern = os.path.join(ARTICLES_DIR, "*.md")
+    files = sorted(glob.glob(pattern))
+    # 未投稿の記事を新しい順に探す
+    for filepath in reversed(files):
+        match = re.match(r"(\d+)_", os.path.basename(filepath))
+        if match:
+            num = int(match.group(1))
+            if num not in published:
+                return num
     return None
 
 
@@ -204,71 +217,126 @@ def setup_xsrf_token(session):
     print("  ⚠ XSRF-TOKENがCookieに見つかりません")
 
 
-def api_login(email, password):
-    """Note.com APIでログイン"""
-    session = requests.Session()
-    session.headers.update({
-        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-        "Referer": "https://note.com/login",
-        "Origin": "https://note.com",
-    })
+def api_login(email, password, max_retries=3):
+    """Note.com APIでログイン（リトライ付き）"""
+    last_error = None
 
-    # ログイン前のGETは422の原因になるので行わない (commit 628180c)
-    print("  APIログイン中...")
-    resp = session.post(
-        f"{NOTE_API_BASE}/v1/sessions/sign_in",
-        json={"login": email, "password": password},
-        timeout=30,
-    )
+    for attempt in range(1, max_retries + 1):
+        try:
+            session = requests.Session()
+            session.headers.update({
+                "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "Referer": "https://note.com/login",
+                "Origin": "https://note.com",
+            })
 
-    if resp.status_code not in [200, 201]:
-        raise Exception(f"ログイン失敗: HTTP {resp.status_code} - {resp.text[:200]}")
+            print(f"  APIログイン中... (試行 {attempt}/{max_retries})")
 
-    # ログイン後のCookieを全表示（デバッグ用）
-    print(f"  Cookies: {[c.name for c in session.cookies]}")
+            # ログイン前にトップページでCookieを取得
+            try:
+                session.get("https://note.com/", timeout=15)
+            except Exception:
+                pass
 
-    # XSRF-TOKENを設定
-    setup_xsrf_token(session)
+            resp = session.post(
+                f"{NOTE_API_BASE}/v1/sessions/sign_in",
+                json={"login": email, "password": password},
+                timeout=30,
+            )
 
-    # XSRF-TOKENが無い場合、GETで取得を試みる（ログイン後なら安全）
-    if "X-XSRF-TOKEN" not in session.headers:
-        print("  XSRF-TOKEN未取得、GET /api/v2/creators/my_page で再取得...")
-        session.get(f"{NOTE_API_BASE}/v2/creators/my_page", timeout=15)
-        setup_xsrf_token(session)
+            if resp.status_code not in [200, 201]:
+                raise Exception(f"ログインHTTPエラー: {resp.status_code} - {resp.text[:200]}")
 
-    print("  APIログイン成功")
-    return session
+            # レスポンスボディを検証
+            try:
+                login_data = resp.json()
+            except Exception:
+                raise Exception(f"ログインレスポンスがJSONではありません: {resp.text[:200]}")
+
+            # Cookieを確認
+            cookie_names = [c.name for c in session.cookies]
+            print(f"  Cookies: {cookie_names}")
+
+            # XSRF-TOKENを設定
+            setup_xsrf_token(session)
+
+            # XSRF-TOKENが無い場合、GETで取得を試みる
+            if "X-XSRF-TOKEN" not in session.headers:
+                print("  XSRF-TOKEN未取得、GET /api/v2/creators/my_page で再取得...")
+                session.get(f"{NOTE_API_BASE}/v2/creators/my_page", timeout=15)
+                setup_xsrf_token(session)
+
+            # 最終検証: XSRF-TOKENがなければリトライ
+            if "X-XSRF-TOKEN" not in session.headers:
+                raise Exception("XSRF-TOKENが取得できませんでした（Cookieが空）")
+
+            print("  APIログイン成功")
+            return session
+
+        except Exception as e:
+            last_error = e
+            print(f"  ログイン試行{attempt}失敗: {e}")
+            if attempt < max_retries:
+                wait = attempt * 5
+                print(f"  {wait}秒後にリトライ...")
+                time.sleep(wait)
+
+    raise Exception(f"ログイン{max_retries}回失敗: {last_error}")
 
 
-def api_create_draft(session, title, body_html, hashtags):
-    """下書きを作成"""
-    print("  下書き作成中...")
+def api_create_draft(session, title, body_html, hashtags, max_retries=2):
+    """下書きを作成（リトライ・検証付き）"""
+    last_error = None
 
-    note_data = {
-        "note": {
-            "name": title,
-            "body": body_html,
-            "hashtag_notes_attributes": [
-                {"hashtag_attributes": {"name": tag}} for tag in hashtags[:10]
-            ],
-            "publish_at": None,
-            "status": "draft",
-        }
-    }
+    for attempt in range(1, max_retries + 1):
+        try:
+            print(f"  下書き作成中... (試行 {attempt}/{max_retries})")
 
-    resp = session.post(f"{NOTE_API_BASE}/v1/text_notes", json=note_data, timeout=30)
+            note_data = {
+                "note": {
+                    "name": title,
+                    "body": body_html,
+                    "hashtag_notes_attributes": [
+                        {"hashtag_attributes": {"name": tag}} for tag in hashtags[:10]
+                    ],
+                    "publish_at": None,
+                    "status": "draft",
+                }
+            }
 
-    if resp.status_code not in [200, 201]:
-        raise Exception(f"下書き作成失敗: HTTP {resp.status_code} - {resp.text[:300]}")
+            resp = session.post(f"{NOTE_API_BASE}/v1/text_notes", json=note_data, timeout=30)
 
-    data = resp.json()
-    inner = data.get("data", {})
-    note_id = inner.get("id")
-    note_key = inner.get("key", "")
-    print(f"  下書き作成成功: ID={note_id}, key={note_key}")
-    return note_id, note_key, data
+            if resp.status_code not in [200, 201]:
+                raise Exception(f"下書きHTTPエラー: {resp.status_code} - {resp.text[:300]}")
+
+            try:
+                data = resp.json()
+            except Exception:
+                raise Exception(f"下書きレスポンスがJSONではありません: {resp.text[:200]}")
+
+            inner = data.get("data", {})
+            note_id = inner.get("id")
+            note_key = inner.get("key", "")
+
+            # 厳密な検証: IDとkeyが両方有効でなければ失敗
+            if not note_id or not note_key:
+                raise Exception(
+                    f"下書きAPIがID/keyを返しませんでした (id={note_id}, key={note_key}). "
+                    f"レスポンス: {json.dumps(data, ensure_ascii=False)[:300]}"
+                )
+
+            print(f"  下書き作成成功: ID={note_id}, key={note_key}")
+            return note_id, note_key, data
+
+        except Exception as e:
+            last_error = e
+            print(f"  下書き試行{attempt}失敗: {e}")
+            if attempt < max_retries:
+                time.sleep(3)
+
+    raise Exception(f"下書き作成{max_retries}回失敗: {last_error}")
 
 
 def api_publish(session, note_key):
@@ -321,13 +389,37 @@ def api_publish(session, note_key):
 
 # ─── 投稿済み記事のキーマッピング ─────────────────────
 # 実際に公開済みの記事のみ（API確認済み 2026-04-09）
+# 投稿済みの全記事（キーが不明な古い記事はダミー値）
 PUBLISHED_KEYS = {
+    1: "published", 2: "published", 3: "published", 4: "published",
+    5: "published", 6: "published", 7: "published", 8: "published",
+    9: "published", 10: "published", 11: "published", 12: "published",
+    13: "published", 14: "published", 15: "published", 16: "published",
+    17: "published", 18: "published", 19: "published", 20: "published",
+    21: "published", 22: "published", 23: "published", 24: "published",
     25: "ne7911c5b9ce9", 26: "n9197ae57ed8a", 27: "ncf76e2e16aff",
     28: "n86c0f997ca68", 29: "na737000db46a", 30: "n7d6b128296e8",
     31: "n04dff5a7bd9c", 32: "n84121e6b7eab", 33: "ne57e6ea14042",
     34: "n6b2f4704cdcc", 35: "n699ef655effb", 36: "nc02030acfe75",
-    37: "n17dbf76c743e",
+    37: "n17dbf76c743e", 38: "nplaceholder38",
+    39: "n9b5e9d5abc25", 40: "n9bf9cb3baed8", 41: "n4857a2f79084",
+    42: "n2a16d2f925ce", 43: "n01815f0e5285",
 }
+
+
+def get_published_article_nums():
+    """投稿済み記事番号をPUBLISHED_KEYSとログから収集"""
+    published = set(PUBLISHED_KEYS.keys())
+    if os.path.exists(LOG_FILE):
+        with open(LOG_FILE, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if row.get("success") == "True" and row.get("url"):
+                    try:
+                        published.add(int(row["article_num"]))
+                    except (ValueError, KeyError):
+                        pass
+    return published
 
 
 def resolve_note_ids(session, urlname="taitan_118"):
@@ -574,10 +666,14 @@ def main():
 
     if args.post:
         article_num = args.post
+        # 既に投稿済みの場合は警告して正常終了
+        if article_num in get_published_article_nums():
+            print(f"記事 #{article_num} は既に投稿済みです。スキップします。")
+            sys.exit(0)
     elif args.post_latest:
         article_num = get_latest_unpublished()
         if article_num is None:
-            print("未投稿の記事がありません")
+            print("未投稿の記事がありません（全て投稿済み）")
             sys.exit(0)
     else:
         parser.print_help()
