@@ -130,11 +130,16 @@ def run(generate_if_empty=False, source_type="auto", dry_run=False):
     if not unposted and generate_if_empty:
         print("未投稿コンテンツがないため、新規生成します...\n")
         try:
-            generate_posts(source_type=source_type, count=1, dry_run=dry_run)
+            result = generate_posts(source_type=source_type, count=1, dry_run=dry_run)
+            if not result:
+                # generate_posts内で全記事の生成に失敗（503等）
+                print("[WARNING] コンテンツ生成に失敗しました（API一時障害の可能性）")
+                print("  ワークフローリトライで再試行されます。")
+                sys.exit(1)  # exit(1)でワークフローレベルのリトライを発動
         except Exception as e:
             print(f"[WARNING] コンテンツ生成に失敗しました: {e}")
-            print("  次回スケジュール実行で再試行されます。")
-            return False, False  # 生成失敗は正常終了扱い（ワークフローを赤にしない）
+            print("  ワークフローリトライで再試行されます。")
+            sys.exit(1)  # exit(1)でワークフローレベルのリトライを発動
         # 再読み込み
         posts = load_posts()
         unposted = [

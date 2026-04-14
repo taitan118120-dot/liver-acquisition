@@ -28,11 +28,15 @@ concurrency:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   instagram-post:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -46,7 +50,7 @@ jobs:
       - name: 最新の投稿データを取得
         run: git pull --rebase origin main || true
 
-      - name: Instagram投稿実行
+      - name: Instagram投稿実行（リトライ付き）
         env:
           INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
           INSTAGRAM_BUSINESS_ID: ${{ secrets.INSTAGRAM_BUSINESS_ID }}
@@ -59,11 +63,24 @@ jobs:
           echo "Working directory: $(pwd)"
           SOURCE="${{ inputs.source || 'auto' }}"
           export PYTHONPATH="${{ github.workspace }}:${{ github.workspace }}/instagram"
-          if [ "${{ inputs.dry_run }}" = "true" ]; then
-            python instagram/ig_scheduler.py --generate --source "$SOURCE" --test
-          else
-            python instagram/ig_scheduler.py --generate --source "$SOURCE"
-          fi
+
+          # ワークフローレベルリトライ（Gemini 503対策: 3分間隔で最大3回）
+          MAX_ATTEMPTS=3
+          for attempt in $(seq 1 $MAX_ATTEMPTS); do
+            echo "=== 実行試行 $attempt/$MAX_ATTEMPTS ==="
+            if [ "${{ inputs.dry_run }}" = "true" ]; then
+              python instagram/ig_scheduler.py --generate --source "$SOURCE" --test && exit 0
+            else
+              python instagram/ig_scheduler.py --generate --source "$SOURCE" && exit 0
+            fi
+            EXIT_CODE=$?
+            if [ $attempt -lt $MAX_ATTEMPTS ]; then
+              echo "[WORKFLOW RETRY] 失敗(exit=$EXIT_CODE)、180秒後にリトライ..."
+              sleep 180
+            fi
+          done
+          echo "[ERROR] ${MAX_ATTEMPTS}回の試行がすべて失敗"
+          exit 1
 
       - name: 投稿データを保存
         if: always()

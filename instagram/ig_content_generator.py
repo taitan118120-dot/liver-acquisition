@@ -1078,8 +1078,12 @@ def generate_posts(source_type="auto", count=1, dry_run=False):
         remix_tag = " [REMIX]" if article.get("remix") else ""
         print(f"[{i+1}/{len(targets)}] {source_label}{remix_tag}: {article['title']}")
 
-        # キャプション生成
-        caption = generate_caption(article, dry_run=dry_run)
+        # キャプション生成（全モデル失敗時はこの投稿をスキップ）
+        try:
+            caption = generate_caption(article, dry_run=dry_run)
+        except Exception as e:
+            print(f"  [ERROR] キャプション生成失敗、この投稿をスキップ: {e}")
+            continue
         print(f"  キャプション: {caption[:80]}...")
 
         # 画像生成
