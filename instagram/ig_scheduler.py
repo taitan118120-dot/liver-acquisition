@@ -129,7 +129,12 @@ def run(generate_if_empty=False, source_type="auto", dry_run=False):
     # 未投稿がなければ生成（スキップ済みは数えない）
     if not unposted and generate_if_empty:
         print("未投稿コンテンツがないため、新規生成します...\n")
-        generate_posts(source_type=source_type, count=1, dry_run=dry_run)
+        try:
+            generate_posts(source_type=source_type, count=1, dry_run=dry_run)
+        except Exception as e:
+            print(f"[WARNING] コンテンツ生成に失敗しました: {e}")
+            print("  次回スケジュール実行で再試行されます。")
+            return False, False  # 生成失敗は正常終了扱い（ワークフローを赤にしない）
         # 再読み込み
         posts = load_posts()
         unposted = [

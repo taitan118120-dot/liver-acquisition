@@ -243,24 +243,37 @@ def generate_caption(article, dry_run=False):
 """
 
     import time as _time
-    for attempt in range(3):
-        try:
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt,
-                config=genai.types.GenerateContentConfig(
-                    temperature=0.85,  # 構成は固定だが文体に多様性を出す
-                ),
-            )
-            text = response.text.strip()
-            return _polish_caption(text)
-        except Exception as e:
-            if attempt < 2:
-                wait = 10 * (attempt + 1)
-                print(f"  [RETRY] キャプション生成失敗({e})、{wait}秒後にリトライ...")
-                _time.sleep(wait)
-            else:
-                raise
+
+    # 503対策: モデルフォールバック付き指数バックオフリトライ
+    models_to_try = ["gemini-2.5-flash", "gemini-2.0-flash"]
+    for model_name in models_to_try:
+        max_retries = 5
+        for attempt in range(max_retries):
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=genai.types.GenerateContentConfig(
+                        temperature=0.85,
+                    ),
+                )
+                text = response.text.strip()
+                return _polish_caption(text)
+            except Exception as e:
+                is_server_error = "503" in str(e) or "UNAVAILABLE" in str(e) or "500" in str(e)
+                if attempt < max_retries - 1 and is_server_error:
+                    wait = min(15 * (2 ** attempt), 120)  # 15, 30, 60, 120秒
+                    print(f"  [RETRY] {model_name} キャプション生成失敗({e})、{wait}秒後にリトライ ({attempt+1}/{max_retries})...")
+                    _time.sleep(wait)
+                elif attempt < max_retries - 1:
+                    wait = 10 * (attempt + 1)
+                    print(f"  [RETRY] {model_name} キャプション生成失敗({e})、{wait}秒後にリトライ ({attempt+1}/{max_retries})...")
+                    _time.sleep(wait)
+                else:
+                    print(f"  [WARNING] {model_name} で{max_retries}回失敗、次のモデルを試行...")
+                    break  # 次のモデルへフォールバック
+
+    raise RuntimeError("全モデルでキャプション生成に失敗しました")
 
 
 # =====================================================================
@@ -976,8 +989,9 @@ def generate_image(article, index, dry_run=False):
 
     import time as _time
 
-    # Imagen 4.0で画像生成（リトライ付き）
-    for attempt in range(3):
+    # Imagen 4.0で画像生成（503対策: 指数バックオフリトライ）
+    max_retries = 5
+    for attempt in range(max_retries):
         try:
             response = client.models.generate_images(
                 model="imagen-4.0-generate-001",
@@ -999,9 +1013,10 @@ def generate_image(article, index, dry_run=False):
                     print(f"  [WARNING] テキスト合成失敗: {e}")
                 return image_path
         except Exception as e:
-            if attempt < 2:
-                wait = 15 * (attempt + 1)
-                print(f"  [RETRY] Imagen 4.0失敗({e})、{wait}秒後にリトライ...")
+            is_server_error = "503" in str(e) or "UNAVAILABLE" in str(e) or "500" in str(e)
+            if attempt < max_retries - 1:
+                wait = min(15 * (2 ** attempt), 120) if is_server_error else 15 * (attempt + 1)
+                print(f"  [RETRY] Imagen 4.0失敗({e})、{wait}秒後にリトライ ({attempt+1}/{max_retries})...")
                 _time.sleep(wait)
             else:
                 print(f"  [WARNING] Imagen 4.0生成失敗、フォールバック: {e}")
