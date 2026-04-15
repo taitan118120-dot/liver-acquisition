@@ -1,19 +1,29 @@
-name: 自動フォロー
+name: 自動フォロー (停止中)
 
+# 2026-04-15: 自動フォロー停止。
+# 理由: フォローバック率ほぼ0。アカウント(@taitan_LIVER)のインプ/エンゲージが極小
+#       状態で follow-only 戦略は効果が出ない。コンテンツ強化優先に切替。
+# 再開したい場合: 下の schedule のコメントを外す。
 on:
-  schedule:
-    # 1日2ラン × 13-17人 = 実質26-34人/日
-    # 各ラン 8-15分間隔 × 最大17人 = 最大約4.5時間 (timeout 350分内で完走)
-    - cron: '0 0 * * *'   # JST 9:00 (1ラン目)
-    - cron: '0 6 * * *'   # JST 15:00 (2ラン目)
-  workflow_dispatch:
+  # schedule:
+  #   - cron: '0 0 * * *'   # JST 9:00
+  #   - cron: '0 6 * * *'   # JST 15:00
+  workflow_dispatch:  # 手動実行のみ残す（テスト用）
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   follow:
     runs-on: ubuntu-latest
     timeout-minutes: 350
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'

@@ -6,12 +6,20 @@ on:
     - cron: '0 23 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   list-add:
     runs-on: ubuntu-latest
     timeout-minutes: 350  # 最大6時間弱（GitHub Actionsの上限）
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-python@v5
         with:

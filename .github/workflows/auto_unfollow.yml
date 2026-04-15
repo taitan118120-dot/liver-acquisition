@@ -1,9 +1,9 @@
-name: 週次分析
+name: フォロバなしアンフォロー
 
 on:
   schedule:
-    # 毎週月曜 JST 9:00
-    - cron: '0 0 * * 1'
+    # 毎日 JST 14:42（フォロー/フォロワー比を健全に保つ）
+    - cron: '42 5 * * *'
   workflow_dispatch:
 
 permissions:
@@ -13,8 +13,9 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  analyze:
+  unfollow:
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v5
         with:
@@ -26,19 +27,19 @@ jobs:
 
       - run: pip install tweepy
 
-      - name: 投稿分析
+      - name: アンフォロー実行
         env:
           TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
           TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
           TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
           TWITTER_ACCESS_TOKEN_SECRET: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
           TWITTER_BEARER_TOKEN: ${{ secrets.TWITTER_BEARER_TOKEN }}
-        run: python cloud_analyze.py
+        run: python cloud_unfollow_noback.py
 
-      - name: レポート保存
+      - name: ログ保存
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add data/ || true
-          git diff --staged --quiet || git commit -m "週次分析レポート更新"
+          git diff --staged --quiet || git commit -m "アンフォローログ更新"
           git push || true
