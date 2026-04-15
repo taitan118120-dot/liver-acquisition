@@ -188,22 +188,32 @@ def upload_image_to_github_raw(image_path):
     return None
 
 
-def upload_image_public(image_path):
+def upload_image_public(image_path, exclude=None):
     """複数経路で画像をパブリックにアップロード（多層防御）。
     順番: imgBB → catbox → GitHub raw
+    exclude: 除外する経路名の集合 (例: {"imgbb"})。Instagramで拒否された経路を
+    次回以降スキップするために使う。
     """
-    url = upload_image_to_imgbb(image_path)
-    if url:
-        return url
-    print("[FALLBACK] imgBB失敗 → catbox.moe を試行")
-    url = upload_image_to_catbox(image_path)
-    if url:
-        return url
-    print("[FALLBACK] catbox失敗 → GitHub raw URL を試行")
-    url = upload_image_to_github_raw(image_path)
-    if url:
-        return url
-    return None
+    exclude = exclude or set()
+
+    if "imgbb" not in exclude:
+        url = upload_image_to_imgbb(image_path)
+        if url:
+            return "imgbb", url
+        print("[FALLBACK] imgBB失敗 → catbox.moe を試行")
+
+    if "catbox" not in exclude:
+        url = upload_image_to_catbox(image_path)
+        if url:
+            return "catbox", url
+        print("[FALLBACK] catbox失敗 → GitHub raw URL を試行")
+
+    if "github_raw" not in exclude:
+        url = upload_image_to_github_raw(image_path)
+        if url:
+            return "github_raw", url
+
+    return None, None
 
 
 class TokenExpiredError(Exception):
@@ -372,22 +382,20 @@ def post_to_instagram(image_path, caption, dry_run=False):
     print(f"  トークン先頭: {config.INSTAGRAM_ACCESS_TOKEN[:10]}...")
     print(f"  ビジネスID: {config.INSTAGRAM_BUSINESS_ID}")
 
-    # 画像URLは複数経路で最大 MAX_URL_ATTEMPTS 回まで試す
-    # 1回目: imgBB(検証付き) / 失敗→ catbox / 失敗→ GitHub raw
-    # Instagram側がcode=9004を返したら、次の経路で再アップロードして再挑戦
-    MAX_URL_ATTEMPTS = 3
-    used_urls = set()
+    # 画像ホスティングを段階的に試す（Instagram側で拒否されたら次の経路へ）
+    # 順番: imgBB → catbox → GitHub raw
+    tried_providers = set()
     last_perm_error = None
 
-    for url_attempt in range(MAX_URL_ATTEMPTS):
-        image_url = upload_image_public(image_path)
+    while True:
+        provider, image_url = upload_image_public(image_path, exclude=tried_providers)
         if not image_url:
-            return False, "全ての画像ホスティングが失敗", True  # 一時扱い（次回実行で再試行）
-        if image_url in used_urls:
-            # 同じURLしか取れない=試行しても同じ結果、別経路強制
-            # upload_image_public内で既にフォールバック試行済みなので諦める
-            break
-        used_urls.add(image_url)
+            if tried_providers:
+                # 一部経路で試したが全滅 → 永続エラー扱い（画像自体が問題の可能性）
+                return False, f"全ホスティング経路で拒否: {last_perm_error}", False
+            return False, "全ての画像ホスティングが失敗", True  # 一時扱い
+        tried_providers.add(provider)
+        print(f"  [PROVIDER] {provider} を使用: {image_url}")
 
         # 2. メディアコンテナを作成
         try:
@@ -396,9 +404,8 @@ def post_to_instagram(image_path, caption, dry_run=False):
             return False, f"トークン期限切れ: {e}", False  # 永続エラー
         except PermanentMediaError as e:
             last_perm_error = str(e)
-            print(f"[RETRY] 画像URL拒否 → 別ホスティング経路で再試行 ({url_attempt + 1}/{MAX_URL_ATTEMPTS})")
-            # 次のループで別経路を試す（imgBB→catbox→raw の順に degraded）
-            continue
+            print(f"[FALLBACK] {provider}の画像URLがInstagramに拒否されました → 別ホスティング経路で再試行")
+            continue  # 次の経路を試す
 
         if not container_id:
             return False, "Instagramメディアコンテナ作成失敗", True  # タイムアウト系
@@ -412,9 +419,6 @@ def post_to_instagram(image_path, caption, dry_run=False):
         if post_id:
             return True, None, False
         return False, "Instagram投稿公開失敗", True
-
-    # 全URL経路で永続エラー → 画像自体が invalid の可能性が高い
-    return False, f"画像URLが全経路で拒否: {last_perm_error}", False  # 永続エラー扱い
 
 
 def log_post(post_id, caption, success):
