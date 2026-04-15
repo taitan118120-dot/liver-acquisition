@@ -126,7 +126,9 @@ def generate_with_gemini(theme, top_posts):
     client = genai.Client(api_key=GEMINI_API_KEY)
 
     # リトライ（Gemini 503対策）
-    models = ["gemini-2.0-flash", "gemini-1.5-flash"]
+    # 2026-04: gemini-2.0-flash / 1.5-flash は deprecated/404。
+    # 2.5-flash → 2.5-flash-lite → 3.1-flash-lite-preview の順にフォールバック。
+    models = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-3.1-flash-lite-preview"]
     for model_name in models:
         for attempt in range(3):
             try:
