@@ -46,33 +46,163 @@ def _resolve_image_path(image_path):
     return os.path.join(PROJECT_ROOT, image_path)
 
 
-def upload_image_to_imgbb(image_path):
-    """画像をimgBBにアップロードして公開URLを取得"""
+def _verify_image_url(url, timeout=10):
+    """アップロードした画像URLが本当にimage/*として配信されるか検証。
+    Instagram Graph APIは Content-Type が image/* でないと 9004/2207052 を返す。
+    """
+    try:
+        # HEAD で Content-Type を確認（一部CDNはHEADにContent-Typeを返さないのでGETにフォールバック）
+        r = requests.head(url, allow_redirects=True, timeout=timeout)
+        ct = r.headers.get("Content-Type", "")
+        if not ct or "image" not in ct.lower():
+            r = requests.get(url, stream=True, allow_redirects=True, timeout=timeout)
+            ct = r.headers.get("Content-Type", "")
+            # 先頭数バイトでマジックナンバー確認
+            head_bytes = next(r.iter_content(16), b"")
+            r.close()
+            if head_bytes.startswith(b"\x89PNG") or head_bytes.startswith(b"\xff\xd8\xff") or head_bytes.startswith(b"GIF8"):
+                return True
+            if "image" in ct.lower():
+                return True
+            print(f"  [VERIFY] NG: Content-Type={ct!r} head={head_bytes[:8]!r}")
+            return False
+        return True
+    except Exception as e:
+        print(f"  [VERIFY] 検証失敗(続行): {e}")
+        return True  # 検証自体が失敗したら判断できないので素通り
+
+
+def upload_image_to_imgbb(image_path, max_retries=3):
+    """画像をimgBBにアップロードして公開URLを取得（検証+リトライ付き）"""
     imgbb_key = os.environ.get("IMGBB_API_KEY", "")
     if not imgbb_key:
-        print("[ERROR] IMGBB_API_KEY が設定されていません。")
-        print("  https://api.imgbb.com/ で無料APIキーを取得してください。")
+        print("[WARN] IMGBB_API_KEY が未設定、imgBBはスキップ")
         return None
 
+    import base64
     with open(image_path, "rb") as f:
-        import base64
         image_data = base64.b64encode(f.read()).decode("utf-8")
 
-    response = requests.post(
-        "https://api.imgbb.com/1/upload",
-        data={
-            "key": imgbb_key,
-            "image": image_data,
-            "expiration": 86400,  # 24時間で自動削除
-        },
-    )
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(
+                "https://api.imgbb.com/1/upload",
+                data={
+                    "key": imgbb_key,
+                    "image": image_data,
+                    "expiration": 86400,  # 24時間で自動削除
+                },
+                timeout=60,
+            )
+        except requests.exceptions.RequestException as e:
+            print(f"  [RETRY] imgBBリクエスト失敗: {e} ({attempt + 1}/{max_retries})")
+            time.sleep(3 * (attempt + 1))
+            continue
 
-    if response.status_code == 200:
-        url = response.json()["data"]["url"]
-        print(f"  画像アップロード完了: {url}")
+        if response.status_code != 200:
+            print(f"  [RETRY] imgBB HTTP {response.status_code}: {response.text[:200]} ({attempt + 1}/{max_retries})")
+            time.sleep(3 * (attempt + 1))
+            continue
+
+        try:
+            data = response.json().get("data", {})
+        except ValueError:
+            print(f"  [RETRY] imgBB JSON解析失敗 ({attempt + 1}/{max_retries})")
+            time.sleep(3 * (attempt + 1))
+            continue
+
+        # imgbb は data.image.url が最も確実な直接画像URL
+        url = (
+            data.get("image", {}).get("url")
+            or data.get("url")
+            or data.get("display_url")
+        )
+        if not url:
+            print(f"  [RETRY] imgBBレスポンスからURL取れず ({attempt + 1}/{max_retries})")
+            time.sleep(3 * (attempt + 1))
+            continue
+
+        # 配信URLが実際に image/* を返すか検証
+        if _verify_image_url(url):
+            print(f"  imgBBアップロード完了: {url}")
+            return url
+
+        print(f"  [RETRY] imgBB URL検証失敗 ({attempt + 1}/{max_retries}): {url}")
+        time.sleep(3 * (attempt + 1))
+
+    print("[WARN] imgBBアップロードが全て失敗または検証NG")
+    return None
+
+
+def upload_image_to_catbox(image_path, max_retries=2):
+    """catbox.moe にアップロード（imgBBのフォールバック）。
+    匿名で使える永続ホスティング。Instagram Graph APIが受け付けるCDN。
+    """
+    for attempt in range(max_retries):
+        try:
+            with open(image_path, "rb") as f:
+                response = requests.post(
+                    "https://catbox.moe/user/api.php",
+                    data={"reqtype": "fileupload"},
+                    files={"fileToUpload": f},
+                    timeout=60,
+                )
+        except requests.exceptions.RequestException as e:
+            print(f"  [RETRY] catbox失敗: {e} ({attempt + 1}/{max_retries})")
+            time.sleep(3 * (attempt + 1))
+            continue
+
+        if response.status_code == 200 and response.text.startswith("https://"):
+            url = response.text.strip()
+            if _verify_image_url(url):
+                print(f"  catboxアップロード完了: {url}")
+                return url
+            print(f"  [RETRY] catbox URL検証失敗: {url}")
+        else:
+            print(f"  [RETRY] catbox HTTP {response.status_code}: {response.text[:200]}")
+        time.sleep(3 * (attempt + 1))
+
+    print("[WARN] catboxアップロードが全て失敗")
+    return None
+
+
+def upload_image_to_github_raw(image_path):
+    """GitHub raw URL を使う（リポジトリが public の場合のみ）。
+    画像が既に main ブランチに push されている必要がある。
+    """
+    repo = os.environ.get("GITHUB_REPOSITORY", "")
+    if not repo:
+        return None
+    # image_path をリポジトリ相対パスに正規化
+    try:
+        repo_root = PROJECT_ROOT
+        rel_path = os.path.relpath(image_path, repo_root).replace(os.sep, "/")
+    except Exception:
+        return None
+    if rel_path.startswith(".."):
+        return None
+    url = f"https://raw.githubusercontent.com/{repo}/main/{rel_path}"
+    if _verify_image_url(url):
+        print(f"  GitHub raw URLで配信: {url}")
         return url
+    return None
 
-    print(f"[ERROR] imgBBアップロード失敗: {response.text}")
+
+def upload_image_public(image_path):
+    """複数経路で画像をパブリックにアップロード（多層防御）。
+    順番: imgBB → catbox → GitHub raw
+    """
+    url = upload_image_to_imgbb(image_path)
+    if url:
+        return url
+    print("[FALLBACK] imgBB失敗 → catbox.moe を試行")
+    url = upload_image_to_catbox(image_path)
+    if url:
+        return url
+    print("[FALLBACK] catbox失敗 → GitHub raw URL を試行")
+    url = upload_image_to_github_raw(image_path)
+    if url:
+        return url
     return None
 
 
@@ -81,9 +211,15 @@ class TokenExpiredError(Exception):
     pass
 
 
+class PermanentMediaError(Exception):
+    """画像URLがInstagramに受け付けられない永続エラー（別URLでリトライ推奨）"""
+    pass
+
+
 def create_media_container(image_url, caption, max_retries=3):
     """Instagram Graph APIでメディアコンテナを作成（リトライ付き）。
     TokenExpiredError: トークン期限切れ時に送出。
+    PermanentMediaError: 画像URL起因の永続エラー時に送出（別URLで再試行を促す）。
     """
     url = f"{GRAPH_API_BASE}/{config.INSTAGRAM_BUSINESS_ID}/media"
     payload = {
@@ -122,6 +258,17 @@ def create_media_container(image_url, caption, max_retries=3):
         if error_code == 190:
             print(f"[ERROR] トークン期限切れ (code={error_code}, subcode={error_subcode}): {error_msg}")
             raise TokenExpiredError(error_msg)
+
+        # 画像URL起因の永続エラー（9004系）はリトライ無意味、別URLで再試行を促す
+        # 2207052: Only photo or video can be accepted as media type
+        # 2207003: The image is too small/large or invalid format
+        # 2207026: The image cannot be downloaded
+        if error_code == 9004 or error_subcode in (2207052, 2207003, 2207026) \
+                or "only photo or video" in error_msg.lower() \
+                or "cannot be downloaded" in error_msg.lower() \
+                or "invalid image" in error_msg.lower():
+            print(f"[PERMANENT] 画像URL拒否 (code={error_code}, subcode={error_subcode}): {error_msg}")
+            raise PermanentMediaError(f"code={error_code}/subcode={error_subcode}: {error_msg}")
 
         # タイムアウト系エラーはリトライ（code=-2はGraph APIのタイムアウト）
         if error_code in (-2, 2) or "timeout" in error_msg.lower():
@@ -225,28 +372,49 @@ def post_to_instagram(image_path, caption, dry_run=False):
     print(f"  トークン先頭: {config.INSTAGRAM_ACCESS_TOKEN[:10]}...")
     print(f"  ビジネスID: {config.INSTAGRAM_BUSINESS_ID}")
 
-    # 1. 画像を公開URLにアップロード
-    image_url = upload_image_to_imgbb(image_path)
-    if not image_url:
-        return False, "imgBBへの画像アップロード失敗", True  # imgBB障害は一時的
+    # 画像URLは複数経路で最大 MAX_URL_ATTEMPTS 回まで試す
+    # 1回目: imgBB(検証付き) / 失敗→ catbox / 失敗→ GitHub raw
+    # Instagram側がcode=9004を返したら、次の経路で再アップロードして再挑戦
+    MAX_URL_ATTEMPTS = 3
+    used_urls = set()
+    last_perm_error = None
 
-    # 2. メディアコンテナを作成
-    try:
-        container_id = create_media_container(image_url, caption)
-    except TokenExpiredError as e:
-        return False, f"トークン期限切れ: {e}", False  # 永続エラー
-    if not container_id:
-        return False, "Instagramメディアコンテナ作成失敗", True  # タイムアウト系
+    for url_attempt in range(MAX_URL_ATTEMPTS):
+        image_url = upload_image_public(image_path)
+        if not image_url:
+            return False, "全ての画像ホスティングが失敗", True  # 一時扱い（次回実行で再試行）
+        if image_url in used_urls:
+            # 同じURLしか取れない=試行しても同じ結果、別経路強制
+            # upload_image_public内で既にフォールバック試行済みなので諦める
+            break
+        used_urls.add(image_url)
 
-    # 3. コンテナの処理完了を待つ
-    if not check_container_status(container_id):
-        return False, "コンテナ処理タイムアウトまたはエラー", True
+        # 2. メディアコンテナを作成
+        try:
+            container_id = create_media_container(image_url, caption)
+        except TokenExpiredError as e:
+            return False, f"トークン期限切れ: {e}", False  # 永続エラー
+        except PermanentMediaError as e:
+            last_perm_error = str(e)
+            print(f"[RETRY] 画像URL拒否 → 別ホスティング経路で再試行 ({url_attempt + 1}/{MAX_URL_ATTEMPTS})")
+            # 次のループで別経路を試す（imgBB→catbox→raw の順に degraded）
+            continue
 
-    # 4. 公開
-    post_id = publish_media(container_id)
-    if post_id:
-        return True, None, False
-    return False, "Instagram投稿公開失敗", True
+        if not container_id:
+            return False, "Instagramメディアコンテナ作成失敗", True  # タイムアウト系
+
+        # 3. コンテナの処理完了を待つ
+        if not check_container_status(container_id):
+            return False, "コンテナ処理タイムアウトまたはエラー", True
+
+        # 4. 公開
+        post_id = publish_media(container_id)
+        if post_id:
+            return True, None, False
+        return False, "Instagram投稿公開失敗", True
+
+    # 全URL経路で永続エラー → 画像自体が invalid の可能性が高い
+    return False, f"画像URLが全経路で拒否: {last_perm_error}", False  # 永続エラー扱い
 
 
 def log_post(post_id, caption, success):
@@ -316,56 +484,77 @@ MAX_RETRY = 5  # 永続エラーのみカウント（一時エラーはカウン
 def post_next(dry_run=False):
     """未投稿の次のコンテンツを投稿。(success, is_transient) を返す。
     is_transient: 一時エラーかどうか（スケジューラのリトライ判断に使う）
+
+    永続エラー発生時はキュー内の次の未投稿を自動で試す（最大3件まで）。
+    これにより1つの壊れた投稿がキュー全体をブロックしない。
     """
-    posts = load_posts()
-    unposted = [
-        p for p in posts
-        if not p["posted"] and p.get("image_path") and p.get("fail_count", 0) < MAX_RETRY
-    ]
+    MAX_POST_CANDIDATES = 3  # 1回の実行で試す最大投稿数
 
-    if not unposted:
-        print("[INFO] 投稿可能なコンテンツがありません。")
-        return False, False
+    last_is_transient = False
+    for candidate_idx in range(MAX_POST_CANDIDATES):
+        posts = load_posts()
+        unposted = [
+            p for p in posts
+            if not p["posted"] and p.get("image_path") and p.get("fail_count", 0) < MAX_RETRY
+        ]
 
-    target = unposted[0]
-    print(f"次の投稿: {target['title']} (永続エラー{target.get('fail_count', 0)}回)")
+        if not unposted:
+            if candidate_idx == 0:
+                print("[INFO] 投稿可能なコンテンツがありません。")
+            else:
+                print(f"[INFO] {candidate_idx}件試行したが投稿可能なコンテンツ切れ")
+            return False, last_is_transient
 
-    resolved_path = _resolve_image_path(target["image_path"])
-    if not resolved_path or not os.path.exists(resolved_path):
-        error_msg = f"画像ファイルが見つかりません: {target['image_path']}"
-        print(f"[ERROR] {error_msg}")
-        target["fail_count"] = target.get("fail_count", 0) + 1
-        target["last_error"] = error_msg
-        save_posts(posts)
-        return False, False  # 永続エラー
+        target = unposted[0]
+        print(f"次の投稿: {target['title']} (永続エラー{target.get('fail_count', 0)}回)")
 
-    success, error_msg, is_transient = post_to_instagram(
-        resolved_path, target["caption"], dry_run=dry_run
-    )
-    if not dry_run:
-        log_post(target["id"], target["caption"], success)
+        resolved_path = _resolve_image_path(target["image_path"])
+        if not resolved_path or not os.path.exists(resolved_path):
+            error_msg = f"画像ファイルが見つかりません: {target['image_path']}"
+            print(f"[ERROR] {error_msg}")
+            target["fail_count"] = MAX_RETRY  # 即スキップ扱い
+            target["last_error"] = error_msg
+            save_posts(posts)
+            continue  # 次の候補へ
 
-    if success and not dry_run:
-        target["posted"] = True
-        target["posted_at"] = datetime.now().astimezone().isoformat()
-        target.pop("fail_count", None)
-        target.pop("last_error", None)
-        save_posts(posts)
-    elif not success and not dry_run:
-        if is_transient:
-            # 一時エラーはfail_countを増やさない（次回リトライ可能）
-            target["last_error"] = f"[一時] {error_msg or '不明'}"
-            print(f"[TRANSIENT] 一時エラー（fail_count据え置き）: {error_msg}")
+        success, error_msg, is_transient = post_to_instagram(
+            resolved_path, target["caption"], dry_run=dry_run
+        )
+        if not dry_run:
+            log_post(target["id"], target["caption"], success)
+        last_is_transient = is_transient
+
+        if success and not dry_run:
+            target["posted"] = True
+            target["posted_at"] = datetime.now().astimezone().isoformat()
+            target.pop("fail_count", None)
+            target.pop("last_error", None)
+            save_posts(posts)
+            return True, False
+
+        if not dry_run:
+            if is_transient:
+                # 一時エラーはfail_countを増やさない（次回リトライ可能）
+                target["last_error"] = f"[一時] {error_msg or '不明'}"
+                print(f"[TRANSIENT] 一時エラー（fail_count据え置き）: {error_msg}")
+                save_posts(posts)
+                # 一時エラーは同じ投稿でまた試すべきなので即return
+                return False, True
+            else:
+                # 永続エラー → fail_count を増やし、次の候補を試す
+                target["fail_count"] = target.get("fail_count", 0) + 1
+                target["last_error"] = error_msg or "不明なエラー"
+                print(f"[PERMANENT] 永続エラー ({target['fail_count']}/{MAX_RETRY}回): {error_msg}")
+                if target["fail_count"] >= MAX_RETRY:
+                    print(f"[SKIP] {target['id']} は{MAX_RETRY}回永続エラーのため、以降スキップ。")
+                save_posts(posts)
+                print(f"[FALLBACK] 次の未投稿候補を試行します ({candidate_idx + 1}/{MAX_POST_CANDIDATES})")
+                continue
         else:
-            # 永続エラーのみfail_countを増やす
-            target["fail_count"] = target.get("fail_count", 0) + 1
-            target["last_error"] = error_msg or "不明なエラー"
-            print(f"[PERMANENT] 永続エラー ({target['fail_count']}/{MAX_RETRY}回): {error_msg}")
-            if target["fail_count"] >= MAX_RETRY:
-                print(f"[SKIP] {target['id']} は{MAX_RETRY}回永続エラーのため、以降スキップ。")
-        save_posts(posts)
+            return False, is_transient
 
-    return success, is_transient
+    print(f"[WARNING] {MAX_POST_CANDIDATES}件の候補全てで永続エラー")
+    return False, False
 
 
 def main():

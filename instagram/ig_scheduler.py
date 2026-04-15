@@ -35,6 +35,18 @@ TRANSIENT_RETRIES = 2  # 一時エラーの同一実行内リトライ回数
 RETRY_WAIT = 30        # リトライ間隔（秒）
 
 
+def _write_step_summary(title, body):
+    """GitHub Actions の Step Summary に書き込む（ローカル実行では無害）"""
+    summary_file = os.environ.get("GITHUB_STEP_SUMMARY", "")
+    if not summary_file:
+        return
+    try:
+        with open(summary_file, "a", encoding="utf-8") as f:
+            f.write(f"## {title}\n\n{body}\n\n")
+    except Exception as e:
+        print(f"[WARN] Step Summary 書き込み失敗: {e}")
+
+
 def check_and_refresh_token():
     """トークンの有効性を確認し、期限切れなら自動リフレッシュを試みる。
     Returns: True=OK or リフレッシュ成功, False=リフレッシュ不可
@@ -111,6 +123,11 @@ def run(generate_if_empty=False, source_type="auto", dry_run=False):
     if not dry_run:
         if not check_and_refresh_token():
             print("[ABORT] トークンが無効で自動リフレッシュできませんでした。")
+            _write_step_summary(
+                "⚠️ Instagram投稿スキップ: トークン無効",
+                "`INSTAGRAM_ACCESS_TOKEN` が無効かつ自動リフレッシュに失敗しました。\n"
+                "手動で `python instagram/ig_token_refresh.py --force-refresh` を実行してください。",
+            )
             return False, True  # 永続エラー
 
     posts = load_posts()
@@ -129,17 +146,23 @@ def run(generate_if_empty=False, source_type="auto", dry_run=False):
     # 未投稿がなければ生成（スキップ済みは数えない）
     if not unposted and generate_if_empty:
         print("未投稿コンテンツがないため、新規生成します...\n")
+        gen_failed = False
         try:
             result = generate_posts(source_type=source_type, count=1, dry_run=dry_run)
             if not result:
-                # generate_posts内で全記事の生成に失敗（503等）
                 print("[WARNING] コンテンツ生成に失敗しました（API一時障害の可能性）")
-                print("  ワークフローリトライで再試行されます。")
-                sys.exit(1)  # exit(1)でワークフローレベルのリトライを発動
+                gen_failed = True
         except Exception as e:
             print(f"[WARNING] コンテンツ生成に失敗しました: {e}")
-            print("  ワークフローリトライで再試行されます。")
-            sys.exit(1)  # exit(1)でワークフローレベルのリトライを発動
+            gen_failed = True
+
+        if gen_failed:
+            _write_step_summary(
+                "⚠️ コンテンツ生成スキップ",
+                "Geminiの一時障害などでコンテンツ生成に失敗しました。\n"
+                "次回スケジュール実行で再試行されます（ワークフローは正常終了扱い）。",
+            )
+            return False, False  # ワークフローを赤くしない
         # 再読み込み
         posts = load_posts()
         unposted = [
@@ -153,6 +176,7 @@ def run(generate_if_empty=False, source_type="auto", dry_run=False):
         return False, False
 
     # 一時エラー時のリトライループ
+    last_error_kind = None  # "transient" | "permanent" | None
     for attempt in range(TRANSIENT_RETRIES + 1):
         if attempt > 0:
             print(f"\n[RETRY] 一時エラー → {RETRY_WAIT}秒後にリトライ ({attempt}/{TRANSIENT_RETRIES})")
@@ -164,13 +188,28 @@ def run(generate_if_empty=False, source_type="auto", dry_run=False):
             return True, True
 
         if not is_transient:
-            # 永続エラー → リトライしても意味がない
+            # 永続エラー → post_next内で既に次候補を試行済み
             print("[ABORT] 永続エラーのためリトライせず終了")
-            return False, True
+            last_error_kind = "permanent"
+            break
+        last_error_kind = "transient"
 
-    # 全リトライ失敗（一時エラー）
-    print(f"\n[WARNING] {TRANSIENT_RETRIES + 1}回試行したが一時エラーが継続")
-    print("  次回スケジュール実行で再試行されます（fail_countは増加していません）")
+    # 失敗確定（一時or永続）- ただしワークフローは赤くしない
+    if last_error_kind == "permanent":
+        _write_step_summary(
+            "⚠️ Instagram投稿スキップ: 永続エラー",
+            "画像URLやトークン関連の永続エラーで全候補が投稿できませんでした。\n"
+            "`ig_posts.json` の `fail_count` と `last_error` を確認してください。\n"
+            "次回スケジュール実行で新しいコンテンツが生成されれば自動復旧します。",
+        )
+    else:
+        print(f"\n[WARNING] {TRANSIENT_RETRIES + 1}回試行したが一時エラーが継続")
+        print("  次回スケジュール実行で再試行されます（fail_countは増加していません）")
+        _write_step_summary(
+            "⚠️ Instagram投稿スキップ: 一時エラー",
+            "Instagram API または画像ホスティングの一時障害で投稿できませんでした。\n"
+            "次回スケジュール実行で再試行されます（`fail_count` は増えません）。",
+        )
     return False, True
 
 
@@ -197,8 +236,10 @@ def main():
         print("\n投稿対象がありませんでした。")
         # 投稿対象なしは正常終了（ワークフローを失敗にしない）
     elif not dry_run:
-        print("\n投稿に失敗しました。ログを確認してください。")
-        sys.exit(1)
+        # 投稿失敗してもワークフローを赤くしない（Step Summaryで通知済み）
+        # これにより「二度とエラーで赤くならない」多層防御の最終層を構成
+        print("\n[NOTICE] 投稿失敗だがワークフローは正常終了します。")
+        print("  詳細はGitHub ActionsのSummaryタブを確認してください。")
 
 
 if __name__ == "__main__":
