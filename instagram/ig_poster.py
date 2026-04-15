@@ -166,6 +166,43 @@ def upload_image_to_catbox(image_path, max_retries=2):
     return None
 
 
+def upload_image_to_0x0(image_path, max_retries=2):
+    """0x0.st にアップロード（匿名、robust）。
+    GitHub Actions IP でも動く実績あり。User-Agent 明示が必須。
+    """
+    headers = {"User-Agent": "liver-acquisition-bot/1.0 (github-actions)"}
+    for attempt in range(max_retries):
+        try:
+            with open(image_path, "rb") as f:
+                response = requests.post(
+                    "https://0x0.st",
+                    files={"file": f},
+                    headers=headers,
+                    timeout=60,
+                )
+        except requests.exceptions.RequestException as e:
+            print(f"  [RETRY] 0x0.st失敗: {e} ({attempt + 1}/{max_retries})")
+            time.sleep(3 * (attempt + 1))
+            continue
+
+        if response.status_code == 200:
+            body = (response.text or "").strip()
+            if body.startswith("https://"):
+                url = body
+                if _verify_image_url(url):
+                    print(f"  0x0.stアップロード完了: {url}")
+                    return url
+                print(f"  [RETRY] 0x0.st URL検証失敗: {url}")
+            else:
+                print(f"  [RETRY] 0x0.st 想定外レスポンス: {body[:200]}")
+        else:
+            print(f"  [RETRY] 0x0.st HTTP {response.status_code}: {response.text[:200]}")
+        time.sleep(3 * (attempt + 1))
+
+    print("[WARN] 0x0.stアップロードが全て失敗")
+    return None
+
+
 def upload_image_to_github_raw(image_path):
     """GitHub raw URL を使う（リポジトリが public の場合のみ）。
     画像が既に main ブランチに push されている必要がある。
@@ -190,28 +227,40 @@ def upload_image_to_github_raw(image_path):
 
 def upload_image_public(image_path, exclude=None):
     """複数経路で画像をパブリックにアップロード（多層防御）。
-    順番: imgBB → catbox → GitHub raw
-    exclude: 除外する経路名の集合 (例: {"imgbb"})。Instagramで拒否された経路を
-    次回以降スキップするために使う。
+    順番: github_raw → imgBB → 0x0.st → catbox
+
+    github_raw を最優先にする理由:
+    - 2026-04-15 時点で imgBB 経由の URL が Instagram Graph API に拒否される
+      (9004/2207052) 既知不具合。ig_scheduler 側で生成直後に画像を main へ
+      先に push しているので、raw URL は投稿時点で既に到達可能。
+
+    exclude: 除外する経路名の集合 (例: {"github_raw"})。Instagramで拒否された
+    経路を次回以降スキップするために使う。
     """
     exclude = exclude or set()
-
-    if "imgbb" not in exclude:
-        url = upload_image_to_imgbb(image_path)
-        if url:
-            return "imgbb", url
-        print("[FALLBACK] imgBB失敗 → catbox.moe を試行")
-
-    if "catbox" not in exclude:
-        url = upload_image_to_catbox(image_path)
-        if url:
-            return "catbox", url
-        print("[FALLBACK] catbox失敗 → GitHub raw URL を試行")
 
     if "github_raw" not in exclude:
         url = upload_image_to_github_raw(image_path)
         if url:
             return "github_raw", url
+        print("[FALLBACK] GitHub raw 失敗 → imgBB を試行")
+
+    if "imgbb" not in exclude:
+        url = upload_image_to_imgbb(image_path)
+        if url:
+            return "imgbb", url
+        print("[FALLBACK] imgBB失敗 → 0x0.st を試行")
+
+    if "0x0" not in exclude:
+        url = upload_image_to_0x0(image_path)
+        if url:
+            return "0x0", url
+        print("[FALLBACK] 0x0.st失敗 → catbox を試行")
+
+    if "catbox" not in exclude:
+        url = upload_image_to_catbox(image_path)
+        if url:
+            return "catbox", url
 
     return None, None
 

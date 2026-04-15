@@ -47,6 +47,58 @@ def _write_step_summary(title, body):
         print(f"[WARN] Step Summary 書き込み失敗: {e}")
 
 
+def _push_generated_content(reason="pre-post content push"):
+    """生成された画像等を先にmainへpush（GitHub Actions実行時のみ）。
+    github_raw フォールバックが機能するために必要。
+    失敗は致命的ではないので例外は捕捉して続行する。
+    """
+    if not os.environ.get("GITHUB_ACTIONS"):
+        return False
+    import subprocess
+    try:
+        # git 設定（既にあれば上書き）
+        subprocess.run(["git", "config", "user.name", "github-actions"], check=False, capture_output=True)
+        subprocess.run(["git", "config", "user.email", "actions@github.com"], check=False, capture_output=True)
+        # リモート最新を取り込む（競合は origin 優先で解決せず、あれば諦める）
+        subprocess.run(["git", "pull", "--rebase", "origin", "main"], check=False, capture_output=True)
+        # 生成物を add
+        subprocess.run(
+            ["git", "add", "instagram/images/", "instagram/ig_posts.json", "data/"],
+            check=False, capture_output=True,
+        )
+        # 変更が無ければ何もしない
+        diff = subprocess.run(["git", "diff", "--staged", "--quiet"], check=False)
+        if diff.returncode == 0:
+            print(f"[GIT] push対象の変更なし ({reason})")
+            return True
+        # commit
+        commit = subprocess.run(
+            ["git", "commit", "-m", f"Instagram: {reason}"],
+            check=False, capture_output=True, text=True,
+        )
+        if commit.returncode != 0:
+            print(f"[WARN] git commit失敗(続行): {commit.stderr}")
+            return False
+        # push（リトライ1回）
+        for attempt in range(2):
+            push = subprocess.run(
+                ["git", "push", "origin", "main"],
+                check=False, capture_output=True, text=True,
+            )
+            if push.returncode == 0:
+                print(f"[GIT] 生成コンテンツをmainへpush完了 ({reason})")
+                # GitHub raw URL が配信可能になるまで少し待機（CDN反映）
+                time.sleep(5)
+                return True
+            print(f"[WARN] git push失敗 ({attempt + 1}/2): {push.stderr}")
+            # 競合時は pull --rebase でリトライ
+            subprocess.run(["git", "pull", "--rebase", "origin", "main"], check=False, capture_output=True)
+        return False
+    except Exception as e:
+        print(f"[WARN] git push例外(続行): {e}")
+        return False
+
+
 def check_and_refresh_token():
     """トークンの有効性を確認し、期限切れなら自動リフレッシュを試みる。
     Returns: True=OK or リフレッシュ成功, False=リフレッシュ不可
@@ -163,6 +215,12 @@ def run(generate_if_empty=False, source_type="auto", dry_run=False):
                 "次回スケジュール実行で再試行されます（ワークフローは正常終了扱い）。",
             )
             return False, False  # ワークフローを赤くしない
+
+        # 生成された新規画像を main へ先に push する。
+        # github_raw フォールバック経路が投稿時に利用可能になるために必須。
+        # push 失敗してもフォールバック経路(imgBB/0x0.st)があるので続行。
+        _push_generated_content(reason="pre-post generated content")
+
         # 再読み込み
         posts = load_posts()
         unposted = [

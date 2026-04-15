@@ -34,21 +34,42 @@ env:
 jobs:
   instagram-post:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
+    # 最終セーフティ: 個別ステップが失敗してもjob全体は成功扱い
+    # (各ステップ内でも set +e を使うが、job レベルで二重に保護)
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          # main への push を可能にするため 全履歴を取得
+          fetch-depth: 0
 
       - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
       - name: 依存パッケージをインストール
-        run: pip install requests google-genai Pillow
+        # 一時的なPyPI障害でも赤くしないため set +e
+        shell: bash
+        run: |
+          set +e
+          pip install requests google-genai Pillow
+          EXIT=$?
+          if [ $EXIT -ne 0 ]; then
+            echo "::warning::pip install失敗 exit=$EXIT - リトライ"
+            sleep 10
+            pip install requests google-genai Pillow
+          fi
+          # 失敗しても投稿は不可なのでここで exit 0 して後続ステップで警告を出す
+          exit 0
 
       - name: 最新の投稿データを取得
-        run: git pull --rebase origin main || true
+        shell: bash
+        run: |
+          set +e
+          git pull --rebase origin main
+          exit 0
 
       - name: Instagram投稿実行（多層防御）
         env:
@@ -100,10 +121,27 @@ jobs:
 
       - name: 投稿データを保存
         if: always()
+        shell: bash
         run: |
+          set +e  # git操作失敗でも絶対に赤くしない
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git pull --rebase origin main || true
-          git add data/ instagram/ig_posts.json instagram/images/ || true
-          git diff --staged --quiet || git commit -m "Instagram投稿ログ更新"
-          git push origin main || echo "[WARNING] git push失敗 - 次回実行で同期されます"
+          git pull --rebase origin main
+          git add data/ instagram/ig_posts.json instagram/images/
+          # staged に変更があれば commit、無ければスキップ
+          if ! git diff --staged --quiet; then
+            git commit -m "Instagram投稿ログ更新"
+            # push失敗時は pull --rebase で再試行
+            for attempt in 1 2 3; do
+              if git push origin main; then
+                echo "[GIT] push成功 (attempt=$attempt)"
+                break
+              fi
+              echo "[WARN] git push失敗 attempt=$attempt - rebase してリトライ"
+              git pull --rebase origin main
+              sleep 3
+            done
+          else
+            echo "[GIT] staged変更なし、skip"
+          fi
+          exit 0
