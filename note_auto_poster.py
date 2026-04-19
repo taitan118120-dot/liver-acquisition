@@ -314,12 +314,37 @@ def _playwright_ui_login(email, password, headless=True):
         try:
             page.wait_for_url(lambda u: "/login" not in u, timeout=30000)
         except Exception:
-            # URLが遷移しない場合 = エラー表示 or 2FA
+            # URLが遷移しない場合 = エラー表示 or 2FA / CAPTCHA
             time.sleep(5)
             if "/login" in page.url:
-                content_snippet = page.content()[:500]
+                # 診断情報を保存（GitHub Actionsのartifactで回収可能）
+                try:
+                    diag_dir = os.path.join(BASE_DIR, "data", "login_diag")
+                    os.makedirs(diag_dir, exist_ok=True)
+                    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    page.screenshot(path=os.path.join(diag_dir, f"login_fail_{ts}.png"), full_page=True)
+                    with open(os.path.join(diag_dir, f"login_fail_{ts}.html"), "w", encoding="utf-8") as f:
+                        f.write(page.content())
+                    # ページ内のエラーメッセージらしき要素を抽出
+                    err_texts = page.evaluate("""
+                        () => {
+                            const selectors = ['[class*=error]','[class*=Error]','[class*=alert]','.o-loginForm__message','p.error'];
+                            const found = [];
+                            for (const s of selectors) {
+                                document.querySelectorAll(s).forEach(el => {
+                                    const t = el.innerText?.trim();
+                                    if (t) found.push(s + ': ' + t.slice(0,200));
+                                });
+                            }
+                            return found.slice(0,5);
+                        }
+                    """)
+                    print(f"  [診断] ページ内エラー要素: {err_texts}")
+                    print(f"  [診断] スクショ保存: {diag_dir}/login_fail_{ts}.png")
+                except Exception as diag_e:
+                    print(f"  [診断] 診断保存失敗: {diag_e}")
                 browser.close()
-                raise Exception(f"ログイン後の遷移が確認できません（CAPTCHA/2FAの可能性）: {content_snippet[:200]}")
+                raise Exception("ログイン後の遷移が確認できません（CAPTCHA/2FA/認証情報エラーの可能性。data/login_diag/ のスクショで確認）")
 
         time.sleep(3)
         cookies = ctx.cookies()

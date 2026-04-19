@@ -50,6 +50,15 @@ jobs:
           NOTE_PASSWORD: ${{ secrets.NOTE_PASSWORD }}
         run: python note_auto_poster.py --post-latest
 
+      - name: ログイン失敗時の診断情報をアップロード
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: login-diagnostics-${{ github.run_id }}
+          path: data/login_diag/
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: ログを保存
         if: always()
         run: |
