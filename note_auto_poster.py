@@ -245,8 +245,142 @@ def setup_xsrf_token(session):
     print("  ⚠ XSRF-TOKENがCookieに見つかりません")
 
 
+def _playwright_ui_login(email, password, headless=True):
+    """Playwright で note.com/login に UI ログインしCookieリストを返す。
+    /api/v1/sessions/sign_in が 422 を返す問題への恒久回避策。
+    """
+    from playwright.sync_api import sync_playwright
+    with sync_playwright() as p:
+        browser = p.chromium.launch(
+            headless=headless,
+            args=["--disable-blink-features=AutomationControlled", "--no-sandbox"],
+        )
+        ctx = browser.new_context(
+            viewport={"width": 1400, "height": 900},
+            user_agent=("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"),
+            locale="ja-JP",
+        )
+        ctx.add_init_script(
+            "Object.defineProperty(navigator,'webdriver',{get:()=>undefined});"
+        )
+        page = ctx.new_page()
+        page.goto("https://note.com/login", wait_until="domcontentloaded", timeout=60000)
+        time.sleep(3)
+
+        # メール入力
+        email_sel_list = [
+            'input[name="login"]', 'input[type="email"]',
+            'input#email', 'input[placeholder*="メール"]', 'input[placeholder*="mail"]',
+        ]
+        filled_email = False
+        for sel in email_sel_list:
+            try:
+                loc = page.locator(sel).first
+                if loc.count() > 0:
+                    loc.fill(email)
+                    filled_email = True
+                    break
+            except Exception:
+                continue
+        if not filled_email:
+            browser.close()
+            raise Exception("メール入力欄が見つかりません（ログイン画面の仕様変更？）")
+
+        # パスワード入力
+        try:
+            page.fill('input[type="password"]', password)
+        except Exception as e:
+            browser.close()
+            raise Exception(f"パスワード入力欄が見つかりません: {e}")
+
+        # 送信
+        submitted = False
+        for sel in ['button[type="submit"]',
+                    'button:has-text("ログイン")',
+                    'button:has-text("Login")']:
+            try:
+                btn = page.locator(sel).first
+                if btn.count() > 0 and btn.is_visible() and btn.is_enabled():
+                    btn.click()
+                    submitted = True
+                    break
+            except Exception:
+                continue
+        if not submitted:
+            page.keyboard.press("Enter")
+
+        # ログイン後の遷移を待つ
+        try:
+            page.wait_for_url(lambda u: "/login" not in u, timeout=30000)
+        except Exception:
+            # URLが遷移しない場合 = エラー表示 or 2FA
+            time.sleep(5)
+            if "/login" in page.url:
+                content_snippet = page.content()[:500]
+                browser.close()
+                raise Exception(f"ログイン後の遷移が確認できません（CAPTCHA/2FAの可能性）: {content_snippet[:200]}")
+
+        time.sleep(3)
+        cookies = ctx.cookies()
+        browser.close()
+    return cookies
+
+
 def api_login(email, password, max_retries=3):
-    """Note.com APIでログイン（リトライ付き）"""
+    """Playwright UI ログインで取得した Cookie を requests.Session に注入する。
+    APIの /v1/sessions/sign_in が 422 を返すため、UI 経由に切替（2026-04）。
+    """
+    last_error = None
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            print(f"  Playwright UIログイン中... (試行 {attempt}/{max_retries})")
+            cookies = _playwright_ui_login(email, password, headless=True)
+            if not cookies:
+                raise Exception("Cookieが取得できませんでした")
+
+            session = requests.Session()
+            session.headers.update({
+                "User-Agent": ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                               "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"),
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "Referer": "https://note.com/",
+                "Origin": "https://note.com",
+            })
+            for c in cookies:
+                session.cookies.set(c["name"], c["value"], domain=c.get("domain", ".note.com"))
+            print(f"  Cookies注入: {[c['name'] for c in cookies][:8]}...")
+
+            # XSRF-TOKEN をヘッダーに設定
+            setup_xsrf_token(session)
+            if "X-XSRF-TOKEN" not in session.headers:
+                # my_page をGETして再取得を試みる
+                session.get(f"{NOTE_API_BASE}/v2/creators/my_page", timeout=15)
+                setup_xsrf_token(session)
+
+            # ログイン確認(my_page へのGETで200が返ることを確認)
+            verify = session.get(f"{NOTE_API_BASE}/v2/creators/my_page", timeout=15)
+            if verify.status_code != 200:
+                raise Exception(f"ログイン確認失敗: HTTP {verify.status_code}")
+
+            print("  UIログイン成功")
+            return session
+
+        except Exception as e:
+            last_error = e
+            print(f"  ログイン試行{attempt}失敗: {e}")
+            if attempt < max_retries:
+                wait = 5 * attempt
+                print(f"  {wait}秒後にリトライ...")
+                time.sleep(wait)
+
+    raise Exception(f"ログイン{max_retries}回失敗: {last_error}")
+
+
+def _api_login_legacy_disabled(email, password, max_retries=3):
+    """旧API方式（/v1/sessions/sign_in）。現在422で使用不可。参考保持。"""
     last_error = None
 
     for attempt in range(1, max_retries + 1):

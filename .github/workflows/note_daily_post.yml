@@ -22,7 +22,7 @@ env:
 jobs:
   post-article:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
         with:
@@ -32,8 +32,16 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Playwrightブラウザをキャッシュ
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-v1
+
       - name: 依存パッケージインストール
-        run: pip install requests
+        run: |
+          pip install requests playwright
+          playwright install --with-deps chromium
 
       - name: "Note.comに投稿"
         if: github.event.inputs.dry_run != 'true'
