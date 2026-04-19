@@ -66,6 +66,11 @@ def parse_article(filepath):
 
 
 def get_hashtags_for_article(article_num):
+    """記事ごとのハッシュタグを返す。
+    Note露出を伸ばすため、固有タグ＋母集団の大きい汎用タグを混ぜて10個枠を埋める。
+    """
+    base_tags = None
+
     if os.path.exists(TRACKER_FILE):
         with open(TRACKER_FILE, "r", encoding="utf-8") as f:
             tracker = json.load(f)
@@ -76,16 +81,39 @@ def get_hashtags_for_article(article_num):
                     for cat_keywords in SEO_KEYWORDS.values():
                         for kw in cat_keywords:
                             if kw["slug"] == item.get("slug"):
-                                return kw["hashtags"]
+                                base_tags = list(kw["hashtags"])
+                                break
+                        if base_tags:
+                            break
                 except ImportError:
                     pass
-    try:
-        from note_publisher import HASHTAG_MAP, DEFAULT_HASHTAGS
-        basename = os.path.splitext(os.path.basename(get_article_file(article_num)))[0]
-        return HASHTAG_MAP.get(basename, DEFAULT_HASHTAGS)
-    except ImportError:
-        pass
-    return ["ライバー", "ライブ配信", "副業", "Pococha"]
+
+    if base_tags is None:
+        try:
+            from note_publisher import HASHTAG_MAP, DEFAULT_HASHTAGS
+            basename = os.path.splitext(os.path.basename(get_article_file(article_num) or ""))[0]
+            base_tags = list(HASHTAG_MAP.get(basename, DEFAULT_HASHTAGS))
+        except ImportError:
+            base_tags = ["ライバー", "ライブ配信", "副業", "Pococha"]
+
+    # Note検索で母集団が大きいタグを混ぜて露出を広げる
+    # 固有タグを先頭に残しつつ、10枠を汎用タグで埋める
+    import random as _random
+    general_pool = [
+        "副業", "お金の勉強", "仕事について話そう", "毎日note",
+        "働き方", "ビジネス", "スキルアップ", "キャリア",
+        "最近の学び", "在宅ワーク",
+    ]
+    existing = {t for t in base_tags}
+    extras = [t for t in general_pool if t not in existing]
+    _random.shuffle(extras)
+
+    merged = list(base_tags)
+    for t in extras:
+        if len(merged) >= 10:
+            break
+        merged.append(t)
+    return merged[:10]
 
 
 def get_article_file(article_num):
