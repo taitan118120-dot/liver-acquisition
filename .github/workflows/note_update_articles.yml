@@ -39,6 +39,7 @@ jobs:
         env:
           NOTE_EMAIL: ${{ secrets.NOTE_EMAIL }}
           NOTE_PASSWORD: ${{ secrets.NOTE_PASSWORD }}
+          NOTE_COOKIES_JSON: ${{ secrets.NOTE_COOKIES_JSON }}
         run: python note_auto_poster.py --update-all
 
       - name: "指定記事を更新"
@@ -46,6 +47,7 @@ jobs:
         env:
           NOTE_EMAIL: ${{ secrets.NOTE_EMAIL }}
           NOTE_PASSWORD: ${{ secrets.NOTE_PASSWORD }}
+          NOTE_COOKIES_JSON: ${{ secrets.NOTE_COOKIES_JSON }}
         run: python note_auto_poster.py --update ${{ github.event.inputs.articles }}
 
       - name: "Dry run（全記事）"

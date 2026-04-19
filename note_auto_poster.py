@@ -352,10 +352,68 @@ def _playwright_ui_login(email, password, headless=True):
     return cookies
 
 
+def _session_from_cookies(cookies):
+    """cookiesリスト(Playwright形式)をrequests.Sessionに注入して返す。"""
+    session = requests.Session()
+    session.headers.update({
+        "User-Agent": ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                       "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"),
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Referer": "https://note.com/",
+        "Origin": "https://note.com",
+    })
+    for c in cookies:
+        session.cookies.set(c["name"], c["value"], domain=c.get("domain", ".note.com"))
+    setup_xsrf_token(session)
+    if "X-XSRF-TOKEN" not in session.headers:
+        session.get(f"{NOTE_API_BASE}/v2/creators/my_page", timeout=15)
+        setup_xsrf_token(session)
+    return session
+
+
+def _try_login_from_env_cookies():
+    """環境変数 NOTE_COOKIES_JSON からCookieを読んでセッションを構築する。
+    成功すれば requests.Session、失敗/未設定なら None を返す。
+    ローカル環境では `python note_export_cookies.py` で生成したJSONを
+    GitHub Secret `NOTE_COOKIES_JSON` に登録する運用。
+    """
+    raw = os.environ.get("NOTE_COOKIES_JSON", "").strip()
+    if not raw:
+        return None
+    try:
+        cookies = json.loads(raw)
+        if not isinstance(cookies, list) or not cookies:
+            print("  NOTE_COOKIES_JSONの形式が不正（リストではない/空）")
+            return None
+    except json.JSONDecodeError as e:
+        print(f"  NOTE_COOKIES_JSONのJSONパース失敗: {e}")
+        return None
+
+    print(f"  Cookie認証を試行中... ({len(cookies)}個のCookie)")
+    session = _session_from_cookies(cookies)
+    try:
+        verify = session.get(f"{NOTE_API_BASE}/v2/creators/my_page", timeout=15)
+        if verify.status_code == 200:
+            print("  Cookieログイン成功")
+            return session
+        print(f"  Cookie認証失敗: HTTP {verify.status_code}（Cookie失効の可能性。note_export_cookies.py で再エクスポートしてください）")
+    except Exception as e:
+        print(f"  Cookie認証確認失敗: {e}")
+    return None
+
+
 def api_login(email, password, max_retries=3):
-    """Playwright UI ログインで取得した Cookie を requests.Session に注入する。
+    """ログイン。NOTE_COOKIES_JSON があればCookie注入を優先、
+    無ければPlaywright UIログインにフォールバック。
     APIの /v1/sessions/sign_in が 422 を返すため、UI 経由に切替（2026-04）。
     """
+    # 1) Cookie方式（推奨：GitHub Actions上で確実に動作）
+    session = _try_login_from_env_cookies()
+    if session is not None:
+        return session
+
+    # 2) Playwright UIログイン（フォールバック：ローカル実行や初回時用）
     last_error = None
 
     for attempt in range(1, max_retries + 1):

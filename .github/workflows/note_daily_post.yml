@@ -48,6 +48,7 @@ jobs:
         env:
           NOTE_EMAIL: ${{ secrets.NOTE_EMAIL }}
           NOTE_PASSWORD: ${{ secrets.NOTE_PASSWORD }}
+          NOTE_COOKIES_JSON: ${{ secrets.NOTE_COOKIES_JSON }}
         run: python note_auto_poster.py --post-latest
 
       - name: ログイン失敗時の診断情報をアップロード
