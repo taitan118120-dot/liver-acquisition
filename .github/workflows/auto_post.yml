@@ -18,6 +18,7 @@ env:
 jobs:
   post:
     runs-on: ubuntu-latest
+    timeout-minutes: 8   # 25分暴走防止（実処理は30秒以内のはず）
     steps:
       - uses: actions/checkout@v5
         with:
@@ -30,17 +31,46 @@ jobs:
       - run: pip install tweepy
 
       - name: 投稿実行
+        id: post
+        continue-on-error: true   # API側の403/レート制限でワークフロー全体を落とさない
+        timeout-minutes: 4         # スクリプト単体の暴走を防ぐ
         env:
           TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
           TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
           TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
           TWITTER_ACCESS_TOKEN_SECRET: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
-        run: python cloud_post.py
+        # `timeout` で180秒を超えたら強制中断（403連鎖時の暴走対策）。
+        # スクリプトが exit 1 を返してもワークフローは緑のまま。
+        run: |
+          set +e
+          timeout 180s python cloud_post.py
+          rc=$?
+          echo "post_exit_code=$rc" >> "$GITHUB_OUTPUT"
+          if [ $rc -eq 124 ]; then
+            echo "::warning::cloud_post.py が180秒を超えたため強制中断しました（403連鎖の可能性）"
+          elif [ $rc -ne 0 ]; then
+            echo "::warning::cloud_post.py が exit $rc で終了しました（API側の問題の可能性 / 投稿スキップ扱い）"
+          else
+            echo "投稿成功"
+          fi
+          exit 0
 
       - name: 投稿履歴を保存
+        # 成功・失敗いずれの場合も data/ の差分は保存（次回の重複防止に必要）
+        if: always()
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add data/ || true
-          git diff --staged --quiet || git commit -m "投稿ログ更新"
+          git diff --staged --quiet || git commit -m "投稿ログ更新 (post_rc=${{ steps.post.outputs.post_exit_code }})"
           git push || true
+
+      - name: 結果サマリ
+        if: always()
+        run: |
+          rc="${{ steps.post.outputs.post_exit_code }}"
+          if [ "$rc" = "0" ]; then
+            echo "✅ 投稿完了"
+          else
+            echo "⚠️ 投稿スキップ (exit=$rc) — X API側の問題か、全候補が重複の可能性。ワークフローは正常終了。"
+          fi
