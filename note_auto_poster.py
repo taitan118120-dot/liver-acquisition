@@ -262,11 +262,19 @@ def api_login(email, password, max_retries=3):
 
             print(f"  APIログイン中... (試行 {attempt}/{max_retries})")
 
-            # ログイン前にトップページでCookieを取得
+            # ログイン前にログインページを取得してXSRF-TOKEN等のCookieを確立
             try:
-                session.get("https://note.com/", timeout=15)
+                session.get("https://note.com/login", timeout=15)
             except Exception:
                 pass
+
+            # 取得したXSRF-TOKENをヘッダーに付与（POSTが422になる主因の一つ）
+            import urllib.parse
+            for cookie in session.cookies:
+                if cookie.name == "XSRF-TOKEN":
+                    session.headers["X-XSRF-TOKEN"] = urllib.parse.unquote(cookie.value)
+                    print(f"  プリログインXSRF-TOKEN設定済み")
+                    break
 
             resp = session.post(
                 f"{NOTE_API_BASE}/v1/sessions/sign_in",
