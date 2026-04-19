@@ -99,6 +99,7 @@ NG_TWEET_WORDS = [
 ]
 
 PROCESSED_FILE = "data/follow_processed.json"
+FOLLOW_LOG_FILE = "data/follow_log.json"
 
 
 def load_processed():
@@ -112,6 +113,19 @@ def save_processed(processed):
     os.makedirs("data", exist_ok=True)
     with open(PROCESSED_FILE, "w") as f:
         json.dump(list(processed), f)
+
+
+def load_follow_log():
+    if not os.path.exists(FOLLOW_LOG_FILE):
+        return {}
+    with open(FOLLOW_LOG_FILE, "r") as f:
+        return json.load(f)
+
+
+def save_follow_log(follow_log):
+    os.makedirs("data", exist_ok=True)
+    with open(FOLLOW_LOG_FILE, "w") as f:
+        json.dump(follow_log, f, ensure_ascii=False)
 
 
 def is_quiet_hours():
@@ -206,6 +220,7 @@ def main():
 
     daily_target = random.randint(DAILY_MIN, DAILY_MAX)
     processed = load_processed()
+    follow_log = load_follow_log()
     followed = 0
 
     log.info(f"目標: {daily_target}人フォロー")
@@ -258,7 +273,9 @@ def main():
                 client.follow_user(user.id)
                 followed += 1
                 processed.add(str(user.id))
+                follow_log[str(user.id)] = datetime.now(JST).isoformat()
                 save_processed(processed)  # キャンセル耐性のため逐次保存
+                save_follow_log(follow_log)
                 log.info(f"  ✅ [{followed}/{daily_target}] @{user.username}")
 
                 wait = random.randint(WAIT_MIN, WAIT_MAX) + random.randint(-60, 60)

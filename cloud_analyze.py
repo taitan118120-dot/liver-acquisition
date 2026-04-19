@@ -20,14 +20,28 @@ def main():
     )
 
     # 自分のツイートを取得（直近50件）
-    me = client.get_me()
-    user_id = me.data.id
+    try:
+        me = client.get_me()
+        if not me or not me.data:
+            print("[ERROR] ユーザー情報を取得できませんでした")
+            return
+        user_id = me.data.id
+    except (tweepy.errors.TweepyException, Exception) as e:
+        print(f"[ERROR] ユーザー情報取得失敗: {e}")
+        return
 
-    tweets = client.get_users_tweets(
-        id=user_id,
-        max_results=50,
-        tweet_fields=["created_at", "public_metrics", "text"],
-    )
+    try:
+        tweets = client.get_users_tweets(
+            id=user_id,
+            max_results=50,
+            tweet_fields=["created_at", "public_metrics", "text"],
+        )
+    except tweepy.errors.TooManyRequests:
+        print("[ERROR] レート制限。次回の実行まで待機。")
+        return
+    except (tweepy.errors.TweepyException, Exception) as e:
+        print(f"[ERROR] ツイート取得失敗: {e}")
+        return
 
     if not tweets.data:
         print("ツイートなし")

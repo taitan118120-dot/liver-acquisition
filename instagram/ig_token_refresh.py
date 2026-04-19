@@ -35,8 +35,12 @@ def debug_token(access_token):
         "input_token": access_token,
         "access_token": access_token,
     }
-    response = requests.get(url, params=params)
-    data = response.json()
+    try:
+        response = requests.get(url, params=params, timeout=30)
+        data = response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"[ERROR] トークン情報取得リクエスト失敗: {e}")
+        return None
 
     if "data" not in data:
         print(f"[ERROR] トークン情報取得失敗: {data}")
@@ -74,8 +78,12 @@ def exchange_short_to_long(short_token, app_id, app_secret):
         "client_secret": app_secret,
         "fb_exchange_token": short_token,
     }
-    response = requests.get(url, params=params)
-    data = response.json()
+    try:
+        response = requests.get(url, params=params, timeout=30)
+        data = response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"[ERROR] トークン交換リクエスト失敗: {e}")
+        return None
 
     if "access_token" in data:
         new_token = data["access_token"]
@@ -109,8 +117,12 @@ def refresh_long_token(current_token):
         "client_secret": app_secret,
         "fb_exchange_token": current_token,
     }
-    response = requests.get(url, params=params)
-    data = response.json()
+    try:
+        response = requests.get(url, params=params, timeout=30)
+        data = response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"[ERROR] トークン更新リクエスト失敗: {e}")
+        return None
 
     if "access_token" in data:
         new_token = data["access_token"]

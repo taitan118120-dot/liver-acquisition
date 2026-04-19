@@ -1,4 +1,11 @@
-name: エラー自動修復
+name: エラー自動通知
+
+# NOTE: 以前は anthropics/claude-code-action@v1 による自動修復を行っていたが、
+# Claude Code GitHub App (https://github.com/apps/claude) が未インストールのため
+# 401 Unauthorized で毎回失敗していた。
+# 依存ゼロで確実に動く Issue 通知に差し替え済み。
+# 自動修復を復活させたい場合は上記 GitHub App をインストールした上で
+# git history から旧設定を復元すること。
 
 on:
   workflow_run:
@@ -16,45 +23,66 @@ on:
       - 誤フォロー除去(ワンショット)
     types: [completed]
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
-  auto-fix:
+  notify-failure:
     if: ${{ github.event.workflow_run.conclusion == 'failure' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 5
     permissions:
-      contents: write
-      pull-requests: write
       issues: write
       actions: read
-      id-token: write
     steps:
-      - uses: actions/checkout@v5
+      - name: Create or update issue on workflow failure
+        uses: actions/github-script@v7
         with:
-          ref: ${{ github.event.workflow_run.head_branch || 'main' }}
-          fetch-depth: 0
+          script: |
+            const run = context.payload.workflow_run;
+            const workflowName = run.name;
+            const runId = run.id;
+            const branch = run.head_branch || 'main';
+            const url = run.html_url;
+            const title = `ワークフロー失敗: ${workflowName}`;
 
-      - uses: anthropics/claude-code-action@v1
-        with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          prompt: |
-            GitHub Actionsワークフロー「${{ github.event.workflow_run.name }}」が失敗しました。
+            // 同じワークフローの未クローズIssueを探してスパム防止
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const match = existing.find(i => i.title === title);
 
-            - ブランチ: ${{ github.event.workflow_run.head_branch }}
-            - Run ID: ${{ github.event.workflow_run.id }}
-            - URL: ${{ github.event.workflow_run.html_url }}
+            const body = [
+              '## ワークフロー失敗通知',
+              '',
+              `- **ワークフロー**: \`${workflowName}\``,
+              `- **ブランチ**: \`${branch}\``,
+              `- **Run ID**: \`${runId}\``,
+              `- **URL**: ${url}`,
+              '',
+              '## 原因確認コマンド',
+              '```bash',
+              `gh run view ${runId} --log-failed`,
+              '```',
+              '',
+              '---',
+              '_このIssueは `.github/workflows/auto_fix.yml` により自動生成されました。_',
+            ].join('\n');
 
-            以下の手順で対処してください：
-            1. `gh run view ${{ github.event.workflow_run.id }} --log-failed` でエラーログを確認
-            2. エラーの根本原因を特定
-            3. 修正可能な場合はコードを修正してコミット
-            4. 修正できない場合（API制限、外部サービス障害など）はGitHub Issueを作成して報告
-            5. secrets/環境変数の問題の場合はIssueで報告のみ（secretsは変更しない）
-
-            注意:
-            - 最小限の変更で修正すること
-            - テストがあれば実行して確認すること
-            - 不要な機能追加やリファクタリングはしないこと
-          claude_args: "--max-turns 15"
+            if (match) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: match.number,
+                body: `再発: [Run #${runId}](${url}) がブランチ \`${branch}\` で失敗しました。`,
+              });
+              core.info(`Commented on existing issue #${match.number}`);
+            } else {
+              const { data: created } = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+              });
+              core.info(`Created issue #${created.number}`);
+            }
