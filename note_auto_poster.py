@@ -405,13 +405,30 @@ def _try_login_from_env_cookies():
 
 def api_login(email, password, max_retries=3):
     """ログイン。NOTE_COOKIES_JSON があればCookie注入を優先、
-    無ければPlaywright UIログインにフォールバック。
+    無ければPlaywright UIログインにフォールバック（ローカルのみ）。
     APIの /v1/sessions/sign_in が 422 を返すため、UI 経由に切替（2026-04）。
     """
     # 1) Cookie方式（推奨：GitHub Actions上で確実に動作）
     session = _try_login_from_env_cookies()
     if session is not None:
         return session
+
+    # CI環境ではPlaywright UIログインがreCAPTCHAで必ず失敗する。
+    # 3回リトライで3分浪費＋診断ファイルでリポジトリが汚染されるため、
+    # Cookie未設定/失効時は即座に中断し、明確な手順を提示する。
+    if os.environ.get("GITHUB_ACTIONS") == "true" or os.environ.get("CI") == "true":
+        raw = os.environ.get("NOTE_COOKIES_JSON", "").strip()
+        hint = (
+            "\n  対処手順:\n"
+            "  1. ローカルで `python note_export_cookies.py` を実行\n"
+            "  2. ブラウザが開くので手動ログイン（CAPTCHAがあれば解く）\n"
+            "  3. 出力されたJSONをコピー\n"
+            "  4. GitHub → Settings → Secrets and variables → Actions →\n"
+            "     `NOTE_COOKIES_JSON` を New/Update で登録"
+        )
+        if not raw:
+            raise Exception(f"NOTE_COOKIES_JSONが未設定のためログイン不可（CIでのUIログインはCAPTCHAで必ず失敗）{hint}")
+        raise Exception(f"NOTE_COOKIES_JSONが無効または失効（Cookieは通常1〜3ヶ月で失効）{hint}")
 
     # 2) Playwright UIログイン（フォールバック：ローカル実行や初回時用）
     last_error = None
