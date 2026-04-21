@@ -1,0 +1,72 @@
+name: Note記事 自動投稿
+
+on:
+  schedule:
+    # 1日3回投稿（JST 8:03, 12:33, 20:07）
+    - cron: '3 23 * * *'     # JST 08:03（UTC 23:03 前日）
+    - cron: '33 3 * * *'     # JST 12:33
+    - cron: '7 11 * * *'     # JST 20:07
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run（投稿せず確認のみ）'
+        required: false
+        default: 'false'
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  post-article:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Playwrightブラウザをキャッシュ
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-v1
+
+      - name: 依存パッケージインストール
+        run: |
+          pip install requests playwright
+          playwright install --with-deps chromium
+
+      - name: "Note.comに投稿"
+        if: github.event.inputs.dry_run != 'true'
+        env:
+          NOTE_EMAIL: ${{ secrets.NOTE_EMAIL }}
+          NOTE_PASSWORD: ${{ secrets.NOTE_PASSWORD }}
+          NOTE_COOKIES_JSON: ${{ secrets.NOTE_COOKIES_JSON }}
+        run: python note_auto_poster.py --post-latest
+
+      - name: ログイン失敗時の診断情報をアップロード
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: login-diagnostics-${{ github.run_id }}
+          path: data/login_diag/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: ログを保存
+        if: always()
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          # 診断ファイル(data/login_diag/)は.gitignoreで除外済み。Artifactで回収する。
+          git pull --rebase || true
+          git add data/note_auto_post_log.csv data/note_keyword_tracker.json 2>/dev/null || true
+          git diff --staged --quiet || git commit -m "Note自動投稿ログ $(TZ=Asia/Tokyo date +'%Y-%m-%d %H:%M')"
+          git push || true
