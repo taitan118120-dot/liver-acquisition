@@ -457,6 +457,8 @@ def _try_login_from_env_cookies():
     成功すれば requests.Session、失敗/未設定なら None を返す。
     ローカル環境では `python note_export_cookies.py` で生成したJSONを
     GitHub Secret `NOTE_COOKIES_JSON` に登録する運用。
+    認証検証には /api/v2/current_user を使う。my_page は公開APIで
+    常に 200 を返すため認証チェックにならない。
     """
     raw = os.environ.get("NOTE_COOKIES_JSON", "").strip()
     if not raw:
@@ -473,11 +475,18 @@ def _try_login_from_env_cookies():
     print(f"  Cookie認証を試行中... ({len(cookies)}個のCookie)")
     session = _session_from_cookies(cookies)
     try:
-        verify = session.get(f"{NOTE_API_BASE}/v2/creators/my_page", timeout=15)
+        verify = session.get(f"{NOTE_API_BASE}/v2/current_user", timeout=15)
         if verify.status_code == 200:
-            print("  Cookieログイン成功")
+            try:
+                udata = verify.json().get("data", {})
+                urlname = udata.get("urlname") or udata.get("url_name") or "?"
+                print(f"  Cookieログイン成功 (urlname={urlname})")
+            except Exception:
+                print("  Cookieログイン成功")
             return session
-        print(f"  Cookie認証失敗: HTTP {verify.status_code}（Cookie失効の可能性。note_export_cookies.py で再エクスポートしてください）")
+        print(f"  Cookie認証失敗: HTTP {verify.status_code} - {verify.text[:200]}")
+        print(f"  → Cookieが失効しています。ローカルで `python note_export_cookies.py`")
+        print(f"     を実行して NOTE_COOKIES_JSON を再登録してください。")
     except Exception as e:
         print(f"  Cookie認証確認失敗: {e}")
     return None
