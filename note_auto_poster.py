@@ -853,8 +853,29 @@ def _playwright_full_post(title, body_html, hashtags, publish=True):
             browser.close()
             raise Exception(f"note_id取得失敗 key={note_key}")
 
-        # Step2: PUT /v1/text_notes/{id} で本文保存＋公開を一発で実行
-        # （editor.note.com の publish ボタンが最終的に叩くのと同じエンドポイント）
+        # Step2: まず draft_save で本文を確実に保存（editor の定期保存と同じ）
+        draft_save_url = f"{NOTE_API_BASE}/v1/text_notes/draft_save?id={note_id}"
+        draft_save_payload = {"body": body_html, "body_length": len(body_html), "name": title}
+        print(f"  [PW] draft_save...")
+        ds_result = page.evaluate(
+            """async ({url, payload}) => {
+                const m = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
+                const xsrf = m ? decodeURIComponent(m[1]) : null;
+                const headers = {"Content-Type": "application/json", "Accept": "application/json", "X-Requested-With": "XMLHttpRequest"};
+                if (xsrf) headers["X-XSRF-TOKEN"] = xsrf;
+                const resp = await fetch(url, {method: "POST", headers, credentials: "include", body: JSON.stringify(payload)});
+                return {status: resp.status, body: await resp.text()};
+            }""",
+            {"url": draft_save_url, "payload": draft_save_payload}
+        )
+        print(f"  [PW] draft_save: status={ds_result['status']}")
+        if ds_result["status"] not in (200, 201):
+            browser.close()
+            raise Exception(f"draft_save失敗: status={ds_result['status']} body={ds_result['body'][:300]}")
+
+        # Step3: PUT /v1/text_notes/{id} で最終状態（公開/下書き）をセット
+        # publish=False なら status=draft のまま（draft_save で保存済み）
+        # publish=True なら status=published を送る
         target_status = "published" if publish else "draft"
         put_payload = {
             "status": target_status,
@@ -882,10 +903,7 @@ def _playwright_full_post(title, body_html, hashtags, publish=True):
             "separator": "",
             "slug": "",
             "pro_coupon_keys": [],
-            "translation_setting": None,
             "line_add_friend": False,
-            "line_add_friend_access_token": None,
-            "lead_form": None,
         }
         put_url = f"{NOTE_API_BASE}/v1/text_notes/{note_id}"
         print(f"  [PW] PUT /v1/text_notes/{note_id} (status={target_status})...")
