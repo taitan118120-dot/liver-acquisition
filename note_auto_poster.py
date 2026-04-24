@@ -873,11 +873,59 @@ def _playwright_full_post(title, body_html, hashtags, publish=True):
             browser.close()
             raise Exception(f"draft_save失敗: status={ds_result['status']} body={ds_result['body'][:300]}")
 
-        # Step3: PUT /v1/text_notes/{id} で最終状態（公開/下書き）をセット
-        # publish=False なら draft_save で保存済みなので何もしない（draft に戻す用途も無し）
-        # publish=True なら status=published にして公開
+        # Step3: publish ページへ遷移して grecaptcha (reCAPTCHA v3) をロード
+        # 実際の editor は publish ボタン押下前に /v3/challenges/verifications を叩く必要がある
         target_status = "published" if publish else "draft"
-        # まずは最小構成で試して、それで 500 なら段階的に増やす
+        if publish:
+            try:
+                publish_page_url = f"https://editor.note.com/notes/{note_key}/publish"
+                print(f"  [PW] publish page へ遷移: {publish_page_url}")
+                page.goto(publish_page_url, wait_until="domcontentloaded", timeout=30000)
+                # grecaptcha が window に入るのを待つ
+                try:
+                    page.wait_for_function(
+                        "typeof window.grecaptcha !== 'undefined' && typeof window.grecaptcha.execute === 'function'",
+                        timeout=20000,
+                    )
+                    print(f"  [PW] grecaptcha ロード済み")
+                except Exception as e:
+                    print(f"  [PW] grecaptcha待機タイムアウト: {e}")
+                time.sleep(2)
+
+                # reCAPTCHA v3 token 取得 → verifications 送信
+                rc_result = page.evaluate(
+                    """async () => {
+                        if (typeof grecaptcha === 'undefined') return {error: 'no grecaptcha'};
+                        return new Promise((resolve) => {
+                            grecaptcha.ready(async () => {
+                                try {
+                                    const token = await grecaptcha.execute(
+                                        '6LefXTAsAAAAADYVISEItAl0IX1rgSGQ-asNy56w',
+                                        {action: 'note_post'}
+                                    );
+                                    const resp = await fetch('/api/v3/challenges/verifications', {
+                                        method: 'POST',
+                                        headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'},
+                                        credentials: 'include',
+                                        body: JSON.stringify({
+                                            g_recaptcha_token_v3: token,
+                                            g_recaptcha_action_v3: 'note_post',
+                                            via: 'note_post',
+                                        }),
+                                    });
+                                    resolve({status: resp.status, body: await resp.text(), token: 'ok'});
+                                } catch (e) {
+                                    resolve({error: e.message || String(e)});
+                                }
+                            });
+                        });
+                    }"""
+                )
+                print(f"  [PW] reCAPTCHA verifications: {rc_result}")
+            except Exception as e:
+                print(f"  [PW] reCAPTCHA/verifications 失敗（継続）: {e}")
+
+        # Step4: PUT /v1/text_notes/{id} で公開
         put_payload = {
             "status": target_status,
             "name": title,
@@ -891,7 +939,7 @@ def _playwright_full_post(title, body_html, hashtags, publish=True):
             "limited": False,
         }
         put_url = f"{NOTE_API_BASE}/v1/text_notes/{note_id}"
-        print(f"  [PW] PUT /v1/text_notes/{note_id} (status={target_status}, minimal payload)...")
+        print(f"  [PW] PUT /v1/text_notes/{note_id} (status={target_status})...")
         put_result = page.evaluate(
             """async ({url, payload}) => {
                 const m = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
