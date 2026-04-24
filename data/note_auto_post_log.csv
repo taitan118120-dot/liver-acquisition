@@ -19,3 +19,10 @@ waiting for navigation to ""re.compile('/notes/[^/]+/edit')"" until 'load'
   navigated to ""https://note.com/login?redirectPath=https%3A%2F%2Feditor.note.com%2Fnew""
   navigated to ""https://note.com/login?redirectPath=https%3A%2F%2Feditor.note.com%2Fnew""
 ============================================================. URL=https://note.com/login?redirectPath=https%3A%2F%2Feditor.note.com%2Fnew",2026-04-24T11:04:32.818353
+47,「月5万円の在宅副業」で5個失敗した私が、最終的にライバー代理店に落ち着いた話【2026年版】,,False,"NOTE_COOKIES_JSONが無効または失効（Cookieは通常1〜3ヶ月で失効）
+  対処手順:
+  1. ローカルで `python note_export_cookies.py` を実行
+  2. ブラウザが開くので手動ログイン（CAPTCHAがあれば解く）
+  3. 出力されたJSONをコピー
+  4. GitHub → Settings → Secrets and variables → Actions →
+     `NOTE_COOKIES_JSON` を New/Update で登録",2026-04-24T11:11:02.326698
