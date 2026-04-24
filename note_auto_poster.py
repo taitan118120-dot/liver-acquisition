@@ -642,10 +642,10 @@ def _make_draft_payload(title, body_html, hashtags):
 
 
 def _playwright_api_call(cookies, url, method, payload=None, bootstrap_url="https://note.com/"):
-    """ブラウザコンテキスト内から fetch() を発火する。
+    """ブラウザコンテキスト内で APIを叩く。
     Cookie認証は通るが HTTP 直叩きだと 422 が返るケース（CSRF周り）への恒久策。
-    ブラウザ内なので Origin/Referer/XSRF-TOKEN 等は全てブラウザが自動処理する。
-    bootstrap_url は API と同一 origin にする（cross-origin だと credentials 送られずに not_login になる）。
+    bootstrap_url を APIと同一 origin にした上で ctx.request (APIRequestContext) を使用し、
+    ブラウザの cookie jar と session state を透過的に再利用する。
     """
     from playwright.sync_api import sync_playwright
 
@@ -675,34 +675,71 @@ def _playwright_api_call(cookies, url, method, payload=None, bootstrap_url="http
         ctx.add_cookies(pw_cookies)
         page = ctx.new_page()
         try:
-            # editor.note.com を先にロードして、Origin/Referer/CSRF cookie を揃える
             page.goto(bootstrap_url, wait_until="domcontentloaded", timeout=30000)
-            time.sleep(3)
+            time.sleep(2)
         except Exception as e:
             print(f"  [PW] bootstrap goto 失敗（継続）: {e}")
 
-        result = page.evaluate(
-            """async ({url, method, payload}) => {
-                const m = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
-                const xsrf = m ? decodeURIComponent(m[1]) : null;
-                const headers = {
-                    "Accept": "application/json",
-                    "X-Requested-With": "XMLHttpRequest",
-                };
-                if (method !== 'GET') headers["Content-Type"] = "application/json";
-                if (xsrf) headers["X-XSRF-TOKEN"] = xsrf;
-                const init = {method: method, headers: headers, credentials: 'include'};
-                if (payload !== null && payload !== undefined && method !== 'GET') {
-                    init.body = JSON.stringify(payload);
-                }
-                const resp = await fetch(url, init);
-                const body = await resp.text();
-                let data = null;
-                try { data = JSON.parse(body); } catch (e) {}
-                return {status: resp.status, body: body, data: data, xsrf_present: !!xsrf};
-            }""",
-            {"url": url, "method": method, "payload": payload},
-        )
+        # bootstrap 後のブラウザ内 cookie を確認
+        browser_cookies = ctx.cookies()
+        print(f"  [PW] ブラウザ内Cookie名: {sorted({c['name'] for c in browser_cookies})}")
+
+        # ctx.request（APIRequestContext）経由で叩く。ctxの cookie jar を自動参照する。
+        headers = {
+            "Accept": "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+            "Referer": bootstrap_url,
+            "Origin": "https://note.com",
+        }
+        # XSRF-TOKEN が取れていればヘッダーに設定
+        xsrf = None
+        for c in browser_cookies:
+            if c["name"] == "XSRF-TOKEN":
+                xsrf = unquote(c["value"])
+                headers["X-XSRF-TOKEN"] = xsrf
+                break
+
+        req_kwargs = {"headers": headers}
+        if payload is not None and method.upper() != "GET":
+            req_kwargs["data"] = json.dumps(payload)
+            headers["Content-Type"] = "application/json"
+
+        api = ctx.request
+        method_upper = method.upper()
+        if method_upper == "POST":
+            resp = api.post(url, **req_kwargs)
+        elif method_upper == "PUT":
+            resp = api.put(url, **req_kwargs)
+        elif method_upper == "PATCH":
+            resp = api.patch(url, **req_kwargs)
+        elif method_upper == "DELETE":
+            resp = api.delete(url, **req_kwargs)
+        else:
+            resp = api.get(url, **req_kwargs)
+
+        status = resp.status
+        body = resp.text()
+        try:
+            data = json.loads(body)
+        except Exception:
+            data = None
+
+        # 診断：レスポンスヘッダのsubset
+        try:
+            resp_headers = resp.headers
+            interesting = {k: v for k, v in resp_headers.items() if k.lower() in (
+                "content-type", "location", "set-cookie", "www-authenticate", "x-request-id"
+            )}
+        except Exception:
+            interesting = {}
+
+        result = {
+            "status": status,
+            "body": body,
+            "data": data,
+            "xsrf_present": bool(xsrf),
+            "resp_headers": interesting,
+        }
         browser.close()
     return result
 
@@ -721,20 +758,17 @@ def _playwright_create_draft(title, body_html, hashtags):
         "POST",
         payload=payload,
     )
-    print(f"  [PW] status={result['status']}, xsrf_present={result['xsrf_present']}")
-    if result["status"] not in (200, 201):
-        raise Exception(f"PW下書きHTTPエラー: {result['status']} - {result['body'][:300]}")
+    print(f"  [PW] status={result['status']}, xsrf_present={result['xsrf_present']}, resp_headers={result.get('resp_headers')}")
     data = result.get("data") or {}
     inner = data.get("data", {})
     note_id = inner.get("id")
     note_key = inner.get("key", "")
-    if not note_id or not note_key:
-        raise Exception(
-            f"PW下書きAPIがID/keyを返しませんでした (id={note_id}, key={note_key}). "
-            f"body: {result['body'][:300]}"
-        )
-    print(f"  [PW] 下書き作成成功: ID={note_id}, key={note_key}")
-    return note_id, note_key, data
+    if result["status"] in (200, 201) and note_id and note_key:
+        print(f"  [PW] 下書き作成成功: ID={note_id}, key={note_key}")
+        return note_id, note_key, data
+    raise Exception(
+        f"PW下書き失敗: status={result['status']} body={result['body'][:300]}"
+    )
 
 
 def api_create_draft(session, title, body_html, hashtags, max_retries=2):
