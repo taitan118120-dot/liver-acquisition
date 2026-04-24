@@ -876,14 +876,14 @@ def _playwright_full_post(title, body_html, hashtags, publish=True):
         # Step3: PUT /v1/text_notes/{id} で最終状態（公開/下書き）をセット
         # publish=False なら status=draft のまま（draft_save で保存済み）
         # publish=True なら status=published を送る
+        # payload は editor publish ボタンの実装（publish_chunk.js）に完全に合わせる。
         target_status = "published" if publish else "draft"
         put_payload = {
             "status": target_status,
             "name": title,
-            "body": body_html,
-            "body_length": len(body_html),
             "free_body": body_html,
             "pay_body": "",
+            "body_length": len(body_html),
             "price": 0,
             "hashtags": hashtags[:10],
             "author_ids": [],
@@ -892,18 +892,16 @@ def _playwright_full_post(title, body_html, hashtags, publish=True):
             "image_keys": [],
             "circle_permissions": [],
             "discount_campaigns": [],
+            "pro_coupon_keys": [],
             "disable_comment": False,
             "exclude_from_creator_top": False,
             "exclude_ai_learning_reward": False,
             "is_refund": False,
             "limited": False,
             "index": False,
-            "is_lead_form": False,
             "send_notifications_flag": True,
             "separator": "",
             "slug": "",
-            "pro_coupon_keys": [],
-            "line_add_friend": False,
         }
         put_url = f"{NOTE_API_BASE}/v1/text_notes/{note_id}"
         print(f"  [PW] PUT /v1/text_notes/{note_id} (status={target_status})...")
