@@ -853,15 +853,43 @@ def _playwright_full_post(title, body_html, hashtags, publish=True):
             browser.close()
             raise Exception(f"note_id取得失敗 key={note_key}")
 
-        # Step2: draft_save で本文・タイトル・ハッシュタグを保存
-        save_payload = {
+        # Step2: PUT /v1/text_notes/{id} で本文保存＋公開を一発で実行
+        # （editor.note.com の publish ボタンが最終的に叩くのと同じエンドポイント）
+        target_status = "published" if publish else "draft"
+        put_payload = {
+            "status": target_status,
+            "name": title,
             "body": body_html,
             "body_length": len(body_html),
-            "name": title,
+            "free_body": body_html,
+            "pay_body": "",
+            "price": 0,
+            "hashtags": hashtags[:10],
+            "author_ids": [],
+            "magazine_ids": [],
+            "magazine_keys": [],
+            "image_keys": [],
+            "circle_permissions": [],
+            "discount_campaigns": [],
+            "disable_comment": False,
+            "exclude_from_creator_top": False,
+            "exclude_ai_learning_reward": False,
+            "is_refund": False,
+            "limited": False,
+            "index": False,
+            "is_lead_form": False,
+            "send_notifications_flag": True,
+            "separator": "",
+            "slug": "",
+            "pro_coupon_keys": [],
+            "translation_setting": None,
+            "line_add_friend": False,
+            "line_add_friend_access_token": None,
+            "lead_form": None,
         }
-        save_url = f"{NOTE_API_BASE}/v1/text_notes/draft_save?id={note_id}"
-        print(f"  [PW] draft_save POST...")
-        save_result = page.evaluate(
+        put_url = f"{NOTE_API_BASE}/v1/text_notes/{note_id}"
+        print(f"  [PW] PUT /v1/text_notes/{note_id} (status={target_status})...")
+        put_result = page.evaluate(
             """async ({url, payload}) => {
                 const m = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
                 const xsrf = m ? decodeURIComponent(m[1]) : null;
@@ -872,7 +900,7 @@ def _playwright_full_post(title, body_html, hashtags, publish=True):
                 };
                 if (xsrf) headers["X-XSRF-TOKEN"] = xsrf;
                 const resp = await fetch(url, {
-                    method: "POST",
+                    method: "PUT",
                     headers: headers,
                     credentials: "include",
                     body: JSON.stringify(payload),
@@ -880,99 +908,32 @@ def _playwright_full_post(title, body_html, hashtags, publish=True):
                 const body = await resp.text();
                 return {status: resp.status, body: body, xsrf: !!xsrf};
             }""",
-            {"url": save_url, "payload": save_payload}
+            {"url": put_url, "payload": put_payload}
         )
-        print(f"  [PW] draft_save: status={save_result['status']}, xsrf={save_result['xsrf']}")
-        if save_result["status"] not in (200, 201):
-            browser.close()
-            raise Exception(f"draft_save失敗: status={save_result['status']} body={save_result['body'][:300]}")
+        print(f"  [PW] PUT: status={put_result['status']}, xsrf={put_result['xsrf']}")
 
-        # Step3: ハッシュタグ設定（別API）。失敗しても致命的でないので続行
-        try:
-            hashtag_payload = {
-                "hashtag_notes_attributes": [
-                    {"hashtag_attributes": {"name": tag}} for tag in hashtags[:10]
-                ]
-            }
-            hashtag_url = f"{NOTE_API_BASE}/v1/text_notes/{note_id}"
-            htg_result = page.evaluate(
-                """async ({url, payload}) => {
-                    const m = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
-                    const xsrf = m ? decodeURIComponent(m[1]) : null;
-                    const headers = {
-                        "Content-Type": "application/json",
-                        "Accept": "application/json",
-                        "X-Requested-With": "XMLHttpRequest",
-                    };
-                    if (xsrf) headers["X-XSRF-TOKEN"] = xsrf;
-                    const resp = await fetch(url, {
-                        method: "PUT",
-                        headers: headers,
-                        credentials: "include",
-                        body: JSON.stringify(payload),
-                    });
-                    return {status: resp.status, body: await resp.text()};
-                }""",
-                {"url": hashtag_url, "payload": hashtag_payload}
-            )
-            print(f"  [PW] hashtag update: status={htg_result['status']}")
-        except Exception as e:
-            print(f"  [PW] hashtag update失敗（継続）: {e}")
-
-        # Step4: publish
         article_url = None
         draft_only = False
-        if publish:
-            publish_urls = [
-                f"{NOTE_API_BASE}/v2/notes/{note_key}/publish",
-                f"{NOTE_API_BASE}/v1/notes/{note_key}/publish",
-            ]
-            published = False
-            for purl in publish_urls:
-                for method in ("PUT", "POST"):
-                    try:
-                        pub_result = page.evaluate(
-                            """async ({url, method}) => {
-                                const m = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
-                                const xsrf = m ? decodeURIComponent(m[1]) : null;
-                                const headers = {
-                                    "Content-Type": "application/json",
-                                    "Accept": "application/json",
-                                    "X-Requested-With": "XMLHttpRequest",
-                                };
-                                if (xsrf) headers["X-XSRF-TOKEN"] = xsrf;
-                                const resp = await fetch(url, {
-                                    method: method,
-                                    headers: headers,
-                                    credentials: "include",
-                                    body: "{}",
-                                });
-                                return {status: resp.status, body: await resp.text()};
-                            }""",
-                            {"url": purl, "method": method}
-                        )
-                        print(f"  [PW] publish {method} {purl} → {pub_result['status']}")
-                        if pub_result["status"] in (200, 201):
-                            try:
-                                pdata = json.loads(pub_result["body"])
-                                inner = pdata.get("data", {})
-                                user = inner.get("user", {}) if isinstance(inner.get("user"), dict) else {}
-                                urlname = user.get("urlname", "")
-                                if urlname:
-                                    article_url = f"https://note.com/{urlname}/n/{note_key}"
-                                else:
-                                    article_url = f"https://note.com/n/{note_key}"
-                            except Exception:
-                                article_url = f"https://note.com/n/{note_key}"
-                            published = True
-                            break
-                    except Exception as e:
-                        print(f"  [PW] publish {method} {purl} 失敗: {e}")
-                if published:
-                    break
-            if not published:
-                draft_only = True
-                article_url = f"https://note.com/notes/{note_key}/edit"
+        if put_result["status"] in (200, 201):
+            try:
+                pdata = json.loads(put_result["body"]).get("data", {})
+                urlname = pdata.get("user", {}).get("urlname", "") if isinstance(pdata.get("user"), dict) else ""
+                key_ret = pdata.get("key", note_key)
+                if target_status == "published":
+                    if urlname:
+                        article_url = f"https://note.com/{urlname}/n/{key_ret}"
+                    else:
+                        article_url = f"https://note.com/n/{key_ret}"
+                else:
+                    article_url = f"https://note.com/notes/{key_ret}/edit"
+                    draft_only = True
+            except Exception:
+                article_url = f"https://note.com/n/{note_key}"
+        else:
+            # 公開失敗時は下書き扱いにして URL を返す
+            print(f"  [PW] PUT失敗 body={put_result['body'][:300]}")
+            draft_only = True
+            article_url = f"https://note.com/notes/{note_key}/edit"
 
         browser.close()
 
