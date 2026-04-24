@@ -827,13 +827,39 @@ def _playwright_full_post(title, body_html, hashtags, publish=True):
         cookie_names = sorted({c["name"] for c in browser_cookies})
         print(f"  [PW] editor読込後のCookie: {cookie_names}")
 
+        # Step1.5: GET /v3/notes/{key} で numeric id を取得（draft_save は id 必須）
+        note_id = None
+        try:
+            get_url = f"{NOTE_API_BASE}/v3/notes/{note_key}?draft=true&draft_reedit=false&ts={int(time.time()*1000)}"
+            id_result = page.evaluate(
+                """async (url) => {
+                    const resp = await fetch(url, {
+                        method: "GET",
+                        headers: {"Accept": "application/json", "X-Requested-With": "XMLHttpRequest"},
+                        credentials: "include",
+                    });
+                    return {status: resp.status, body: await resp.text()};
+                }""",
+                get_url
+            )
+            if id_result["status"] == 200:
+                nd = json.loads(id_result["body"]).get("data", {})
+                note_id = nd.get("id") or nd.get("note", {}).get("id")
+                print(f"  [PW] note取得: id={note_id}")
+        except Exception as e:
+            print(f"  [PW] note詳細取得失敗: {e}")
+
+        if not note_id:
+            browser.close()
+            raise Exception(f"note_id取得失敗 key={note_key}")
+
         # Step2: draft_save で本文・タイトル・ハッシュタグを保存
         save_payload = {
             "body": body_html,
             "body_length": len(body_html),
             "name": title,
         }
-        save_url = f"{NOTE_API_BASE}/v1/text_notes/draft_save?id={note_key}"
+        save_url = f"{NOTE_API_BASE}/v1/text_notes/draft_save?id={note_id}"
         print(f"  [PW] draft_save POST...")
         save_result = page.evaluate(
             """async ({url, payload}) => {
@@ -868,7 +894,7 @@ def _playwright_full_post(title, body_html, hashtags, publish=True):
                     {"hashtag_attributes": {"name": tag}} for tag in hashtags[:10]
                 ]
             }
-            hashtag_url = f"{NOTE_API_BASE}/v1/text_notes/{note_key}"
+            hashtag_url = f"{NOTE_API_BASE}/v1/text_notes/{note_id}"
             htg_result = page.evaluate(
                 """async ({url, payload}) => {
                     const m = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
