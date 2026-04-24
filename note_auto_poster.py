@@ -874,10 +874,10 @@ def _playwright_full_post(title, body_html, hashtags, publish=True):
             raise Exception(f"draft_save失敗: status={ds_result['status']} body={ds_result['body'][:300]}")
 
         # Step3: PUT /v1/text_notes/{id} で最終状態（公開/下書き）をセット
-        # publish=False なら status=draft のまま（draft_save で保存済み）
-        # publish=True なら status=published を送る
-        # payload は editor publish ボタンの実装（publish_chunk.js）に完全に合わせる。
+        # publish=False なら draft_save で保存済みなので何もしない（draft に戻す用途も無し）
+        # publish=True なら status=published にして公開
         target_status = "published" if publish else "draft"
+        # まずは最小構成で試して、それで 500 なら段階的に増やす
         put_payload = {
             "status": target_status,
             "name": title,
@@ -886,25 +886,12 @@ def _playwright_full_post(title, body_html, hashtags, publish=True):
             "body_length": len(body_html),
             "price": 0,
             "hashtags": hashtags[:10],
-            "author_ids": [],
-            "magazine_ids": [],
-            "magazine_keys": [],
-            "image_keys": [],
-            "circle_permissions": [],
-            "discount_campaigns": [],
-            "pro_coupon_keys": [],
             "disable_comment": False,
-            "exclude_from_creator_top": False,
-            "exclude_ai_learning_reward": False,
-            "is_refund": False,
-            "limited": False,
-            "index": False,
             "send_notifications_flag": True,
-            "separator": "",
-            "slug": "",
+            "limited": False,
         }
         put_url = f"{NOTE_API_BASE}/v1/text_notes/{note_id}"
-        print(f"  [PW] PUT /v1/text_notes/{note_id} (status={target_status})...")
+        print(f"  [PW] PUT /v1/text_notes/{note_id} (status={target_status}, minimal payload)...")
         put_result = page.evaluate(
             """async ({url, payload}) => {
                 const m = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
