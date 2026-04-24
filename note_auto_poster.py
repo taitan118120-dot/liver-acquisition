@@ -240,9 +240,85 @@ def setup_xsrf_token(session):
         if cookie.name == "XSRF-TOKEN":
             token = unquote(cookie.value)
             session.headers["X-XSRF-TOKEN"] = token
+            session.headers["X-CSRF-Token"] = token
             print(f"  X-XSRF-TOKEN設定済み")
-            return
-    print("  ⚠ XSRF-TOKENがCookieに見つかりません")
+            return True
+    return False
+
+
+def _clear_csrf_state(session):
+    """CSRFヘッダーと XSRF-TOKEN cookie を全て削除する。422後の再取得前に使用。"""
+    for h in ("X-XSRF-TOKEN", "X-CSRF-Token"):
+        session.headers.pop(h, None)
+    # domain/path が未知でも対応できるよう iterate して name 一致で削除
+    for cookie in list(session.cookies):
+        if cookie.name == "XSRF-TOKEN":
+            try:
+                session.cookies.clear(cookie.domain, cookie.path, cookie.name)
+            except (KeyError, ValueError):
+                pass
+
+
+def _acquire_csrf_token(session, verbose=True):
+    """CSRFトークンをヘッダーに設定する。
+    (1) Cookie内の XSRF-TOKEN
+    (2) HTMLページの <meta name="csrf-token"> パース
+    (3) HTML取得による XSRF-TOKEN cookie 発行
+    のいずれかで取得を試みる。Railsアプリのため POST系APIに必須。
+    """
+    if setup_xsrf_token(session):
+        if verbose:
+            print("  CSRF: Cookie由来のXSRF-TOKENを使用")
+        return True
+
+    # HTML系ページを順に訪問してCSRF取得を試みる
+    # - Accept: text/html を明示してJSONでなくHTMLを受け取る
+    # - editor.note.com は editor subdomain 用のCSRFが発行されることがある
+    html_pages = [
+        "https://note.com/",
+        "https://editor.note.com/new",
+        "https://note.com/settings/account",
+        "https://note.com/notes",
+    ]
+    meta_re = re.compile(
+        r'<meta[^>]*\bname\s*=\s*["\']csrf-token["\'][^>]*\bcontent\s*=\s*["\']([^"\']+)["\']',
+        re.IGNORECASE,
+    )
+    for url in html_pages:
+        try:
+            r = session.get(
+                url,
+                timeout=20,
+                headers={"Accept": "text/html,application/xhtml+xml,*/*;q=0.8"},
+                allow_redirects=True,
+            )
+        except Exception as e:
+            if verbose:
+                print(f"  CSRF取得試行失敗 ({url}): {e}")
+            continue
+
+        # (a) レスポンスで XSRF-TOKEN cookie が発行されたか確認
+        if setup_xsrf_token(session):
+            if verbose:
+                print(f"  CSRF: XSRF-TOKEN cookie 取得（{url}）")
+            return True
+
+        # (b) HTMLから <meta name="csrf-token"> をパース
+        content_type = r.headers.get("Content-Type", "").lower()
+        if "text/html" in content_type and r.text:
+            m = meta_re.search(r.text)
+            if m:
+                token = m.group(1)
+                session.headers["X-CSRF-Token"] = token
+                session.headers["X-XSRF-TOKEN"] = token
+                if verbose:
+                    print(f"  CSRF: <meta csrf-token>から取得（{url}）")
+                return True
+
+    if verbose:
+        cookie_names = sorted({c.name for c in session.cookies})
+        print(f"  ⚠ CSRFトークンを取得できませんでした。現Cookie: {cookie_names}")
+    return False
 
 
 def _playwright_ui_login(email, password, headless=True):
@@ -365,10 +441,9 @@ def _session_from_cookies(cookies):
     })
     for c in cookies:
         session.cookies.set(c["name"], c["value"], domain=c.get("domain", ".note.com"))
-    setup_xsrf_token(session)
-    if "X-XSRF-TOKEN" not in session.headers:
-        session.get(f"{NOTE_API_BASE}/v2/creators/my_page", timeout=15)
-        setup_xsrf_token(session)
+    cookie_names = sorted({c.name for c in session.cookies})
+    print(f"  注入済みCookie: {cookie_names}")
+    _acquire_csrf_token(session)
     return session
 
 
@@ -453,12 +528,8 @@ def api_login(email, password, max_retries=3):
                 session.cookies.set(c["name"], c["value"], domain=c.get("domain", ".note.com"))
             print(f"  Cookies注入: {[c['name'] for c in cookies][:8]}...")
 
-            # XSRF-TOKEN をヘッダーに設定
-            setup_xsrf_token(session)
-            if "X-XSRF-TOKEN" not in session.headers:
-                # my_page をGETして再取得を試みる
-                session.get(f"{NOTE_API_BASE}/v2/creators/my_page", timeout=15)
-                setup_xsrf_token(session)
+            # CSRFトークンをヘッダーに設定（Cookie/HTMLどちらからでも取得）
+            _acquire_csrf_token(session)
 
             # ログイン確認(my_page へのGETで200が返ることを確認)
             verify = session.get(f"{NOTE_API_BASE}/v2/creators/my_page", timeout=15)
@@ -576,7 +647,19 @@ def api_create_draft(session, title, body_html, hashtags, max_retries=2):
                 }
             }
 
+            # POST直前にCSRFトークンの有無を確認。無ければ再取得を試みる。
+            if "X-XSRF-TOKEN" not in session.headers and "X-CSRF-Token" not in session.headers:
+                print(f"  CSRFヘッダー未設定。再取得を試行...")
+                _acquire_csrf_token(session)
+
             resp = session.post(f"{NOTE_API_BASE}/v1/text_notes", json=note_data, timeout=30)
+
+            # 422はRailsのInvalidAuthenticityToken典型応答。CSRF再取得して即リトライ。
+            if resp.status_code == 422 and attempt < max_retries:
+                print(f"  422受信: {resp.text[:200]}")
+                print(f"  CSRF再取得して再試行...")
+                _clear_csrf_state(session)
+                _acquire_csrf_token(session)
 
             if resp.status_code not in [200, 201]:
                 raise Exception(f"下書きHTTPエラー: {resp.status_code} - {resp.text[:300]}")
@@ -761,9 +844,9 @@ def api_update_article(session, note_key, note_id, title, body_html, hashtags):
             elif resp.status_code == 422:
                 detail = resp.text[:200]
                 print(f"    422: {detail}")
-                # XSRF-TOKEN不足の場合、再取得を試みる
-                if "invalid" in detail.lower() or "不正" in detail:
-                    setup_xsrf_token(session)
+                # CSRF系失敗の可能性 → HTML meta含む再取得
+                _clear_csrf_state(session)
+                _acquire_csrf_token(session)
         except Exception as e:
             print(f"    失敗: {e}")
             continue
