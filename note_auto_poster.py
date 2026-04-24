@@ -627,25 +627,124 @@ def _api_login_legacy_disabled(email, password, max_retries=3):
     raise Exception(f"ログイン{max_retries}回失敗: {last_error}")
 
 
+def _make_draft_payload(title, body_html, hashtags):
+    return {
+        "note": {
+            "name": title,
+            "body": body_html,
+            "hashtag_notes_attributes": [
+                {"hashtag_attributes": {"name": tag}} for tag in hashtags[:10]
+            ],
+            "publish_at": None,
+            "status": "draft",
+        }
+    }
+
+
+def _playwright_api_call(cookies, url, method, payload=None, bootstrap_url="https://editor.note.com/new"):
+    """ブラウザコンテキスト内から fetch() を発火する。
+    Cookie認証は通るが HTTP 直叩きだと 422 が返るケース（CSRF周り）への恒久策。
+    ブラウザ内なので Origin/Referer/XSRF-TOKEN 等は全てブラウザが自動処理する。
+    """
+    from playwright.sync_api import sync_playwright
+
+    pw_cookies = []
+    for c in cookies:
+        pw_cookies.append({
+            "name": c["name"],
+            "value": c["value"],
+            "domain": c.get("domain", ".note.com"),
+            "path": c.get("path", "/"),
+            "httpOnly": bool(c.get("httpOnly", False)),
+            "secure": bool(c.get("secure", True)),
+            "sameSite": (c.get("sameSite") or "Lax").capitalize(),
+        })
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(
+            headless=True,
+            args=["--no-sandbox", "--disable-blink-features=AutomationControlled"],
+        )
+        ctx = browser.new_context(
+            user_agent=("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"),
+            locale="ja-JP",
+            viewport={"width": 1280, "height": 900},
+        )
+        ctx.add_cookies(pw_cookies)
+        page = ctx.new_page()
+        try:
+            # editor.note.com を先にロードして、Origin/Referer/CSRF cookie を揃える
+            page.goto(bootstrap_url, wait_until="domcontentloaded", timeout=30000)
+            time.sleep(3)
+        except Exception as e:
+            print(f"  [PW] bootstrap goto 失敗（継続）: {e}")
+
+        result = page.evaluate(
+            """async ({url, method, payload}) => {
+                const m = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
+                const xsrf = m ? decodeURIComponent(m[1]) : null;
+                const headers = {
+                    "Accept": "application/json",
+                    "X-Requested-With": "XMLHttpRequest",
+                };
+                if (method !== 'GET') headers["Content-Type"] = "application/json";
+                if (xsrf) headers["X-XSRF-TOKEN"] = xsrf;
+                const init = {method: method, headers: headers, credentials: 'include'};
+                if (payload !== null && payload !== undefined && method !== 'GET') {
+                    init.body = JSON.stringify(payload);
+                }
+                const resp = await fetch(url, init);
+                const body = await resp.text();
+                let data = null;
+                try { data = JSON.parse(body); } catch (e) {}
+                return {status: resp.status, body: body, data: data, xsrf_present: !!xsrf};
+            }""",
+            {"url": url, "method": method, "payload": payload},
+        )
+        browser.close()
+    return result
+
+
+def _playwright_create_draft(title, body_html, hashtags):
+    """HTTPで 422 が返る場合の Playwright フォールバック。"""
+    raw = os.environ.get("NOTE_COOKIES_JSON", "").strip()
+    if not raw:
+        raise Exception("NOTE_COOKIES_JSONが未設定のためPlaywrightフォールバック不可")
+    cookies = json.loads(raw)
+    payload = _make_draft_payload(title, body_html, hashtags)
+    print(f"  [PW] 下書き作成をPlaywright経由で実行...")
+    result = _playwright_api_call(
+        cookies,
+        f"{NOTE_API_BASE}/v1/text_notes",
+        "POST",
+        payload=payload,
+    )
+    print(f"  [PW] status={result['status']}, xsrf_present={result['xsrf_present']}")
+    if result["status"] not in (200, 201):
+        raise Exception(f"PW下書きHTTPエラー: {result['status']} - {result['body'][:300]}")
+    data = result.get("data") or {}
+    inner = data.get("data", {})
+    note_id = inner.get("id")
+    note_key = inner.get("key", "")
+    if not note_id or not note_key:
+        raise Exception(
+            f"PW下書きAPIがID/keyを返しませんでした (id={note_id}, key={note_key}). "
+            f"body: {result['body'][:300]}"
+        )
+    print(f"  [PW] 下書き作成成功: ID={note_id}, key={note_key}")
+    return note_id, note_key, data
+
+
 def api_create_draft(session, title, body_html, hashtags, max_retries=2):
-    """下書きを作成（リトライ・検証付き）"""
+    """下書きを作成（リトライ・検証付き）。HTTPが 422で失敗した場合は Playwright 経由で再試行。"""
     last_error = None
+    saw_422 = False
 
     for attempt in range(1, max_retries + 1):
         try:
             print(f"  下書き作成中... (試行 {attempt}/{max_retries})")
-
-            note_data = {
-                "note": {
-                    "name": title,
-                    "body": body_html,
-                    "hashtag_notes_attributes": [
-                        {"hashtag_attributes": {"name": tag}} for tag in hashtags[:10]
-                    ],
-                    "publish_at": None,
-                    "status": "draft",
-                }
-            }
+            note_data = _make_draft_payload(title, body_html, hashtags)
 
             # POST直前にCSRFトークンの有無を確認。無ければ再取得を試みる。
             if "X-XSRF-TOKEN" not in session.headers and "X-CSRF-Token" not in session.headers:
@@ -654,14 +753,17 @@ def api_create_draft(session, title, body_html, hashtags, max_retries=2):
 
             resp = session.post(f"{NOTE_API_BASE}/v1/text_notes", json=note_data, timeout=30)
 
-            # 422はRailsのInvalidAuthenticityToken典型応答。CSRF再取得して即リトライ。
+            # 422はCSRF系/Origin系失敗典型。再取得して次試行で再実行させる。
             if resp.status_code == 422 and attempt < max_retries:
+                saw_422 = True
                 print(f"  422受信: {resp.text[:200]}")
                 print(f"  CSRF再取得して再試行...")
                 _clear_csrf_state(session)
                 _acquire_csrf_token(session)
 
             if resp.status_code not in [200, 201]:
+                if resp.status_code == 422:
+                    saw_422 = True
                 raise Exception(f"下書きHTTPエラー: {resp.status_code} - {resp.text[:300]}")
 
             try:
@@ -673,7 +775,6 @@ def api_create_draft(session, title, body_html, hashtags, max_retries=2):
             note_id = inner.get("id")
             note_key = inner.get("key", "")
 
-            # 厳密な検証: IDとkeyが両方有効でなければ失敗
             if not note_id or not note_key:
                 raise Exception(
                     f"下書きAPIがID/keyを返しませんでした (id={note_id}, key={note_key}). "
@@ -688,6 +789,13 @@ def api_create_draft(session, title, body_html, hashtags, max_retries=2):
             print(f"  下書き試行{attempt}失敗: {e}")
             if attempt < max_retries:
                 time.sleep(3)
+
+    # HTTP 全失敗（特に422）の場合、Playwright フォールバックを試す
+    if saw_422 or "422" in str(last_error):
+        try:
+            return _playwright_create_draft(title, body_html, hashtags)
+        except Exception as pw_e:
+            raise Exception(f"HTTP/Playwright両方失敗: HTTP={last_error} / PW={pw_e}")
 
     raise Exception(f"下書き作成{max_retries}回失敗: {last_error}")
 
