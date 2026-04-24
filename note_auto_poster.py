@@ -234,6 +234,11 @@ def convert_inline_markdown(text):
 
 # ─── Note.com API ────────────────────────────────────
 
+class _HttpCsrfFailed(Exception):
+    """HTTP経由で CSRF/422 によって下書き作成が不可能だったことを示す。
+    post_article 側で捕まえて Playwright フォールバックへ切り替える。"""
+
+
 def setup_xsrf_token(session):
     """Cookie内のXSRF-TOKENをリクエストヘッダーに設定"""
     for cookie in session.cookies:
@@ -744,31 +749,203 @@ def _playwright_api_call(cookies, url, method, payload=None, bootstrap_url="http
     return result
 
 
-def _playwright_create_draft(title, body_html, hashtags):
-    """HTTPで 422 が返る場合の Playwright フォールバック。"""
+def _playwright_full_post(title, body_html, hashtags, publish=True):
+    """Playwright で editor.note.com を使って完結させる。
+    1. /new にアクセス → 自動で空下書き作成 → /notes/{key}/edit へ自動リダイレクト
+    2. editor ページ内で XSRF-TOKEN が issue されるのを待つ
+    3. page.evaluate で fetch() を叩いて draft_save
+    4. publish API を試行（失敗しても下書きは保存済み）
+    戻り値: {"key": ..., "id": ..., "url": article_url_or_draft_url, "draft_only": bool}
+    """
+    from playwright.sync_api import sync_playwright
+
     raw = os.environ.get("NOTE_COOKIES_JSON", "").strip()
     if not raw:
         raise Exception("NOTE_COOKIES_JSONが未設定のためPlaywrightフォールバック不可")
     cookies = json.loads(raw)
-    payload = _make_draft_payload(title, body_html, hashtags)
-    print(f"  [PW] 下書き作成をPlaywright経由で実行...")
-    result = _playwright_api_call(
-        cookies,
-        f"{NOTE_API_BASE}/v1/text_notes",
-        "POST",
-        payload=payload,
-    )
-    print(f"  [PW] status={result['status']}, xsrf_present={result['xsrf_present']}, resp_headers={result.get('resp_headers')}")
-    data = result.get("data") or {}
-    inner = data.get("data", {})
-    note_id = inner.get("id")
-    note_key = inner.get("key", "")
-    if result["status"] in (200, 201) and note_id and note_key:
-        print(f"  [PW] 下書き作成成功: ID={note_id}, key={note_key}")
-        return note_id, note_key, data
-    raise Exception(
-        f"PW下書き失敗: status={result['status']} body={result['body'][:300]}"
-    )
+
+    pw_cookies = []
+    for c in cookies:
+        pw_cookies.append({
+            "name": c["name"],
+            "value": c["value"],
+            "domain": c.get("domain", ".note.com"),
+            "path": c.get("path", "/"),
+            "httpOnly": bool(c.get("httpOnly", False)),
+            "secure": bool(c.get("secure", True)),
+            "sameSite": (c.get("sameSite") or "Lax").capitalize(),
+        })
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(
+            headless=True,
+            args=["--no-sandbox", "--disable-blink-features=AutomationControlled"],
+        )
+        ctx = browser.new_context(
+            user_agent=("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"),
+            locale="ja-JP",
+            viewport={"width": 1400, "height": 900},
+        )
+        ctx.add_cookies(pw_cookies)
+        page = ctx.new_page()
+
+        # Step1: /new を開く → 自動で /notes/{key}/edit にリダイレクト
+        print(f"  [PW] editor.note.com/new を開く...")
+        page.goto("https://editor.note.com/new", wait_until="domcontentloaded", timeout=60000)
+        try:
+            page.wait_for_url(re.compile(r"/notes/[^/]+/edit"), timeout=30000)
+        except Exception as e:
+            browser.close()
+            raise Exception(f"editor.note.com/new からのリダイレクトが起きず。ログイン状態を確認してください: {e}. URL={page.url}")
+
+        cur_url = page.url
+        m = re.search(r"/notes/([^/]+)/edit", cur_url)
+        if not m:
+            browser.close()
+            raise Exception(f"note_keyの抽出失敗。URL={cur_url}")
+        note_key = m.group(1)
+        print(f"  [PW] 空下書き作成成功: key={note_key}, url={cur_url}")
+
+        # Editor が XSRF-TOKEN を issue するのを待つ
+        try:
+            page.wait_for_load_state("networkidle", timeout=20000)
+        except Exception:
+            pass
+        time.sleep(3)
+
+        browser_cookies = ctx.cookies()
+        cookie_names = sorted({c["name"] for c in browser_cookies})
+        print(f"  [PW] editor読込後のCookie: {cookie_names}")
+
+        # Step2: draft_save で本文・タイトル・ハッシュタグを保存
+        save_payload = {
+            "body": body_html,
+            "body_length": len(body_html),
+            "name": title,
+        }
+        save_url = f"{NOTE_API_BASE}/v1/text_notes/draft_save?id={note_key}"
+        print(f"  [PW] draft_save POST...")
+        save_result = page.evaluate(
+            """async ({url, payload}) => {
+                const m = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
+                const xsrf = m ? decodeURIComponent(m[1]) : null;
+                const headers = {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                    "X-Requested-With": "XMLHttpRequest",
+                };
+                if (xsrf) headers["X-XSRF-TOKEN"] = xsrf;
+                const resp = await fetch(url, {
+                    method: "POST",
+                    headers: headers,
+                    credentials: "include",
+                    body: JSON.stringify(payload),
+                });
+                const body = await resp.text();
+                return {status: resp.status, body: body, xsrf: !!xsrf};
+            }""",
+            {"url": save_url, "payload": save_payload}
+        )
+        print(f"  [PW] draft_save: status={save_result['status']}, xsrf={save_result['xsrf']}")
+        if save_result["status"] not in (200, 201):
+            browser.close()
+            raise Exception(f"draft_save失敗: status={save_result['status']} body={save_result['body'][:300]}")
+
+        # Step3: ハッシュタグ設定（別API）。失敗しても致命的でないので続行
+        try:
+            hashtag_payload = {
+                "hashtag_notes_attributes": [
+                    {"hashtag_attributes": {"name": tag}} for tag in hashtags[:10]
+                ]
+            }
+            hashtag_url = f"{NOTE_API_BASE}/v1/text_notes/{note_key}"
+            htg_result = page.evaluate(
+                """async ({url, payload}) => {
+                    const m = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
+                    const xsrf = m ? decodeURIComponent(m[1]) : null;
+                    const headers = {
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                        "X-Requested-With": "XMLHttpRequest",
+                    };
+                    if (xsrf) headers["X-XSRF-TOKEN"] = xsrf;
+                    const resp = await fetch(url, {
+                        method: "PUT",
+                        headers: headers,
+                        credentials: "include",
+                        body: JSON.stringify(payload),
+                    });
+                    return {status: resp.status, body: await resp.text()};
+                }""",
+                {"url": hashtag_url, "payload": hashtag_payload}
+            )
+            print(f"  [PW] hashtag update: status={htg_result['status']}")
+        except Exception as e:
+            print(f"  [PW] hashtag update失敗（継続）: {e}")
+
+        # Step4: publish
+        article_url = None
+        draft_only = False
+        if publish:
+            publish_urls = [
+                f"{NOTE_API_BASE}/v2/notes/{note_key}/publish",
+                f"{NOTE_API_BASE}/v1/notes/{note_key}/publish",
+            ]
+            published = False
+            for purl in publish_urls:
+                for method in ("PUT", "POST"):
+                    try:
+                        pub_result = page.evaluate(
+                            """async ({url, method}) => {
+                                const m = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
+                                const xsrf = m ? decodeURIComponent(m[1]) : null;
+                                const headers = {
+                                    "Content-Type": "application/json",
+                                    "Accept": "application/json",
+                                    "X-Requested-With": "XMLHttpRequest",
+                                };
+                                if (xsrf) headers["X-XSRF-TOKEN"] = xsrf;
+                                const resp = await fetch(url, {
+                                    method: method,
+                                    headers: headers,
+                                    credentials: "include",
+                                    body: "{}",
+                                });
+                                return {status: resp.status, body: await resp.text()};
+                            }""",
+                            {"url": purl, "method": method}
+                        )
+                        print(f"  [PW] publish {method} {purl} → {pub_result['status']}")
+                        if pub_result["status"] in (200, 201):
+                            try:
+                                pdata = json.loads(pub_result["body"])
+                                inner = pdata.get("data", {})
+                                user = inner.get("user", {}) if isinstance(inner.get("user"), dict) else {}
+                                urlname = user.get("urlname", "")
+                                if urlname:
+                                    article_url = f"https://note.com/{urlname}/n/{note_key}"
+                                else:
+                                    article_url = f"https://note.com/n/{note_key}"
+                            except Exception:
+                                article_url = f"https://note.com/n/{note_key}"
+                            published = True
+                            break
+                    except Exception as e:
+                        print(f"  [PW] publish {method} {purl} 失敗: {e}")
+                if published:
+                    break
+            if not published:
+                draft_only = True
+                article_url = f"https://note.com/notes/{note_key}/edit"
+
+        browser.close()
+
+    return {
+        "key": note_key,
+        "url": article_url,
+        "draft_only": draft_only,
+    }
 
 
 def api_create_draft(session, title, body_html, hashtags, max_retries=2):
@@ -825,13 +1002,9 @@ def api_create_draft(session, title, body_html, hashtags, max_retries=2):
             if attempt < max_retries:
                 time.sleep(3)
 
-    # HTTP 全失敗（特に422）の場合、Playwright フォールバックを試す
+    # HTTP 全失敗時は _HttpCsrfFailed を投げて post_article 側で Playwright フォールバックさせる
     if saw_422 or "422" in str(last_error):
-        try:
-            return _playwright_create_draft(title, body_html, hashtags)
-        except Exception as pw_e:
-            raise Exception(f"HTTP/Playwright両方失敗: HTTP={last_error} / PW={pw_e}")
-
+        raise _HttpCsrfFailed(str(last_error))
     raise Exception(f"下書き作成{max_retries}回失敗: {last_error}")
 
 
@@ -1104,8 +1277,21 @@ def post_article(article_num, dry_run=False):
         # APIでログイン
         session = api_login(email, password)
 
-        # 下書き作成
-        note_id, note_key, result_data = api_create_draft(session, title, body_html, hashtags)
+        # 下書き作成（HTTP）。422連発なら _HttpCsrfFailed が飛んでくるので Playwright 経路へ。
+        try:
+            note_id, note_key, result_data = api_create_draft(session, title, body_html, hashtags)
+        except _HttpCsrfFailed as csrf_e:
+            print(f"\n  HTTP経路がCSRFで失敗 → Playwright経路に切替: {csrf_e}")
+            pw_result = _playwright_full_post(title, body_html, hashtags, publish=True)
+            if pw_result["url"] and not pw_result["draft_only"]:
+                log_result(article_num, title, pw_result["url"], True, "Playwright経由で公開")
+                mark_as_published(article_num)
+                return {"success": True, "url": pw_result["url"]}
+            if pw_result["url"] and pw_result["draft_only"]:
+                log_result(article_num, title, pw_result["url"], True, "Playwright経由で下書き保存（手動公開が必要）")
+                mark_as_published(article_num)
+                return {"success": True, "url": pw_result["url"], "draft_only": True}
+            raise Exception("Playwrightフォールバックで公開URL取得失敗")
 
         if not note_key:
             raise Exception("note_keyが取得できませんでした")
@@ -1114,12 +1300,10 @@ def post_article(article_num, dry_run=False):
         article_url = api_publish(session, note_key)
 
         if article_url:
-            # 公開成功
             log_result(article_num, title, article_url, True)
             mark_as_published(article_num)
             return {"success": True, "url": article_url}
         else:
-            # 下書き保存成功（公開は手動で）
             draft_url = f"https://note.com/notes/{note_key}/edit"
             log_result(article_num, title, draft_url, True, "下書き保存済み（手動公開が必要）")
             mark_as_published(article_num)
