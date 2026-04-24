@@ -9,3 +9,4 @@ article_num,title,url,success,error,posted_at
 47,「月5万円の在宅副業」で5個失敗した私が、最終的にライバー代理店に落ち着いた話【2026年版】,,False,ログイン3回失敗: ログイン後の遷移が確認できません（CAPTCHA/2FA/認証情報エラーの可能性。data/login_diag/ のスクショで確認）,2026-04-21T09:15:51.599741
 47,「月5万円の在宅副業」で5個失敗した私が、最終的にライバー代理店に落ち着いた話【2026年版】,,False,"下書き作成2回失敗: 下書きHTTPエラー: 422 - {""error"":""Unprocessable Entity""}",2026-04-24T10:28:02.404379
 47,「月5万円の在宅副業」で5個失敗した私が、最終的にライバー代理店に落ち着いた話【2026年版】,,False,"下書き作成2回失敗: 下書きHTTPエラー: 422 - {""error"":""Unprocessable Entity""}",2026-04-24T10:44:31.418313
+47,「月5万円の在宅副業」で5個失敗した私が、最終的にライバー代理店に落ち着いた話【2026年版】,,False,"HTTP/Playwright両方失敗: HTTP=下書きHTTPエラー: 422 - {""error"":""Unprocessable Entity""} / PW=PW下書きAPIがID/keyを返しませんでした (id=None, key=). body: {""error"":{""code"":""auth"",""message"":""not_login""}}",2026-04-24T10:49:25.724448
