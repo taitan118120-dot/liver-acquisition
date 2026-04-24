@@ -641,10 +641,11 @@ def _make_draft_payload(title, body_html, hashtags):
     }
 
 
-def _playwright_api_call(cookies, url, method, payload=None, bootstrap_url="https://editor.note.com/new"):
+def _playwright_api_call(cookies, url, method, payload=None, bootstrap_url="https://note.com/"):
     """ブラウザコンテキスト内から fetch() を発火する。
     Cookie認証は通るが HTTP 直叩きだと 422 が返るケース（CSRF周り）への恒久策。
     ブラウザ内なので Origin/Referer/XSRF-TOKEN 等は全てブラウザが自動処理する。
+    bootstrap_url は API と同一 origin にする（cross-origin だと credentials 送られずに not_login になる）。
     """
     from playwright.sync_api import sync_playwright
 
