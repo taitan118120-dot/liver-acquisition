@@ -49,6 +49,82 @@ RETRY_WAIT_SEC = 5
 POSTED_HASHES_FILE = "data/posted_text_hashes.txt"
 RECENT_IDS_FILE = "data/recent_post_ids.txt"
 
+# Note記事画像のマッピング（投稿テキストにキーワード含まれていれば画像添付）
+# blog/images/ 配下のpngファイル名を指定。マッチしない投稿は画像なし → 自動A/B
+IMAGES_DIR = "blog/images"
+IMAGE_KEYWORD_MAP = [
+    # 強い固有語を上に並べる（先に当たったものが採用される）
+    ("49_Pocochaダイヤ換金完全ガイド.png", ["ダイヤ", "換金"]),
+    ("50_TikTokLIVE収益化完全ガイド.png", ["TikTok", "ティックトック"]),
+    ("53_IRIAMVライバー始め方完全ガイド.png", ["IRIAM", "イリアム"]),
+    ("52_Pocochaメーター期間完全攻略.png", ["メーター期間", "メーター"]),
+    ("18_Pocochaランク上げ方.png", ["ランク上げ", "ランクアップ"]),
+    ("48_Pocochaライバー始め方完全ガイド.png", ["Pocochaライバー始", "Pococha始", "ぽこちゃ始"]),
+    ("02_Pococha稼げる.png", ["Pococha", "ぽこちゃ"]),
+    ("12_ライバー確定申告.png", ["確定申告", "税金"]),
+    ("17_ライバー面接対策.png", ["面接"]),
+    ("19_ライバー機材おすすめ.png", ["機材", "マイク", "照明"]),
+    ("33_ライブ配信アプリ比較.png", ["アプリ比較", "プラットフォーム", "17LIVE", "SHOWROOM"]),
+    ("16_ライバー還元率.png", ["還元率"]),
+    ("36_ライバーコラボ配信.png", ["コラボ配信", "コラボ"]),
+    ("13_ライバーイベント攻略.png", ["イベント攻略", "イベント期間"]),
+    ("32_ライバー事務所移籍.png", ["移籍"]),
+    ("29_ライバー事務所怪しい見分け方.png", ["怪しい", "詐欺", "見分け方"]),
+    ("35_ライバー事務所契約書注意点.png", ["契約書"]),
+    ("40_ライバー事務所の仕組み報酬体系完全図解.png", ["報酬体系", "仕組み"]),
+    ("27_ライバー事務所おすすめランキング.png", ["事務所ランキング", "事務所おすすめ"]),
+    ("08_ライバー事務所フリー比較.png", ["事務所 vs", "フリー", "個人"]),
+    ("24_ライバー事務所代理店.png", ["代理店"]),
+    ("42_ライバー代理店スカウト術DM返信率.png", ["スカウト", "DM返信"]),
+    ("39_ライバー代理店稼げる収入リアル.png", ["代理店稼", "代理店収入"]),
+    ("38_ライバー代理店副業始め方ステップ.png", ["代理店副業"]),
+    ("43_ライバー事務所開業方法代理店との違い.png", ["開業"]),
+    ("03_事務所選び方.png", ["事務所選", "事務所の選"]),
+    ("25_ライバーマネージャー.png", ["マネージャー"]),
+    ("41_40代50代ライバー始め方.png", ["40代", "50代"]),
+    ("22_30代ライバー.png", ["30代"]),
+    ("10_大学生ライバー.png", ["大学生"]),
+    ("11_主婦ライバー.png", ["主婦", "シングルマザー", "シンママ"]),
+    ("15_ライバー男性.png", ["男性ライバー", "男ライバー", "メンズライバー"]),
+    ("26_ライバー副業バレない.png", ["副業バレ", "会社にバレ"]),
+    ("47_副業月5万在宅.png", ["月5万", "副業月"]),
+    ("06_在宅副業おすすめ.png", ["在宅副業", "在宅ワーク"]),
+    ("09_顔出しなしライバー.png", ["顔出しなし", "顔出し無し", "顔出し怖"]),
+    ("21_ライバー伸びない原因.png", ["伸びない"]),
+    ("14_ライバー辞めたい.png", ["辞めたい", "やめたい"]),
+    ("31_ライバーメンタルケア.png", ["メンタル", "病む"]),
+    ("54_ライブ配信緊張克服メンタル術.png", ["緊張"]),
+    ("30_ライバーファン増やし方.png", ["ファン増", "リスナー増"]),
+    ("34_ライバー容姿関係ない.png", ["容姿", "ブス", "ブサイク"]),
+    ("46_ライバー向いてる人.png", ["向いてる人", "向いてない"]),
+    ("45_ライバー時給.png", ["時給"]),
+    ("37_ライバー月収平均2026.png", ["月収平均", "平均月収"]),
+    ("05_ライバー収入現実.png", ["収入の現実", "収入リアル", "リアルな収入"]),
+    ("51_ライバー経費完全リスト75項目.png", ["経費"]),
+    ("28_ライバー1日スケジュール.png", ["1日スケジュール", "1日の流れ", "タイムスケジュール"]),
+    ("20_ライバー配信ネタ.png", ["配信ネタ", "話すネタ", "何話"]),
+    ("44_初配信コツ.png", ["初配信"]),
+    ("04_配信初心者コツ.png", ["配信初心者", "配信のコツ"]),
+    ("23_ライブ配信市場将来性.png", ["将来性", "市場"]),
+    ("07_Pococha時間ダイヤ完全ガイド.png", ["時間ダイヤ"]),
+    # 汎用フォールバック（最後）
+    ("01_ライバー始め方.png", ["始め方", "始めたい", "ライブ配信始", "配信始め"]),
+]
+
+
+def find_image_for_text(text):
+    """投稿テキストにマッチするNote画像のパスを返す。マッチなしならNone"""
+    if not os.path.isdir(IMAGES_DIR):
+        return None
+    for image_file, keywords in IMAGE_KEYWORD_MAP:
+        for kw in keywords:
+            if kw in text:
+                path = os.path.join(IMAGES_DIR, image_file)
+                if os.path.exists(path):
+                    return path
+                break  # マップにあるが画像欠損 → 次のエントリへ
+    return None
+
 
 def text_hash(text):
     """テキストのハッシュを返す（重複検出用）"""
@@ -107,6 +183,16 @@ def append_hashtags(text, hashtags):
     return text + tag_str
 
 
+def upload_media(api_v1, image_path):
+    """v1.1 API で画像をアップロードし media_id を返す。失敗時は None"""
+    try:
+        media = api_v1.media_upload(filename=image_path)
+        return media.media_id
+    except Exception as e:
+        print(f"  [WARN] 画像アップロード失敗 ({image_path}): {e}")
+        return None
+
+
 def create_tweet_with_retry(client, **kwargs):
     """リトライ付きツイート投稿。403/重複/レート制限に対応"""
     last_error = None
@@ -147,14 +233,16 @@ def create_tweet_with_retry(client, **kwargs):
     raise last_error
 
 
-def post_thread(client, thread_texts):
-    """スレッド（連続ツイート）を投稿"""
+def post_thread(client, thread_texts, first_media_id=None):
+    """スレッド（連続ツイート）を投稿。先頭ツイートにのみ画像を添付"""
     prev_id = None
     tweet_ids = []
     for i, text in enumerate(thread_texts):
         kwargs = {"text": text}
         if prev_id:
             kwargs["in_reply_to_tweet_id"] = prev_id
+        elif first_media_id:
+            kwargs["media_ids"] = [first_media_id]
         resp = create_tweet_with_retry(client, **kwargs)
         prev_id = resp.data["id"]
         tweet_ids.append(prev_id)
@@ -170,6 +258,15 @@ def main():
         access_token=os.environ["TWITTER_ACCESS_TOKEN"],
         access_token_secret=os.environ["TWITTER_ACCESS_TOKEN_SECRET"],
     )
+
+    # v1.1 API（media_upload は v2 にないため必須）
+    auth_v1 = tweepy.OAuth1UserHandler(
+        os.environ["TWITTER_API_KEY"],
+        os.environ["TWITTER_API_SECRET"],
+        os.environ["TWITTER_ACCESS_TOKEN"],
+        os.environ["TWITTER_ACCESS_TOKEN_SECRET"],
+    )
+    api_v1 = tweepy.API(auth_v1)
 
     # 投稿コンテンツを読み込み
     with open("posts/twitter_posts.json", "r", encoding="utf-8") as f:
@@ -216,7 +313,13 @@ def main():
                     print(f"[SKIP] テキスト重複: {post['id']}")
                     continue
 
-                tweet_ids = post_thread(client, thread_texts)
+                # 画像マッチング（先頭ツイートのテキストで判定）
+                image_path = find_image_for_text(thread_texts[0])
+                media_id = upload_media(api_v1, image_path) if image_path else None
+                if media_id:
+                    print(f"  画像添付: {os.path.basename(image_path)}")
+
+                tweet_ids = post_thread(client, thread_texts, first_media_id=media_id)
                 print(f"スレッド投稿成功: {post['id']} ({len(tweet_ids)}件)")
                 save_posted_hash(h)
             else:
@@ -230,7 +333,16 @@ def main():
                     print(f"[SKIP] テキスト重複: {post['id']}")
                     continue
 
-                response = create_tweet_with_retry(client, text=text_with_tags)
+                # 画像マッチング
+                image_path = find_image_for_text(post["text"])
+                tweet_kwargs = {"text": text_with_tags}
+                if image_path:
+                    media_id = upload_media(api_v1, image_path)
+                    if media_id:
+                        tweet_kwargs["media_ids"] = [media_id]
+                        print(f"  画像添付: {os.path.basename(image_path)}")
+
+                response = create_tweet_with_retry(client, **tweet_kwargs)
                 print(f"投稿成功: {post['id']} → {response.data['id']}")
                 print(f"  ハッシュタグ: {' '.join(hashtags)}")
                 save_posted_hash(h)
