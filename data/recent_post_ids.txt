@@ -12,6 +12,7 @@ evo_132
 evo_133
 evo_135
 evo_136
+evo_143
 evo_146
 evo_147
 evo_150
