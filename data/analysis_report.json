@@ -19,8 +19,8 @@
       "retweets": 0,
       "replies": 0,
       "quotes": 0,
-      "impressions": 60,
-      "score": 2.06
+      "impressions": 70,
+      "score": 2.07
     },
     {
       "id": 2047911452049338564,
@@ -30,8 +30,8 @@
       "retweets": 0,
       "replies": 1,
       "quotes": 0,
-      "impressions": 14,
-      "score": 2.01
+      "impressions": 15,
+      "score": 2.02
     },
     {
       "id": 2046876759182680541,
@@ -96,8 +96,19 @@
       "retweets": 0,
       "replies": 0,
       "quotes": 0,
-      "impressions": 44,
+      "impressions": 45,
       "score": 1.04
+    },
+    {
+      "id": 2047562643313979654,
+      "text": "会社員の1日 vs ライバーの1日\n\n会社員\n7時 起床\n8時 満員電車\n9-18時 仕事\n19時 帰宅\n自由時間 3時間\n\nライバー\n10時 起床\n好きな時間",
+      "created_at": "2026-04-24 06:25:50+00:00",
+      "likes": 1,
+      "retweets": 0,
+      "replies": 0,
+      "quotes": 0,
+      "impressions": 28,
+      "score": 1.03
     },
     {
       "id": 2046981826296647816,
@@ -120,17 +131,6 @@
       "quotes": 0,
       "impressions": 26,
       "score": 1.03
-    },
-    {
-      "id": 2047562643313979654,
-      "text": "会社員の1日 vs ライバーの1日\n\n会社員\n7時 起床\n8時 満員電車\n9-18時 仕事\n19時 帰宅\n自由時間 3時間\n\nライバー\n10時 起床\n好きな時間",
-      "created_at": "2026-04-24 06:25:50+00:00",
-      "likes": 1,
-      "retweets": 0,
-      "replies": 0,
-      "quotes": 0,
-      "impressions": 22,
-      "score": 1.02
     },
     {
       "id": 2046876759879028755,
@@ -173,8 +173,19 @@
       "retweets": 0,
       "replies": 0,
       "quotes": 0,
-      "impressions": 126,
+      "impressions": 130,
       "score": 0.13
+    },
+    {
+      "id": 2044822278811312346,
+      "text": "「配信で何話せばいいかわからない」\nって人、これだけやって\n\n1. リスナーに質問する\n2. 来てくれた人の名前呼ぶ\n3. 今日あったこと話す\n\nこれだけで1時",
+      "created_at": "2026-04-16 16:56:36+00:00",
+      "likes": 0,
+      "retweets": 0,
+      "replies": 0,
+      "quotes": 0,
+      "impressions": 55,
+      "score": 0.06
     },
     {
       "id": 2045459761324511465,
@@ -185,17 +196,6 @@
       "replies": 0,
       "quotes": 0,
       "impressions": 51,
-      "score": 0.05
-    },
-    {
-      "id": 2044822278811312346,
-      "text": "「配信で何話せばいいかわからない」\nって人、これだけやって\n\n1. リスナーに質問する\n2. 来てくれた人の名前呼ぶ\n3. 今日あったこと話す\n\nこれだけで1時",
-      "created_at": "2026-04-16 16:56:36+00:00",
-      "likes": 0,
-      "retweets": 0,
-      "replies": 0,
-      "quotes": 0,
-      "impressions": 54,
       "score": 0.05
     },
     {
@@ -217,7 +217,7 @@
       "retweets": 0,
       "replies": 0,
       "quotes": 0,
-      "impressions": 29,
+      "impressions": 32,
       "score": 0.03
     },
     {
@@ -230,6 +230,17 @@
       "quotes": 0,
       "impressions": 28,
       "score": 0.03
+    },
+    {
+      "id": 2048363062357340549,
+      "text": "これ、見落としがちだけど超重要。\n怪しいライバー事務所って、だいたい共通点があるんだ。\n・成功事例だけ強調して失敗談は隠す\n・公式サイトが雑orない\n・報酬の振",
+      "created_at": "2026-04-26 11:26:25+00:00",
+      "likes": 0,
+      "retweets": 0,
+      "replies": 0,
+      "quotes": 0,
+      "impressions": 16,
+      "score": 0.02
     },
     {
       "id": 2047933303341146269,
@@ -261,7 +272,7 @@
       "retweets": 0,
       "replies": 0,
       "quotes": 0,
-      "impressions": 19,
+      "impressions": 20,
       "score": 0.02
     },
     {
@@ -272,7 +283,7 @@
       "retweets": 0,
       "replies": 0,
       "quotes": 0,
-      "impressions": 23,
+      "impressions": 24,
       "score": 0.02
     },
     {
@@ -309,14 +320,25 @@
       "score": 0.02
     },
     {
-      "id": 2048363062357340549,
-      "text": "これ、見落としがちだけど超重要。\n怪しいライバー事務所って、だいたい共通点があるんだ。\n・成功事例だけ強調して失敗談は隠す\n・公式サイトが雑orない\n・報酬の振",
-      "created_at": "2026-04-26 11:26:25+00:00",
+      "id": 2048672111342846351,
+      "text": "配信続けられない人って、完璧主義なこと多いよな。\n「もっと良い機材がないと」「話すことないし」って言って結局始めない。\n\n#Pococha初心者 #ぽこちゃ h",
+      "created_at": "2026-04-27 07:54:28+00:00",
       "likes": 0,
       "retweets": 0,
       "replies": 0,
       "quotes": 0,
-      "impressions": 11,
+      "impressions": 6,
+      "score": 0.01
+    },
+    {
+      "id": 2048409973319684183,
+      "text": "知り合いのライバーの話\n\n「人見知りで配信なんて無理です」\n\n3ヶ月後\n\n「リスナーさんが誕生日祝ってくれた」\n\n人見知りの方がリスナーとの距離近くなるんよな\n",
+      "created_at": "2026-04-26 14:32:49+00:00",
+      "likes": 0,
+      "retweets": 0,
+      "replies": 0,
+      "quotes": 0,
+      "impressions": 10,
       "score": 0.01
     },
     {
@@ -327,7 +349,7 @@
       "retweets": 0,
       "replies": 0,
       "quotes": 0,
-      "impressions": 8,
+      "impressions": 9,
       "score": 0.01
     },
     {
@@ -338,7 +360,7 @@
       "retweets": 0,
       "replies": 0,
       "quotes": 0,
-      "impressions": 7,
+      "impressions": 8,
       "score": 0.01
     },
     {
@@ -507,28 +529,6 @@
       "score": 0.01
     },
     {
-      "id": 2044329614986654139,
-      "text": "「ライブ配信やってみたい」\nって言う人の99%が始めない\n\n理由トップ3\n1位 何話せばいいかわからん\n2位 顔出し怖い\n3位 どうせ自分には無理\n\nやってみた",
-      "created_at": "2026-04-15 08:18:56+00:00",
-      "likes": 0,
-      "retweets": 0,
-      "replies": 0,
-      "quotes": 0,
-      "impressions": 11,
-      "score": 0.01
-    },
-    {
-      "id": 2048409973319684183,
-      "text": "知り合いのライバーの話\n\n「人見知りで配信なんて無理です」\n\n3ヶ月後\n\n「リスナーさんが誕生日祝ってくれた」\n\n人見知りの方がリスナーとの距離近くなるんよな\n",
-      "created_at": "2026-04-26 14:32:49+00:00",
-      "likes": 0,
-      "retweets": 0,
-      "replies": 0,
-      "quotes": 0,
-      "impressions": 4,
-      "score": 0.0
-    },
-    {
       "id": 2048286590514950317,
       "text": "昔の自分に教えてあげたい。\n人見知りでも、配信は全然できるって💬\n顔出しなしでもいいし、声出しなしのチャット配信からだってOK。\n毎日ちょっとずつコミュニケーシ",
       "created_at": "2026-04-26 06:22:33+00:00",
@@ -536,7 +536,7 @@
       "retweets": 0,
       "replies": 0,
       "quotes": 0,
-      "impressions": 2,
+      "impressions": 3,
       "score": 0.0
     },
     {
@@ -551,7 +551,7 @@
       "score": 0.0
     }
   ],
-  "avg_score": 0.5012000000000006,
+  "avg_score": 0.5024000000000006,
   "patterns": {
     "質問系": 1,
     "あるある系": 0,
