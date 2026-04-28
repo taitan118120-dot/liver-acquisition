@@ -138,6 +138,23 @@ SNS_SPAM_RE = re.compile(
     re.IGNORECASE,
 )
 
+# メディア/出版/プロ系（agencyタグから誤検出されがち）
+MEDIA_PUBLISHER_RE = re.compile(
+    r"(出版社|出版|publisher|新聞社|報道|テレビ局|TV局|"
+    r"プロデューサー|producer|"
+    r"作家|小説家|作詞家|作曲家|脚本家|画家|漫画家|"
+    r"記者|編集部|編集長|編集者|編集主任|編集|"
+    r"角川|講談社|集英社|文藝春秋|新潮社|小学館|"
+    r"PR\s*TIMES|プレスリリース|press[ _]?release|"
+    r"局アナ|アナウンサー|キャスター|"
+    r"声優|タレント|アーティスト|ミュージシャン|"
+    r"_news\b|_media\b|_press\b|_tv\b|_book\b|_publish|"
+    r"\bpartner\b|\bcoach\b|\bbrand\b|"
+    r"投資家|アカデミー|スクール|コーチング|コンサル(?:タント)?|"
+    r"先生|教授|博士|医師|弁護士|税理士|司法書士|社労士)",
+    re.IGNORECASE,
+)
+
 
 def qualify_profile(profile: dict, cfg: dict, target_type: str = "beginner") -> tuple[bool, list[str]]:
     """target_type ごとにルールを切り替えて精査"""
@@ -163,6 +180,8 @@ def qualify_profile(profile: dict, cfg: dict, target_type: str = "beginner") -> 
         reasons.append("紹介/まとめ系アカ")
     if SNS_SPAM_RE.search(bio) or SNS_SPAM_RE.search(full_name) or SNS_SPAM_RE.search(username):
         reasons.append("SNS販売/増加代行スパム")
+    if MEDIA_PUBLISHER_RE.search(bio) or MEDIA_PUBLISHER_RE.search(full_name):
+        reasons.append("メディア/出版/プロ系（対象外）")
     # アラビア/ヒンディー
     if re.search(r"[\u0600-\u06FF\u0900-\u097F]", bio):
         reasons.append("外国籍疑い")
@@ -173,8 +192,12 @@ def qualify_profile(profile: dict, cfg: dict, target_type: str = "beginner") -> 
         text_for_check = bio + " " + full_name + " " + username
         if ESTABLISHED_AGENCY_RE.search(text_for_check):
             reasons.append("既存代理店/同業者")
+        # bio に副業/起業関連キーワードがないと「単に副業kw でひっかかっただけのノイズ」になる
+        # → 強制的に AGENCY_DETECT_RE にマッチを要求
+        if not AGENCY_DETECT_RE.search(bio + " " + full_name):
+            reasons.append("agency属性が確認できない（hint由来のみ）")
         # フォロワー上限（巨大アカは届きにくい・代理店候補としては既に成熟しすぎ）
-        max_fl_agency = cfg.get("max_followers_agency", 30000)
+        max_fl_agency = cfg.get("max_followers_agency", 5000)
         if fl is None or fw is None:
             reasons.append("数値未取得")
         else:

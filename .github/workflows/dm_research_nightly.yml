@@ -1,53 +1,17 @@
 name: DM夜間リサーチ
 
-# 毎晩 JST 03:00 (UTC 18:00) に IG/X の候補補充を自動実行
+# Mac launchd 経由のローカル実行（com.taitan.dm-research / com.taitan.dm-research-x）が
+# 一次ルート。Mac がオフ等で launchd が動かなかった場合の保険として GitHub Actions も残す。
+#
+# IG 側: Fly NRT IP が IG にレート制限されるため Mac のみで実行（このワークフローでは無し）。
+# X  側: Cookie 経由ルートも main route が GraphQL なので、Bearer Token あれば
+#        Fly の /api/research でも動く。XDM_BEARER_TOKEN secrets が無ければスキップ。
 on:
   schedule:
     - cron: '0 18 * * *'   # JST 03:00
   workflow_dispatch:        # 手動実行も可
 
 jobs:
-  ig:
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    steps:
-      - name: ログイン (liver_app)
-        env:
-          PW: ${{ secrets.LIVER_APP_PASSWORD }}
-        run: |
-          curl -sS -X POST https://taitan-pro-dm.fly.dev/login \
-            -H "Content-Type: application/json" \
-            -d "{\"password\":\"$PW\"}" \
-            -c /tmp/cookies.txt -o /tmp/login.json
-          cat /tmp/login.json
-          grep -q '"ok": *true' /tmp/login.json
-
-      - name: リサーチ実行 (HTML mode)
-        run: |
-          curl -sS -X POST https://taitan-pro-dm.fly.dev/api/research \
-            -H "Content-Type: application/json" \
-            -b /tmp/cookies.txt \
-            -d '{"target_types":["beginner","existing_liver","agency"],"mode":"html","per_tag":20}' \
-            -o /tmp/research.json
-          cat /tmp/research.json
-
-      - name: 完了待機（最大20分）
-        run: |
-          for i in $(seq 1 60); do
-            STATE=$(curl -sS -b /tmp/cookies.txt https://taitan-pro-dm.fly.dev/api/status)
-            RUNNING=$(echo "$STATE" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(str(d.get("research",{}).get("running",False)).lower())')
-            STAGE=$(echo "$STATE" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("research",{}).get("stage",""))')
-            FETCHED=$(echo "$STATE" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("research",{}).get("fetched",0))')
-            ADDED=$(echo "$STATE" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("research",{}).get("added",0))')
-            echo "[${i}/60] running=$RUNNING stage='$STAGE' fetched=$FETCHED added=$ADDED"
-            if [ "$RUNNING" = "false" ]; then
-              echo "完了: 取得=$FETCHED 通過=$ADDED"
-              exit 0
-            fi
-            sleep 20
-          done
-          echo "20分でタイムアウト（バックグラウンドは続行）"
-
   x:
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -56,9 +20,10 @@ jobs:
       - name: ログイン (x_app)
         env:
           PW: ${{ secrets.XDM_APP_PASSWORD }}
+          BEARER: ${{ secrets.XDM_BEARER_TOKEN }}
         run: |
-          if [ -z "$PW" ]; then
-            echo "XDM_APP_PASSWORD が未設定。スキップ"
+          if [ -z "$PW" ] || [ -z "$BEARER" ]; then
+            echo "XDM_APP_PASSWORD or XDM_BEARER_TOKEN 未設定。スキップ（Mac launchd が一次ルート）"
             exit 78   # neutral exit
           fi
           curl -sS -X POST https://taitan-pro-x-dm.fly.dev/login \
@@ -68,8 +33,11 @@ jobs:
           cat /tmp/x_login.json
           grep -q '"ok": *true' /tmp/x_login.json
 
-      - name: リサーチ実行
+      - name: リサーチ実行（Bearer Token 経路）
+        env:
+          BEARER: ${{ secrets.XDM_BEARER_TOKEN }}
         run: |
+          [ -z "$BEARER" ] && exit 78
           curl -sS -X POST https://taitan-pro-x-dm.fly.dev/api/research \
             -H "Content-Type: application/json" \
             -b /tmp/x_cookies.txt \

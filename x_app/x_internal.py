@@ -413,7 +413,8 @@ def fetch_followers(
     cookies = _ensure_auth(manual_cookies)
     prof = fetch_profile(username, manual_cookies=cookies, query_ids=query_ids)
     if not prof or not prof.get("rest_id"):
-        raise XAuthError(f"{username}: rest_id 取得失敗")
+        # 存在しない/Suspended/タイポ等。AUTHエラーではないので呼出側でスキップさせるため空配列
+        return []
     rest_id = prof["rest_id"]
 
     meta = _resolve_query_meta().get("Followers") or {}
