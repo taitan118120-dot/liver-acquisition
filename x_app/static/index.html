@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+<meta name="theme-color" content="#0f1419" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="TAITAN X" />
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="apple-touch-icon" href="/icon-192.png" />
+<title>TAITAN PRO X DM</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script defer src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js"></script>
+<style>
+  html, body { background: #eff3f4; min-height: 100vh; }
+  body { padding-bottom: env(safe-area-inset-bottom); padding-top: env(safe-area-inset-top); -webkit-tap-highlight-color: transparent; }
+  .tab-btn.active { background: #0f1419; color: white; }
+  .card { background: white; border-radius: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  pre.msg { white-space: pre-wrap; word-break: break-word; background:#fafafa; padding:.75rem; border-radius:.5rem; font-family: inherit; font-size:.9rem; line-height:1.5; }
+  .btn { padding: .65rem 1rem; border-radius: .6rem; font-weight: 600; transition: transform .06s; }
+  .btn:active { transform: scale(.97); }
+  .btn-primary { background: #0f1419; color: white; }
+  .btn-secondary { background: #f3f4f6; color: #111827; }
+  .btn-danger { background: #ef4444; color: white; }
+  .btn-ghost { background: transparent; color: #6b7280; }
+  .chip { padding:.25rem .6rem; border-radius:999px; background:#dbeafe; color:#1e40af; font-size:.8rem; display:inline-block; margin:.15rem; }
+  .badge { padding:.15rem .5rem; border-radius:.4rem; font-size:.7rem; font-weight:600; display:inline-block; }
+  .badge-beginner { background:#fce7f3; color:#9d174d; }
+  .badge-agency { background:#dbeafe; color:#1e40af; }
+  .badge-existing { background:#fef3c7; color:#92400e; }
+  .subtab-btn { padding:.4rem .8rem; border-radius:.4rem; font-size:.85rem; background:#f3f4f6; color:#374151; }
+  .subtab-btn.active { background:#0f1419; color:white; }
+  input[type=text], input[type=number], textarea { width:100%; padding:.6rem .8rem; border-radius:.5rem; border:1px solid #e5e7eb; background:white; font-size:1rem; }
+  textarea { font-family: inherit; min-height: 10rem; }
+  label { display:block; font-size:.85rem; color:#374151; margin-bottom:.25rem; font-weight:500; }
+</style>
+</head>
+<body x-data="app()" x-init="init()" class="text-gray-900">
+
+<header class="bg-black text-white px-4 pt-3 pb-2 shadow sticky top-0 z-10">
+  <div class="flex items-center justify-between">
+    <div>
+      <div class="text-lg font-bold">𝕏 TAITAN PRO X DM</div>
+      <div class="text-xs opacity-80" x-show="me.name">
+        <span x-text="me.role==='owner' ? '👑 ' : '👤 '"></span>
+        <span x-text="me.name"></span>
+      </div>
+    </div>
+    <div class="text-right">
+      <div class="text-sm opacity-90" x-text="`${stats.sent_today}/${stats.daily_limit}送信`"></div>
+      <button class="text-xs opacity-70 underline" @click="logout()" x-show="me.role">ログアウト</button>
+    </div>
+  </div>
+  <div class="mt-2 flex gap-1 text-sm">
+    <button class="tab-btn flex-1 py-2 rounded-md bg-zinc-700" :class="{'active': tab==='queue'}" @click="tab='queue'; refresh()">
+      <span>キュー</span>
+      <span class="ml-1 text-xs" x-text="`(${stats.queue})`"></span>
+    </button>
+    <button class="tab-btn flex-1 py-2 rounded-md bg-zinc-700" :class="{'active': tab==='research'}" @click="tab='research'" x-show="isOwner">
+      リサーチ
+    </button>
+    <button class="tab-btn flex-1 py-2 rounded-md bg-zinc-700" :class="{'active': tab==='settings'}" @click="tab='settings'; loadSettings()" x-show="isOwner">
+      設定
+    </button>
+    <button class="tab-btn flex-1 py-2 rounded-md bg-zinc-700" :class="{'active': tab==='members'}" @click="tab='members'; loadMembers()" x-show="isOwner">
+      メンバー
+    </button>
+    <button class="tab-btn flex-1 py-2 rounded-md bg-zinc-700" :class="{'active': tab==='stats'}" @click="tab='stats'; loadStats()">
+      <span x-text="isOwner ? '統計' : '実績'"></span>
+    </button>
+  </div>
+</header>
+
+<main class="px-3 py-3 max-w-2xl mx-auto">
+
+  <!-- =========== キュー =========== -->
+  <section x-show="tab==='queue'" class="space-y-3">
+    <div class="flex justify-between items-center px-1">
+      <div class="text-sm text-gray-600">
+        精査通過 <b x-text="filteredLeads.length"></b>件 ／ 本日残り <b x-text="stats.remaining"></b>件
+      </div>
+      <button class="btn btn-secondary text-sm" @click="refresh()">更新</button>
+    </div>
+    <div class="flex gap-1 px-1 overflow-x-auto">
+      <button class="subtab-btn" :class="{'active': queueFilter==='all'}" @click="queueFilter='all'">
+        全て<span class="ml-1" x-text="`(${leads.length})`"></span>
+      </button>
+      <button class="subtab-btn" :class="{'active': queueFilter==='beginner'}" @click="queueFilter='beginner'">
+        🌱未経験<span class="ml-1" x-text="`(${leads.filter(l=>l.target_type==='beginner').length})`"></span>
+      </button>
+      <button class="subtab-btn" :class="{'active': queueFilter==='existing_liver'}" @click="queueFilter='existing_liver'">
+        🎤既存<span class="ml-1" x-text="`(${leads.filter(l=>l.target_type==='existing_liver').length})`"></span>
+      </button>
+      <button class="subtab-btn" :class="{'active': queueFilter==='agency'}" @click="queueFilter='agency'">
+        🏢代理店<span class="ml-1" x-text="`(${leads.filter(l=>l.target_type==='agency').length})`"></span>
+      </button>
+    </div>
+
+    <template x-if="filteredLeads.length === 0 && !loading">
+      <div class="card p-6 text-center text-gray-500">
+        <div class="text-5xl mb-2">✨</div>
+        <div>キューが空です</div>
+        <div class="text-sm mt-1">「リサーチ」タブで新規候補を追加</div>
+      </div>
+    </template>
+
+    <template x-for="lead in filteredLeads" :key="lead.id">
+      <div class="card p-4 space-y-3">
+        <div class="flex justify-between items-start">
+          <div>
+            <div class="font-bold text-lg flex items-center gap-2 flex-wrap">
+              <span x-text="lead.name || lead.username"></span>
+              <span class="badge"
+                    :class="{'badge-beginner': lead.target_type==='beginner', 'badge-agency': lead.target_type==='agency', 'badge-existing': lead.target_type==='existing_liver'}"
+                    x-text="badgeLabel(lead.target_type)"></span>
+            </div>
+            <div class="text-sm text-gray-500">@<span x-text="lead.username"></span></div>
+          </div>
+          <div class="text-right text-xs text-gray-500">
+            <div x-text="`fl ${lead.followers} / fw ${lead.following}`"></div>
+            <div x-text="`#${lead.source_tag||''}`"></div>
+          </div>
+        </div>
+        <div class="text-xs text-gray-600 line-clamp-3" x-text="lead.bio"></div>
+        <div class="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded">
+          ⚠️ 送信前に目視確認: 顔写真／ふくよかすぎ／本人不明 などをチェック
+        </div>
+
+        <div class="flex gap-2">
+          <a :href="lead.app_url" class="btn btn-primary flex-1 text-center text-sm">𝕏 アプリで開く</a>
+          <a :href="lead.profile_url" target="_blank" rel="noopener" class="btn btn-secondary text-sm">🌐</a>
+        </div>
+
+        <div>
+          <button class="btn btn-secondary w-full text-sm" @click="toggle(lead.id)">
+            <span x-text="expanded[lead.id] ? 'DM本文を隠す' : 'DM本文を表示'"></span>
+          </button>
+          <div x-show="expanded[lead.id]" x-transition class="mt-2">
+            <!-- バリエーション選択（複数あるとき） -->
+            <div x-show="(lead.messages || []).length > 1" class="flex flex-wrap gap-1 mb-2">
+              <template x-for="(m, idx) in (lead.messages || [])" :key="idx">
+                <button
+                  class="btn text-xs"
+                  :class="(variationIdx[lead.id] ?? lead.template_variation ?? 0) === idx ? 'btn-primary' : 'btn-secondary'"
+                  @click="variationIdx[lead.id] = idx">
+                  <span x-text="'パターン ' + (idx+1)"></span>
+                </button>
+              </template>
+            </div>
+            <pre class="msg" x-text="(lead.messages || [lead.message])[variationIdx[lead.id] ?? lead.template_variation ?? 0]"></pre>
+            <button class="btn btn-secondary w-full mt-2 text-sm" @click="copy((lead.messages || [lead.message])[variationIdx[lead.id] ?? lead.template_variation ?? 0], lead.id)">
+              <span x-text="copied[lead.id] ? '✓ コピーしました' : '📋 本文をコピー'"></span>
+            </button>
+          </div>
+        </div>
+
+        <div class="flex gap-2">
+          <button class="btn btn-primary flex-1" @click="markSent(lead.id)">✓ 送信済</button>
+          <button class="btn btn-ghost text-sm" @click="openSkip(lead.id)">スキップ</button>
+        </div>
+      </div>
+    </template>
+  </section>
+
+  <!-- スキップ理由モーダル -->
+  <div x-show="skipTarget" x-transition class="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-4" @click.self="skipTarget=null">
+    <div class="bg-white dark:bg-zinc-900 rounded-2xl p-4 w-full max-w-md space-y-2">
+      <h3 class="font-bold text-base">スキップ理由を選択</h3>
+      <p class="text-xs opacity-70">理由ごとに学習され、似た傾向のリードを以後非表示にします</p>
+      <div class="grid grid-cols-2 gap-2 mt-3">
+        <template x-for="r in ['業者っぽい','同業者','子供・赤ちゃん','ふくよか','鍵アカ','送信不可','その他']" :key="r">
+          <button class="btn btn-secondary text-sm" @click="skip(skipTarget, r)" x-text="r"></button>
+        </template>
+      </div>
+      <button class="btn btn-ghost w-full text-xs mt-2" @click="skipTarget=null">キャンセル</button>
+    </div>
+  </div>
+
+  <!-- =========== リサーチ =========== -->
+  <section x-show="tab==='research'" class="space-y-4">
+    <div class="card p-4">
+      <h2 class="font-bold mb-2">検索キーワード設定</h2>
+      <div class="flex gap-1 mb-3 overflow-x-auto">
+        <button class="subtab-btn" :class="{'active': keywordTab==='beginner'}" @click="keywordTab='beginner'">🌱未経験</button>
+        <button class="subtab-btn" :class="{'active': keywordTab==='existing_liver'}" @click="keywordTab='existing_liver'">🎤既存ライバー</button>
+        <button class="subtab-btn" :class="{'active': keywordTab==='agency'}" @click="keywordTab='agency'">🏢代理店</button>
+      </div>
+      <div class="mb-3">
+        <template x-for="(kw, i) in (settings.keywords_by_type[keywordTab] || [])" :key="i">
+          <span class="chip">
+            <span x-text="kw"></span>
+            <button class="ml-1 text-blue-700" @click="removeKeywordFromType(keywordTab, i)">×</button>
+          </span>
+        </template>
+      </div>
+      <div class="flex gap-2">
+        <input type="text" x-model="newKeyword" placeholder="新規キーワード（スペース区切りでAND検索）" @keydown.enter="addKeywordToType(keywordTab)" />
+        <button class="btn btn-secondary" @click="addKeywordToType(keywordTab)">追加</button>
+      </div>
+      <div class="text-xs text-gray-500 mt-2">
+        ※ <code>lang:ja -is:retweet -is:reply</code> は自動付与。<code>"完全一致"</code> や <code>OR</code> も使えます
+      </div>
+      <button class="btn btn-secondary mt-2 w-full text-sm" @click="saveSettings()">キーワード保存</button>
+    </div>
+
+    <div class="card p-4">
+      <h2 class="font-bold mb-2">リサーチ実行</h2>
+      <div class="text-sm text-gray-600 mb-3">
+        対象タイプを選び、設定済みキーワードでツイート検索 → 投稿者プロフィールを精査 → キュー追加。
+        <br><span class="text-xs text-amber-700">※ X API v2 Bearer Token 必須（Free枠100reads/月）。Macからの一括ingestはchrome MCP経由を推奨。</span>
+      </div>
+      <div class="space-y-1 mb-3">
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" x-model="researchTypes.beginner" /> 🌱 未経験
+        </label>
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" x-model="researchTypes.existing_liver" /> 🎤 既存ライバー（Pococha以外）
+        </label>
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" x-model="researchTypes.agency" /> 🏢 代理店/事務所
+        </label>
+      </div>
+      <button class="btn btn-primary w-full py-3 text-base"
+              @click="runResearch()"
+              :disabled="research.running">
+        <span x-show="!research.running">🔍 リサーチ実行</span>
+        <span x-show="research.running">実行中...</span>
+      </button>
+
+      <div x-show="research.running || research.stage" class="mt-3 p-3 bg-pink-50 rounded-lg text-sm">
+        <div class="font-semibold" x-text="research.stage"></div>
+        <div class="text-gray-600">
+          取得済み <b x-text="research.fetched"></b> ／ 通過 <b x-text="research.added"></b>
+        </div>
+        <template x-if="research.error">
+          <div class="text-red-600 mt-2" x-text="research.error"></div>
+        </template>
+        <template x-if="research.log && research.log.length">
+          <details class="mt-2">
+            <summary class="cursor-pointer text-xs text-gray-500">ログ</summary>
+            <pre class="text-xs mt-1" x-text="JSON.stringify(research.log, null, 2)"></pre>
+          </details>
+        </template>
+      </div>
+    </div>
+
+    <div class="card p-4">
+      <h2 class="font-bold mb-2">直近のリサーチ履歴</h2>
+      <template x-for="run in recentRuns" :key="run.id">
+        <div class="text-sm border-b py-2 last:border-0">
+          <div x-text="run.started_at"></div>
+          <div class="text-gray-600 text-xs">
+            取得 <span x-text="run.candidates_fetched"></span> / 通過 <span x-text="run.qualified_added"></span>
+            <template x-if="run.error">
+              <span class="text-red-500 ml-2" x-text="`エラー: ${run.error}`"></span>
+            </template>
+          </div>
+        </div>
+      </template>
+    </div>
+  </section>
+
+  <!-- =========== 設定 =========== -->
+  <section x-show="tab==='settings'" class="space-y-4">
+    <div class="card p-4 space-y-3">
+      <h2 class="font-bold">精査基準</h2>
+      <div>
+        <label>フォロワー上限</label>
+        <input type="number" x-model.number="settings.max_followers" />
+      </div>
+      <div>
+        <label>フォロワー下限</label>
+        <input type="number" x-model.number="settings.min_followers" />
+      </div>
+      <div>
+        <label>比率上限（max(fl,fw)/min）</label>
+        <input type="number" step="0.1" x-model.number="settings.max_ratio" />
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label>年齢下限</label>
+          <input type="number" x-model.number="settings.age_min" />
+        </div>
+        <div>
+          <label>年齢上限</label>
+          <input type="number" x-model.number="settings.age_max" />
+        </div>
+      </div>
+      <div>
+        <label>1日送信上限</label>
+        <input type="number" x-model.number="settings.daily_limit" />
+      </div>
+    </div>
+
+    <div class="card p-4">
+      <h2 class="font-bold mb-2">DMテンプレート（種別ごと・複数バリエーション可）</h2>
+      <div class="text-xs text-gray-500 mb-2">
+        変数: <code>{name}</code> <code>{username}</code> ／
+        2つ以上あれば、リードごとに振り分けて送信（BAN対策）
+      </div>
+      <div class="flex gap-1 mb-2 overflow-x-auto">
+        <button class="subtab-btn" :class="{'active': templateTab==='beginner'}" @click="templateTab='beginner'">🌱未経験</button>
+        <button class="subtab-btn" :class="{'active': templateTab==='existing_liver'}" @click="templateTab='existing_liver'">🎤既存ライバー</button>
+        <button class="subtab-btn" :class="{'active': templateTab==='agency'}" @click="templateTab='agency'">🏢代理店</button>
+      </div>
+      <template x-for="(tpl, i) in (settings.templates[templateTab] || [])" :key="templateTab + '_' + i">
+        <div class="border border-gray-200 rounded-lg p-2 mb-2">
+          <div class="flex justify-between items-center mb-1">
+            <span class="text-xs text-gray-600 font-semibold" x-text="`バリエーション ${i+1}`"></span>
+            <button class="text-xs text-red-500"
+                    @click="removeVariation(templateTab, i)"
+                    x-show="(settings.templates[templateTab] || []).length > 1">削除</button>
+          </div>
+          <textarea
+            :value="tpl"
+            @input="settings.templates[templateTab][i] = $event.target.value"></textarea>
+        </div>
+      </template>
+      <button class="btn btn-secondary w-full text-sm mt-1" @click="addVariation(templateTab)">
+        ＋バリエーションを追加
+      </button>
+    </div>
+
+    <div class="card p-4 space-y-3">
+      <h2 class="font-bold">既存ライバー向け追加設定</h2>
+      <div>
+        <label>フォロワー上限（既存ライバー用）</label>
+        <input type="number" x-model.number="settings.max_followers_existing" />
+        <div class="text-xs text-gray-500 mt-1">既に配信中の人は数千〜数万でも候補にしたい場合は緩めに</div>
+      </div>
+    </div>
+
+    <div class="card p-4">
+      <h2 class="font-bold mb-2">X API Bearer Token（手動上書き）</h2>
+      <div class="text-xs text-gray-500 mb-2">
+        通常は環境変数 <code>TWITTER_BEARER_TOKEN</code> から読み込み。手動上書きはここに貼付（developer.x.com の Project & App から発行）。
+      </div>
+      <textarea x-model="settings.x_bearer_token" placeholder="AAAAAAAAAAAAAAAAAAAAA..."></textarea>
+    </div>
+
+    <button class="btn btn-primary w-full py-3" @click="saveSettings()">
+      <span x-text="saved ? '✓ 保存しました' : '設定を保存'"></span>
+    </button>
+  </section>
+
+  <!-- =========== 統計 =========== -->
+  <section x-show="tab==='stats'" class="space-y-4">
+    <div class="grid grid-cols-2 gap-3">
+      <div class="card p-4 text-center">
+        <div class="text-xs text-gray-500">本日送信</div>
+        <div class="text-3xl font-bold text-pink-500" x-text="stats.sent_today"></div>
+        <div class="text-xs text-gray-500" x-text="`/ ${stats.daily_limit}`"></div>
+      </div>
+      <div class="card p-4 text-center">
+        <div class="text-xs text-gray-500" x-text="isOwner ? '累計送信(全体)' : '自分の累計送信'"></div>
+        <div class="text-3xl font-bold" x-text="stats.sent_total"></div>
+      </div>
+      <div class="card p-4 text-center">
+        <div class="text-xs text-gray-500">キュー</div>
+        <div class="text-3xl font-bold" x-text="stats.queue"></div>
+      </div>
+      <div class="card p-4 text-center" x-show="isOwner">
+        <div class="text-xs text-gray-500">登録総数</div>
+        <div class="text-3xl font-bold" x-text="stats.total"></div>
+      </div>
+    </div>
+
+    <div class="card p-4">
+      <h2 class="font-bold mb-2">直近の送信</h2>
+      <template x-for="lead in recentSent" :key="lead.id">
+        <div class="border-b py-2 last:border-0 text-sm">
+          <div class="flex justify-between">
+            <div>
+              <span class="font-semibold" x-text="lead.name || lead.username"></span>
+              <span class="text-gray-500 ml-1">@<span x-text="lead.username"></span></span>
+            </div>
+            <div class="text-xs text-gray-500" x-text="lead.dm_sent_date"></div>
+          </div>
+        </div>
+      </template>
+      <div x-show="recentSent.length === 0" class="text-gray-500 text-center text-sm py-4">なし</div>
+    </div>
+  </section>
+
+  <!-- =========== メンバー（owner 専用） =========== -->
+  <section x-show="tab==='members' && isOwner" class="space-y-4">
+    <div class="card p-4">
+      <h2 class="font-bold mb-3">作業者を追加</h2>
+      <div>
+        <label>名前</label>
+        <input type="text" x-model="newMember.name" placeholder="例: 田中さん" />
+      </div>
+      <div class="mt-2">
+        <label>1日上限</label>
+        <input type="number" x-model.number="newMember.daily_limit" />
+      </div>
+      <button class="btn btn-primary w-full mt-3" @click="createMember()">＋ 作業者を作成</button>
+    </div>
+
+    <div class="card p-4">
+      <h2 class="font-bold mb-3">メンバー一覧</h2>
+      <template x-for="m in members.filter(x => x.active)" :key="m.id">
+        <div class="border border-gray-200 rounded-lg p-3 mb-3">
+          <div class="flex justify-between items-start gap-2">
+            <div>
+              <div class="font-bold">
+                <span x-text="m.role==='owner' ? '👑 ' : '👤 '"></span>
+                <span x-text="m.name"></span>
+              </div>
+              <div class="text-xs text-gray-500" x-text="`1日${m.daily_limit}件`"></div>
+            </div>
+            <div class="text-right text-xs">
+              <div>本日 <b class="text-blue-500" x-text="(m.stats||{}).sent_today||0"></b></div>
+              <div>今月 <b x-text="(m.stats||{}).sent_month||0"></b></div>
+              <div>累計 <b x-text="(m.stats||{}).sent_total||0"></b></div>
+            </div>
+          </div>
+          <div class="mt-2 grid grid-cols-2 gap-1 text-xs" x-show="m.role !== 'owner'">
+            <button class="btn btn-secondary" @click="copyMagicLink(m)">
+              <span x-text="copiedLink===m.id ? '✓ コピー' : '🔗 リンク'"></span>
+            </button>
+            <button class="btn btn-secondary" @click="rotateToken(m.id)">🔄 リセット</button>
+            <button class="btn btn-secondary" @click="toggleActive(m)">⏸ 無効化</button>
+            <button class="btn btn-secondary" @click="editLimits(m)">✏️ 1日上限</button>
+          </div>
+          <div class="mt-2 text-xs text-gray-400 break-all" x-show="m.role !== 'owner'">
+            <span x-text="magicLink(m)"></span>
+          </div>
+        </div>
+      </template>
+      <div x-show="members.filter(x => x.active).length === 0" class="text-center text-gray-500 py-4 text-sm">
+        まだメンバーがいません
+      </div>
+    </div>
+
+    <div class="card p-4 text-xs text-gray-600">
+      <h3 class="font-bold mb-1">作業者向けフロー</h3>
+      <ol class="list-decimal pl-4 space-y-1">
+        <li>「🔗 リンク」をコピーして、作業者にチャットで送る</li>
+        <li>作業者は iPhone Safari でリンクを開く（自動ログイン）</li>
+        <li>「ホーム画面に追加」でPWA化</li>
+        <li>キュータブからDM送信。送信ごとに自動カウント</li>
+      </ol>
+    </div>
+  </section>
+
+</main>
+
+<script>
+function app() {
+  return {
+    tab: 'queue',
+    loading: false,
+    me: { id: '', name: '', role: '', daily_limit: 20, rate_per_lead: 0 },
+    stats: { sent_today: 0, daily_limit: 20, remaining: 0, queue: 0, sent_total: 0, total: 0 },
+    leads: [],
+    queueFilter: 'all',
+    expanded: {},
+    copied: {},
+    variationIdx: {},  // {lead_id: 選択中バリエーションindex}
+    skipTarget: null,  // スキップ理由モーダル: 対象 lead_id
+    settings: {
+      keywords: [], keywords_by_type: { beginner: [], existing_liver: [], agency: [] },
+      templates: { beginner: '', existing_liver: '', agency: '' },
+      max_followers: 10000, max_followers_existing: 5000,
+      min_followers: 1, max_ratio: 5, age_min: 18, age_max: 40, daily_limit: 20,
+      template: '', x_bearer_token: ''
+    },
+    saved: false,
+    newKeyword: '',
+    keywordTab: 'beginner',
+    templateTab: 'beginner',
+    researchTypes: { beginner: true, existing_liver: true, agency: true },
+    research: { running: false, stage: '', fetched: 0, added: 0, log: [], error: null },
+    recentSent: [],
+    recentRuns: [],
+    members: [],
+    newMember: { name: '', daily_limit: 20 },
+    copiedLink: null,
+    pollTimer: null,
+
+    get isOwner() { return this.me.role === 'owner'; },
+
+    get filteredLeads() {
+      if (this.queueFilter === 'all') return this.leads;
+      return this.leads.filter(l => (l.target_type || 'beginner') === this.queueFilter);
+    },
+
+    badgeLabel(t) {
+      return t === 'agency' ? '🏢代理店'
+        : t === 'existing_liver' ? '🎤既存'
+        : '🌱未経験';
+    },
+
+    async init() {
+      await this.loadMe();
+      if (this.isOwner) await this.loadSettings();
+      await this.refresh();
+      this.startPolling();
+      // PWA: Service Worker登録
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').catch(()=>{});
+      }
+    },
+
+    async loadMe() {
+      try {
+        const r = await fetch('/api/me');
+        if (r.ok) this.me = await r.json();
+      } catch (e) {}
+    },
+
+    async logout() {
+      await fetch('/logout', { method: 'POST' });
+      location.href = '/';
+    },
+
+    startPolling() {
+      if (this.pollTimer) clearInterval(this.pollTimer);
+      this.pollTimer = setInterval(() => {
+        this.refreshStatus();
+        if (this.research.running) {
+          // 完了検知時にキューも更新
+        } else if (this._wasRunning) {
+          this.refresh();
+          this.loadRuns();
+          this._wasRunning = false;
+        }
+        this._wasRunning = this.research.running;
+      }, 2000);
+    },
+
+    async refresh() {
+      this.loading = true;
+      await Promise.all([this.loadQueue(), this.refreshStatus()]);
+      this.loading = false;
+    },
+
+    async refreshStatus() {
+      const r = await fetch('/api/status').then(r => r.json());
+      this.stats = r.stats;
+      this.research = r.research;
+    },
+
+    async loadQueue() {
+      const r = await fetch('/api/queue').then(r => r.json());
+      this.leads = r.leads;
+    },
+
+    async loadSettings() {
+      const s = await fetch('/api/settings').then(r => r.json());
+      this.settings = { ...this.settings, ...s };
+      // 念のためdictが欠けてれば初期化
+      if (!this.settings.templates || typeof this.settings.templates !== 'object') {
+        this.settings.templates = { beginner: [], existing_liver: [], agency: [] };
+      }
+      if (!this.settings.keywords_by_type || typeof this.settings.keywords_by_type !== 'object') {
+        this.settings.keywords_by_type = { beginner: this.settings.keywords || [], existing_liver: [], agency: [] };
+      }
+      ['beginner','existing_liver','agency'].forEach(k => {
+        if (!Array.isArray(this.settings.keywords_by_type[k])) this.settings.keywords_by_type[k] = [];
+        // 旧形式 (str) を [str] に正規化
+        const v = this.settings.templates[k];
+        if (typeof v === 'string') {
+          this.settings.templates[k] = v ? [v] : [];
+        } else if (!Array.isArray(v)) {
+          this.settings.templates[k] = [];
+        }
+      });
+    },
+
+    addVariation(type) {
+      if (!this.settings.templates[type]) this.settings.templates[type] = [];
+      this.settings.templates[type].push('');
+    },
+
+    removeVariation(type, i) {
+      if (!confirm('このバリエーションを削除しますか？')) return;
+      this.settings.templates[type].splice(i, 1);
+    },
+
+    async saveSettings() {
+      await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(this.settings)
+      });
+      this.saved = true;
+      setTimeout(() => this.saved = false, 2000);
+    },
+
+    async loadStats() {
+      await this.refreshStatus();
+      const s = await fetch('/api/recent-sent').then(r => r.json());
+      this.recentSent = s.leads;
+    },
+
+    async loadRuns() {
+      const r = await fetch('/api/recent-runs').then(r => r.json());
+      this.recentRuns = r.runs;
+    },
+
+    addKeywordToType(type) {
+      const t = (this.newKeyword || '').trim();
+      if (!t) return;
+      if (!this.settings.keywords_by_type[type]) this.settings.keywords_by_type[type] = [];
+      if (!this.settings.keywords_by_type[type].includes(t)) {
+        this.settings.keywords_by_type[type].push(t);
+      }
+      this.newKeyword = '';
+    },
+
+    removeKeywordFromType(type, i) {
+      this.settings.keywords_by_type[type].splice(i, 1);
+    },
+
+    async runResearch() {
+      await this.saveSettings();
+      const types = Object.keys(this.researchTypes).filter(k => this.researchTypes[k]);
+      if (types.length === 0) {
+        alert('対象タイプを1つ以上選んでください');
+        return;
+      }
+      const r = await fetch('/api/research', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target_types: types })
+      });
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        alert('リサーチ開始失敗: ' + (j.error || r.status));
+        return;
+      }
+      this.refreshStatus();
+      this.loadRuns();
+    },
+
+    async markSent(id) {
+      const r = await fetch(`/api/leads/${id}/mark-sent`, { method: 'POST' });
+      if (r.ok) {
+        const j = await r.json();
+        this.stats = j.stats;
+        this.leads = this.leads.filter(l => l.id !== id);
+      }
+    },
+
+    openSkip(id) {
+      this.skipTarget = id;
+    },
+
+    async skip(id, reason) {
+      if (!id) return;
+      const r = await fetch(`/api/leads/${id}/skip`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: reason || 'mobile_skip' })
+      });
+      this.skipTarget = null;
+      if (r.ok) {
+        this.leads = this.leads.filter(l => l.id !== id);
+        this.refreshStatus();
+      }
+    },
+
+    toggle(id) {
+      this.expanded[id] = !this.expanded[id];
+    },
+
+    async copy(text, id) {
+      try {
+        await navigator.clipboard.writeText(text);
+        this.copied[id] = true;
+        setTimeout(() => this.copied[id] = false, 1500);
+      } catch (e) {
+        alert('コピー失敗: ' + e.message);
+      }
+    },
+
+    // ---------- メンバー管理（owner 専用） ----------
+    async loadMembers() {
+      const [u, s] = await Promise.all([
+        fetch('/api/users').then(r => r.json()),
+        fetch('/api/stats/by-worker').then(r => r.json()),
+      ]);
+      const statsById = {};
+      (s.users || []).forEach(x => { statsById[x.id] = x; });
+      this.members = (u.users || []).map(m => ({ ...m, stats: statsById[m.id] || {} }));
+    },
+
+    async createMember() {
+      const n = (this.newMember.name || '').trim();
+      if (!n) { alert('名前を入力してください'); return; }
+      const r = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...this.newMember, rate_per_lead: 0 }),
+      });
+      if (!r.ok) { alert('作成失敗'); return; }
+      this.newMember = { name: '', daily_limit: 20 };
+      await this.loadMembers();
+    },
+
+    magicLink(m) {
+      return `${location.origin}/w/${m.auth_token}`;
+    },
+
+    async copyMagicLink(m) {
+      try {
+        await navigator.clipboard.writeText(this.magicLink(m));
+        this.copiedLink = m.id;
+        setTimeout(() => this.copiedLink = null, 2000);
+      } catch (e) { alert('コピー失敗: ' + e.message); }
+    },
+
+    async rotateToken(id) {
+      if (!confirm('リンクを再発行すると古いリンクは使えなくなります。続行しますか？')) return;
+      const r = await fetch(`/api/users/${id}/rotate-token`, { method: 'POST' });
+      if (r.ok) await this.loadMembers();
+    },
+
+    async toggleActive(m) {
+      await fetch(`/api/users/${m.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: !m.active }),
+      });
+      await this.loadMembers();
+    },
+
+    async editLimits(m) {
+      const dl = prompt('1日上限', m.daily_limit);
+      if (dl === null) return;
+      await fetch(`/api/users/${m.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ daily_limit: Number(dl) }),
+      });
+      await this.loadMembers();
+    },
+  };
+}
+</script>
+</body>
+</html>

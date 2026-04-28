@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+<meta name="theme-color" content="#1d9bf0" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="TAITAN X" />
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="apple-touch-icon" href="/icon-192.png" />
+<title>TAITAN PRO X DM ログイン</title>
+<style>
+  html, body { background: #eff3f4; min-height: 100vh; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Helvetica Neue", sans-serif; color: #111827; }
+  .wrap { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 1rem; }
+  .card { background: white; border-radius: 1.25rem; box-shadow: 0 4px 20px rgba(0,0,0,.08); padding: 2rem; width: 100%; max-width: 22rem; }
+  h1 { font-size: 1.25rem; margin: 0 0 .25rem; color: #1d9bf0; }
+  p.sub { font-size: .85rem; color: #6b7280; margin: 0 0 1.25rem; }
+  label { display: block; font-size: .85rem; color: #374151; margin-bottom: .35rem; font-weight: 500; }
+  input[type=password] { width: 100%; box-sizing: border-box; padding: .75rem .9rem; border-radius: .6rem; border: 1px solid #e5e7eb; background: white; font-size: 1rem; }
+  button { width: 100%; margin-top: 1rem; padding: .8rem; border: 0; border-radius: .6rem; background: #1d9bf0; color: white; font-weight: 700; font-size: 1rem; }
+  button:active { transform: scale(.98); }
+  .err { color: #ef4444; font-size: .85rem; margin-top: .75rem; min-height: 1.25rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <form class="card" id="f">
+    <h1>TAITAN PRO X DM</h1>
+    <p class="sub">パスワードを入力してください</p>
+    <label for="pw">パスワード</label>
+    <input id="pw" type="password" autocomplete="current-password" autofocus required />
+    <button type="submit">ログイン</button>
+    <div class="err" id="err"></div>
+  </form>
+</div>
+<script>
+const f = document.getElementById('f');
+const err = document.getElementById('err');
+f.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  err.textContent = '';
+  const pw = document.getElementById('pw').value;
+  try {
+    const r = await fetch('/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({password: pw}),
+      credentials: 'same-origin',
+    });
+    if (r.ok) {
+      location.href = '/';
+    } else {
+      err.textContent = 'パスワードが違います';
+    }
+  } catch (e2) {
+    err.textContent = '接続エラー';
+  }
+});
+</script>
+</body>
+</html>
