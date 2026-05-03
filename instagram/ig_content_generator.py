@@ -43,7 +43,19 @@ def load_blog_articles():
 
         # frontmatterからタイトルを抽出
         title_match = re.search(r'^title:\s*"?(.+?)"?\s*$', content, re.MULTILINE)
-        title = title_match.group(1) if title_match else os.path.basename(path).replace(".md", "")
+        if title_match:
+            title = title_match.group(1)
+        else:
+            # frontmatterなし → 最初の # 見出しをタイトルとして使用
+            h1_match = re.search(r'^#\s+(.+)$', content, re.MULTILINE)
+            if h1_match:
+                # 装飾（【】や｜以降、URL等）を除去してシンプルなタイトルに
+                raw = h1_match.group(1).strip()
+                raw = re.sub(r'【[^】]*】', '', raw).strip()
+                raw = re.sub(r'[｜|].+$', '', raw).strip()
+                title = raw if raw else os.path.basename(path).replace(".md", "")
+            else:
+                title = os.path.basename(path).replace(".md", "")
 
         # frontmatterを除いた本文
         body = re.sub(r"^---.*?---\s*", "", content, flags=re.DOTALL).strip()
@@ -148,19 +160,23 @@ def generate_caption(article, dry_run=False):
     # 共通の品質ルール（保存・シェアされる高品質キャプションを生成するための型）
     # =====================================================================
     common_rules = f"""【絶対遵守の構成テンプレート】
-以下の7ブロック構成を必ず守ること。各ブロックの間は空行1つで区切る。
+以下の8ブロック構成を必ず守ること。各ブロックの間は空行1つで区切る。
 
-①フック（1行目・最重要）
-   - 【】で囲んだ短いキャッチ。15〜22文字。
-   - 必ず以下のいずれかのパターンを使う:
-     a) 数字 +「実は…」「9割が知らない」「やってはいけない」型
-     b) 損失回避型「知らないと損する○○」「○○で失敗する人の共通点」
-     c) ギャップ型「○○なのに△△」「未経験から○ヶ月で○万円」
-   - 抽象的な美辞麗句や絵文字だらけのタイトルは禁止。
+①フック（1行目・最重要・スワイプを止める一撃）
+   - Instagramは1行目しかタイムラインに表示されない。ここで指が止まらなければ全部読まれない。
+   - 必ず以下のいずれかのパターンを使う。1行目に【】で固定タイトルを書くのは禁止（教科書感が出てスルーされる）:
+     a) 衝撃の数字を生のまま投げる: 「時給最大3,200円。これ、ライバーの話です。」
+     b) 自己開示・体験談: 「未経験スタートで、3ヶ月目に12万円。種明かしします。」
+     c) 損失回避: 「これ知らないで始めて、最初の3ヶ月を無駄にする人が多すぎる。」
+     d) 業界のリアル: 「事務所選びで月収2倍変わる。盛ってないです。」
+     e) 質問で問いかけ: 「ライブ配信、向いてる人と続かない人の違い、知ってます？」
+     f) 比較で煽る: 「Pococha vs 17LIVE。本気で稼ぎたい人はどっち？答えは明確。」
+   - 句読点で必ず2文に分け、リズムを作る。20〜38文字。
+   - 抽象語（『あなたの夢を』『キラキラ』など）は完全に禁止。
 
-②共感の2行（読者の悩みを言語化）
-   - 「○○って思ってませんか？」「こんな経験ないですか？」型
-   - 1行目で悩みを提示、2行目で「わかります、私も同じでした」と寄り添う
+②共感の2行（Instagramが折り畳む直前。続きを読ませる仕掛け）
+   - 1行目で具体的な悩みを名指し: 「『副業はじめたいけど、私には何の取り柄もないし…』」
+   - 2行目で寄り添い + 続きへの期待: 「わかる。私も同じでした。でもこの投稿で全部解決します。」
    - 絵文字なし、淡々と短く
 
 ③結論（PREP法のP：1〜2行）
@@ -178,13 +194,21 @@ def generate_caption(article, dry_run=False):
    - 各項目の下に1行だけ補足（理由・コツ）を入れてOK
    - 抽象論NG。「明日からできる」レベルの具体性
 
-⑥CTA（固定文）
+⑥オープンループ＋コメント誘導（新規・最重要のエンゲージ装置）
+   - 必ず以下のような構成の2〜3行を入れる:
+     1行目: open-loop型「実はもう1つ、ベテランしか知らない裏ワザがあります。」
+       （ここで結論を出さない。気になる読者がコメント・保存・DMする動機を作る）
+     2行目: コメント誘導「気になる人はコメントで『気になる』って書いてくれたら、
+       次の投稿で深掘りします！」 もしくは 「あなたはどっち派？コメントで教えて！」
+   - コメント数はリーチに直結する。必ず質問形 or 続きを示唆する形で締める。
+
+⑦CTA（固定文）
    - 必ず以下の3行を改行込みで入れる（一字一句変えない）:
      ━━━━━━━━━━━━━━━
      ✨ {config.OFFICE_NAME}の無料相談はプロフィール（@taitan_pro）のリンクから
      ━━━━━━━━━━━━━━━
 
-⑦保存促進＋ハッシュタグ
+⑧保存促進＋ハッシュタグ
    - 「📌 後で見返せるように保存推奨」の1行を入れる
    - その後に空行をはさんでハッシュタグを以下の比率で出す:
      ・大ボリューム(投稿100万件以上): 4個 例 #ライバー #副業 #ライブ配信 #在宅ワーク
@@ -194,7 +218,7 @@ def generate_caption(article, dry_run=False):
    - ハッシュタグは1行にまとめず、改行で大→中→小の3グループに分ける。
 
 【厳守事項】
-- 全体の文字数は1200〜1700文字（ベスト）。2200文字を超えない。
+- 全体の文字数は1300〜1800文字（ベスト）。2200文字を超えない。
 - 絵文字は1ブロックにつき最大1個。フック行と実践リストの先頭以外では使わない。
    許可絵文字のみ: ✨📌✅━ あとは🎯💡のみOK。😌🤗😊💕🚀💰📈🌟など顔文字・装飾系は禁止。
 - URL（https://... lin.ee/... 等）絶対に書かない。リンクは「プロフィールから」のみ。
@@ -297,14 +321,18 @@ _BANNED_EMOJI_RE = re.compile(
     "]"
 )
 
-# 必ず入れたい固定CTAブロック
+# 必ず入れたい固定CTAブロック（フォロー → 保存 → 無料相談の順）
 _REQUIRED_CTA = (
     "━━━━━━━━━━━━━━━\n"
+    "👉 @taitan_pro をフォローして最新情報をチェック\n"
     f"✨ {config.OFFICE_NAME}の無料相談はプロフィール（@taitan_pro）のリンクから\n"
     "━━━━━━━━━━━━━━━"
 )
 
 _SAVE_HINT = "📌 後で見返せるように保存推奨"
+
+# 1行目の【...】を除去して直接フックに変換するパターン
+_FIRST_LINE_BRACKET_RE = re.compile(r'^【[^】]*】\s*')
 
 _URL_RE = re.compile(r"https?://\S+|lin\.ee/\S+|bit\.ly/\S+", re.IGNORECASE)
 _HASHTAG_RE = re.compile(r"#[\wぁ-んァ-ヶー一-龥0-9_]+")
@@ -329,6 +357,19 @@ def _polish_caption(text):
     """
     if not text:
         return text
+
+    # 0. 1行目の【...】除去（タイムラインで教科書感が出てスルーされる）
+    first_nl = text.find("\n")
+    first_line = text[:first_nl] if first_nl != -1 else text
+    rest = text[first_nl:] if first_nl != -1 else ""
+    # 【...】が1行目全体を占める場合のみ削除（フックの一部として使われている場合は残す）
+    stripped_first = _FIRST_LINE_BRACKET_RE.sub("", first_line).strip()
+    if stripped_first:
+        # 【...】の後にフック本文がある → 【...】だけ除去して本文を残す
+        text = stripped_first + rest
+    else:
+        # 【...】しかない行 → 2行目以降から始める
+        text = rest.lstrip("\n")
 
     # 1. URL除去
     cleaned = _URL_RE.sub("", text)
@@ -375,13 +416,16 @@ def _polish_caption(text):
     # 7. ハッシュタグの個数チェック
     tags = _HASHTAG_RE.findall(tag_part)
     if len(tags) < 12:
-        # 不足時はライバー業界の汎用補完タグを足す
+        # TikTokLIVE/Pococha特化の補完タグ（汎用タグより発見されやすい）
         fallback_tags = [
-            "#ライバー", "#副業", "#ライブ配信", "#在宅ワーク",
-            "#ライバー募集", "#Pococha", "#ポコチャ", "#ライバー事務所",
-            "#ライバーになりたい", "#スマホ副業", "#副業女子", "#フリーランス",
-            "#ライバーデビュー", "#ポコチャ初心者", "#副業始めたい",
-            "#タイタンプロ", "#おうち時間", "#夢を叶える",
+            # 大ボリューム（100万件以上）
+            "#ライバー", "#副業", "#ライブ配信", "#Pococha",
+            # 中ボリューム（10〜100万）
+            "#TikTokLIVE", "#ポコチャ", "#ライバー事務所", "#ライバー募集",
+            "#TikTokライバー", "#ポコチャライバー", "#ライバーになりたい", "#副業女子",
+            # スモール/ニッチ（〜10万）
+            "#タイタンプロ", "#ライバーデビュー", "#ポコチャ攻略", "#TikTokLIVE収益化",
+            "#ライバー事務所選び", "#Pococha攻略",
         ]
         seen = set(tags)
         for t in fallback_tags:
@@ -565,6 +609,45 @@ def _detect_category(title):
         if any(k in title for k in keywords):
             return cat
     return "BEGINNER"
+
+
+# =====================================================================
+# アテンションバッジ（画像左上の刺さるリボン。スワイプを止めるための要素）
+# =====================================================================
+# キーワード → (フレーズ, スタイルキー)
+ATTENTION_RULES = [
+    (["怪しい", "詐欺", "失敗", "後悔", "辞めたい", "やめたい"], ("知らないと損", "warning")),
+    (["バレ", "顔出し", "副業バレ"], ("バレずに稼ぐ", "warning")),
+    (["契約", "面接", "代理店"], ("失敗しない選び方", "warning")),
+    (["ダイヤ", "報酬", "還元", "確定申告"], ("9割が知らない", "secret")),
+    (["稼", "収入", "副業", "お金", "月10万", "月5万"], ("9割が知らない", "secret")),
+    (["コツ", "戦略", "攻略", "上げ", "伸び"], ("プロの裏テク", "secret")),
+    (["ランク"], ("プロの裏テク", "secret")),
+    (["イベント", "コラボ", "ファン", "ネタ"], ("神テク公開", "highlight")),
+    (["メンタル", "容姿", "男性", "30代", "将来"], ("読めば変わる", "save")),
+    (["主婦", "ママ", "学生", "大学生"], ("初心者必読", "save")),
+    (["始め方", "初心者", "機材", "未経験", "始める"], ("初心者必読", "save")),
+    (["比較", "アプリ", "市場"], ("結論これ一択", "highlight")),
+    (["事務所", "マネージャー", "移籍"], ("失敗しない選び方", "warning")),
+]
+
+# スタイルキー → 配色
+ATTENTION_STYLES = {
+    "warning":   {"bg": (215, 65, 70),   "fg": (255, 255, 255)},  # 赤
+    "secret":    {"bg": (45, 45, 65),    "fg": (255, 220, 110)},  # 紺地に金
+    "save":      {"bg": (255, 195, 75),  "fg": (60, 40, 15)},     # 山吹に黒
+    "highlight": {"bg": (235, 90, 145),  "fg": (255, 255, 255)},  # ピンク
+}
+
+
+def _detect_attention(title):
+    """タイトルから刺さるアテンションフレーズを選ぶ。
+    戻り値: (phrase, style_key)
+    """
+    for keywords, info in ATTENTION_RULES:
+        if any(k in title for k in keywords):
+            return info
+    return ("保存版", "save")
 
 
 def _build_image_prompt(article):
@@ -864,6 +947,44 @@ def _overlay_text_on_image(image_path, title, catchcopy, category="BEGINNER", br
         badge_text, font=badge_font, fill=(255, 255, 255, 255),
     )
 
+    # --- 2.5 アテンションバッジ（パネル左上、刺さるリボン。スワイプを止める） ---
+    attention_phrase, attention_style_key = _detect_attention(title)
+    attn_style = ATTENTION_STYLES[attention_style_key]
+    attn_font = _get_font(weight=900, size=int(W * 0.034))
+    ab = draw.textbbox((0, 0), attention_phrase, font=attn_font)
+    aw = ab[2] - ab[0]
+    ah = ab[3] - ab[1]
+    apad_x = int(W * 0.022)
+    apad_y = int(W * 0.013)
+    attn_w = aw + 2 * apad_x
+    attn_h = ah + 2 * apad_y + 2
+    attn_x0 = panel_margin_x - int(W * 0.018)  # パネル左上から軽くはみ出す
+    attn_y0 = panel_margin_y - int(H * 0.030)
+    attn_x1 = attn_x0 + attn_w
+    attn_y1 = attn_y0 + attn_h
+    attn_radius = max(8, int(attn_h * 0.30))
+
+    # アテンションバッジ用の影（独立レイヤー）
+    attn_shadow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    asdraw = ImageDraw.Draw(attn_shadow)
+    asdraw.rounded_rectangle(
+        [attn_x0 + 4, attn_y0 + 8, attn_x1 + 4, attn_y1 + 8],
+        radius=attn_radius, fill=(0, 0, 0, 95),
+    )
+    attn_shadow = attn_shadow.filter(ImageFilter.GaussianBlur(radius=8))
+    img = Image.alpha_composite(img, attn_shadow)
+    draw = ImageDraw.Draw(img, "RGBA")
+
+    # 本体
+    draw.rounded_rectangle(
+        [attn_x0, attn_y0, attn_x1, attn_y1],
+        radius=attn_radius, fill=attn_style["bg"] + (255,),
+    )
+    draw.text(
+        (attn_x0 + apad_x, attn_y0 + apad_y - 2),
+        attention_phrase, font=attn_font, fill=attn_style["fg"] + (255,),
+    )
+
     # --- 3. タイトル準備 ---
     inner_width = (W - 2 * panel_margin_x) - int(W * 0.10)
 
@@ -964,6 +1085,43 @@ def _overlay_text_on_image(image_path, title, catchcopy, category="BEGINNER", br
     brand_y = H - panel_margin_y - brand_bottom_margin - brand_font_size
     draw.text((brand_x, brand_y), brand, font=brand_font,
               fill=theme["brand_color"])
+
+    # --- 9. 保存ピン（パネル右下、保存促進の小バッジ） ---
+    save_text = "保存推奨"
+    save_font = _get_font(weight=900, size=int(W * 0.026))
+    sb = draw.textbbox((0, 0), save_text, font=save_font)
+    sw = sb[2] - sb[0]
+    sh = sb[3] - sb[1]
+    spad_x = int(W * 0.020)
+    spad_y = int(W * 0.011)
+    save_w = sw + 2 * spad_x
+    save_h = sh + 2 * spad_y + 2
+    save_x1 = W - panel_margin_x + int(W * 0.018)  # パネル右下から軽くはみ出す
+    save_y1 = H - panel_margin_y + int(H * 0.025)
+    save_x0 = save_x1 - save_w
+    save_y0 = save_y1 - save_h
+    save_radius = max(6, int(save_h * 0.30))
+
+    # 影
+    save_shadow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    ssdraw = ImageDraw.Draw(save_shadow)
+    ssdraw.rounded_rectangle(
+        [save_x0 + 3, save_y0 + 6, save_x1 + 3, save_y1 + 6],
+        radius=save_radius, fill=(0, 0, 0, 85),
+    )
+    save_shadow = save_shadow.filter(ImageFilter.GaussianBlur(radius=6))
+    img = Image.alpha_composite(img, save_shadow)
+    draw = ImageDraw.Draw(img, "RGBA")
+
+    # 本体（ダーク半透明 + ゴールド文字）
+    draw.rounded_rectangle(
+        [save_x0, save_y0, save_x1, save_y1],
+        radius=save_radius, fill=(40, 40, 55, 240),
+    )
+    draw.text(
+        (save_x0 + spad_x, save_y0 + spad_y - 2),
+        save_text, font=save_font, fill=(255, 230, 130, 255),
+    )
 
     # 保存（PNG）
     img.convert("RGB").save(image_path, "PNG", optimize=True)

@@ -174,12 +174,18 @@ def run(generate_if_empty=False, source_type="auto", dry_run=False):
     # トークン事前チェック（dry-runでは不要）
     if not dry_run:
         if not check_and_refresh_token():
-            print("[ABORT] トークンが無効で自動リフレッシュできませんでした。")
-            _write_step_summary(
-                "⚠️ Instagram投稿スキップ: トークン無効",
-                "`INSTAGRAM_ACCESS_TOKEN` が無効かつ自動リフレッシュに失敗しました。\n"
-                "手動で `python instagram/ig_token_refresh.py --force-refresh` を実行してください。",
+            msg = (
+                "**🚨 Instagram Access Token が失効しました**\n\n"
+                "`INSTAGRAM_ACCESS_TOKEN` が無効かつ自動リフレッシュに失敗しました。\n\n"
+                "**対処手順:**\n"
+                "1. `python instagram/ig_token_refresh.py --force-refresh` をローカルで実行\n"
+                "2. 出力された新トークンを GitHub Secrets → `INSTAGRAM_ACCESS_TOKEN` に更新\n"
+                "3. または Meta for Developers で長期トークンを再発行してください\n\n"
+                "> Token の有効期限は通常60日。次回失効前に自動更新が機能するよう\n"
+                "> `META_APP_ID` と `META_APP_SECRET` を Secrets に追加してください。"
             )
+            print("[ABORT] トークンが無効で自動リフレッシュできませんでした。")
+            _write_step_summary("🚨 Instagram投稿停止: トークン失効", msg)
             return False, True  # 永続エラー
 
     posts = load_posts()
