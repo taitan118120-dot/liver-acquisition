@@ -297,7 +297,14 @@ class WebhookHandler(BaseHTTPRequestHandler):
                 if auto_reply:
                     reply_line_message(reply_token, auto_reply, user_id)
                 else:
-                    reply_line_message(reply_token, DEFAULT_REPLY, user_id)
+                    # DEFAULT_REPLY は初回メッセージ時のみ送信
+                    users = load_json(USERS_FILE)
+                    user_data = users.get(user_id, {})
+                    if not user_data.get("default_replied"):
+                        reply_line_message(reply_token, DEFAULT_REPLY, user_id)
+                        user_data["default_replied"] = True
+                        users[user_id] = user_data
+                        save_json(USERS_FILE, users)
 
     def log_message(self, format, *args):
         """アクセスログを簡略化"""
