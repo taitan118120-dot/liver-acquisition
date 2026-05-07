@@ -84,10 +84,17 @@ def load_twitter_posts():
         if tweet.get("phase") != "growth":
             continue
 
-        text = tweet["text"]
-        # スレッドがあれば結合
-        if "thread" in tweet:
-            text = text + "\n\n" + "\n\n".join(tweet["thread"])
+        head = tweet.get("text", "")
+        thread_parts = tweet.get("thread") or []
+        # text が無い新形式（threadのみ）にも対応。両方無ければスキップ
+        if head and thread_parts:
+            text = head + "\n\n" + "\n\n".join(thread_parts)
+        elif head:
+            text = head
+        elif thread_parts:
+            text = "\n\n".join(thread_parts)
+        else:
+            continue
 
         articles.append({
             "filename": f"twitter_{tweet['id']}.json",
