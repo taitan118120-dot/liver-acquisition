@@ -64,6 +64,7 @@ evo_220
 evo_224
 evo_225
 evo_228
+evo_234
 evo_235
 evo_236
 evo_237
