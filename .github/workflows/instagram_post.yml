@@ -2,9 +2,9 @@ name: Instagram自動投稿
 
 on:
   schedule:
-    # JST 7:30, 20:00（UTCで-9時間）1日2回
-    - cron: '30 22 * * *'   # JST 7:30
-    - cron: '0 11 * * *'    # JST 20:00
+    # IGからサイバーセキュリティ警告が出たため頻度を週3回に削減 (2026-05-16)
+    # JST 月/水/金 20:00 = UTC 月/水/金 11:00
+    - cron: '0 11 * * 1,3,5'
   workflow_dispatch:  # 手動実行も可能
     inputs:
       source:
