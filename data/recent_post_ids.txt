@@ -60,6 +60,7 @@ evo_188
 evo_189
 evo_190
 evo_191
+evo_192
 evo_193
 evo_196
 evo_200
