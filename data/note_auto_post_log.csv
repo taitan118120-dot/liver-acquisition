@@ -13,12 +13,10 @@ article_num,title,url,success,error,posted_at
 47,「月5万円の在宅副業」で5個失敗した私が、最終的にライバー代理店に落ち着いた話【2026年版】,,False,"HTTP/Playwright両方失敗: HTTP=下書きHTTPエラー: 422 - {""error"":""Unprocessable Entity""} / PW=PW下書きAPIがID/keyを返しませんでした (id=None, key=). body: {""error"":{""code"":""auth"",""message"":""not_login""}}",2026-04-24T10:51:46.670850
 47,「月5万円の在宅副業」で5個失敗した私が、最終的にライバー代理店に落ち着いた話【2026年版】,,False,"HTTP/Playwright両方失敗: HTTP=下書きHTTPエラー: 422 - {""error"":""Unprocessable Entity""} / PW=PW下書き失敗: status=201 body={""error"":{""code"":""auth"",""message"":""not_login""}}",2026-04-24T10:54:47.952635
 47,「月5万円の在宅副業」で5個失敗した私が、最終的にライバー代理店に落ち着いた話【2026年版】,,False,"editor.note.com/new からのリダイレクトが起きず。ログイン状態を確認してください: Timeout 30000ms exceeded.
-=========================== logs ===========================
 waiting for navigation to ""re.compile('/notes/[^/]+/edit')"" until 'load'
   navigated to ""https://note.com/login?redirectPath=https%3A%2F%2Feditor.note.com%2Fnew""
   navigated to ""https://note.com/login?redirectPath=https%3A%2F%2Feditor.note.com%2Fnew""
   navigated to ""https://note.com/login?redirectPath=https%3A%2F%2Feditor.note.com%2Fnew""
-============================================================. URL=https://note.com/login?redirectPath=https%3A%2F%2Feditor.note.com%2Fnew",2026-04-24T11:04:32.818353
 47,「月5万円の在宅副業」で5個失敗した私が、最終的にライバー代理店に落ち着いた話【2026年版】,,False,"NOTE_COOKIES_JSONが無効または失効（Cookieは通常1〜3ヶ月で失効）
   対処手順:
   1. ローカルで `python note_export_cookies.py` を実行
@@ -31,3 +29,52 @@ waiting for navigation to ""re.compile('/notes/[^/]+/edit')"" until 'load'
 46,1年続くライバーの9割が持っている「たった1つの性格」｜才能でもトーク力でもありません【2026年版,https://note.com/n/n9bf3240d2dbd,True,Playwright経由で公開,2026-04-24T15:50:15.711325
 45,"ライバーの時給、本当に「時給3,000円」は実在するのか｜私が150人の実データから出した答え【20",https://note.com/n/na128c4f02806,True,Playwright経由で公開,2026-04-25T05:32:53.163083
 44,正直に言います。初配信で緊張しないライバーはいません｜それでも8割が翌日消える本当の理由【2026年,https://note.com/n/nec84b0c1dc2e,True,Playwright経由で公開,2026-04-25T07:55:15.057821
+48,【2026年最新版】Pocochaライバーの始め方完全ガイド｜初心者がゼロから月10万円稼ぐロードマ,https://note.com/n/n6194f89cb2aa,True,Playwright UI経由で公開,2026-04-24T23:15:37.893319
+49,【2026年最新】Pocochaのダイヤ換金完全ガイド｜元Sランクが教える換金率・出金日・手数料・税,https://note.com/n/n19e20c40b3f1,True,Playwright UI経由で公開,2026-04-25T23:52:20.625337
+50,【2026年最新】TikTokLIVE 収益化完全ガイド｜条件・ギフト換金率・月収目安・他アプリ比較,https://note.com/n/nadf7bf475ea9,True,Playwright UI経由で公開,2026-04-25T23:52:43.093853
+51,【2026年最新】ライバー経費完全リスト75項目｜確定申告で本当に落とせる節税科目を元Sランクが全公,https://note.com/n/n205ef04edcbb,True,Playwright UI経由で公開,2026-04-25T23:52:58.295892
+52,【2026年最新】Pocochaメーター期間 完全攻略｜新人が約2ヶ月で人生を変えるための全戦略,https://note.com/n/nd29c18b06dcc,True,Playwright UI経由で公開,2026-04-25T23:53:15.256164
+53,【2026年最新】IRIAM Vライバー 始め方完全ガイド｜顔出しなしで稼ぐ全ステップを現役マネージ,https://note.com/n/ne8d3dbf2befc,True,Playwright UI経由で公開,2026-04-25T23:53:30.350411
+54,【元Sランクが教える】ライブ配信の緊張を克服する完全メンタル術｜初配信の不安を「武器」に変える方法,https://note.com/n/nf58c6a743c2a,True,Playwright UI経由で公開,2026-04-25T23:53:45.513628
+55,Pococha S帯を知らないまま始めると、9割の人が半年で消える｜S帯継続の裏側【2026年版】,https://note.com/n/nc3013c157ee0,True,Playwright UI経由で公開,2026-04-26T23:29:37.778185
+56,副業ライバーを1年で辞めた私が、それでも『今』あなたに勧める3つの理由｜失敗しないための裏側【202,https://note.com/n/ndce8a9117fa4,True,Playwright UI経由で公開,2026-04-26T23:29:52.029980
+57,"ライバーデビューの""ある準備""を知らないまま始めると、9割の人が半年で消える｜稼ぎ続ける人の共通点【",https://note.com/n/n576132a999ab,True,Playwright UI経由で公開,2026-04-26T23:30:05.844818
+58,ふわっちの『稼げる仕組み』を知らないまま始めると、9割の人が半年で消える【2026年版】,https://note.com/n/nbbbc925ec0a8,True,Playwright UI経由で公開,2026-04-26T23:30:19.211401
+59,ライバーになる条件を知らないまま始めると、9割の人が半年で消える｜夢を諦めないための新常識【2026,https://note.com/n/n0144caabbb73,True,Playwright UI経由で公開,2026-04-26T23:30:32.695097
+60,「弊社ライバー事務所です」と書いた瞬間、返信率は半分になる｜スカウトDM運用論,,False,NOTE_COOKIES_JSONが未設定のためPlaywrightフォールバック不可,2026-04-26T23:58:56.775353
+60,「弊社ライバー事務所です」と書いた瞬間、返信率は半分になる｜スカウトDM運用論,https://note.com/n/nfde7bf8ebf40,True,Playwright経由で公開,2026-04-26T23:59:24.399031
+61,Pococha と TikTok LIVE どっちが稼げる？元Sランクが収入・条件・始め方を徹底比較,https://note.com/n/n5fa353fd8dd4,True,Playwright経由で公開,2026-04-29T20:59:35.450774
+62,TikTok LIVE 始め方完全ガイド｜元Sランクが「最速で配信解禁→月10万円」までの全手順を公,https://note.com/n/nf70121f2fda2,True,Playwright経由で公開,2026-04-29T21:00:11.597816
+63,TikTok LIVE フォロワー1000人を最速17日で集める方法｜事務所50名の実データ全公開【,https://note.com/n/ndc2f493ebdde,True,Playwright経由で公開,2026-04-29T21:00:33.445953
+63,TikTok LIVE フォロワー1000人を最速17日で集める方法｜事務所50名の実データ全公開【,https://note.com/n/n32e19bc0275b,True,Playwright経由で公開,2026-04-29T21:00:43.101719
+64,TikTok LIVE で稼げない7つの原因｜元Sランクが「月0円→月20万円」に変えた逆転ロジック,https://note.com/n/n71c820dc9e48,True,Playwright経由で公開,2026-04-29T21:00:58.450524
+64,TikTok LIVE で稼げない7つの原因｜元Sランクが「月0円→月20万円」に変えた逆転ロジック,https://note.com/n/necfcd86dd8ba,True,Playwright経由で公開,2026-04-29T21:01:10.229052
+65,TikTok ライバー事務所の選び方完全ガイド｜還元率・違約金・サポートを元Sランクが本音で解説【2,https://note.com/n/n6006676b8d6e,True,Playwright経由で公開,2026-04-29T21:01:31.167333
+65,TikTok ライバー事務所の選び方完全ガイド｜還元率・違約金・サポートを元Sランクが本音で解説【2,https://note.com/n/n2d38df3d89d4,True,Playwright経由で公開,2026-04-29T21:01:35.560451
+66,TikTok LIVE ギフト換金完全ガイド｜還元率・最低出金額・税金まで元Sランクが全公開【202,https://note.com/n/n13b97c639422,True,Playwright経由で公開,2026-04-29T21:02:25.176667
+67,17LIVE 始め方完全ガイド｜元Sランクが「初配信→月10万円」までの最短ロードマップを公開【20,https://note.com/n/ne62d19185fe3,True,Playwright経由で公開,2026-04-29T21:02:43.383302
+68,SHOWROOM 始め方完全ガイド｜元Sランクが「アイドル特化アプリ」で稼ぐ全戦略を公開【2026年,https://note.com/n/n911528fe0a20,True,Playwright経由で公開,2026-04-29T21:03:03.915246
+69,ライバーを始める前に知るべき10のこと｜元Sランクが「3年後に後悔しない」全準備リストを公開【202,https://note.com/n/n1b4784640d76,True,Playwright経由で公開,2026-04-29T21:03:23.667916
+70,配信中リスナー0人の時の対処法｜元Sランクが「枠が枯れる地獄」から抜け出す全テクニック【2026年版,https://note.com/n/na0a86db07e89,True,Playwright経由で公開,2026-04-29T21:03:43.139360
+71,コアファンの作り方完全ガイド｜元Sランクが「月収100万円の土台」を築いた全戦略を公開【2026年版,https://note.com/n/n3e73861d21f5,True,Playwright経由で公開,2026-04-29T21:04:14.790025
+72,ライバー雑談ネタ100選｜元Sランクが「コメント爆増する話題」をジャンル別に全公開【2026年版】,https://note.com/n/nbf2bbf7674b7,True,Playwright経由で公開,2026-04-29T21:04:40.216612
+73,ライバー顔バレ・身バレ対策完全ガイド｜元Sランクが「安全に稼ぐ」全テクニックを公開【2026年版】,https://note.com/n/n2b77c40294ef,True,Playwright経由で公開,2026-04-29T21:05:26.881312
+74,ライブ配信のゴールデンタイム完全ガイド｜元Sランクが「リスナーが集まる時間帯」を全公開【2026年版,https://note.com/n/ne31d02263e2f,True,Playwright経由で公開,2026-04-29T21:06:05.527566
+75,ライバー親バレ対策完全ガイド｜元Sランクが「家族に知られず安全に稼ぐ」全テクニックを公開【2026年,https://note.com/n/n60d572c717f5,True,Playwright経由で公開,2026-04-29T21:06:30.489103
+76,月収100万円ライバーの共通点｜元Sランクが「トップ層だけが知っている」秘密の習慣を全公開【2026,https://note.com/n/nf4cc6b26f530,True,Playwright経由で公開,2026-04-29T21:06:48.666727
+77,【Pococha】C帯からできる「御新規さん攻略」基本ガイド｜初見リスナーを常連化する第一歩,,False,NOTE_COOKIES_JSONが未設定のためPlaywrightフォールバック不可,2026-04-30T00:27:19.558144
+77,【Pococha】C帯からできる「御新規さん攻略」基本ガイド｜初見リスナーを常連化する第一歩,https://note.com/n/n393f5e092338,True,Playwright経由で公開,2026-04-30T00:27:44.202554
+78,ライバー事務所に入るメリット・デメリット完全解説【2026年版】,,False,NOTE_COOKIES_JSONが未設定のためPlaywrightフォールバック不可,2026-05-03T21:13:41.779235
+78,ライバー事務所に入るメリット・デメリット完全解説【2026年版】,https://note.com/n/n4ca1ae7bdc7c,True,Playwright経由で公開,2026-05-03T21:14:12.105853
+79,【Pococha】B帯に上がる方法｜C帯ライバーが今すぐやるべき5つの行動,https://note.com/n/n021d40cd4db6,True,Playwright経由で公開,2026-05-03T21:14:34.768826
+80,TikTok LIVEでギフトを増やす方法｜視聴者が「送りたくなる」配信の作り方,https://note.com/n/n5c1ad907b6dc,True,Playwright経由で公開,2026-05-03T21:14:53.118085
+81,Pococha 同接を増やす方法｜視聴者数が伸びない原因と今日からできる改善策,https://note.com/n/nb336965c569b,True,Playwright経由で公開,2026-05-03T21:15:13.474729
+82,TikTok LIVE が伸びない本当の原因｜フォロワー増えない・視聴者来ない人へ,https://note.com/n/n20ca338bddb0,True,Playwright経由で公開,2026-05-03T21:15:28.284064
+83,【Pococha】コアファンが増えない7つの原因と今日からできる改善策｜常連から「推し」に変わる導線,,False,NOTE_COOKIES_JSONが未設定のためPlaywrightフォールバック不可,2026-05-19T20:16:41.468563
+83,【Pococha】コアファンが増えない7つの原因と今日からできる改善策｜常連から「推し」に変わる導線,https://note.com/n/n11b37b938463,True,Playwright経由で公開,2026-05-19T20:17:17.253074
+84,【Pococha】コメントが来ない・ROM専ばかりの枠を脱出する方法｜元Sランクが教える「沈黙の枠」,https://note.com/n/nda7de26c889e,True,Playwright経由で公開,2026-05-19T20:17:38.081562
+85,【Pococha】フォロワーが増えない原因とは？フォロー獲得率を上げる8つの具体策｜元Sランクが解説,https://note.com/n/n29e9feee936e,True,Playwright経由で公開,2026-05-19T20:18:03.031614
+86,【Pococha】始めたばかりで人が来ない…配信1ヶ月目に必ずやるべき10のこと｜元Sランクが教える,https://note.com/n/na725a5bab70f,True,Playwright経由で公開,2026-05-19T20:18:23.128595
+87,ライバーは小規模企業共済をやるべき？個人事業主の節税メリットを元Sランクが解説,https://note.com/n/n5018d246fc8a,True,Playwright経由で公開,2026-05-28T20:42:48.850188
+88,【ライバー向け】小規模企業共済の加入条件と始め方｜掛金・申し込み手順を完全解説,https://note.com/n/nc1348c61e672,True,Playwright経由で公開,2026-05-28T20:43:10.557418
+89,ライバーの老後資金どう作る？小規模企業共済・iDeCo・国民年金基金を徹底比較,https://note.com/n/nc8d04c409bbb,True,Playwright経由で公開,2026-05-28T20:43:31.166953

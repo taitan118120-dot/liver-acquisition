@@ -443,12 +443,14 @@ def _session_from_cookies(cookies):
         "Content-Type": "application/json",
         "Referer": "https://note.com/",
         "Origin": "https://note.com",
+        # note.com は XHR 判定（X-Requested-With）があれば CSRF トークン無しでも
+        # 書き込み系APIを通す。これが無いと POST /v1/text_notes が 422 になる。
+        "X-Requested-With": "XMLHttpRequest",
     })
     for c in cookies:
         session.cookies.set(c["name"], c["value"], domain=c.get("domain", ".note.com"))
     cookie_names = sorted({c.name for c in session.cookies})
     print(f"  注入済みCookie: {cookie_names}")
-    _acquire_csrf_token(session)
     return session
 
 
@@ -995,6 +997,76 @@ def _playwright_full_post(title, body_html, hashtags, publish=True):
     }
 
 
+def _http_full_post(session, title, body_html, hashtags, publish=True):
+    """純HTTP（requests）で投稿を完結させる本命経路。
+    editor の挙動を再現: 空下書き作成 → draft_save → PUT で公開。
+    成功の鍵:
+      - セッションに X-Requested-With: XMLHttpRequest（CSRF不要で書込API通過）
+      - PUT の前に draft_save を通す（無いと PUT が 422 invalid params）
+    いずれかが非2xxなら _HttpCsrfFailed を投げ、Playwright経路へフォールバックさせる。
+    戻り値: {"id","key","url","draft_only"}
+    """
+    # 1) 空下書き作成
+    r = session.post(f"{NOTE_API_BASE}/v1/text_notes", json={"note": {"status": "draft"}}, timeout=30)
+    if r.status_code not in (200, 201):
+        raise _HttpCsrfFailed(f"create失敗 HTTP {r.status_code}: {r.text[:200]}")
+    d = r.json().get("data", {})
+    note_id, note_key = d.get("id"), d.get("key")
+    if not note_id or not note_key:
+        raise _HttpCsrfFailed(f"create応答にid/key無し: {json.dumps(d, ensure_ascii=False)[:200]}")
+    print(f"  [HTTP] 空下書き作成: id={note_id}, key={note_key}")
+
+    # 2) draft_save（本文を確定。PUT公開の前提条件）
+    r = session.post(
+        f"{NOTE_API_BASE}/v1/text_notes/draft_save?id={note_id}",
+        json={"body": body_html, "body_length": len(body_html), "name": title},
+        timeout=30,
+    )
+    if r.status_code not in (200, 201):
+        raise _HttpCsrfFailed(f"draft_save失敗 HTTP {r.status_code}: {r.text[:200]}")
+    print(f"  [HTTP] draft_save: {r.status_code}")
+
+    # 3) PUT で公開（または下書き保存）
+    target_status = "published" if publish else "draft"
+    put_payload = {
+        "status": target_status,
+        "name": title,
+        "free_body": body_html,
+        "pay_body": "",
+        "body_length": len(body_html),
+        "price": 0,
+        "hashtags": hashtags[:10],
+        "disable_comment": False,
+        "send_notifications_flag": True,
+        "limited": False,
+    }
+    r = session.put(f"{NOTE_API_BASE}/v1/text_notes/{note_id}", json=put_payload, timeout=30)
+    if r.status_code not in (200, 201):
+        raise _HttpCsrfFailed(f"PUT公開失敗 HTTP {r.status_code}: {r.text[:200]}")
+    print(f"  [HTTP] PUT (status={target_status}): {r.status_code}")
+
+    data = r.json().get("data", {})
+    urlname = ""
+    user = data.get("user")
+    if isinstance(user, dict):
+        urlname = user.get("urlname", "") or ""
+    if not urlname:
+        try:
+            cu = session.get(f"{NOTE_API_BASE}/v2/current_user", timeout=15)
+            urlname = cu.json().get("data", {}).get("urlname", "") or ""
+        except Exception:
+            pass
+
+    if target_status == "published":
+        url = f"https://note.com/{urlname}/n/{note_key}" if urlname else f"https://note.com/n/{note_key}"
+        draft_only = False
+    else:
+        url = f"https://note.com/notes/{note_key}/edit"
+        draft_only = True
+
+    return {"id": note_id, "key": note_key, "url": url, "draft_only": draft_only}
+
+
 def api_create_draft(session, title, body_html, hashtags, max_retries=2):
     """下書きを作成（リトライ・検証付き）。HTTPが 422で失敗した場合は Playwright 経由で再試行。"""
     last_error = None
@@ -1238,19 +1310,20 @@ def update_article(article_num, session=None, note_id_map=None, dry_run=False):
         return {"success": True, "dry_run": True}
 
     try:
-        # 新規下書き作成→公開（既存記事と同じタイトルで再投稿）
-        note_id, note_key, _ = api_create_draft(session, title, body_html, hashtags)
-        if not note_key:
-            return {"success": False, "error": "draft_create_failed"}
+        # 新規下書き作成→公開（既存記事と同じタイトルで再投稿）。本命はHTTP経路。
+        try:
+            res = _http_full_post(session, title, body_html, hashtags, publish=True)
+        except _HttpCsrfFailed as http_e:
+            print(f"  HTTP経路失敗 → Playwright経路に切替: {http_e}")
+            res = _playwright_full_post(title, body_html, hashtags, publish=True)
 
-        article_url = api_publish(session, note_key)
-        if article_url:
-            print(f"  再投稿成功: {article_url}")
-            return {"success": True, "url": article_url}
-        else:
-            draft_url = f"https://note.com/notes/{note_key}/edit"
-            print(f"  下書き保存済み（手動公開が必要）: {draft_url}")
-            return {"success": True, "url": draft_url, "draft_only": True}
+        if res.get("url") and not res.get("draft_only"):
+            print(f"  再投稿成功: {res['url']}")
+            return {"success": True, "url": res["url"]}
+        if res.get("url"):
+            print(f"  下書き保存済み（手動公開が必要）: {res['url']}")
+            return {"success": True, "url": res["url"], "draft_only": True}
+        return {"success": False, "error": "publish_failed"}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -1324,11 +1397,20 @@ def post_article(article_num, dry_run=False):
         # APIでログイン
         session = api_login(email, password)
 
-        # 下書き作成（HTTP）。422連発なら _HttpCsrfFailed が飛んでくるので Playwright 経路へ。
+        # 本命: 純HTTP経路（create→draft_save→PUT公開）。
+        # 失敗時のみ _HttpCsrfFailed を捕まえて Playwright 経路へフォールバック。
         try:
-            note_id, note_key, result_data = api_create_draft(session, title, body_html, hashtags)
-        except _HttpCsrfFailed as csrf_e:
-            print(f"\n  HTTP経路がCSRFで失敗 → Playwright経路に切替: {csrf_e}")
+            http_result = _http_full_post(session, title, body_html, hashtags, publish=True)
+            if http_result["url"] and not http_result["draft_only"]:
+                log_result(article_num, title, http_result["url"], True)
+                mark_as_published(article_num)
+                return {"success": True, "url": http_result["url"]}
+            # publish=True を渡しているので通常ここには来ないが、保険
+            log_result(article_num, title, http_result["url"], True, "HTTP経由で下書き保存（手動公開が必要）")
+            mark_as_published(article_num)
+            return {"success": True, "url": http_result["url"], "draft_only": True}
+        except _HttpCsrfFailed as http_e:
+            print(f"\n  HTTP経路失敗 → Playwright経路に切替: {http_e}")
             pw_result = _playwright_full_post(title, body_html, hashtags, publish=True)
             if pw_result["url"] and not pw_result["draft_only"]:
                 log_result(article_num, title, pw_result["url"], True, "Playwright経由で公開")
@@ -1339,22 +1421,6 @@ def post_article(article_num, dry_run=False):
                 mark_as_published(article_num)
                 return {"success": True, "url": pw_result["url"], "draft_only": True}
             raise Exception("Playwrightフォールバックで公開URL取得失敗")
-
-        if not note_key:
-            raise Exception("note_keyが取得できませんでした")
-
-        # 公開（失敗してもNoneが返るだけで例外にならない）
-        article_url = api_publish(session, note_key)
-
-        if article_url:
-            log_result(article_num, title, article_url, True)
-            mark_as_published(article_num)
-            return {"success": True, "url": article_url}
-        else:
-            draft_url = f"https://note.com/notes/{note_key}/edit"
-            log_result(article_num, title, draft_url, True, "下書き保存済み（手動公開が必要）")
-            mark_as_published(article_num)
-            return {"success": True, "url": draft_url, "draft_only": True}
 
     except Exception as e:
         error_msg = str(e)
