@@ -1,0 +1,4 @@
+# データ成果物（肥大化・揮発するためコミットしない）
+data/*.sqlite
+data/publishers/
+data/comments_full_*.json
