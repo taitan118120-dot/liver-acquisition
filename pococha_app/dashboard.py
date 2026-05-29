@@ -22,6 +22,8 @@ from datetime import datetime, timezone, timedelta
 
 sys.path.insert(0, os.path.dirname(__file__))
 from db import connect
+from coach import load_liver, analyze
+from alerts import build_alerts, liver_score
 
 JST = timezone(timedelta(hours=9))
 NOW = datetime.now(JST)
@@ -76,8 +78,17 @@ def collect(conn):
             f"{snap['rank']} ({snap['rank_meter']})" if snap else "-")
         tenure = _days_since(lv["agency_since"]) or _days_since(lv["member_since"])
 
+        # コーチング要約 + 声かけアラート（coach.py / alerts.py 再利用）
+        cdata = load_liver(conn, uid)
+        cres = analyze(cdata)
+        alerts = build_alerts(cdata)
+        alerts.sort(key=lambda a: {"high": 0, "mid": 1, "low": 2}[a["sev"]])
+
         out.append({
             "user_id": uid, "name": name, "display_name": lv["display_name"],
+            "coach": {"flags": cres["flags"], "trend": cres["trend"], "goals": cres["goals"]},
+            "alerts": alerts,
+            "score": liver_score(alerts),
             "kpi": {
                 "rank": cur_rank,
                 "diamonds": dia["diamonds"] if dia else None,
@@ -122,11 +133,25 @@ HTML = """<!doctype html><html lang="ja"><head><meta charset="utf-8">
  th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #262a33}th{color:var(--sub);font-weight:600}
  .badge{display:inline-block;padding:1px 8px;border-radius:6px;background:#262a33;font-size:12px}
  .warn{color:var(--warn)}
+ .coach{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:20px}
+ @media(max-width:780px){.coach{grid-template-columns:1fr}}
+ .coach ul{margin:0;padding-left:18px}.coach li{margin:6px 0;font-size:13px;line-height:1.55}
+ .alert{padding:10px 12px;border-radius:8px;margin:8px 0;font-size:13px;line-height:1.5}
+ .alert.high{background:#3a1820;border-left:3px solid #ff5e8a}
+ .alert.mid{background:#332a14;border-left:3px solid #ffb454}
+ .alert.low{background:#23262e;border-left:3px solid #5a626e}
+ .alert .act{color:var(--sub);font-size:12px;margin-top:4px}
+ .summary{background:var(--card);border-radius:12px;padding:14px;margin-bottom:20px}
+ .summary h2{font-size:13px;margin:0 0 6px;color:var(--sub)}
+ .srow{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid #262a33;cursor:pointer;border-radius:6px}
+ .srow:hover{background:#23262e}.srow:last-child{border-bottom:0}
+ .srow .nm{font-weight:600;min-width:120px}.srow .rs{font-size:13px;color:var(--ink)}.srow .ct{font-size:11px;color:var(--sub);margin-left:auto}
+ .ok{color:var(--ok)}
 </style></head><body>
-<header><h1>Pococha 成績推移ダッシュボード</h1>
-<div class="meta">生成: __GEN__ ／ 所属 __N__ 名</div>
+<header><h1>Pococha コーチング・ダッシュボード</h1>
+<div class="meta">生成: __GEN__ ／ 所属 __N__ 名 ・ ライバー名をクリックで詳細</div>
 <div class="tabs" id="tabs"></div></header>
-<main id="app"></main>
+<main><section class="summary" id="summary"></section><div id="app"></div></main>
 <script>
 const DATA = __DATA__;
 const $ = (h)=>{const t=document.createElement('template');t.innerHTML=h.trim();return t.content.firstChild};
@@ -146,6 +171,13 @@ function render(i){
     ${kpi('コア来場者',k.fans?.toLocaleString(),'コメント収集ベース')}
     ${kpi('事務所歴',k.tenure!=null?k.tenure+'日':'-')}
     `+`<div class="kpi"><div class="l">最終配信</div><div class="v${gapWarn}">${k.gap!=null?k.gap+'日前':'-'}</div><div class="s">${k.last_stream||''}</div></div>`+`
+  </div>
+  <div class="coach">
+    <div class="panel"><h2>いま気にすること・声かけ</h2>${d.alerts.length?
+      d.alerts.map(a=>`<div class="alert ${a.sev}"><div><b>[${a.cat}]</b> ${a.why}</div><div class="act">→ ${a.action}</div></div>`).join('')
+      :'<div class="ok">特に問題なし（健全に回っています）</div>'}</div>
+    <div class="panel"><h2>次にやること</h2><ul>${d.coach.goals.map(g=>`<li>${g}</li>`).join('')||'<li>—</li>'}</ul>
+      <h2 style="margin-top:14px">調子・伸び</h2><ul>${d.coach.trend.map(t=>`<li>${t}</li>`).join('')||'<li>データ蓄積中</li>'}</ul></div>
   </div>
   <div class="grid">
     <div class="panel full"><h2>日次コメント数 / ユニーク来場者（エンゲージメント推移）</h2><canvas id="c_comment" height="110"></canvas></div>
@@ -178,8 +210,22 @@ function render(i){
 
   document.querySelectorAll('.tab').forEach((t,j)=>t.classList.toggle('on',j===i));
 }
+const SEVMK={high:'🔴',mid:'🟡',low:'⚪'};
+function renderSummary(){
+  const order=DATA.map((d,i)=>({i,d})).sort((a,b)=>b.d.score-a.d.score);
+  const el=document.getElementById('summary');
+  const nHigh=DATA.reduce((s,d)=>s+d.alerts.filter(a=>a.sev==='high').length,0);
+  el.innerHTML=`<h2>声かけリスト（要対応の多い順 ・ 🔴重要 ${nHigh}件）</h2>`+
+    order.map(({i,d})=>{
+      const top=d.alerts[0];
+      const body=top?`<span class="rs">${SEVMK[top.sev]} ${top.why}</span>`:`<span class="rs ok">✅ 健全</span>`;
+      return `<div class="srow" data-i="${i}"><span class="nm">${d.name}</span>${body}<span class="ct">${d.alerts.length?d.alerts.length+'件':''}</span></div>`;
+    }).join('');
+  el.querySelectorAll('.srow').forEach(r=>r.onclick=()=>{render(+r.dataset.i);window.scrollTo({top:0,behavior:'smooth'})});
+}
 const tabs=document.getElementById('tabs');
 DATA.forEach((d,i)=>{const t=$(`<div class="tab">${d.name}</div>`);t.onclick=()=>render(i);tabs.appendChild(t)});
+renderSummary();
 render(0);
 </script></body></html>"""
 
