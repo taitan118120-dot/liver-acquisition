@@ -39,6 +39,37 @@ Pococha 運営ダッシュボード（organizer-ope.pococha.com）から所属�
 要サポート判定: 最終配信からの空き日数 / 直近7日の配信日数 / 5分未満NG配信数 /
 ランクメーターのマイナス・降格 / 未同意。捏造防止のため昇格閾値などは推測しない。
 
+## アラート監視・声かけリスト（alerts.py）
+
+蓄積データから「いま声をかけるべきライバー」を深刻度順に洗い出す（coach.py のロジック再利用）。
+
+    python3 alerts.py          # 深刻度順の声かけリスト
+    python3 alerts.py --json   # 機械可読JSON
+    python3 alerts.py --all    # 健全なライバーも表示
+
+検知: 離脱リスク(配信空き🔴) / 配信間隔 / 配信習慣 / ランク降格🔴・メーター低下 /
+NG配信連発 / 未同意。各アラートに「声かけの方向性」を付与。ダイヤ急落・配信上限接近は
+複数日スナップショットが溜まり次第で有効化（拡張余地）。
+
+運営の `/publishers/need_cares` は「直近14日のランク履歴」で未配信マイナス回数を絞る
+公式リストだが、事務所歴14日未満・ランク履歴不足のライバーは対象外（新人は出ない）。
+本ツールはそれを待たず手元データで先回り検知する。
+
+## 配信アーカイブ → 切り抜き（archive_clip.py）
+
+配信録画(joined_live_archiving の m3u8)から、コメント密度で検出した盛り上がり区間を
+ffmpeg で切り出し、`video_pipeline/inputs/` に mp4 として置く（任意でパイプライン実行）。
+Pococha配信は元から 720x1280 縦型なので、そのまま縦型ショート素材になる。
+
+手順:
+1. `/lives/{live_id}` を開き、`extract_archive.js` を javascript_tool で評価 → m3u8 URL取得
+2. `python3 archive_clip.py {live_id} --url "<m3u8>" --save-url` でDB(archives)に保存
+3. `python3 archive_clip.py {live_id} --list` で盛り上がり候補を確認（DLしない）
+4. `python3 archive_clip.py {live_id} --auto 3 --dur 60` で上位3区間を切り出し（**DL発生・要許可**）
+5. `--pipeline` を付けると切り出し後そのまま縦型ショート化
+
+m3u8 は認証不要・既に縦型。`--start HH:MM:SS` で手動切り出しも可。
+
 ## 成績推移ダッシュボード（dashboard.py）
 
 蓄積データを KPI＋推移グラフ（日次コメント/ユニーク来場者・日次配信時間・ランクメーター・

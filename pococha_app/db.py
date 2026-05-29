@@ -106,6 +106,13 @@ CREATE TABLE IF NOT EXISTS dia_balance (
   updated_at  TEXT,                      -- ページ上の更新日時
   UNIQUE(user_id, captured_on)
 );
+
+CREATE TABLE IF NOT EXISTS archives (
+  live_id     INTEGER PRIMARY KEY,       -- 配信ID
+  user_id     INTEGER,
+  m3u8_url    TEXT,                       -- joined_live_archiving の playlist.m3u8
+  captured_at TEXT DEFAULT (datetime('now','+9 hours'))
+);
 """
 
 # livers マスタに後から足したプロフィール列（ALTER で追補）
