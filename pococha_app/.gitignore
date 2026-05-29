@@ -2,3 +2,4 @@
 data/*.sqlite
 data/publishers/
 data/comments_full_*.json
+data/dashboard.html

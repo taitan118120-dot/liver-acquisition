@@ -39,6 +39,17 @@ Pococha 運営ダッシュボード（organizer-ope.pococha.com）から所属�
 要サポート判定: 最終配信からの空き日数 / 直近7日の配信日数 / 5分未満NG配信数 /
 ランクメーターのマイナス・降格 / 未同意。捏造防止のため昇格閾値などは推測しない。
 
+## 成績推移ダッシュボード（dashboard.py）
+
+蓄積データを KPI＋推移グラフ（日次コメント/ユニーク来場者・日次配信時間・ランクメーター・
+イベント入賞）にまとめた自己完結HTMLを生成。ライバー切り替えタブ付き。Chart.js は CDN。
+
+    python3 dashboard.py          # data/dashboard.html を生成
+    python3 dashboard.py --open   # 生成してブラウザで開く
+
+系列の粒度: コメント=長期(50日規模) / 配信時間=直近20枠(≒1週) / ランク=直近5日 /
+ダイヤ残高=取得日ごと1点。snapshots の蓄積が増えれば週/月ダイヤ推移も追加可能。
+
 ## DB スキーマ（data/pococha.sqlite）
 
 - `livers` — ライバーマスタ（user_id, name, display_name, X名, グループ名, 初回/最終取得日, level/gender/region/follows/followers/member_since/agency_since/close_time/ext_url）
