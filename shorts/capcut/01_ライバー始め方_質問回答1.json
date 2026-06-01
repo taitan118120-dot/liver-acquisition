@@ -1,60 +1,109 @@
 {
+  "style_version": "tzunda-v1",
   "keyword": "ライバー始め方",
   "pattern": "質問回答1",
   "persona": null,
-  "duration": 19.0,
-  "slides": 5,
+  "duration": 20.3,
+  "slides": 7,
   "segments": [
     {
-      "text": "ライバーって気になるけど、何から始めればいいの？",
+      "text": "めたん、ライバーって気になるけど、何から始めればいいのなのだ？",
       "start": 0.0,
-      "end": 3.5,
-      "font_size": 72,
-      "color": "#FFFFFF",
-      "bg_color": "#FF0050",
+      "end": 2.8,
+      "font_size": 82,
       "position": "center",
-      "type": "hook"
+      "type": "dialogue",
+      "speaker": "zunda",
+      "side": "left",
+      "emphasis": [],
+      "bg_preset": "navy",
+      "is_end_card": false
     },
     {
-      "text": "おすすめ度: ★★★★★",
-      "start": 3.5,
-      "end": 7.0,
-      "font_size": 80,
-      "color": "#FFE135",
-      "bg_color": "#1A1A2E",
+      "text": "それがね、答えは「おすすめ度: ★★★★★」よ",
+      "start": 2.8,
+      "end": 5.6,
+      "font_size": 82,
       "position": "center",
-      "type": "number"
+      "type": "dialogue",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [
+        "おすすめ度: ★★★★★"
+      ],
+      "bg_preset": "navy",
+      "is_end_card": false
     },
     {
-      "text": "収益化まで 初日から可能 登録者1000人+再生4000時間が必要",
-      "start": 7.0,
-      "end": 11.0,
-      "font_size": 52,
-      "color": "#FFFFFF",
-      "bg_color": "#1A1A2E",
+      "text": "えっ、マジなのだ！？",
+      "start": 5.6,
+      "end": 8.4,
+      "font_size": 82,
       "position": "center",
-      "type": "point"
+      "type": "dialogue",
+      "speaker": "zunda",
+      "side": "left",
+      "emphasis": [],
+      "bg_preset": "navy",
+      "is_end_card": false
+    },
+    {
+      "text": "本当よ。収益化まで 初日から可能 登録者1000人+再生4000時間が必要",
+      "start": 8.4,
+      "end": 11.2,
+      "font_size": 82,
+      "position": "center",
+      "type": "dialogue",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [
+        "1000人",
+        "4000時間"
+      ],
+      "bg_preset": "navy",
+      "is_end_card": false
+    },
+    {
+      "text": "他には何があるのだ？",
+      "start": 11.2,
+      "end": 14.0,
+      "font_size": 82,
+      "position": "center",
+      "type": "dialogue",
+      "speaker": "zunda",
+      "side": "left",
+      "emphasis": [],
+      "bg_preset": "navy",
+      "is_end_card": false
     },
     {
       "text": "信するだけで時間報酬がもらえる（B1ランク1位なら時給3,600円）",
-      "start": 11.0,
-      "end": 15.0,
-      "font_size": 52,
-      "color": "#FFFFFF",
-      "bg_color": "#1A1A2E",
+      "start": 14.0,
+      "end": 16.8,
+      "font_size": 82,
       "position": "center",
-      "type": "point"
+      "type": "dialogue",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [
+        "3,600円"
+      ],
+      "bg_preset": "navy",
+      "is_end_card": false
     },
     {
-      "text": "詳しくはプロフのリンクから！LINEで無料相談できるよ",
-      "start": 15.0,
-      "end": 19.0,
-      "font_size": 56,
-      "color": "#FFFFFF",
-      "bg_color": "#FF0050",
-      "position": "bottom",
-      "type": "cta"
+      "text": "チャンネル登録してね！",
+      "start": 16.8,
+      "end": 20.3,
+      "font_size": 72,
+      "position": "center",
+      "type": "cta",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [],
+      "bg_preset": "cta_pink",
+      "is_end_card": true
     }
   ],
-  "hashtags": "#ライバー #ライバー始め方 #Pococha #副業 #ライブ配信"
+  "hashtags": "#ライバー #ライバー始め方 #Pococha #副業 #ライブ配信 #ずんだもん #四国めたん"
 }

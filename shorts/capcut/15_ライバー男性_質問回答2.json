@@ -1,60 +1,108 @@
 {
+  "style_version": "tzunda-v1",
   "keyword": "ライバー男性",
   "pattern": "質問回答2",
   "persona": "男性",
-  "duration": 19.0,
-  "slides": 5,
+  "duration": 20.3,
+  "slides": 7,
   "segments": [
     {
-      "text": "男でも本当に稼げるの？",
+      "text": "めたん、男でも本当に稼げるの？なのだ？",
       "start": 0.0,
-      "end": 3.5,
-      "font_size": 72,
-      "color": "#FFFFFF",
-      "bg_color": "#FF0050",
+      "end": 2.8,
+      "font_size": 82,
       "position": "center",
-      "type": "hook"
+      "type": "dialogue",
+      "speaker": "zunda",
+      "side": "left",
+      "emphasis": [],
+      "bg_preset": "navy",
+      "is_end_card": false
     },
     {
-      "text": "男性ライバーも十分に稼げます。",
-      "start": 3.5,
-      "end": 7.0,
-      "font_size": 80,
-      "color": "#FFE135",
-      "bg_color": "#1A1A2E",
+      "text": "それがね、答えは「男性ライバーも十分に稼げます。」よ",
+      "start": 2.8,
+      "end": 5.6,
+      "font_size": 82,
       "position": "center",
-      "type": "number"
+      "type": "dialogue",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [
+        "男性ライバーも十分に稼げます。"
+      ],
+      "bg_preset": "navy",
+      "is_end_card": false
     },
     {
-      "text": "TAITAN PROの代表自身がミクチャで8,000人中ミスターコン1位を獲得し",
-      "start": 7.0,
-      "end": 11.0,
-      "font_size": 52,
-      "color": "#FFFFFF",
-      "bg_color": "#1A1A2E",
+      "text": "えっ、マジなのだ！？",
+      "start": 5.6,
+      "end": 8.4,
+      "font_size": 82,
       "position": "center",
-      "type": "point"
+      "type": "dialogue",
+      "speaker": "zunda",
+      "side": "left",
+      "emphasis": [],
+      "bg_preset": "navy",
+      "is_end_card": false
+    },
+    {
+      "text": "本当よ。TAITAN PROの代表自身がミクチャで8,000人中ミスターコン1位を",
+      "start": 8.4,
+      "end": 11.2,
+      "font_size": 82,
+      "position": "center",
+      "type": "dialogue",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [
+        "8,000人"
+      ],
+      "bg_preset": "navy",
+      "is_end_card": false
+    },
+    {
+      "text": "他には何があるのだ？",
+      "start": 11.2,
+      "end": 14.0,
+      "font_size": 82,
+      "position": "center",
+      "type": "dialogue",
+      "speaker": "zunda",
+      "side": "left",
+      "emphasis": [],
+      "bg_preset": "navy",
+      "is_end_card": false
     },
     {
       "text": "月10万円以上を稼ぐための具体的な方法を解説します",
-      "start": 11.0,
-      "end": 15.0,
-      "font_size": 52,
-      "color": "#FFFFFF",
-      "bg_color": "#1A1A2E",
+      "start": 14.0,
+      "end": 16.8,
+      "font_size": 82,
       "position": "center",
-      "type": "point"
+      "type": "dialogue",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [
+        "10万円"
+      ],
+      "bg_preset": "navy",
+      "is_end_card": false
     },
     {
-      "text": "詳しくはプロフのリンクから！LINEで無料相談できるよ",
-      "start": 15.0,
-      "end": 19.0,
-      "font_size": 56,
-      "color": "#FFFFFF",
-      "bg_color": "#FF0050",
-      "position": "bottom",
-      "type": "cta"
+      "text": "チャンネル登録してね！",
+      "start": 16.8,
+      "end": 20.3,
+      "font_size": 72,
+      "position": "center",
+      "type": "cta",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [],
+      "bg_preset": "cta_pink",
+      "is_end_card": true
     }
   ],
-  "hashtags": "#ライバー #ライバー男性 #Pococha #副業 #ライブ配信"
+  "hashtags": "#ライバー #ライバー男性 #Pococha #副業 #ライブ配信 #ずんだもん #四国めたん"
 }

@@ -1,60 +1,80 @@
 {
+  "style_version": "tzunda-v1",
   "keyword": "Pococha稼げる",
   "pattern": "質問回答2",
   "persona": null,
-  "duration": 19.0,
+  "duration": 14.7,
   "slides": 5,
   "segments": [
     {
-      "text": "始めてみたいけど、実際の収入が気になる…",
+      "text": "めたん、始めてみたいけど、実際の収入が気になる…なのだ？",
       "start": 0.0,
-      "end": 3.5,
+      "end": 2.8,
+      "font_size": 82,
+      "position": "center",
+      "type": "dialogue",
+      "speaker": "zunda",
+      "side": "left",
+      "emphasis": [],
+      "bg_preset": "navy",
+      "is_end_card": false
+    },
+    {
+      "text": "それがね、答えは「Pocochaは初心者が最も稼ぎやすいライブ配信アプリ」よ",
+      "start": 2.8,
+      "end": 5.6,
+      "font_size": 82,
+      "position": "center",
+      "type": "dialogue",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [
+        "Pocochaは初心者が最も稼ぎやすいライブ配信アプリ"
+      ],
+      "bg_preset": "navy",
+      "is_end_card": false
+    },
+    {
+      "text": "えっ、マジなのだ！？",
+      "start": 5.6,
+      "end": 8.4,
+      "font_size": 82,
+      "position": "center",
+      "type": "dialogue",
+      "speaker": "zunda",
+      "side": "left",
+      "emphasis": [],
+      "bg_preset": "navy",
+      "is_end_card": false
+    },
+    {
+      "text": "本当よ。月10万円を達成するための具体的な戦略まで詳しく解説します",
+      "start": 8.4,
+      "end": 11.2,
+      "font_size": 82,
+      "position": "center",
+      "type": "dialogue",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [
+        "10万円"
+      ],
+      "bg_preset": "navy",
+      "is_end_card": false
+    },
+    {
+      "text": "チャンネル登録してね！",
+      "start": 11.2,
+      "end": 14.7,
       "font_size": 72,
-      "color": "#FFFFFF",
-      "bg_color": "#FF0050",
       "position": "center",
-      "type": "hook"
-    },
-    {
-      "text": "Pocochaは初心者が最も稼ぎやすいライブ配信アプリ",
-      "start": 3.5,
-      "end": 7.0,
-      "font_size": 80,
-      "color": "#FFE135",
-      "bg_color": "#1A1A2E",
-      "position": "center",
-      "type": "number"
-    },
-    {
-      "text": "月10万円を達成するための具体的な戦略まで詳しく解説します",
-      "start": 7.0,
-      "end": 11.0,
-      "font_size": 52,
-      "color": "#FFFFFF",
-      "bg_color": "#1A1A2E",
-      "position": "center",
-      "type": "point"
-    },
-    {
-      "text": "E1 30円 60円 90円",
-      "start": 11.0,
-      "end": 15.0,
-      "font_size": 52,
-      "color": "#FFFFFF",
-      "bg_color": "#1A1A2E",
-      "position": "center",
-      "type": "point"
-    },
-    {
-      "text": "詳しくはプロフのリンクから！LINEで無料相談できるよ",
-      "start": 15.0,
-      "end": 19.0,
-      "font_size": 56,
-      "color": "#FFFFFF",
-      "bg_color": "#FF0050",
-      "position": "bottom",
-      "type": "cta"
+      "type": "cta",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [],
+      "bg_preset": "cta_pink",
+      "is_end_card": true
     }
   ],
-  "hashtags": "#ライバー #Pococha稼げる #Pococha #副業 #ライブ配信"
+  "hashtags": "#ライバー #Pococha稼げる #Pococha #副業 #ライブ配信 #ずんだもん #四国めたん"
 }

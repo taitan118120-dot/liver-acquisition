@@ -19,7 +19,17 @@ CAPCUT_DIR = os.path.join(OUTPUT_DIR, "capcut")
 
 CHARS_PER_SEC = 4
 MAX_SEC = 50
-CTA = "詳しくはプロフのリンクから！LINEで無料相談できるよ"
+# バズ動画パターン: 具体性 + 緊急性 + 行動コスト低
+CTA = "プロフのLINE追加で無料診断プレゼント中！今だけ"
+
+# バズ動画のフック語録（実データ分析済み）
+VIRAL_HOOKS = {
+    "secret":    ["9割が知らない{kw}の裏側", "{kw}で損する人の共通点", "誰も教えてくれない{kw}の真実"],
+    "question":  ["{kw}って本当に稼げるの？", "え、{kw}でこんなに稼げるの？", "知らないと後悔する{kw}の話"],
+    "number":    ["{kw}でまさかの月{n}", "{kw}でこの数字はヤバい", "{kw}の現実、数字で見せる"],
+    "warning":   ["これ知らないと{kw}失敗する", "{kw}でやりがちなミス3つ", "{kw}始める前に絶対見て"],
+    "countdown": ["失敗しない{kw}のコツTOP3", "{kw}勝ち組だけがやってるTOP3", "知ってるだけで得する{kw}TOP3"],
+}
 
 # ペルソナ別の呼びかけ
 PERSONA_CALL = {
@@ -30,14 +40,30 @@ PERSONA_CALL = {
     "顔出しなし": "顔出しNGの人",
 }
 
-# CapCut スタイル
+# CapCut スタイル (tzunda-v1: 掛け合い型統一)
+# font/sec は新スキーマでも使う。color/bg は bg_preset に置換済み。
 STYLES = {
-    "hook":    {"font": 72, "color": "#FFFFFF", "bg": "#FF0050", "pos": "center",  "sec": 3.5},
-    "point":   {"font": 52, "color": "#FFFFFF", "bg": "#1A1A2E", "pos": "center",  "sec": 4.0},
-    "number":  {"font": 80, "color": "#FFE135", "bg": "#1A1A2E", "pos": "center",  "sec": 3.5},
-    "compare": {"font": 48, "color": "#00F5FF", "bg": "#1A1A2E", "pos": "center",  "sec": 3.5},
-    "cta":     {"font": 56, "color": "#FFFFFF", "bg": "#FF0050", "pos": "bottom",  "sec": 4.0},
+    "hook":     {"font": 86, "sec": 3.2, "bg_preset": "gradient_pink"},
+    "point":    {"font": 78, "sec": 3.2, "bg_preset": "navy"},
+    "number":   {"font": 96, "sec": 3.0, "bg_preset": "navy"},
+    "compare":  {"font": 78, "sec": 3.0, "bg_preset": "gradient_cool"},
+    "cta":      {"font": 72, "sec": 3.5, "bg_preset": "cta_pink"},
+    "dialogue": {"font": 82, "sec": 2.8, "bg_preset": "navy"},
 }
+
+# 話者規格 (canonical keys: zunda / metan)
+SPEAKER_SIDE = {"zunda": "left", "metan": "right"}
+
+# 数字/順位を自動で emphasis に吸い出す正規表現
+import re as _emph_re
+EMPH_RE = _emph_re.compile(r"(第\d+位|\d+[\d,]*(?:万円|円|%|人|時間|ヶ月|倍)|①|②|③|④|⑤)")
+
+def _auto_emphasis(text):
+    out, seen = [], set()
+    for m in EMPH_RE.findall(text or ""):
+        if m not in seen:
+            seen.add(m); out.append(m)
+    return out
 
 # ============================================================
 # ユーティリティ
@@ -222,24 +248,47 @@ class Script:
         self.persona = persona
         self.slides = []
 
-    def hook(self, text, note=""):
-        self.slides.append({"type": "hook", "text": truncate(text, 38), "note": note})
+    def _add(self, slide_type, text, note="", speaker=None, emphasis=None, is_end_card=False, max_len=42):
+        speaker = speaker or "zunda"
+        slide = {
+            "type": slide_type,
+            "text": truncate(text, max_len),
+            "note": note,
+            "speaker": speaker,
+            "emphasis": emphasis if emphasis is not None else _auto_emphasis(text),
+            "is_end_card": is_end_card,
+        }
+        self.slides.append(slide)
+
+    def hook(self, text, note="", speaker="zunda", emphasis=None):
+        self._add("hook", text, note, speaker, emphasis, False, 38)
         return self
 
-    def point(self, text, note=""):
-        self.slides.append({"type": "point", "text": truncate(text, 42), "note": note})
+    def point(self, text, note="", speaker="metan", emphasis=None):
+        self._add("point", text, note, speaker, emphasis, False, 42)
         return self
 
-    def number(self, text, note=""):
-        self.slides.append({"type": "number", "text": truncate(text, 38), "note": note})
+    def number(self, text, note="", speaker="metan", emphasis=None):
+        self._add("number", text, note, speaker, emphasis, False, 38)
         return self
 
-    def compare(self, text, note=""):
-        self.slides.append({"type": "compare", "text": truncate(text, 42), "note": note})
+    def compare(self, text, note="", speaker="metan", emphasis=None):
+        self._add("compare", text, note, speaker, emphasis, False, 42)
         return self
 
-    def cta(self):
-        self.slides.append({"type": "cta", "text": CTA, "note": "プロフのリンクを指差し"})
+    def cta(self, speaker="metan"):
+        """最終CTA: エンドカード扱い"""
+        self._add("cta", "チャンネル登録してね！", "プロフのリンクを指差し",
+                  speaker, emphasis=[], is_end_card=True, max_len=42)
+        return self
+
+    # 対話セリフ (zunda=左・聞き手、metan=右・解説役)
+    def zunda(self, text, note="", emphasis=None):
+        self._add("dialogue", text, note, speaker="zunda", emphasis=emphasis, max_len=42)
+        return self
+
+    def metan(self, text, note="", emphasis=None):
+        self._add("dialogue", text, note, speaker="metan", emphasis=emphasis, max_len=42)
         return self
 
     def seconds(self):
@@ -262,29 +311,35 @@ class Script:
 # 6つの生成パターン
 # ============================================================
 
+def _kw_short(art):
+    kw = re.sub(r"^ライバー", "", art.keyword) or "ライバー"
+    kw = re.sub(r"^Pococha", "", kw) or kw
+    kw = re.sub(r"現実$|攻略$|完全ガイド$", "", kw) or kw
+    return kw[:10] if len(kw) > 10 else kw
+
+
 def pat_question(art):
-    """読者の疑問 → 一言で結論 → 数字で裏付け → CTA"""
+    """ずんだの質問 → めたん結論 → ずんだ驚き → めたん補足 → CTA"""
     out = []
     for i, h in enumerate(art.hooks[:2]):
         s = Script(art.keyword, f"質問回答{i+1}", art.persona)
-        s.hook(h, "カメラ目線で問いかけ")
-        # 結論
         ans = art.get_bold_answer()
         if not ans:
             continue
-        s.number(ans, "ドンと出す")
-        # 裏付けファクト (結論テキストと被らないものを探す)
+        kw = _kw_short(art)
+        s.zunda(f"めたん、{truncate(h, 22)}なのだ？", "カメラ目線で問いかけ")
+        s.metan(f"それがね、答えは「{ans}」よ", "ドンと出す", emphasis=[ans])
+        s.zunda(f"えっ、マジなのだ！？", "驚き顔")
         used_v = s.used_values()
         used_ctx = {sl["text"] for sl in s.slides}
         f = art.get_fresh_fact(used_v, used_ctx)
         if f:
-            s.point(f["ctx"], "うなずきながら")
-            used_v = s.used_values()
+            s.metan(f"本当よ。{f['ctx']}", "うなずきながら")
             used_ctx.add(f["ctx"])
-        # もう1つ補足
-        f2 = art.get_fresh_fact(used_v, used_ctx)
-        if f2 and s.seconds() < 28:
-            s.point(f2["ctx"])
+        f2 = art.get_fresh_fact(s.used_values(), used_ctx)
+        if f2 and s.seconds() < 26:
+            s.zunda("他には何があるのだ？")
+            s.metan(f2["ctx"])
         s.cta()
         if s.ok():
             out.append(s.to_dict())
@@ -292,82 +347,77 @@ def pat_question(art):
 
 
 def pat_number(art):
-    """衝撃数字フック → 文脈 → 追加数字 → CTA"""
+    """ずんだが数字を疑問 → めたん衝撃数字提示 → ずんだ反応 → めたん補強 → CTA"""
     if len(art.facts) < 2:
         return []
     s = Script(art.keyword, "数字インパクト", art.persona)
-    # フック: ペルソナ呼びかけ or 自然なテーマ文
-    call = art.get_persona_call()
-    # キーワードを自然な日本語にする
-    kw_display = art.keyword
-    # 「ライバー」接頭辞を除去して助詞でつなげる
-    kw_display = re.sub(r"^ライバー", "", kw_display)
-    kw_display = re.sub(r"^Pococha", "", kw_display)
-    if not kw_display:
-        kw_display = "ライバー"
-    # 「収入現実」→「収入」のように末尾の冗長語を整理
-    kw_display = re.sub(r"現実$|攻略$|完全ガイド$", "", kw_display) or kw_display
-    if call:
-        s.hook(f"{call}、この数字ヤバい", "驚いた顔")
-    else:
-        s.hook(f"{kw_display}の現実、知ってる？", "真剣な顔")
-    # メイン数字
+    kw = _kw_short(art)
     f1 = art.facts[0]
-    s.number(f1["v"], "大きく手を広げる")
-    s.point(f1["ctx"], "説明")
-    # サブ数字 (被らないやつ)
+    s.zunda(f"めたん、{kw}って本当に稼げるのだ？", "驚いた顔")
+    s.metan(f"{f1['v']} 稼げる世界よ", "ドンと出す", emphasis=[f1["v"]])
+    s.zunda(f"{f1['v']}！？ ウソなのだ…", "目を見開く")
+    s.metan(f"本当よ。{f1['ctx']}", "説明")
     used_v = s.used_values()
     used_ctx = {sl["text"] for sl in s.slides}
     f2 = art.get_fresh_fact(used_v, used_ctx)
     if f2:
-        s.number(f2["ctx"], "指でカウント")
+        s.zunda("他にも凄い数字あるのだ？")
+        s.metan(f2["ctx"], "指でカウント", emphasis=[f2["v"]])
+    s.zunda("夢があるのだ…！")
     s.cta()
     return [s.to_dict()] if s.ok() else []
 
 
 def pat_steps(art):
-    """N個のステップ/理由をテンポよく"""
+    """ずんだが順に質問 → めたんがステップ解説。掛け合いで進む"""
     if len(art.steps) < 3:
         return []
     s = Script(art.keyword, "ポイント紹介", art.persona)
     n = min(len(art.steps), 4)
-    # フック
-    call = art.get_persona_call()
-    if call:
-        s.hook(f"{call}！{n}つだけ覚えて", "指でカウント")
-    else:
-        s.hook(f"{art.keyword}、{n}つだけ覚えて！", "指でカウント")
-    # 各ステップ (短く刈り込む)
+    kw = _kw_short(art)
+    marks = ["①", "②", "③", "④"]
+    s.zunda(f"めたん、{kw}で大事なことって何なのだ？", "指でカウント")
     for j, step in enumerate(art.steps[:n]):
-        short = truncate(clean_text(step), 28)
+        short = truncate(clean_text(step), 26)
+        mark = marks[j]
+        # ずんだ→めたん の掛け合い（初回以外は「次は？」「他には？」でテンポ）
         if j == 0:
-            s.number(f"① {short}", "一番大事")
+            s.metan(f"{mark} {short}", "一番大事", emphasis=[mark, short])
         else:
-            marks = ["②", "③", "④"]
-            s.point(f"{marks[j-1]} {short}")
+            prompts = ["次は何なのだ？", "他には？", "あと何があるのだ？"]
+            s.zunda(prompts[(j-1) % len(prompts)])
+            s.metan(f"{mark} {short}", emphasis=[mark, short])
+    s.zunda(f"{n}つ覚えたのだ！", "納得顔")
     s.cta()
     return [s.to_dict()] if s.ok() else []
 
 
 def pat_compare(art):
-    """テーブルデータを比較形式で"""
+    """比較を掛け合い化: ずんだが「どっち？」→めたんが行ごとに比較 → 結論"""
     out = []
     for table in art.tables[:1]:
         if len(table) < 3:
             continue
         s = Script(art.keyword, "比較してみた", art.persona)
-        # ヘッダから比較軸を作る
         header = table[0]
         if len(header) >= 3:
-            s.hook(f"{header[1]} vs {header[2]}、どっちがいい？", "手を左右に")
+            s.zunda(f"{header[1]} と {header[2]}、どっちがいいのだ？", "手を左右に")
         else:
-            s.hook(f"{art.keyword}、比較すると全然違う", "手を横に振る")
-        # データ行
-        for row in table[1:4]:
+            s.zunda(f"{art.keyword}って比較するとどうなのだ？", "手を横に振る")
+        rows = [r for r in table[1:5] if len(r) >= 2]
+        for k, row in enumerate(rows[:3]):
             if len(row) >= 3:
-                s.compare(f"{row[0]}：{row[1]} vs {row[2]}")
-            elif len(row) >= 2:
-                s.compare(f"{row[0]} → {row[1]}")
+                if k == 0:
+                    s.metan(f"{row[0]}なら {row[1]} vs {row[2]} よ", emphasis=[row[0]])
+                else:
+                    s.zunda("他には？")
+                    s.metan(f"{row[0]}なら {row[1]} vs {row[2]}", emphasis=[row[0]])
+            else:
+                s.metan(f"{row[0]} → {row[1]}", emphasis=[row[0]])
+        s.zunda("どっちを選べばいいのだ？")
+        if len(rows) > 0 and len(rows[0]) >= 3:
+            verdict = rows[0][2]
+            s.metan(f"結論は「{verdict}」よ", "強調", emphasis=["結論", verdict])
         s.cta()
         if s.ok():
             out.append(s.to_dict())
@@ -375,57 +425,116 @@ def pat_compare(art):
 
 
 def pat_top3(art):
-    """TOP3 カウントダウン"""
+    """TOP3 を掛け合いカウントダウン: ずんだが順位を聞く → めたんが答える"""
     items = art.bullets or art.steps
     if len(items) < 3:
         return []
     s = Script(art.keyword, "TOP3", art.persona)
-    call = art.get_persona_call()
-    if call:
-        s.hook(f"{call}必見！{art.keyword}のコツTOP3", "テンション高め")
-    else:
-        s.hook(f"{art.keyword}のコツTOP3！", "テンション高め")
+    kw = _kw_short(art)
+    s.zunda(f"めたん、{kw}の勝ちパターンTOP3が知りたいのだ！", "指を立てて強調")
     top = items[:3]
     for k, item in enumerate(reversed(top)):
-        short = truncate(clean_text(item), 28)
+        short = truncate(clean_text(item), 22)
         rank = 3 - k
-        if rank == 1:
-            s.number(f"第1位：{short}", "一番大事！")
+        rank_label = f"第{rank}位"
+        if rank == 3:
+            s.zunda("まず第3位は何なのだ？")
+        elif rank == 2:
+            s.zunda("じゃあ第2位は？")
         else:
-            s.point(f"第{rank}位：{short}")
+            s.zunda("…そして第1位は？", "溜めて")
+        s.metan(f"{rank_label}は「{short}」よ",
+                "ドンと発表" if rank == 1 else "",
+                emphasis=[rank_label, short])
+    s.zunda("全部メモしたのだ！", "納得")
     s.cta()
     return [s.to_dict()] if s.ok() else []
 
 
 def pat_myth(art):
-    """誤解を否定 → 真実"""
+    """誤解を掛け合いで否定: ずんだが信じてる → めたんが真実"""
     myth = [h for h in art.hooks if any(w in h for w in ["無理", "ない", "できない", "ほんと", "本当", "不安", "つらい"])]
     if not myth:
         return []
     s = Script(art.keyword, "よくある誤解", art.persona)
-    s.hook(myth[0], "共感の表情")
-    s.point("って思ってない？実はそれ間違い！", "手でバツ→マル")
-    # 正解
+    myth_short = truncate(myth[0], 18)
+    s.zunda(f"めたん、「{myth_short}」って聞いたのだ…", "呆れ顔")
+    s.metan("それ、もう古いわよ", "手でバツ")
     truth_words = ["できる", "可能", "稼げ", "大丈夫", "OK", "十分", "不要"]
     truth = None
     for b in art.bold:
         if any(w in b for w in truth_words):
             truth = b
             break
-    if truth:
-        s.number(truth, "力強くうなずく")
-    else:
+    if not truth:
         return []
-    # 補足ファクト (正解テキストと被らないもの)
+    s.metan(f"本当は「{truth}」のよ", "力強く", emphasis=[truth])
+    s.zunda(f"マジなのだ！？ 信じられないのだ", "驚き")
     used_ctx = {sl["text"] for sl in s.slides}
     f = art.get_fresh_fact(s.used_values(), used_ctx)
     if f:
-        s.point(f["ctx"], "追い打ち")
+        s.metan(f["ctx"], "追い打ち")
     s.cta()
     return [s.to_dict()] if s.ok() else []
 
 
-GENERATORS = [pat_question, pat_number, pat_steps, pat_compare, pat_top3, pat_myth]
+def _clean_fact_ctx(ctx, max_len=28):
+    """ファクトの文脈テキストを一人称トーンに整える (文中打ち切り対策)"""
+    ctx = clean_text(ctx).strip()
+    # 途中で切れている助詞を除去
+    ctx = re.sub(r"[をにはがでもと、]\s*$", "", ctx)
+    # 句読点で自然に切る
+    if len(ctx) > max_len:
+        for i in range(max_len, max(max_len - 8, 0), -1):
+            if i < len(ctx) and ctx[i] in "。、！？":
+                return ctx[:i]
+        ctx = ctx[:max_len]
+    return ctx
+
+
+def pat_dialogue(art):
+    """ずんだもん×四国めたん 対話形式解説動画 (転職ずんだ風フォーマット)
+
+    構成 (全7-9セリフ、25-35秒):
+    1. ずんだもん: 疑問フック
+    2. めたん: ショッキング結論
+    3. ずんだもん: 驚きリアクション
+    4. めたん: 数字で裏付け
+    5. ずんだもん: 追加質問
+    6. めたん: 2つ目のポイント
+    7. ずんだもん: 納得リアクション
+    8. めたん: CTA
+    """
+    if len(art.facts) < 1:
+        return []
+    s = Script(art.keyword, "対話解説", art.persona)
+
+    topic = _kw_short(art)
+    f1 = art.facts[0]
+    ctx1 = _clean_fact_ctx(f1["ctx"])
+
+    s.zunda(f"めたん、{topic}って実際どうなのだ？")
+    s.metan(f"それがね、{f1['v']}稼げる世界なのよ", emphasis=[f1["v"]])
+    s.zunda(f"{f1['v']}…！？ マジなのだ？", emphasis=[f1["v"]])
+    s.metan(f"本当よ。{ctx1}")
+
+    f2 = art.get_fresh_fact({f1["v"]}, {f1["ctx"]})
+    if f2:
+        ctx2 = _clean_fact_ctx(f2["ctx"])
+        s.zunda("他にもコツあるのだ？")
+        s.metan(f"あるわよ。{ctx2}", emphasis=[f2["v"]] if f2.get("v") else None)
+    elif art.bullets:
+        bullet = _clean_fact_ctx(art.bullets[0])
+        s.zunda("始めるのに必要なの？")
+        s.metan(f"{bullet}さえあれば十分よ")
+
+    s.zunda("思ったよりいけそうなのだ！")
+    s.cta()
+
+    return [s.to_dict()] if len(s.slides) >= 7 and s.seconds() <= MAX_SEC else []
+
+
+GENERATORS = [pat_question, pat_number, pat_steps, pat_compare, pat_top3, pat_myth, pat_dialogue]
 
 # ============================================================
 # 出力
@@ -467,20 +576,41 @@ def to_markdown(sc, title):
 
 
 def to_capcut(sc):
+    """tzunda-v1 スキーマで出力"""
     segs = []
     t = 0.0
     for sl in sc["slides"]:
         st = STYLES.get(sl["type"], STYLES["point"])
-        segs.append({
-            "text": sl["text"], "start": round(t, 2), "end": round(t + st["sec"], 2),
-            "font_size": st["font"], "color": st["color"],
-            "bg_color": st["bg"], "position": st["pos"], "type": sl["type"],
-        })
+        speaker = sl.get("speaker", "zunda")
+        side = SPEAKER_SIDE.get(speaker, "left")
+        is_end = bool(sl.get("is_end_card", False))
+        bg_preset = "cta_pink" if is_end else st["bg_preset"]
+        seg = {
+            "text": sl["text"],
+            "start": round(t, 2),
+            "end": round(t + st["sec"], 2),
+            "font_size": st["font"],
+            "position": "center",
+            "type": sl["type"],
+            "speaker": speaker,
+            "side": side,
+            "emphasis": sl.get("emphasis") or [],
+            "bg_preset": bg_preset,
+            "is_end_card": is_end,
+        }
+        segs.append(seg)
         t += st["sec"]
-    tags = f"#ライバー #{sc['keyword']} #Pococha #副業 #ライブ配信"
-    return {"keyword": sc["keyword"], "pattern": sc["pattern"],
-            "persona": sc.get("persona"), "duration": round(t, 2),
-            "slides": len(segs), "segments": segs, "hashtags": tags}
+    tags = f"#ライバー #{sc['keyword']} #Pococha #副業 #ライブ配信 #ずんだもん #四国めたん"
+    return {
+        "style_version": "tzunda-v1",
+        "keyword": sc["keyword"],
+        "pattern": sc["pattern"],
+        "persona": sc.get("persona"),
+        "duration": round(t, 2),
+        "slides": len(segs),
+        "segments": segs,
+        "hashtags": tags,
+    }
 
 
 # ============================================================

@@ -1,60 +1,108 @@
 {
+  "style_version": "tzunda-v1",
   "keyword": "主婦ライバー",
   "pattern": "質問回答2",
   "persona": "主婦",
-  "duration": 19.0,
-  "slides": 5,
+  "duration": 20.3,
+  "slides": 7,
   "segments": [
     {
-      "text": "パートに出る時間がない…",
+      "text": "めたん、パートに出る時間がない…なのだ？",
       "start": 0.0,
-      "end": 3.5,
-      "font_size": 72,
-      "color": "#FFFFFF",
-      "bg_color": "#FF0050",
+      "end": 2.8,
+      "font_size": 82,
       "position": "center",
-      "type": "hook"
+      "type": "dialogue",
+      "speaker": "zunda",
+      "side": "left",
+      "emphasis": [],
+      "bg_preset": "navy",
+      "is_end_card": false
     },
     {
-      "text": "初月から月10万円",
-      "start": 3.5,
-      "end": 7.0,
-      "font_size": 80,
-      "color": "#FFE135",
-      "bg_color": "#1A1A2E",
+      "text": "それがね、答えは「初月から」よ",
+      "start": 2.8,
+      "end": 5.6,
+      "font_size": 82,
       "position": "center",
-      "type": "number"
+      "type": "dialogue",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [
+        "初月から"
+      ],
+      "bg_preset": "navy",
+      "is_end_card": false
+    },
+    {
+      "text": "えっ、マジなのだ！？",
+      "start": 5.6,
+      "end": 8.4,
+      "font_size": 82,
+      "position": "center",
+      "type": "dialogue",
+      "speaker": "zunda",
+      "side": "left",
+      "emphasis": [],
+      "bg_preset": "navy",
+      "is_end_card": false
+    },
+    {
+      "text": "本当よ。初月から月10万円を目指せます",
+      "start": 8.4,
+      "end": 11.2,
+      "font_size": 82,
+      "position": "center",
+      "type": "dialogue",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [
+        "10万円"
+      ],
+      "bg_preset": "navy",
+      "is_end_card": false
+    },
+    {
+      "text": "他には何があるのだ？",
+      "start": 11.2,
+      "end": 14.0,
+      "font_size": 82,
+      "position": "center",
+      "type": "dialogue",
+      "speaker": "zunda",
+      "side": "left",
+      "emphasis": [],
+      "bg_preset": "navy",
+      "is_end_card": false
     },
     {
       "text": "昼寝の時間にサクッと1時間配信するのもOK",
-      "start": 7.0,
-      "end": 11.0,
-      "font_size": 52,
-      "color": "#FFFFFF",
-      "bg_color": "#1A1A2E",
+      "start": 14.0,
+      "end": 16.8,
+      "font_size": 82,
       "position": "center",
-      "type": "point"
+      "type": "dialogue",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [
+        "1時間"
+      ],
+      "bg_preset": "navy",
+      "is_end_card": false
     },
     {
-      "text": "B1ランクを維持して1日4時間配信した場合",
-      "start": 11.0,
-      "end": 15.0,
-      "font_size": 52,
-      "color": "#FFFFFF",
-      "bg_color": "#1A1A2E",
+      "text": "チャンネル登録してね！",
+      "start": 16.8,
+      "end": 20.3,
+      "font_size": 72,
       "position": "center",
-      "type": "point"
-    },
-    {
-      "text": "詳しくはプロフのリンクから！LINEで無料相談できるよ",
-      "start": 15.0,
-      "end": 19.0,
-      "font_size": 56,
-      "color": "#FFFFFF",
-      "bg_color": "#FF0050",
-      "position": "bottom",
-      "type": "cta"
+      "type": "cta",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [],
+      "bg_preset": "cta_pink",
+      "is_end_card": true
     }
   ],
-  "hashtags": "#ライバー #主婦ライバー #Pococha #副業 #ライブ配信"
+  "hashtags": "#ライバー #主婦ライバー #Pococha #副業 #ライブ配信 #ずんだもん #四国めたん"
 }

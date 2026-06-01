@@ -17,7 +17,4 @@ CONTACT_LINE = "https://lin.ee/xchCfdn"
 # ステップ配信スケジュール（秒）
 STEP_DELAYS = {
     "welcome": 0,           # 即時
-    "day1": 86400,          # 1日後
-    "day3": 259200,         # 3日後
-    "day7": 604800,         # 7日後
 }

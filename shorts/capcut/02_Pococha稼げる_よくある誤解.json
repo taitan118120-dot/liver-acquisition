@@ -1,60 +1,93 @@
 {
+  "style_version": "tzunda-v1",
   "keyword": "Pococha稼げる",
   "pattern": "よくある誤解",
   "persona": null,
-  "duration": 19.0,
-  "slides": 5,
+  "duration": 17.5,
+  "slides": 6,
   "segments": [
     {
-      "text": "Pocochaって本当に稼げるの？",
+      "text": "めたん、「Pocochaって本当に稼げるの？」って聞いたのだ…",
       "start": 0.0,
-      "end": 3.5,
-      "font_size": 72,
-      "color": "#FFFFFF",
-      "bg_color": "#FF0050",
+      "end": 2.8,
+      "font_size": 82,
       "position": "center",
-      "type": "hook"
+      "type": "dialogue",
+      "speaker": "zunda",
+      "side": "left",
+      "emphasis": [],
+      "bg_preset": "navy",
+      "is_end_card": false
     },
     {
-      "text": "って思ってない？実はそれ間違い！",
-      "start": 3.5,
-      "end": 7.5,
-      "font_size": 52,
-      "color": "#FFFFFF",
-      "bg_color": "#1A1A2E",
+      "text": "それ、もう古いわよ",
+      "start": 2.8,
+      "end": 5.6,
+      "font_size": 82,
       "position": "center",
-      "type": "point"
+      "type": "dialogue",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [],
+      "bg_preset": "navy",
+      "is_end_card": false
     },
     {
-      "text": "申請すればラジオ配信（音声のみ）も可能",
-      "start": 7.5,
-      "end": 11.0,
-      "font_size": 80,
-      "color": "#FFE135",
-      "bg_color": "#1A1A2E",
+      "text": "本当は「を達成することも十分可能です。\n\n」のよ",
+      "start": 5.6,
+      "end": 8.4,
+      "font_size": 82,
       "position": "center",
-      "type": "number"
+      "type": "dialogue",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [
+        "を達成することも十分可能です。\n\n"
+      ],
+      "bg_preset": "navy",
+      "is_end_card": false
+    },
+    {
+      "text": "マジなのだ！？ 信じられないのだ",
+      "start": 8.4,
+      "end": 11.2,
+      "font_size": 82,
+      "position": "center",
+      "type": "dialogue",
+      "speaker": "zunda",
+      "side": "left",
+      "emphasis": [],
+      "bg_preset": "navy",
+      "is_end_card": false
     },
     {
       "text": "月10万円を達成するための具体的な戦略まで詳しく解説します",
-      "start": 11.0,
-      "end": 15.0,
-      "font_size": 52,
-      "color": "#FFFFFF",
-      "bg_color": "#1A1A2E",
+      "start": 11.2,
+      "end": 14.0,
+      "font_size": 82,
       "position": "center",
-      "type": "point"
+      "type": "dialogue",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [
+        "10万円"
+      ],
+      "bg_preset": "navy",
+      "is_end_card": false
     },
     {
-      "text": "詳しくはプロフのリンクから！LINEで無料相談できるよ",
-      "start": 15.0,
-      "end": 19.0,
-      "font_size": 56,
-      "color": "#FFFFFF",
-      "bg_color": "#FF0050",
-      "position": "bottom",
-      "type": "cta"
+      "text": "チャンネル登録してね！",
+      "start": 14.0,
+      "end": 17.5,
+      "font_size": 72,
+      "position": "center",
+      "type": "cta",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [],
+      "bg_preset": "cta_pink",
+      "is_end_card": true
     }
   ],
-  "hashtags": "#ライバー #Pococha稼げる #Pococha #副業 #ライブ配信"
+  "hashtags": "#ライバー #Pococha稼げる #Pococha #副業 #ライブ配信 #ずんだもん #四国めたん"
 }

@@ -1,60 +1,94 @@
 {
+  "style_version": "tzunda-v1",
   "keyword": "ライバー始め方",
   "pattern": "よくある誤解",
   "persona": null,
-  "duration": 19.0,
-  "slides": 5,
+  "duration": 17.5,
+  "slides": 6,
   "segments": [
     {
-      "text": "特別なスキルがないと稼げないんじゃ…",
+      "text": "めたん、「特別なスキルがないと稼げないんじゃ…」って聞いたのだ…",
       "start": 0.0,
-      "end": 3.5,
-      "font_size": 72,
-      "color": "#FFFFFF",
-      "bg_color": "#FF0050",
+      "end": 2.8,
+      "font_size": 82,
       "position": "center",
-      "type": "hook"
+      "type": "dialogue",
+      "speaker": "zunda",
+      "side": "left",
+      "emphasis": [],
+      "bg_preset": "navy",
+      "is_end_card": false
     },
     {
-      "text": "って思ってない？実はそれ間違い！",
-      "start": 3.5,
-      "end": 7.5,
-      "font_size": 52,
-      "color": "#FFFFFF",
-      "bg_color": "#1A1A2E",
+      "text": "それ、もう古いわよ",
+      "start": 2.8,
+      "end": 5.6,
+      "font_size": 82,
       "position": "center",
-      "type": "point"
+      "type": "dialogue",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [],
+      "bg_preset": "navy",
+      "is_end_card": false
     },
     {
-      "text": ": 配信内容と配信時間を書いておく\n\n例: 「毎晩21時から雑談配信してます！",
-      "start": 7.5,
-      "end": 11.0,
-      "font_size": 80,
-      "color": "#FFE135",
-      "bg_color": "#1A1A2E",
+      "text": "本当は「: 配信内容と配信時間を書いておく\n\n例: 「毎晩21時から雑談配信してます！",
+      "start": 5.6,
+      "end": 8.4,
+      "font_size": 82,
       "position": "center",
-      "type": "number"
+      "type": "dialogue",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [
+        ": 配信内容と配信時間を書いておく\n\n例: 「毎晩21時から雑談配信してます！お気軽にコメントください」\n\n### ステップ3: 初配信をやってみる（まずは15分でOK）\n\n完璧を求めず、まず配信ボタンを押しましょう。\n\n最初は緊張しますが、これは全員同じです。「こんばんは！初配信です、緊張してます」と素直に言えばOK。リスナーさんは初配信者に優しいので、温かく迎えてくれます。\n\n### ステップ4: 配信を習慣化する（週3〜5回を目標に）\n\nライバーで稼ぐ最大のコツは「継続」です。\n\n- 毎日同じ時間に配信する（リスナーさんが習慣的に来てくれる）\n- 1回あたり1〜2時間を目安に\n- 最初の1ヶ月は「楽しむこと」を最優先に\n\n### ステップ5: ライバー事務所に所属する（収益化を加速）\n\n個人で"
+      ],
+      "bg_preset": "navy",
+      "is_end_card": false
+    },
+    {
+      "text": "マジなのだ！？ 信じられないのだ",
+      "start": 8.4,
+      "end": 11.2,
+      "font_size": 82,
+      "position": "center",
+      "type": "dialogue",
+      "speaker": "zunda",
+      "side": "left",
+      "emphasis": [],
+      "bg_preset": "navy",
+      "is_end_card": false
     },
     {
       "text": "収益化まで 初日から可能 登録者1000人+再生4000時間が必要",
-      "start": 11.0,
-      "end": 15.0,
-      "font_size": 52,
-      "color": "#FFFFFF",
-      "bg_color": "#1A1A2E",
+      "start": 11.2,
+      "end": 14.0,
+      "font_size": 82,
       "position": "center",
-      "type": "point"
+      "type": "dialogue",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [
+        "1000人",
+        "4000時間"
+      ],
+      "bg_preset": "navy",
+      "is_end_card": false
     },
     {
-      "text": "詳しくはプロフのリンクから！LINEで無料相談できるよ",
-      "start": 15.0,
-      "end": 19.0,
-      "font_size": 56,
-      "color": "#FFFFFF",
-      "bg_color": "#FF0050",
-      "position": "bottom",
-      "type": "cta"
+      "text": "チャンネル登録してね！",
+      "start": 14.0,
+      "end": 17.5,
+      "font_size": 72,
+      "position": "center",
+      "type": "cta",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [],
+      "bg_preset": "cta_pink",
+      "is_end_card": true
     }
   ],
-  "hashtags": "#ライバー #ライバー始め方 #Pococha #副業 #ライブ配信"
+  "hashtags": "#ライバー #ライバー始め方 #Pococha #副業 #ライブ配信 #ずんだもん #四国めたん"
 }

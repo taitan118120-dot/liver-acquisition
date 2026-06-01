@@ -1,60 +1,95 @@
 {
+  "style_version": "tzunda-v1",
   "keyword": "大学生ライバー",
   "pattern": "比較してみた",
   "persona": "大学生",
-  "duration": 18.0,
-  "slides": 5,
+  "duration": 17.5,
+  "slides": 6,
   "segments": [
     {
-      "text": "大学生ライバー、比較すると全然違う",
+      "text": "大学生ライバーって比較するとどうなのだ？",
       "start": 0.0,
-      "end": 3.5,
-      "font_size": 72,
-      "color": "#FFFFFF",
-      "bg_color": "#FF0050",
+      "end": 2.8,
+      "font_size": 82,
       "position": "center",
-      "type": "hook"
+      "type": "dialogue",
+      "speaker": "zunda",
+      "side": "left",
+      "emphasis": [],
+      "bg_preset": "navy",
+      "is_end_card": false
     },
     {
       "text": "9:00〜16:00 → 大学の授業",
-      "start": 3.5,
-      "end": 7.0,
-      "font_size": 48,
-      "color": "#00F5FF",
-      "bg_color": "#1A1A2E",
+      "start": 2.8,
+      "end": 5.6,
+      "font_size": 82,
       "position": "center",
-      "type": "compare"
+      "type": "dialogue",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [
+        "9:00〜16:00"
+      ],
+      "bg_preset": "navy",
+      "is_end_card": false
     },
     {
       "text": "16:00〜18:00 → 自由時間",
-      "start": 7.0,
-      "end": 10.5,
-      "font_size": 48,
-      "color": "#00F5FF",
-      "bg_color": "#1A1A2E",
+      "start": 5.6,
+      "end": 8.4,
+      "font_size": 82,
       "position": "center",
-      "type": "compare"
+      "type": "dialogue",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [
+        "16:00〜18:00"
+      ],
+      "bg_preset": "navy",
+      "is_end_card": false
     },
     {
       "text": "18:00〜19:00 → 夕食・休憩",
-      "start": 10.5,
-      "end": 14.0,
-      "font_size": 48,
-      "color": "#00F5FF",
-      "bg_color": "#1A1A2E",
+      "start": 8.4,
+      "end": 11.2,
+      "font_size": 82,
       "position": "center",
-      "type": "compare"
+      "type": "dialogue",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [
+        "18:00〜19:00"
+      ],
+      "bg_preset": "navy",
+      "is_end_card": false
     },
     {
-      "text": "詳しくはプロフのリンクから！LINEで無料相談できるよ",
+      "text": "どっちを選べばいいのだ？",
+      "start": 11.2,
+      "end": 14.0,
+      "font_size": 82,
+      "position": "center",
+      "type": "dialogue",
+      "speaker": "zunda",
+      "side": "left",
+      "emphasis": [],
+      "bg_preset": "navy",
+      "is_end_card": false
+    },
+    {
+      "text": "チャンネル登録してね！",
       "start": 14.0,
-      "end": 18.0,
-      "font_size": 56,
-      "color": "#FFFFFF",
-      "bg_color": "#FF0050",
-      "position": "bottom",
-      "type": "cta"
+      "end": 17.5,
+      "font_size": 72,
+      "position": "center",
+      "type": "cta",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [],
+      "bg_preset": "cta_pink",
+      "is_end_card": true
     }
   ],
-  "hashtags": "#ライバー #大学生ライバー #Pococha #副業 #ライブ配信"
+  "hashtags": "#ライバー #大学生ライバー #Pococha #副業 #ライブ配信 #ずんだもん #四国めたん"
 }

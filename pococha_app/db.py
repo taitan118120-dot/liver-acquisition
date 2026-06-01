@@ -113,6 +113,32 @@ CREATE TABLE IF NOT EXISTS archives (
   m3u8_url    TEXT,                       -- joined_live_archiving の playlist.m3u8
   captured_at TEXT DEFAULT (datetime('now','+9 hours'))
 );
+
+-- /monthly_liver_report?user_id=... 由来の月次レポート
+CREATE TABLE IF NOT EXISTS monthly_reports (
+  user_id        INTEGER NOT NULL,
+  month          TEXT NOT NULL,           -- YYYY-MM
+  final_rank     TEXT,
+  max_rank       TEXT,
+  total_dia      INTEGER,                  -- 月間獲得ダイヤ（時間+盛り上がり、本当の月間ダイヤ）
+  time_dia       INTEGER,                  -- 時間ダイヤ
+  hype_dia       INTEGER,                  -- 盛り上がりダイヤ
+  stream_min     INTEGER,                  -- 配信時間（分換算）
+  stream_days    INTEGER,                  -- 配信日数
+  support_points INTEGER,                  -- 応援ポイント（累計）
+  comments       INTEGER,
+  comment_people INTEGER,
+  likes          INTEGER,
+  like_people    INTEGER,
+  viewed_min     INTEGER,                  -- 視聴された時間（分換算）
+  listeners      INTEGER,
+  daily_best     INTEGER,                  -- デイリー最高順位
+  monthly_rank   INTEGER,                  -- マンスリー順位
+  followers      INTEGER,                  -- 取得時点のフォロワー数
+  captured_at    TEXT,                     -- 取得日時 JST
+  UNIQUE(user_id, month)
+);
+CREATE INDEX IF NOT EXISTS idx_monthly_user ON monthly_reports(user_id, month);
 """
 
 # livers マスタに後から足したプロフィール列（ALTER で追補）

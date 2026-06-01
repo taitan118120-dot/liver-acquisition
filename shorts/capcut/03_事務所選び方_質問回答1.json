@@ -1,60 +1,108 @@
 {
+  "style_version": "tzunda-v1",
   "keyword": "事務所選び方",
   "pattern": "質問回答1",
   "persona": null,
-  "duration": 19.0,
-  "slides": 5,
+  "duration": 20.3,
+  "slides": 7,
   "segments": [
     {
-      "text": "ライバー事務所ってたくさんあるけど、どう選べばいいの？",
+      "text": "めたん、ライバー事務所ってたくさんあるけど、なのだ？",
       "start": 0.0,
-      "end": 3.5,
-      "font_size": 72,
-      "color": "#FFFFFF",
-      "bg_color": "#FF0050",
+      "end": 2.8,
+      "font_size": 82,
       "position": "center",
-      "type": "hook"
+      "type": "dialogue",
+      "speaker": "zunda",
+      "side": "left",
+      "emphasis": [],
+      "bg_preset": "navy",
+      "is_end_card": false
     },
     {
-      "text": "月10万円以上",
-      "start": 3.5,
-      "end": 7.0,
-      "font_size": 80,
-      "color": "#FFE135",
-      "bg_color": "#1A1A2E",
+      "text": "それがね、答えは「月3〜5万円」よ",
+      "start": 2.8,
+      "end": 5.6,
+      "font_size": 82,
       "position": "center",
-      "type": "number"
+      "type": "dialogue",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [
+        "月3〜5万円"
+      ],
+      "bg_preset": "navy",
+      "is_end_card": false
     },
     {
-      "text": "個人で配信して月3〜5万円で壁を感じている方は",
-      "start": 7.0,
-      "end": 11.0,
-      "font_size": 52,
-      "color": "#FFFFFF",
-      "bg_color": "#1A1A2E",
+      "text": "えっ、マジなのだ！？",
+      "start": 5.6,
+      "end": 8.4,
+      "font_size": 82,
       "position": "center",
-      "type": "point"
+      "type": "dialogue",
+      "speaker": "zunda",
+      "side": "left",
+      "emphasis": [],
+      "bg_preset": "navy",
+      "is_end_card": false
+    },
+    {
+      "text": "本当よ。事務所のサポートで月10万円以上を目指せる可能性があります",
+      "start": 8.4,
+      "end": 11.2,
+      "font_size": 82,
+      "position": "center",
+      "type": "dialogue",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [
+        "10万円"
+      ],
+      "bg_preset": "navy",
+      "is_end_card": false
+    },
+    {
+      "text": "他には何があるのだ？",
+      "start": 11.2,
+      "end": 14.0,
+      "font_size": 82,
+      "position": "center",
+      "type": "dialogue",
+      "speaker": "zunda",
+      "side": "left",
+      "emphasis": [],
+      "bg_preset": "navy",
+      "is_end_card": false
     },
     {
       "text": "まともな事務所は還元率100%",
-      "start": 11.0,
-      "end": 15.0,
-      "font_size": 52,
-      "color": "#FFFFFF",
-      "bg_color": "#1A1A2E",
+      "start": 14.0,
+      "end": 16.8,
+      "font_size": 82,
       "position": "center",
-      "type": "point"
+      "type": "dialogue",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [
+        "100%"
+      ],
+      "bg_preset": "navy",
+      "is_end_card": false
     },
     {
-      "text": "詳しくはプロフのリンクから！LINEで無料相談できるよ",
-      "start": 15.0,
-      "end": 19.0,
-      "font_size": 56,
-      "color": "#FFFFFF",
-      "bg_color": "#FF0050",
-      "position": "bottom",
-      "type": "cta"
+      "text": "チャンネル登録してね！",
+      "start": 16.8,
+      "end": 20.3,
+      "font_size": 72,
+      "position": "center",
+      "type": "cta",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [],
+      "bg_preset": "cta_pink",
+      "is_end_card": true
     }
   ],
-  "hashtags": "#ライバー #事務所選び方 #Pococha #副業 #ライブ配信"
+  "hashtags": "#ライバー #事務所選び方 #Pococha #副業 #ライブ配信 #ずんだもん #四国めたん"
 }

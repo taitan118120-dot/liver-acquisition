@@ -1,60 +1,140 @@
 {
+  "style_version": "tzunda-v1",
   "keyword": "Pocochaランク上げ方",
   "pattern": "比較してみた",
   "persona": null,
-  "duration": 18.0,
-  "slides": 5,
+  "duration": 25.9,
+  "slides": 9,
   "segments": [
     {
-      "text": "時間ダイヤ（1時間） vs 月収目安（4時間×20日）、どっちがいい？",
+      "text": "時間ダイヤ（1時間） と 月収目安（4時間×20日）、どっちがいいのだ？",
       "start": 0.0,
-      "end": 3.5,
-      "font_size": 72,
-      "color": "#FFFFFF",
-      "bg_color": "#FF0050",
+      "end": 2.8,
+      "font_size": 82,
       "position": "center",
-      "type": "hook"
+      "type": "dialogue",
+      "speaker": "zunda",
+      "side": "left",
+      "emphasis": [
+        "1時間",
+        "4時間"
+      ],
+      "bg_preset": "navy",
+      "is_end_card": false
     },
     {
-      "text": "E1〜E3：30〜50円 vs 2,400〜4,000円",
-      "start": 3.5,
-      "end": 7.0,
-      "font_size": 48,
-      "color": "#00F5FF",
-      "bg_color": "#1A1A2E",
+      "text": "E1〜E3なら 30〜50円 vs 2,400〜4,000円 よ",
+      "start": 2.8,
+      "end": 5.6,
+      "font_size": 82,
       "position": "center",
-      "type": "compare"
+      "type": "dialogue",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [
+        "E1〜E3"
+      ],
+      "bg_preset": "navy",
+      "is_end_card": false
     },
     {
-      "text": "D1〜D3：50〜150円 vs 4,000〜12,000円",
-      "start": 7.0,
-      "end": 10.5,
-      "font_size": 48,
-      "color": "#00F5FF",
-      "bg_color": "#1A1A2E",
+      "text": "他には？",
+      "start": 5.6,
+      "end": 8.4,
+      "font_size": 82,
       "position": "center",
-      "type": "compare"
+      "type": "dialogue",
+      "speaker": "zunda",
+      "side": "left",
+      "emphasis": [],
+      "bg_preset": "navy",
+      "is_end_card": false
     },
     {
-      "text": "C1〜C3：400〜800円 vs 32,000〜64,000円",
-      "start": 10.5,
+      "text": "D1〜D3なら 50〜150円 vs 4,000〜12,000円",
+      "start": 8.4,
+      "end": 11.2,
+      "font_size": 82,
+      "position": "center",
+      "type": "dialogue",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [
+        "D1〜D3"
+      ],
+      "bg_preset": "navy",
+      "is_end_card": false
+    },
+    {
+      "text": "他には？",
+      "start": 11.2,
       "end": 14.0,
-      "font_size": 48,
-      "color": "#00F5FF",
-      "bg_color": "#1A1A2E",
+      "font_size": 82,
       "position": "center",
-      "type": "compare"
+      "type": "dialogue",
+      "speaker": "zunda",
+      "side": "left",
+      "emphasis": [],
+      "bg_preset": "navy",
+      "is_end_card": false
     },
     {
-      "text": "詳しくはプロフのリンクから！LINEで無料相談できるよ",
+      "text": "C1〜C3なら 400〜800円 vs 32,000〜64,000円",
       "start": 14.0,
-      "end": 18.0,
-      "font_size": 56,
-      "color": "#FFFFFF",
-      "bg_color": "#FF0050",
-      "position": "bottom",
-      "type": "cta"
+      "end": 16.8,
+      "font_size": 82,
+      "position": "center",
+      "type": "dialogue",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [
+        "C1〜C3"
+      ],
+      "bg_preset": "navy",
+      "is_end_card": false
+    },
+    {
+      "text": "どっちを選べばいいのだ？",
+      "start": 16.8,
+      "end": 19.6,
+      "font_size": 82,
+      "position": "center",
+      "type": "dialogue",
+      "speaker": "zunda",
+      "side": "left",
+      "emphasis": [],
+      "bg_preset": "navy",
+      "is_end_card": false
+    },
+    {
+      "text": "結論は「2,400〜4,000円」よ",
+      "start": 19.6,
+      "end": 22.4,
+      "font_size": 82,
+      "position": "center",
+      "type": "dialogue",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [
+        "結論",
+        "2,400〜4,000円"
+      ],
+      "bg_preset": "navy",
+      "is_end_card": false
+    },
+    {
+      "text": "チャンネル登録してね！",
+      "start": 22.4,
+      "end": 25.9,
+      "font_size": 72,
+      "position": "center",
+      "type": "cta",
+      "speaker": "metan",
+      "side": "right",
+      "emphasis": [],
+      "bg_preset": "cta_pink",
+      "is_end_card": true
     }
   ],
-  "hashtags": "#ライバー #Pocochaランク上げ方 #Pococha #副業 #ライブ配信"
+  "hashtags": "#ライバー #Pocochaランク上げ方 #Pococha #副業 #ライブ配信 #ずんだもん #四国めたん"
 }

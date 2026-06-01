@@ -66,6 +66,50 @@ def post_comments():
     return jsonify({"ok": True, "received": len(items), "saved": saved})
 
 
+MONTHLY_COLS = [
+    "user_id", "month", "final_rank", "max_rank",
+    "total_dia", "time_dia", "hype_dia",
+    "stream_min", "stream_days", "support_points",
+    "comments", "comment_people", "likes", "like_people",
+    "viewed_min", "listeners", "daily_best", "monthly_rank",
+    "followers", "captured_at",
+]
+
+
+@app.route("/api/monthly", methods=["POST", "OPTIONS"])
+def post_monthly():
+    """月次レポート(/monthly_liver_report) を取り込む.
+    body: 単体オブジェクト or 配列。extract_monthly.js / userscript と同じJSON形。"""
+    if request.method == "OPTIONS":
+        return ("", 204)
+    items = request.get_json(force=True, silent=True) or []
+    if isinstance(items, dict):
+        items = [items]
+    conn = connect()
+    saved = 0
+    for it in items:
+        try:
+            uid = int(it.get("user_id"))
+        except (TypeError, ValueError):
+            continue
+        month = (it.get("month") or "").strip()
+        if not month:
+            continue
+        values = [uid, month] + [it.get(c) for c in MONTHLY_COLS[2:]]
+        placeholders = ",".join(["?"] * len(MONTHLY_COLS))
+        update = ",".join(f"{c}=excluded.{c}" for c in MONTHLY_COLS if c not in ("user_id", "month"))
+        conn.execute(
+            f"INSERT INTO monthly_reports ({','.join(MONTHLY_COLS)}) "
+            f"VALUES ({placeholders}) "
+            f"ON CONFLICT(user_id, month) DO UPDATE SET {update}",
+            values,
+        )
+        saved += 1
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True, "received": len(items), "saved": saved})
+
+
 PAGE = """
 <!doctype html><meta charset="utf-8">
 <title>Pococha コメント</title>

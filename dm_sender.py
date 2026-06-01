@@ -24,6 +24,9 @@ def load_template(target_type):
         # 代理店志望者（副業・独立志向の一般人）向け
         "agency_prospect": "templates/dm_agency_prospect.txt",
         "agency_prospect_hot": "templates/dm_agency_prospect.txt",
+        # Instagram 半自動DM用（ig_dm_assist.py）
+        "hourly_5k": "templates/dm_hourly_5k.txt",
+        "model_scout": "templates/dm_model_scout.txt",
     }
     path = template_map.get(target_type, template_map["beginner"])
 
