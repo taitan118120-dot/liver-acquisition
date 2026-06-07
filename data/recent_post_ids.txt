@@ -154,6 +154,7 @@ evo_320
 evo_324
 evo_333
 evo_341
+evo_343
 evo_349
 g02
 g03
