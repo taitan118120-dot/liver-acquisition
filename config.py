@@ -34,6 +34,14 @@ INSTAGRAM_ACCESS_TOKEN = os.environ.get("INSTAGRAM_ACCESS_TOKEN", "")
 INSTAGRAM_BUSINESS_ID = os.environ.get("INSTAGRAM_BUSINESS_ID", "")
 
 # ============================================================
+# Threads (Meta) 公式API 設定
+# https://developers.facebook.com/ で「Access the Threads API」を追加して取得
+# 投稿のみ（自動フォロー/DM/いいねはしない）。詳細は threads/SETUP_GUIDE.md
+# ============================================================
+THREADS_ACCESS_TOKEN = os.environ.get("THREADS_ACCESS_TOKEN", "")
+THREADS_USER_ID = os.environ.get("THREADS_USER_ID", "")
+
+# ============================================================
 # Google Gemini API 設定
 # https://aistudio.google.com/apikey で取得
 # ============================================================

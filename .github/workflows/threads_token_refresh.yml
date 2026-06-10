@@ -1,0 +1,51 @@
+name: Threadsトークン更新
+
+on:
+  schedule:
+    # 月2回（1日・15日 JST 9:00 = UTC 0:00）。60日期限の長期トークンを早めに延長
+    - cron: '0 0 1,15 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: 依存
+        run: pip install requests
+
+      - name: トークン更新（Secret書き換え）
+        env:
+          THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        shell: bash
+        run: |
+          set +e
+          python threads/threads_token.py --refresh
+          exit 0
+
+      - name: token_info保存
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add threads/threads_token_info.json
+          if ! git diff --staged --quiet; then
+            git commit -m "Threadsトークン情報更新"
+            git push origin main || true
+          fi
+          exit 0

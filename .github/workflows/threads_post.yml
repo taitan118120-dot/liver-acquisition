@@ -1,0 +1,102 @@
+name: Threads自動投稿
+
+on:
+  schedule:
+    # Pull戦略・安全運用: 1日2回まで（JST 8:00 / 20:00 = UTC 23:00 / 11:00）
+    - cron: '0 23 * * *'
+    - cron: '0 11 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'テスト実行（投稿しない）'
+        type: boolean
+        default: false
+
+# 重複投稿・git競合を防ぐ
+concurrency:
+  group: threads-post
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  threads-post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: 依存パッケージ
+        shell: bash
+        run: |
+          set +e
+          pip install requests google-genai
+          exit 0
+
+      - name: 最新データ取得
+        shell: bash
+        run: |
+          set +e
+          git pull --rebase origin main
+          exit 0
+
+      - name: キューを補充（残り少なければGeminiで生成）
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        shell: bash
+        run: |
+          set +e
+          UNPOSTED=$(python -c "import json;d=json.load(open('threads/threads_posts.json'));print(sum(1 for p in d if not p.get('posted')))" 2>/dev/null || echo 0)
+          echo "未投稿キュー: $UNPOSTED"
+          if [ "$UNPOSTED" -lt 4 ]; then
+            echo "キュー残りわずか → 生成"
+            python threads/threads_content.py --gen 8
+          fi
+          exit 0
+
+      - name: Threads投稿
+        env:
+          THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
+          THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
+        shell: bash
+        run: |
+          set +e
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            python threads/threads_poster.py --next --dry-run
+          else
+            python threads/threads_poster.py --next
+          fi
+          EXIT=$?
+          if [ $EXIT -ne 0 ]; then
+            echo "::warning::Threads投稿が非ゼロ終了 exit=$EXIT"
+            echo "## ⚠️ Threads投稿失敗 (exit=$EXIT)" >> $GITHUB_STEP_SUMMARY
+          fi
+          exit 0
+
+      - name: ログ保存
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git pull --rebase origin main
+          git add threads/threads_posts.json data/threads_post_log.csv
+          if ! git diff --staged --quiet; then
+            git commit -m "Threads投稿ログ更新"
+            for attempt in 1 2 3; do
+              if git push origin main; then break; fi
+              git pull --rebase origin main
+              sleep 3
+            done
+          fi
+          exit 0
