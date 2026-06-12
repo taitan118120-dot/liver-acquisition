@@ -154,6 +154,7 @@ evo_302
 evo_303
 evo_304
 evo_305
+evo_306
 evo_307
 evo_308
 evo_309
