@@ -69,10 +69,12 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
+    "posted": true,
     "created_at": "2026-06-12T00:00:00",
     "stock_id": "viral-01",
-    "category": "人生観"
+    "category": "人生観",
+    "posted_at": "2026-06-13T00:16:02",
+    "media_id": "17914072863401752"
   },
   {
     "text": "配信者の闇って、枠を閉じた瞬間に世界で一番静かな部屋になるとこ。\n\nさっきまで100人と喋ってたのに。あの落差は、やった人にしかわからん。",
