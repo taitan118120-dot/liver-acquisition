@@ -95,10 +95,12 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
+    "posted": true,
     "created_at": "2026-06-12T00:00:00",
     "stock_id": "viral-03",
-    "category": "逆張り"
+    "category": "逆張り",
+    "posted_at": "2026-06-14T00:01:49",
+    "media_id": "18134670991560570"
   },
   {
     "text": "ライバーに「夢が叶うよ」って言う大人は信じなくていい。\n\n叶うのは夢じゃなく、毎日続けた人の\"現実\"だけ。それでも十分すごいんだけどな。",
