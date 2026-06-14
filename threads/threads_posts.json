@@ -108,10 +108,12 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
+    "posted": true,
     "created_at": "2026-06-12T00:00:00",
     "stock_id": "viral-04",
-    "category": "本音"
+    "category": "本音",
+    "posted_at": "2026-06-14T13:01:37",
+    "media_id": "17909363484423092"
   },
   {
     "text": "4年前、0人の前で2時間喋ってた。誰もいないのに笑顔を作るのが本当にしんどかった。\n\n今その頃の動画を見ると泣きそうになる。あの誰も見てない時間が、全部いまになってる。",
