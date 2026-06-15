@@ -2,11 +2,12 @@ name: 自動投稿
 
 on:
   schedule:
-    # JST 8:00, 12:00, 18:00, 21:00（UTCで-9時間）
-    - cron: '0 23 * * *'   # JST 8:00
-    - cron: '0 3 * * *'    # JST 12:00
-    - cron: '0 9 * * *'    # JST 18:00
-    - cron: '0 12 * * *'   # JST 21:00
+    # 人間化改修(2026-06-15): 1日4回→3回に削減（量自体のbot臭を下げる）。
+    # 実際の投稿は cloud_post.py 側で 0〜38分ランダム遅延（定時着弾を回避）。
+    # JST 8:00, 13:00, 20:00（UTCで-9時間）
+    - cron: '0 23 * * *'   # JST 8:00 (+jitter)
+    - cron: '0 4 * * *'    # JST 13:00 (+jitter)
+    - cron: '0 11 * * *'   # JST 20:00 (+jitter)
   workflow_dispatch:  # 手動実行も可能
 
 permissions:

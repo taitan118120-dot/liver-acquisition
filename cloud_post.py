@@ -258,6 +258,13 @@ def post_thread(client, thread_texts, first_media_id=None):
 
 
 def main():
+    # 人間化①: 定時投稿のbot臭を消す。cronは固定でも投稿は0〜38分ランダムに遅らせ、
+    # 毎回バラけた分(:00ちょうどを避ける)で着弾させる。SKIP_JITTER=1 で無効化(手動テスト用)
+    if os.environ.get("SKIP_JITTER") != "1":
+        jitter = random.randint(0, 38 * 60)
+        print(f"[jitter] {jitter // 60}分{jitter % 60}秒待機してから投稿します")
+        time.sleep(jitter)
+
     # 環境変数からAPIキーを取得（GitHub Secretsから注入）
     client = tweepy.Client(
         consumer_key=os.environ["TWITTER_API_KEY"],

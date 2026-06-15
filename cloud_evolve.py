@@ -24,7 +24,9 @@ except ImportError:
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 POSTS_FILE = "posts/twitter_posts.json"
 
-# 投稿テーマ（議論・噛みつき・引用を誘発する対立軸を中心に）
+# --- 対立軸テーマ（論争・引用を誘発）---
+# 人間化改修(2026-06-15): これ「だけ」だと毎投稿が同じ煽りテンプレでbot臭くなる。
+# 下の EXPERIENCE_THEMES と交互に使い、生成プロンプトも分ける。
 THEMES = [
     "事務所所属 vs フリーランスのライバー、結局どっちが得か（対立軸）",
     "Pococha vs 17LIVE vs IRIAM、稼げるアプリ論争（対立軸）",
@@ -41,6 +43,22 @@ THEMES = [
     "ライブ配信は若い子のもの説に40代が反論（世代論争）",
     "イベント期間中の課金圧、ファンに頼るのはアリかナシか",
     "「楽しいから配信してる」勢 vs 「金のため」勢、どっちが伸びるか",
+]
+
+# --- 経験・一次情報テーマ（AIに書けない「中の人」ネタ）---
+# たいたん＝Pococha歴4年・運営ダッシュボードで所属ライバーの成績が見える立場。
+# 対立軸の煽りではなく、現場で見てきた具体的な観察・気づきを淡々と書く。
+EXPERIENCE_THEMES = [
+    "Pococha運営4年で見てきた『伸びる配信者』と『消える配信者』の分かれ目",
+    "所属ライバーを見ていて気づいた、配信続く人の共通点（地味な習慣）",
+    "ライバー始めた人が最初の1ヶ月でつまずくポイントと、その乗り越え方",
+    "事務所代表として実際にやっているサポートの中身（誇張なし・等身大）",
+    "配信現場でよく聞かれる質問に、4年見てきた立場から正直に答える",
+    "ランクが上がる子が配信前後でやっている、目立たない準備",
+    "副業でライバーをしている人が、無理なく続けられている工夫",
+    "数字が伸び悩んだ時期の配信者が、どう立て直していったかの観察",
+    "コメントが少ない配信を、コメントが増える配信に変えた小さな変化",
+    "『顔出ししたくない』人が実際にどう配信を組み立てているか",
 ]
 
 PROMPT_TEMPLATE = """あなたはX(Twitter)で「ライブ配信」「ライバー副業」「ライバー事務所」について発信しているアカウントの投稿を書きます。
@@ -87,6 +105,43 @@ PROMPT_TEMPLATE = """あなたはX(Twitter)で「ライブ配信」「ライバ�
   ["1ツイート目（フック）", "2ツイート目", "3ツイート目"],
   ["1ツイート目", "2ツイート目", "3ツイート目", "4ツイート目"],
   ["1ツイート目", "2ツイート目"]
+]
+"""
+
+
+EXPERIENCE_PROMPT_TEMPLATE = """あなたはX(Twitter)でライブ配信・ライバー事務所について発信しているアカウントの「中の人」です。
+このアカウントの人物像：**Pococha歴4年。今はライバー事務所の代表で、所属ライバーの配信を日々見ている。**
+今回は対立軸で煽る投稿ではなく、**現場で実際に見てきた等身大の気づき**を書きます。フォロワーに「この人は本物だ」と思わせるのが目的。
+
+【このタイプの投稿が刺さる理由】
+- AIや他のアカウントは一般論しか書けない。あなたは「4年見てきた具体的な場面」を書ける。ここが唯一の武器。
+- 煽り・断言・ランキングではなく、**観察の解像度**で信頼を取る。
+
+【守るべきルール】
+1. 出力は **必ずJSON配列**。各要素は **2〜4ツイートのスレッド配列**
+2. 1ツイート目は具体的な場面・観察から入る。フックは「煽り」ではなく「あ、それ分かる/それ知りたい」と思わせる具体性で作る
+   良い例:「配信が続く子と辞める子、4年見てきて差が出るのは才能じゃなくて配信後の5分だった」
+   悪い例:「99%が知らない裏側を全部書く↓」(←煽りテンプレ。今回は禁止)
+3. 2ツイート目以降は具体的な行動・場面を描写する。抽象的な精神論にしない
+4. **数字は、確実に言える範囲でだけ使う。盛らない・でっち上げない。** 数字が無くても「ある子は〜」「よく見るのは〜」と具体場面で語れば十分
+5. 末尾は自然に終える。**「異論あれば引用で殴ってこい」「あなたはどっち派？」等の定型挑発は禁止。**
+   問いかけるなら「みんなはどう？」程度の自然なトーン、もしくは静かに言い切って終わってもいい
+6. タメ口・自然な語り口。ただし煽らない。先輩が後輩に話すくらいの温度
+7. 絵文字は0〜1個。乱用禁止
+8. 宣伝臭・URL・事務所名は入れない
+9. **毎回同じ書き出し・同じ締めにしない。** スレッドごとに入り方を変える
+10. 断定しすぎない。「〜なことが多い」「〜な子をよく見る」など、観察ベースの誠実な言い回しを混ぜる
+
+テーマ: {theme}
+
+{top_posts_context}
+
+上記テーマで、3スレッド分の投稿案をJSONで出力してください。
+出力フォーマット（**これ以外の文字を出力しない**、コードブロックも不要、純粋なJSONのみ）:
+[
+  ["1ツイート目", "2ツイート目", "3ツイート目"],
+  ["1ツイート目", "2ツイート目"],
+  ["1ツイート目", "2ツイート目", "3ツイート目", "4ツイート目"]
 ]
 """
 
@@ -154,8 +209,10 @@ def _extract_json_array(text):
     return None
 
 
-def generate_with_gemini(theme, top_posts):
-    """Gemini AIでスレッド投稿を生成。返り値は List[List[str]]"""
+def generate_with_gemini(theme, top_posts, style="debate"):
+    """Gemini AIでスレッド投稿を生成。返り値は List[List[str]]
+    style: "debate"=対立軸・煽り型 / "experience"=経験・一次情報型
+    """
     if not HAS_GEMINI or not GEMINI_API_KEY:
         print("[WARN] Gemini API未設定。スキップ。")
         return []
@@ -167,7 +224,8 @@ def generate_with_gemini(theme, top_posts):
             text_preview = p["text"][:80].replace("\n", " ")
             top_posts_context += f"{i}. {text_preview}...\n"
 
-    prompt = PROMPT_TEMPLATE.format(
+    template = EXPERIENCE_PROMPT_TEMPLATE if style == "experience" else PROMPT_TEMPLATE
+    prompt = template.format(
         theme=theme,
         top_posts_context=top_posts_context,
     )
@@ -242,12 +300,18 @@ def main():
     next_id = (max(used_nums) + 1) if used_nums else 1
     new_count = 0
 
-    # 3. ランダムに3-4テーマを選んで生成
-    selected_themes = random.sample(THEMES, min(4, len(THEMES)))
+    # 3. テーマ選定: 経験型を多めに(2)、対立軸を控えめに(2)。
+    #    人間化改修(2026-06-15): 以前は対立軸4テーマ=全投稿が煽りテンプレでbot臭かった。
+    #    経験・一次情報型を半分入れて「中の人」感を出す。
+    exp_themes = [("experience", t) for t in random.sample(EXPERIENCE_THEMES, 2)]
+    deb_themes = [("debate", t) for t in random.sample(THEMES, 2)]
+    selected = exp_themes + deb_themes
+    random.shuffle(selected)
+    selected_themes = [t for _, t in selected]  # レポート用
 
-    for theme in selected_themes:
-        print(f"\nテーマ: {theme}")
-        threads = generate_with_gemini(theme, top_posts)
+    for style, theme in selected:
+        print(f"\n[{style}] テーマ: {theme}")
+        threads = generate_with_gemini(theme, top_posts, style=style)
 
         for thread in threads:
             head = thread[0][:30]
@@ -258,6 +322,7 @@ def main():
             existing.append({
                 "id": f"evo_{next_id:03d}",
                 "phase": "growth",
+                "style": style,
                 "thread": thread,
             })
             existing_keys.add(head)
