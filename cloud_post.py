@@ -305,6 +305,16 @@ def main():
     # シャッフルして順に試す（1つ失敗しても別の投稿で再挑戦）
     random.shuffle(available)
 
+    # 優先投稿（"priority": true）がまだ未消化なら先に出す。
+    # 該当が無ければ従来どおりの完全ランダム挙動（後方互換）。
+    prio = [p for p in available if p.get("priority")]
+    if prio:
+        rest = [p for p in available if not p.get("priority")]
+        random.shuffle(prio)
+        random.shuffle(rest)
+        available = prio + rest
+        print(f"[PRIORITY] 優先投稿 {len(prio)} 件を先頭に配置")
+
     success = False
     for post in available:
         try:
