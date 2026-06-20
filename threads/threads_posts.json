@@ -244,10 +244,12 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
+    "posted": true,
     "created_at": "2026-06-12T00:00:00",
     "stock_id": "viral-06",
-    "category": "共感"
+    "category": "共感",
+    "posted_at": "2026-06-20T12:54:29",
+    "media_id": "17943080667223891"
   },
   {
     "text": "ライバー事務所、入った瞬間に連絡来なくなるとこ多すぎ。\n\n僕がこの仕事してる理由の半分は「放置された側の悔しさ」。スカウトした責任を取らない大人が多すぎる。",
