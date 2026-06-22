@@ -283,10 +283,12 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
+    "posted": true,
     "created_at": "2026-06-12T00:00:00",
     "stock_id": "viral-09",
-    "category": "裏話"
+    "category": "裏話",
+    "posted_at": "2026-06-22T00:05:56",
+    "media_id": "17858159454672728"
   },
   {
     "text": "スマホ1台で知らない誰かを笑わせて、お金までもらえる時代。\n\n10年前なら「そんな仕事ある?」って言われてた。向いてるか以前に、知らないだけで選択肢から消してるのが一番もったいない。",
