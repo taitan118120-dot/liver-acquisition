@@ -296,10 +296,12 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
+    "posted": true,
     "created_at": "2026-06-12T00:00:00",
     "stock_id": "viral-10",
-    "category": "人生観"
+    "category": "人生観",
+    "posted_at": "2026-06-22T15:58:23",
+    "media_id": "17968796373082603"
   },
   {
     "text": "配信、才能ある子が伸びると思ってた。\n\n4年見て分かったのは、伸びるのは「恥を捨てるのが早い子」。うまくやろうとしてる間は、誰も来ない。",
