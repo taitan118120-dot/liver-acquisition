@@ -335,10 +335,12 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
+    "posted": true,
     "created_at": "2026-06-12T00:00:00",
     "stock_id": "viral-13",
-    "category": "共感"
+    "category": "共感",
+    "posted_at": "2026-06-23T23:52:13",
+    "media_id": "17939656011254402"
   },
   {
     "text": "配信を始めて変わったのは収入じゃなくて、「自分なんて」が口癖だった子が、人前で笑えるようになったこと。\n\n金額より、そっちの方がよっぽどデカい。",
