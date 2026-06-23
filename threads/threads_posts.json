@@ -322,10 +322,12 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
+    "posted": true,
     "created_at": "2026-06-12T00:00:00",
     "stock_id": "viral-12",
-    "category": "感動"
+    "category": "感動",
+    "posted_at": "2026-06-23T13:45:10",
+    "media_id": "18162417103458421"
   },
   {
     "text": "「ライバーなんて簡単に稼げるんでしょ」って言う人ほど、0人の枠で1時間笑顔を作る、をやったことがない。\n\nあれは世界で一番難しい仕事の一つ。",
