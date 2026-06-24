@@ -348,10 +348,12 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
+    "posted": true,
     "created_at": "2026-06-12T00:00:00",
     "stock_id": "viral-14",
-    "category": "感動"
+    "category": "感動",
+    "posted_at": "2026-06-24T13:26:12",
+    "media_id": "18171453145442283"
   },
   {
     "text": "夜中の2時に「もう辞めたい」ってLINEが来るの、しんどい子ほど多い。\n\nでも次の日、枠を開けるとちゃんと笑ってる。人は居場所があると、もう一回立てる。",
