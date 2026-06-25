@@ -374,10 +374,12 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
+    "posted": true,
     "created_at": "2026-06-12T00:00:00",
     "stock_id": "viral-16",
-    "category": "逆張り"
+    "category": "逆張り",
+    "posted_at": "2026-06-25T13:23:16",
+    "media_id": "18091831556623019"
   },
   {
     "text": "「配信で人生変わった」って言葉、昔は宗教っぽくて苦手だった。\n\nでも目の前で、しんどかった子が普通に笑えるようになるのを見ると、あ、これは本当にあるんだなって。",
