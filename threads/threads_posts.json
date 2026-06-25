@@ -361,10 +361,12 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
+    "posted": true,
     "created_at": "2026-06-12T00:00:00",
     "stock_id": "viral-15",
-    "category": "共感"
+    "category": "共感",
+    "posted_at": "2026-06-25T00:04:01",
+    "media_id": "18155879590470962"
   },
   {
     "text": "Pocochaで一番伸びた子、特技なし・トーク下手・顔出し最小だった。\n\n唯一あったのは「毎日同じ時間にいた」こと。才能の話、いい加減やめにしよう。",
