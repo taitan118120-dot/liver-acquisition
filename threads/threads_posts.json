@@ -413,10 +413,12 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
+    "posted": true,
     "created_at": "2026-06-12T00:00:00",
     "stock_id": "viral-19",
-    "category": "共感"
+    "category": "共感",
+    "posted_at": "2026-06-26T23:59:46",
+    "media_id": "17921674158380533"
   },
   {
     "text": "この仕事で一番うれしい瞬間、売上が上がった時じゃなくて、\n\n辞めようとしてた子が「もう少し続けてみる」って言った時。",
