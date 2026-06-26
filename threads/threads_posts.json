@@ -400,10 +400,12 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
+    "posted": true,
     "created_at": "2026-06-12T00:00:00",
     "stock_id": "viral-18",
-    "category": "本音"
+    "category": "本音",
+    "posted_at": "2026-06-26T13:15:17",
+    "media_id": "18090173975527843"
   },
   {
     "text": "「顔出ししたくない」って相談、めちゃくちゃ多い。\n\n正直、顔を出さずに続けてる子もいっぱいいる。バレるのが怖くて一歩出ない、その気持ちが一番もったいない。",
