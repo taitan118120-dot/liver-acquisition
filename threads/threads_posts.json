@@ -387,10 +387,12 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
+    "posted": true,
     "created_at": "2026-06-12T00:00:00",
     "stock_id": "viral-17",
-    "category": "感動"
+    "category": "感動",
+    "posted_at": "2026-06-26T00:05:38",
+    "media_id": "18068230202421003"
   },
   {
     "text": "ライバーの世界、入口はキラキラだけど、続けてる子はだいたい泥臭い。\n\n毎日同じ挨拶、来ない日の不安、数字との戦い。それでも続ける子が、最後に残る。",
