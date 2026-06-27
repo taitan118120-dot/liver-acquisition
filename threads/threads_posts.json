@@ -426,10 +426,12 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
+    "posted": true,
     "created_at": "2026-06-12T00:00:00",
     "stock_id": "viral-20",
-    "category": "信念"
+    "category": "信念",
+    "posted_at": "2026-06-27T12:12:15",
+    "media_id": "18099766637221789"
   },
   {
     "text": "スマホ1台あれば、深夜バイトより稼げる時代になった。\n\nなのに「自分には無理」で止まってる人が多すぎる。無理かどうかは、3日やってから決めればいい。",
