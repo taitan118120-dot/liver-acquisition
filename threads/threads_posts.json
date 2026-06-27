@@ -439,10 +439,12 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
+    "posted": true,
     "created_at": "2026-06-12T00:00:00",
     "stock_id": "viral-21",
-    "category": "人生観"
+    "category": "人生観",
+    "posted_at": "2026-06-27T23:57:29",
+    "media_id": "18407851228148922"
   },
   {
     "text": "配信で病む子の共通点、\"数字を自分の価値だと思っちゃう\"こと。\n\n応援ポイントが減った＝自分の価値が下がった、じゃない。ここを切り離せた子から、楽になっていく。",
