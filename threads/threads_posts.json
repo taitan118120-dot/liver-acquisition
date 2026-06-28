@@ -452,10 +452,12 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
+    "posted": true,
     "created_at": "2026-06-12T00:00:00",
     "stock_id": "viral-22",
-    "category": "本音"
+    "category": "本音",
+    "posted_at": "2026-06-28T12:18:59",
+    "media_id": "18110561983939311"
   },
   {
     "text": "「ライバーって水商売でしょ?」って言われるたびに思う。\n\n夜の街に出られない人が、家から、誰にもバレずに、自分のペースで稼げる。むしろ逆の選択肢なんだよな。",
