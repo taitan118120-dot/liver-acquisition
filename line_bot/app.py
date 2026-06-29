@@ -18,7 +18,7 @@ from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 
 from config import LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN, STEP_DELAYS
-from messages import STEP_MESSAGES, AUTO_REPLIES, DEFAULT_REPLY
+from messages import STEP_MESSAGES, AUTO_REPLIES, DEFAULT_REPLY, SOURCE_THANKS, find_source
 
 # --- データ保存 ---
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
@@ -291,6 +291,20 @@ class WebhookHandler(BaseHTTPRequestHandler):
                 text = msg.get("text", "")
                 log_message(user_id, "receive", text)
                 print(f"[MSG] {user_id[:8]}...: {text[:50]}")
+
+                # 流入元の記録（まだ未記録のユーザーのみ。初回返答を判定）
+                users = load_json(USERS_FILE)
+                user_data = users.get(user_id, {})
+                if not user_data.get("source"):
+                    source = find_source(text)
+                    if source:
+                        user_data["source"] = source
+                        user_data["source_date"] = datetime.now().isoformat()
+                        users[user_id] = user_data
+                        save_json(USERS_FILE, users)
+                        print(f"[SOURCE] {user_id[:8]}... -> {source}")
+                        reply_line_message(reply_token, SOURCE_THANKS, user_id)
+                        continue
 
                 # キーワード自動応答
                 auto_reply = find_auto_reply(text)
