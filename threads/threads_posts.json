@@ -478,10 +478,12 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
+    "posted": true,
     "created_at": "2026-06-12T00:00:00",
     "stock_id": "viral-24",
-    "category": "本音"
+    "category": "本音",
+    "posted_at": "2026-06-29T14:50:25",
+    "media_id": "18086159030326058"
   },
   {
     "text": "新人の頃、先輩に「数字見るな、人を見ろ」って言われた。\n\n意味分からなかったけど、今は分かる。画面の数字じゃなく、来てくれた一人を大事にした子が伸びる。",
