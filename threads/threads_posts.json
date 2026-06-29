@@ -491,10 +491,12 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
+    "posted": true,
     "created_at": "2026-06-12T00:00:00",
     "stock_id": "viral-25",
-    "category": "裏話"
+    "category": "裏話",
+    "posted_at": "2026-06-29T23:58:00",
+    "media_id": "18119634511825553"
   },
   {
     "text": "配信を辞める理由は、だいたい「稼げないから」じゃない。「一人で抱えて孤独だから」。\n\n逆に言えば、隣に誰かいるだけで続いたりする。事務所選びで一番大事なとこだと思う。",
