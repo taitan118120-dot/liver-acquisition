@@ -465,10 +465,12 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
+    "posted": true,
     "created_at": "2026-06-12T00:00:00",
     "stock_id": "viral-23",
-    "category": "逆張り"
+    "category": "逆張り",
+    "posted_at": "2026-06-29T00:03:38",
+    "media_id": "18097768070238016"
   },
   {
     "text": "4年やってきて、稼げる子より「楽しそうな子」の方が結局長く残る。\n\n稼ぐために配信する子は燃え尽きる。配信が好きで、結果お金がついてくる子が勝つ。",
