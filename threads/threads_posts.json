@@ -504,10 +504,12 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
+    "posted": true,
     "created_at": "2026-06-12T00:00:00",
     "stock_id": "viral-26",
-    "category": "信念"
+    "category": "信念",
+    "posted_at": "2026-06-30T13:11:11",
+    "media_id": "17978103990028935"
   },
   {
     "text": "「未経験なんですけど大丈夫ですか?」\n\n全員、未経験スタートだよ。元S帯の子も、最初は0人の前で震えてた。スタート地点はみんな同じ。",
