@@ -530,10 +530,12 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
+    "posted": true,
     "created_at": "2026-06-12T00:00:00",
     "stock_id": "viral-28",
-    "category": "本音"
+    "category": "本音",
+    "posted_at": "2026-07-01T13:37:11",
+    "media_id": "18093834260614350"
   },
   {
     "text": "配信者の親に言いたい。「そんな仕事やめなさい」って言う前に、一回だけ枠を見てほしい。\n\n子どもが知らない誰かを笑顔にしてる姿、ちょっと誇らしいから。",
