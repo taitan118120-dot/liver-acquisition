@@ -517,10 +517,12 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
+    "posted": true,
     "created_at": "2026-06-12T00:00:00",
     "stock_id": "viral-27",
-    "category": "共感"
+    "category": "共感",
+    "posted_at": "2026-07-01T00:01:59",
+    "media_id": "18105808466075408"
   },
   {
     "text": "お金の話を正直にすると、配信は\"一発当てる\"より\"毎月コツコツ\"が向いてる世界。\n\n宝くじじゃなくて、貯金箱に近い。派手さはないけど、続けた人にはちゃんと返ってくる。",
