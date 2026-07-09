@@ -11,5 +11,7 @@ services:
         sync: false
       - key: LINE_ADMIN_USER_ID
         sync: false
+      - key: GITHUB_STATE_TOKEN
+        sync: false
       - key: PORT
         value: 10000

@@ -22,6 +22,7 @@ from messages import (
     STEP_MESSAGES, AUTO_REPLIES, DEFAULT_REPLY, SOURCE_THANKS, find_source,
     make_meeting_offer, parse_slot_choice, MEETING_BOOKED, MEETING_NUDGE_INTRO,
 )
+import state_sync
 
 # --- データ保存 ---
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
@@ -44,6 +45,7 @@ def load_json(path, default=None):
 def save_json(path, data):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+    state_sync.mark_dirty(path)
 
 
 def log_message(user_id, direction, text):
@@ -483,6 +485,10 @@ def main():
         return
 
     port = int(os.environ.get("PORT", 8080))
+
+    # GitHubバックアップから状態を復元してから、同期スレッドを開始
+    state_sync.pull_state(DATA_DIR)
+    state_sync.start_sync_loop(DATA_DIR)
 
     # 未送信のステップ配信を復元
     restore_pending_steps()
