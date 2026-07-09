@@ -431,6 +431,15 @@ section:nth-child(even) {
   color: #1b1508;
   background: var(--gradient-gold);
   box-shadow: 0 0 0 1px var(--gold-deep), 0 6px 20px rgba(201, 162, 75, 0.35);
+  overflow: hidden;
+}
+
+.founder-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 22%;
+  display: block;
 }
 
 .founder-name {
