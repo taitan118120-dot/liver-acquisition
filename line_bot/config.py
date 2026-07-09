@@ -6,6 +6,12 @@ import os
 LINE_CHANNEL_SECRET = os.environ.get("LINE_CHANNEL_SECRET", "")
 LINE_CHANNEL_ACCESS_TOKEN = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN", "")
 
+# 管理者（自分）のLINEユーザーID。設定すると:
+# - 面談希望が入ったとき通知が届く
+# - 「一覧」「停止 <ID先頭8文字>」「再開 <ID先頭8文字>」コマンドが使える
+# 自分のIDは data/message_log.json か Render のログで確認できる
+ADMIN_USER_ID = os.environ.get("LINE_ADMIN_USER_ID", "")
+
 # 事務所情報
 OFFICE_NAME = "TAITAN PRO"
 OFFICE_URL = "https://taitan-pro-lp-targets.netlify.app/#apply"
@@ -16,5 +22,6 @@ CONTACT_LINE = "https://lin.ee/xchCfdn"
 
 # ステップ配信スケジュール（秒）
 STEP_DELAYS = {
-    "welcome": 0,           # 即時
+    "welcome": 0,               # 即時
+    "followup_1day": 24 * 3600,  # 24時間後に1回だけ軽くフォロー（面談確定者には送らない）
 }

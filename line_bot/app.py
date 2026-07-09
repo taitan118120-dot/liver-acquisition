@@ -17,8 +17,11 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 
-from config import LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN, STEP_DELAYS
-from messages import STEP_MESSAGES, AUTO_REPLIES, DEFAULT_REPLY, SOURCE_THANKS, find_source
+from config import LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN, STEP_DELAYS, ADMIN_USER_ID
+from messages import (
+    STEP_MESSAGES, AUTO_REPLIES, DEFAULT_REPLY, SOURCE_THANKS, find_source,
+    make_meeting_offer, parse_slot_choice, MEETING_BOOKED, MEETING_NUDGE_INTRO,
+)
 
 # --- データ保存 ---
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
@@ -76,8 +79,10 @@ def send_line_message(user_id, text):
         print(f"[ERROR] send failed: {e.code} {e.read().decode()}")
 
 
-def reply_line_message(reply_token, text, user_id="unknown"):
-    """LINE Messaging APIでリプライメッセージを送信"""
+def reply_line_message(reply_token, texts, user_id="unknown"):
+    """LINE Messaging APIでリプライメッセージを送信（str または list、最大5通）"""
+    if isinstance(texts, str):
+        texts = [texts]
     url = "https://api.line.me/v2/bot/message/reply"
     headers = {
         "Content-Type": "application/json",
@@ -85,15 +90,35 @@ def reply_line_message(reply_token, text, user_id="unknown"):
     }
     body = json.dumps({
         "replyToken": reply_token,
-        "messages": [{"type": "text", "text": text}],
+        "messages": [{"type": "text", "text": t} for t in texts[:5]],
     }).encode("utf-8")
 
     req = Request(url, data=body, headers=headers, method="POST")
     try:
         urlopen(req)
-        log_message(user_id, "send", text)
+        for t in texts:
+            log_message(user_id, "send", t)
     except HTTPError as e:
         print(f"[ERROR] reply failed: {e.code} {e.read().decode()}")
+
+
+def get_display_name(user_id):
+    """LINEプロフィールから表示名を取得（失敗時は空文字）"""
+    url = f"https://api.line.me/v2/bot/profile/{user_id}"
+    req = Request(url, headers={"Authorization": f"Bearer {LINE_CHANNEL_ACCESS_TOKEN}"})
+    try:
+        with urlopen(req) as res:
+            return json.loads(res.read().decode("utf-8")).get("displayName", "")
+    except Exception:
+        return ""
+
+
+def notify_admin(text):
+    """管理者に通知（ADMIN_USER_ID 未設定ならログのみ）"""
+    if ADMIN_USER_ID:
+        send_line_message(ADMIN_USER_ID, text)
+    else:
+        print(f"[NOTIFY] (admin未設定) {text[:100]}")
 
 
 # --- ステップ配信（永続化対応）---
@@ -105,8 +130,9 @@ def _send_step_if_active(user_id, step_name, text):
     try:
         users = load_json(USERS_FILE)
         user = users.get(user_id, {})
-        if user.get("unfollowed"):
-            print(f"[STEP] Skipped '{step_name}' for {user_id[:8]}... (unfollowed)")
+        if user.get("unfollowed") or user.get("auto_paused") or user.get("meeting_scheduled"):
+            reason = "unfollowed" if user.get("unfollowed") else "auto_paused"
+            print(f"[STEP] Skipped '{step_name}' for {user_id[:8]}... ({reason})")
             _remove_schedule(user_id, step_name)
             return
         send_line_message(user_id, text)
@@ -126,6 +152,15 @@ def _remove_schedule(user_id, step_name):
     schedules = load_json(SCHEDULE_FILE, [])
     schedules = [s for s in schedules if not (s["user_id"] == user_id and s["step"] == step_name)]
     save_json(SCHEDULE_FILE, schedules)
+
+
+def cancel_user_steps(user_id):
+    """ユーザーの未送信ステップ配信をすべてキャンセル（面談確定時など）"""
+    schedules = load_json(SCHEDULE_FILE, [])
+    remaining = [s for s in schedules if s["user_id"] != user_id]
+    if len(remaining) != len(schedules):
+        save_json(SCHEDULE_FILE, remaining)
+        print(f"[STEP] Cancelled all pending steps for {user_id[:8]}...")
 
 
 def schedule_step_messages(user_id):
@@ -189,6 +224,49 @@ def restore_pending_steps():
             restored += 1
 
     print(f"[STEP] Restored {restored} pending, {immediate} immediate sends")
+
+
+# --- 管理者コマンド ---
+def handle_admin_command(text):
+    """管理者からのコマンドを処理。コマンドでなければ None（通常処理に流す）"""
+    t = text.strip()
+
+    if t in ("一覧", "リスト"):
+        users = load_json(USERS_FILE)
+        lines = []
+        for uid, u in list(users.items())[-15:]:
+            if u.get("unfollowed"):
+                status = "❌ブロック"
+            elif u.get("meeting_scheduled"):
+                status = f"📅面談: {u.get('meeting_slot', '?')}"
+            elif u.get("auto_paused"):
+                status = "⏸手動対応中"
+            else:
+                status = "🤖自動対応中"
+            lines.append(f"{uid[:8]} | {u.get('source', '不明')} | {status}")
+        if not lines:
+            return "ユーザーはまだいません"
+        return "直近のユーザー（先頭8文字 | 流入元 | 状態）:\n" + "\n".join(lines)
+
+    for cmd, pause in (("停止", True), ("再開", False)):
+        if t.startswith(cmd):
+            prefix = t[len(cmd):].strip()
+            if not prefix:
+                return f"使い方: {cmd} <ユーザーIDの先頭8文字>\n（「一覧」でID確認できます）"
+            users = load_json(USERS_FILE)
+            matches = [uid for uid in users if uid.startswith(prefix)]
+            if len(matches) != 1:
+                return f"該当ユーザーが{len(matches)}件です。「一覧」でIDを確認してください"
+            uid = matches[0]
+            users[uid]["auto_paused"] = pause
+            users[uid]["awaiting_slot"] = False
+            save_json(USERS_FILE, users)
+            if pause:
+                cancel_user_steps(uid)
+                return f"✅ {uid[:8]}... への自動送信を停止しました（手動対応モード）"
+            return f"✅ {uid[:8]}... への自動送信を再開しました"
+
+    return None
 
 
 # --- キーワード応答 ---
@@ -292,9 +370,22 @@ class WebhookHandler(BaseHTTPRequestHandler):
                 log_message(user_id, "receive", text)
                 print(f"[MSG] {user_id[:8]}...: {text[:50]}")
 
-                # 流入元の記録（まだ未記録のユーザーのみ。初回返答を判定）
+                # 管理者コマンド（一覧 / 停止 <ID> / 再開 <ID>）
+                if ADMIN_USER_ID and user_id == ADMIN_USER_ID:
+                    admin_reply = handle_admin_command(text)
+                    if admin_reply:
+                        reply_line_message(reply_token, admin_reply, user_id)
+                        continue
+
                 users = load_json(USERS_FILE)
                 user_data = users.get(user_id, {})
+
+                # 面談確定後・手動対応中は自動送信しない（担当が直接返信する）
+                if user_data.get("auto_paused"):
+                    print(f"[PAUSED] {user_id[:8]}... (手動対応中、自動応答スキップ)")
+                    continue
+
+                # 流入元の記録（まだ未記録のユーザーのみ。初回返答を判定）
                 if not user_data.get("source"):
                     source = find_source(text)
                     if source:
@@ -306,14 +397,62 @@ class WebhookHandler(BaseHTTPRequestHandler):
                         reply_line_message(reply_token, SOURCE_THANKS, user_id)
                         continue
 
+                # 面談の日程候補への返答待ち
+                if user_data.get("awaiting_slot"):
+                    slot = parse_slot_choice(text, user_data.get("slot_candidates", []))
+                    if slot:
+                        user_data["awaiting_slot"] = False
+                        user_data["meeting_scheduled"] = True
+                        user_data["meeting_slot"] = slot
+                        user_data["meeting_date"] = datetime.now().isoformat()
+                        user_data["auto_paused"] = True  # 以降の自動送信を全停止
+                        users[user_id] = user_data
+                        save_json(USERS_FILE, users)
+                        cancel_user_steps(user_id)
+                        reply_line_message(reply_token, MEETING_BOOKED.format(slot=slot), user_id)
+                        name = get_display_name(user_id)
+                        notify_admin(
+                            "📅 面談希望が入りました！\n"
+                            f"名前: {name or '(取得失敗)'}\n"
+                            f"ID: {user_id[:8]}\n"
+                            f"希望日時: {slot}\n"
+                            f"流入元: {user_data.get('source', '不明')}\n\n"
+                            "このLINEチャットから確定の連絡をしてください。\n"
+                            "（この人への自動送信は停止済みです）"
+                        )
+                        print(f"[MEETING] {user_id[:8]}... -> {slot}")
+                        continue
+                    # 日程と判定できない場合は通常の応答に流す（質問の可能性）
+
+                # 「面談」キーワード → LINE内で日程候補を提示
+                if "面談" in text or "めんだん" in text:
+                    offer, cands = make_meeting_offer()
+                    user_data["awaiting_slot"] = True
+                    user_data["slot_candidates"] = cands
+                    user_data["meeting_offered"] = True
+                    users[user_id] = user_data
+                    save_json(USERS_FILE, users)
+                    reply_line_message(reply_token, offer, user_id)
+                    continue
+
                 # キーワード自動応答
                 auto_reply = find_auto_reply(text)
                 if auto_reply:
-                    reply_line_message(reply_token, auto_reply, user_id)
+                    count = user_data.get("auto_reply_count", 0) + 1
+                    user_data["auto_reply_count"] = count
+                    replies = [auto_reply]
+                    # 2つ目の質問に答えたタイミングで日程候補も提示（質問だけで離脱させない）
+                    if count >= 2 and not user_data.get("meeting_offered"):
+                        offer, cands = make_meeting_offer(MEETING_NUDGE_INTRO)
+                        user_data["awaiting_slot"] = True
+                        user_data["slot_candidates"] = cands
+                        user_data["meeting_offered"] = True
+                        replies.append(offer)
+                    users[user_id] = user_data
+                    save_json(USERS_FILE, users)
+                    reply_line_message(reply_token, replies, user_id)
                 else:
                     # DEFAULT_REPLY は初回メッセージ時のみ送信
-                    users = load_json(USERS_FILE)
-                    user_data = users.get(user_id, {})
                     if not user_data.get("default_replied"):
                         reply_line_message(reply_token, DEFAULT_REPLY, user_id)
                         user_data["default_replied"] = True

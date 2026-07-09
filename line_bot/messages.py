@@ -1,5 +1,8 @@
 """ステップ配信メッセージ定義"""
 
+import re
+from datetime import datetime, timedelta
+
 STEP_MESSAGES = {
     "welcome": {
         "text": (
@@ -10,7 +13,7 @@ STEP_MESSAGES = {
             "▼ よくある質問\n"
             "「収入」→ ライバーの収入目安\n"
             "「始め方」→ 始めるまでの流れ\n"
-            "「面談」→ 無料相談の予約\n\n"
+            "「面談」→ 面談の予約（15分・LINE通話）\n\n"
             "キーワードを送ってもらえれば、すぐお答えします！\n\n"
             "─────────\n"
             "📝 最後にひとつだけ教えてください！\n"
@@ -26,9 +29,100 @@ STEP_MESSAGES = {
         ),
     },
 
-
+    "followup_1day": {
+        "text": (
+            "こんにちは！TAITAN PROです😊\n\n"
+            "その後いかがですか？\n"
+            "気になることがあれば「収入」「始め方」など\n"
+            "キーワードで気軽に送ってくださいね。\n\n"
+            "「ちょっと話だけ聞いてみたい」でも大歓迎です。\n"
+            "「面談」と送ってもらえれば、LINE通話（声だけ・15分）で\n"
+            "ざっくばらんにお話しできます☕️\n\n"
+            "もちろん、今は迷い中でも全然大丈夫です🙆‍♀️"
+        ),
+    },
 
 }
+
+
+# --- 面談予約フロー（LINE内で完結） ---
+WEEKDAYS_JA = ["月", "火", "水", "木", "金", "土", "日"]
+
+
+def make_slot_candidates(now=None):
+    """明日20時 / 明後日21時 / 次の土曜13時 の3候補を生成"""
+    now = now or datetime.now()
+    slots = [
+        (now + timedelta(days=1)).replace(hour=20, minute=0),
+        (now + timedelta(days=2)).replace(hour=21, minute=0),
+    ]
+    days_to_sat = (5 - now.weekday()) % 7
+    if days_to_sat <= 2:
+        days_to_sat += 7
+    slots.append((now + timedelta(days=days_to_sat)).replace(hour=13, minute=0))
+    return [f"{s.month}/{s.day}({WEEKDAYS_JA[s.weekday()]}) {s.hour}:00〜" for s in slots]
+
+
+MEETING_OFFER_INTRO = (
+    "面談のご希望ありがとうございます！\n\n"
+    "📅 15分だけのオンライン面談です\n"
+    "✅ 完全無料・無理な勧誘なし\n"
+    "✅ LINE通話でOK（カメラオフ・声だけで大丈夫）\n"
+    "✅ 通話が苦手なら、このままチャットでもOK\n"
+)
+
+MEETING_NUDGE_INTRO = (
+    "🗓 もしよければ、そのまま日程だけ押さえませんか？\n"
+    "15分だけ・LINE通話（声だけOK）・無理な勧誘なしです。\n"
+    "チャットだけの面談でも大丈夫です😊\n"
+)
+
+
+def make_meeting_offer(intro=MEETING_OFFER_INTRO):
+    """面談の日程候補メッセージを生成。(テキスト, 候補リスト) を返す"""
+    c = make_slot_candidates()
+    text = (
+        intro + "\n"
+        "ご都合のいい時間を番号で送ってください👇\n"
+        f"① {c[0]}\n"
+        f"② {c[1]}\n"
+        f"③ {c[2]}\n\n"
+        "合う時間がなければ、ご希望の日時をそのまま送ってもらってもOKです！\n"
+        "（例：「金曜の21時」「日曜の昼」）"
+    )
+    return text, c
+
+
+MEETING_BOOKED = (
+    "ありがとうございます！\n"
+    "「{slot}」で承りました🙌\n\n"
+    "担当からこのLINEで確定のご連絡をしますので、\n"
+    "少しだけお待ちくださいね。\n\n"
+    "ここからは担当が直接やり取りさせていただきます😊"
+)
+
+_SLOT_NUMBERS = {"①": 0, "②": 1, "③": 2, "1": 0, "2": 1, "3": 2}
+_SLOT_TAIL_CHARS = "番でがはにのをおねよ！!。 　"
+_DATETIME_PATTERN = re.compile(
+    r"\d{1,2}時|\d{1,2}:\d{2}|明日|あした|あさって|明後日|今日|今週|来週|週末|"
+    r"[月火水木金土日]曜|午前|午後|夜|昼|朝"
+)
+
+
+def parse_slot_choice(text, candidates):
+    """日程候補への返答を判定。候補の文字列 or 自由入力の希望日時 or None"""
+    t = text.strip()
+    for key, idx in _SLOT_NUMBERS.items():
+        if t == key or (
+            t.startswith(key)
+            and len(t) > len(key)
+            and t[len(key)] in _SLOT_TAIL_CHARS
+        ):
+            if idx < len(candidates):
+                return candidates[idx]
+    if _DATETIME_PATTERN.search(t):
+        return t  # 自由入力の希望日時としてそのまま記録
+    return None
 
 # 流入元の選択肢（番号・キーワード → 記録ラベル）
 # follow直後の初回返答を流入元として判定する
@@ -80,24 +174,13 @@ AUTO_REPLIES = {
     ),
     "始め方": (
         "【ライバーを始めるまでの流れ】\n\n"
-        "① LINEで無料相談（今ここ！）\n"
-        "② オンライン面談（15分）\n"
+        "① LINEで質問・相談（今ここ！）\n"
+        "② オンライン面談（15分・LINE通話でOK）\n"
         "③ 配信アプリをダウンロード\n"
         "④ マネージャーと一緒に初配信！\n\n"
         "必要なものはスマホとWi-Fiだけ。\n"
         "費用は一切かかりません。\n\n"
         "「面談」と送ってもらえれば、日程調整しますね！"
-    ),
-    "面談": (
-        "面談のご希望ありがとうございます！\n\n"
-        "📅 15分のオンライン面談（Instagram）\n"
-        "💰 完全無料\n"
-        "📱 スマホからでもOK\n\n"
-        "下記のInstagramからDMをお送りください！\n"
-        "👉 @taitanblog\n"
-        "https://www.instagram.com/taitanblog/\n\n"
-        "ご希望の日時も一緒に教えてくださいね！\n"
-        "（例：「明日の19時」「今週土曜の午後」など）"
     ),
     "顔出し": (
         "顔出しなしでも全然OKです！\n\n"
@@ -192,7 +275,7 @@ DEFAULT_REPLY = (
     "以下のキーワードを送ると、すぐにお答えできます：\n\n"
     "📌「収入」→ ライバーの収入目安\n"
     "📌「始め方」→ 始めるまでの流れ\n"
-    "📌「面談」→ 無料相談の予約\n"
+    "📌「面談」→ 面談の予約（15分・LINE通話）\n"
     "📌「顔出し」→ 顔出しについて\n"
     "📌「費用」→ かかるお金について\n"
     "📌「副業」→ 副業との両立\n"
