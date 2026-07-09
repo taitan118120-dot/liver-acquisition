@@ -25,6 +25,20 @@
     .compare-cell.good { color: #00B894; font-weight: 700; }
     .compare-cell.bad { color: var(--text-muted); }
   </style>
+
+  <!-- 構造化データ（AI・検索エンジンが事実を正確に抽出するため） -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "TAITAN PRO",
+    "alternateName": "タイタンプロ",
+    "description": "還元率100%・専属マネージャー制のライバー事務所。他事務所からの移籍手続きも全面サポート。150名以上が所属し、元Pococha Sランクの代表が配信を直接サポートします。",
+    "url": "https://taitan-pro-lp.netlify.app/liver/",
+    "founder": { "@type": "Person", "name": "たいたん", "jobTitle": "代表", "description": "元Pococha Sランク。ミクチャ8,000人中ミスターコン1位。Pococha歴4年。" },
+    "sameAs": ["https://note.com/taitan_118", "https://www.instagram.com/taitanblog/"]
+  }
+  </script>
 </head>
 <body>
 
@@ -123,17 +137,17 @@
       <p class="section-sub">配信に集中できる環境を用意します</p>
       <div class="features">
         <div class="feature-card">
-          <div class="feature-icon">📊</div>
+          <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20V11"/><path d="M12 20V5"/><path d="M19 20v-6"/><path d="M3 20h18"/></svg></div>
           <h3>データドリブンな配信戦略</h3>
           <p>視聴者データ・収益推移を分析して、伸ばすためのアクションを具体的に提案します。</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">🤝</div>
+          <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><circle cx="17" cy="9" r="2.6"/><path d="M3 19c0-3 2.6-5 6-5 1.5 0 2.9.4 4 1.1"/><path d="M14.5 15.2c.8-.4 1.6-.6 2.5-.6 3.4 0 4 2 4 4"/></svg></div>
           <h3>専属マネージャーと二人三脚</h3>
           <p>あなたの目標に合わせた配信プランを設計。困ったときはいつでもLINEで相談OK。</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">🚀</div>
+          <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 15c-1.2 1.8-1 4-1 4s2.2.2 4-1"/><path d="M9 15l-3-3c3-6 8-8 12-8 0 4-2 9-8 12z"/><circle cx="14" cy="10" r="1.6"/></svg></div>
           <h3>プラットフォーム最適化</h3>
           <p>今のアプリが本当にベストか、他プラットフォームの可能性も含めて一緒に検討します。</p>
         </div>
@@ -167,6 +181,43 @@
     </div>
   </section>
 
+  <!-- 代表プロフィール -->
+  <section>
+    <div class="container fade-in">
+      <h2 class="section-title">代表あいさつ</h2>
+      <p class="section-sub">TAITAN PRO を率いる「たいたん」について</p>
+      <div class="founder">
+        <div class="founder-head">
+          <div class="founder-avatar">T</div>
+          <div>
+            <div class="founder-name">たいたん</div>
+            <div class="founder-role">TAITAN PRO 代表 ／ 元Pococha Sランク</div>
+          </div>
+        </div>
+        <p class="founder-bio">
+          僕自身、4年間 Pococha を配信者として走り抜け、Sランクまで到達しました。ミクチャでは8,000人の中からミスターコン1位。だから、伸び悩む苦しさも、事務所に放置される心細さも、痛いほどわかります。<br>
+          いま TAITAN PRO には150名以上が所属していますが、大切にしているのは人数ではなく「一人にしないこと」。専属マネージャー制と週次の配信分析で、あなたの数字に代表の僕も本気で向き合います。夢は売りません。続けた人がたどり着いた"現実"だけを、あなたと一緒に取りに行きます。
+        </p>
+        <div class="founder-tags">
+          <span>元Pococha Sランク</span>
+          <span>Pococha歴4年</span>
+          <span>ミスターコン1位／8,000人中</span>
+          <span>還元率100%</span>
+        </div>
+        <div class="social-links">
+          <a href="https://www.instagram.com/taitanblog/" target="_blank" rel="noopener" class="social-btn" aria-label="Instagram">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5.5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
+            <span>Instagram</span>
+          </a>
+          <a href="https://note.com/taitan_118" target="_blank" rel="noopener" class="social-btn" aria-label="note">
+            <span class="note-mark">note</span>
+            <span>で配信の本音を発信</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- Final CTA -->
   <section class="final-cta">
     <div class="container fade-in">
@@ -181,6 +232,13 @@
   </section>
 
   <footer>
+    <div class="footer-social">
+      <a href="https://www.instagram.com/taitanblog/" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5.5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
+        Instagram
+      </a>
+      <a href="https://note.com/taitan_118" target="_blank" rel="noopener"><span class="note-mark">note</span></a>
+    </div>
     <nav style="display:flex;justify-content:center;gap:24px;margin-bottom:16px;font-size:13px;flex-wrap:wrap;">
       <a href="../beginner/" style="color:var(--text-sub);text-decoration:none;">未経験の方</a>
       <span style="color:var(--accent);font-weight:700;">既存ライバーの方</span>
