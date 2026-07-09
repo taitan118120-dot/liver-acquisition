@@ -1,0 +1,41 @@
+name: 失敗ジョブ自動リトライ
+
+# GitHub側の一時障害（Runner未割り当て / Internal server error 等）で
+# ワークフローが失敗したとき、失敗ジョブだけを自動で1回だけ再実行する。
+
+on:
+  workflow_run:
+    workflows:
+      - 投稿自動進化
+      - 自動投稿
+      - 週次分析
+      - リード検索
+      - Instagram自動投稿
+      - Threads自動投稿
+      - Note記事 自動投稿
+      - Instagramトークン自動更新
+      - Threadsトークン更新
+    types:
+      - completed
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  retry:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    # 失敗した最初の試行だけを対象にする（再実行後の再失敗ではループさせない）
+    if: >
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.run_attempt == 1
+    steps:
+      - name: 失敗ジョブを再実行
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          WF_NAME: ${{ github.event.workflow_run.name }}
+        run: |
+          echo "「$WF_NAME」(run $RUN_ID) が失敗。失敗ジョブを再実行します。"
+          gh run rerun "$RUN_ID" --failed --repo "$GITHUB_REPOSITORY"

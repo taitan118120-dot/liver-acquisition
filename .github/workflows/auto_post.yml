@@ -18,7 +18,7 @@ env:
 
 jobs:
   post:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 8   # 25分暴走防止（実処理は30秒以内のはず）
     steps:
       - uses: actions/checkout@v5

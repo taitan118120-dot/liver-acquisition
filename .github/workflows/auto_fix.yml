@@ -26,7 +26,7 @@ on:
 jobs:
   notify-failure:
     if: ${{ github.event.workflow_run.conclusion == 'failure' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       issues: write

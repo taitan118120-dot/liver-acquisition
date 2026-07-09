@@ -15,7 +15,10 @@ env:
 
 jobs:
   evolve:
-    runs-on: ubuntu-latest
+    # ubuntu-latest はランナー移行のタイミングで割り当て失敗を起こすことがあるため固定
+    runs-on: ubuntu-24.04
+    # スクリプトがハングしても長時間ランナーを占有しないよう上限を設定
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
         with:
@@ -23,7 +26,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install tweepy google-genai
+          cache: pip
+      - name: 依存インストール（一時障害に備えリトライ）
+        run: |
+          for i in 1 2 3; do
+            pip install tweepy google-genai && break
+            echo "pip install 失敗（$i 回目）。10秒後に再試行..." && sleep 10
+          done
       - name: 分析＆新投稿生成
         env:
           TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}

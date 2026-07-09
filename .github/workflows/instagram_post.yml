@@ -33,7 +33,7 @@ env:
 
 jobs:
   instagram-post:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     # 最終セーフティ: 個別ステップが失敗してもjob全体は成功扱い
     # (各ステップ内でも set +e を使うが、job レベルで二重に保護)
