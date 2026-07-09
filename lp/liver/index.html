@@ -16,10 +16,10 @@
   <style>
     .fade-in { opacity: 0; transform: translateY(24px); transition: opacity 0.6s, transform 0.6s; }
     .fade-in.visible { opacity: 1; transform: translateY(0); }
-    .compare-table { max-width: 540px; margin: 0 auto; border-radius: var(--radius); overflow: hidden; border: 1px solid rgba(255,255,255,0.06); }
+    .compare-table { max-width: 540px; margin: 0 auto; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--card-border); box-shadow: var(--card-shadow); }
     .compare-row { display: grid; grid-template-columns: 1fr 1fr 1fr; }
-    .compare-row.header { background: var(--primary); font-weight: 700; font-size: 14px; }
-    .compare-row:not(.header) { background: var(--bg-card); border-top: 1px solid rgba(255,255,255,0.04); }
+    .compare-row.header { background: var(--gradient-1); color: #fff; font-weight: 700; font-size: 14px; }
+    .compare-row:not(.header) { background: var(--bg-card); border-top: 1px solid var(--card-border); }
     .compare-cell { padding: 14px 16px; font-size: 14px; text-align: center; }
     .compare-cell:first-child { text-align: left; color: var(--text-sub); }
     .compare-cell.good { color: #00B894; font-weight: 700; }
@@ -127,6 +127,35 @@
         </div>
       </div>
       <p class="section-sub" style="margin-top:24px;font-size:13px;">代表は元Pococha Sランク達成者 &amp; ミクチャ8,000人中ミスターコン1位</p>
+    </div>
+  </section>
+
+  <!-- Voice / 実例 -->
+  <section>
+    <div class="container fade-in">
+      <h2 class="section-title">サポートが変われば、結果は変わる</h2>
+      <p class="section-sub">TAITAN PROで最短ルートを走った実例</p>
+      <div class="voice">
+        <div class="voice-card">
+          <div class="voice-head">
+            <div class="voice-avatar" aria-hidden="true">む</div>
+            <div>
+              <div class="voice-name">むうくん</div>
+              <div class="voice-attr">20歳・大学生／栃木県・2026年4月デビュー</div>
+            </div>
+          </div>
+          <div class="voice-stats">
+            <div class="voice-stat"><span class="n">2ヶ月</span><span class="l">でB2ランク到達</span></div>
+            <div class="voice-stat"><span class="n">140人</span><span class="l">コアファン獲得</span></div>
+            <div class="voice-stat"><span class="n">9位</span><span class="l">新人戦 全国決勝</span></div>
+          </div>
+          <p class="voice-body">
+            多くのライバーが半年〜1年停滞するC帯→B帯の壁を、むうくんは<strong>約45日で突破</strong>しました。1日平均4時間の継続に、<strong>週次の配信分析と専属マネージャーの伴走</strong>がかみ合った結果です。今の事務所で伸び悩んでいるなら、変えるべきは努力量ではなく環境かもしれません。
+          </p>
+          <a href="https://note.com/taitan_118/n/nfc802c353aff" target="_blank" rel="noopener" class="voice-link">むうくんの成長記録をnoteで読む →</a>
+        </div>
+        <p class="voice-disclaimer">※ 成果には個人差があります。数字はむうくん本人の実データに基づく実例です。</p>
+      </div>
     </div>
   </section>
 

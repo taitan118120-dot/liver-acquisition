@@ -17,12 +17,12 @@
     .fade-in { opacity: 0; transform: translateY(24px); transition: opacity 0.6s, transform 0.6s; }
     .fade-in.visible { opacity: 1; transform: translateY(0); }
     .merit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; max-width: 540px; margin: 0 auto; }
-    .merit-item { background: var(--bg-card); border: 1px solid rgba(255,255,255,0.06); border-radius: var(--radius-sm); padding: 20px; text-align: center; }
+    .merit-item { background: var(--bg-card); border: 1px solid var(--card-border); border-radius: var(--radius-sm); padding: 20px; text-align: center; box-shadow: var(--card-shadow); }
     .merit-icon { font-size: 28px; margin-bottom: 8px; }
     .merit-item h3 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
     .merit-item p { font-size: 13px; color: var(--text-sub); }
     .timeline { max-width: 540px; margin: 0 auto; }
-    .timeline-item { display: flex; gap: 20px; padding: 20px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .timeline-item { display: flex; gap: 20px; padding: 20px 0; border-bottom: 1px solid var(--card-border); }
     .timeline-period { min-width: 80px; font-weight: 800; background: var(--gradient-2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-size: 15px; }
     .timeline-item h3 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
     .timeline-item p { font-size: 14px; color: var(--text-sub); }
@@ -143,6 +143,35 @@
             <p>配信時間を増やして、副業から専業に切り替える人もいます。</p>
           </div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Voice / 実例 -->
+  <section>
+    <div class="container fade-in">
+      <h2 class="section-title">学業と両立しながら2ヶ月でB2</h2>
+      <p class="section-sub">スキマ時間からここまで伸びた、リアルな実例</p>
+      <div class="voice">
+        <div class="voice-card">
+          <div class="voice-head">
+            <div class="voice-avatar" aria-hidden="true">む</div>
+            <div>
+              <div class="voice-name">むうくん</div>
+              <div class="voice-attr">20歳・大学生／栃木県・2026年4月デビュー</div>
+            </div>
+          </div>
+          <div class="voice-stats">
+            <div class="voice-stat"><span class="n">2ヶ月</span><span class="l">でB2ランク到達</span></div>
+            <div class="voice-stat"><span class="n">1日4h</span><span class="l">ほぼ毎日配信</span></div>
+            <div class="voice-stat"><span class="n">140人</span><span class="l">コアファン獲得</span></div>
+          </div>
+          <p class="voice-body">
+            配信前はフォロワーゼロの“ごく普通の大学生”。学業と並行しながら<strong>1日平均4時間をほぼ毎日</strong>続け、多くの人が半年〜1年停滞するC帯→B帯の壁を<strong>約45日で突破</strong>しました。専属マネージャーと二人三脚で最短ルートを走った——「本人の努力」と「事務所のサポート」がかみ合った実例です。
+          </p>
+          <a href="https://note.com/taitan_118/n/nfc802c353aff" target="_blank" rel="noopener" class="voice-link">むうくんの成長記録をnoteで読む →</a>
+        </div>
+        <p class="voice-disclaimer">※ 成果には個人差があります。数字はむうくん本人の実データに基づく実例です。</p>
       </div>
     </div>
   </section>

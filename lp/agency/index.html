@@ -17,19 +17,19 @@
     .fade-in { opacity: 0; transform: translateY(24px); transition: opacity 0.6s, transform 0.6s; }
     .fade-in.visible { opacity: 1; transform: translateY(0); }
     .merit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; max-width: 540px; margin: 0 auto; }
-    .merit-item { background: var(--bg-card); border: 1px solid rgba(255,255,255,0.06); border-radius: var(--radius-sm); padding: 20px; text-align: center; }
+    .merit-item { background: var(--bg-card); border: 1px solid var(--card-border); border-radius: var(--radius-sm); padding: 20px; text-align: center; box-shadow: var(--card-shadow); }
     .merit-icon { font-size: 28px; margin-bottom: 8px; }
     .merit-item h3 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
     .merit-item p { font-size: 13px; color: var(--text-sub); }
     .timeline { max-width: 540px; margin: 0 auto; }
-    .timeline-item { display: flex; gap: 20px; padding: 20px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .timeline-item { display: flex; gap: 20px; padding: 20px 0; border-bottom: 1px solid var(--card-border); }
     .timeline-period { min-width: 80px; font-weight: 800; background: var(--gradient-2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-size: 15px; }
     .timeline-item h3 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
     .timeline-item p { font-size: 14px; color: var(--text-sub); }
-    .compare-table { max-width: 540px; margin: 0 auto; background: var(--bg-card); border: 1px solid rgba(255,255,255,0.06); border-radius: var(--radius-sm); overflow: hidden; }
-    .compare-row { display: grid; grid-template-columns: 1.2fr 1fr 1fr; padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 13px; }
+    .compare-table { max-width: 540px; margin: 0 auto; background: var(--bg-card); border: 1px solid var(--card-border); border-radius: var(--radius-sm); overflow: hidden; box-shadow: var(--card-shadow); }
+    .compare-row { display: grid; grid-template-columns: 1.2fr 1fr 1fr; padding: 14px 16px; border-bottom: 1px solid var(--card-border); font-size: 13px; }
     .compare-row:last-child { border-bottom: none; }
-    .compare-row.head { background: rgba(255,255,255,0.03); font-weight: 700; }
+    .compare-row.head { background: rgba(108,92,231,0.07); font-weight: 700; }
     .compare-row .ours { color: var(--accent); font-weight: 700; }
   </style>
 

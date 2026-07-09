@@ -1,23 +1,30 @@
-/* ========== TAITAN PRO LP 共通CSS（Premium Edition） ========== */
+/* ========== TAITAN PRO LP 共通CSS（Bright Edition） ========== */
 @import url('https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@600;700;900&display=swap');
 
 :root {
   --primary: #6C5CE7;
   --primary-dark: #5A4BD1;
-  --accent: #FD79A8;
-  --gold: #E8C877;
-  --gold-soft: #F3E1A8;
-  --gold-deep: #C9A24B;
-  --bg-dark: #0B0713;
-  --bg-card: #17111F;
-  --bg-section: #100B1A;
-  --text-main: #F6F3FA;
-  --text-sub: #B8B0C8;
-  --text-muted: #7B7394;
-  --gradient-1: linear-gradient(135deg, #6C5CE7, #A29BFE);
-  --gradient-2: linear-gradient(135deg, #FD79A8, #FDCB6E);
-  --gradient-gold: linear-gradient(135deg, #F3E1A8 0%, #E8C877 45%, #C9A24B 100%);
-  --hairline: rgba(232, 200, 119, 0.14);
+  --primary-light: #A78BFA;
+  --accent: #FF5C8A;
+  --accent-warm: #FF9F45;
+  /* 明るい配色。--bg-* は互換のため名称を維持しつつ「明るい値」に変更 */
+  --bg-dark: #F5F2FC;
+  --bg-card: #FFFFFF;
+  --bg-section: #ECE8FB;
+  --text-main: #1B1433;
+  --text-sub: #574F70;
+  --text-muted: #8E86A6;
+  --gradient-1: linear-gradient(135deg, #6C5CE7, #A78BFA);
+  --gradient-2: linear-gradient(135deg, #FF5C8A, #FF9F45);
+  --gradient-hero: linear-gradient(115deg, #6C5CE7 0%, #A78BFA 45%, #FF5C8A 100%);
+  /* 旧ゴールド系トークンはブランドカラーへエイリアス（既存参照の互換用） */
+  --gold: #7C5CFF;
+  --gold-soft: #6C5CE7;
+  --gold-deep: #5A4BD1;
+  --gradient-gold: linear-gradient(115deg, #6C5CE7 0%, #A78BFA 45%, #FF5C8A 100%);
+  --hairline: rgba(108, 92, 231, 0.16);
+  --card-border: rgba(27, 20, 51, 0.08);
+  --card-shadow: 0 12px 30px rgba(90, 70, 200, 0.10);
   --radius: 18px;
   --radius-sm: 12px;
   --font-serif: 'Zen Old Mincho', 'Hiragino Mincho ProN', 'Yu Mincho', serif;
@@ -30,8 +37,9 @@ html { scroll-behavior: smooth; }
 body {
   font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
   background:
-    radial-gradient(90% 55% at 50% 0%, rgba(232,200,119,0.06), transparent 60%),
-    radial-gradient(70% 45% at 100% 100%, rgba(108,92,231,0.08), transparent 55%),
+    radial-gradient(85% 55% at 12% -5%, rgba(108, 92, 231, 0.14), transparent 60%),
+    radial-gradient(75% 50% at 100% 12%, rgba(255, 92, 138, 0.12), transparent 55%),
+    radial-gradient(70% 60% at 50% 110%, rgba(167, 139, 250, 0.12), transparent 55%),
     var(--bg-dark);
   background-attachment: fixed;
   color: var(--text-main);
@@ -39,16 +47,6 @@ body {
   overflow-x: hidden;
   position: relative;
   -webkit-font-smoothing: antialiased;
-}
-
-/* 全体を上品なヴィネットで包む */
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 2;
-  background: radial-gradient(120% 80% at 50% -10%, transparent 60%, rgba(0,0,0,0.45) 100%);
 }
 
 .container {
@@ -76,22 +74,23 @@ body::after {
   left: -50%;
   width: 200%;
   height: 200%;
-  background: radial-gradient(circle at 30% 35%, rgba(108, 92, 231, 0.18) 0%, transparent 48%),
-              radial-gradient(circle at 72% 62%, rgba(232, 200, 119, 0.12) 0%, transparent 46%),
-              radial-gradient(circle at 50% 90%, rgba(253, 121, 168, 0.08) 0%, transparent 50%);
+  background: radial-gradient(circle at 30% 32%, rgba(108, 92, 231, 0.22) 0%, transparent 46%),
+              radial-gradient(circle at 74% 60%, rgba(255, 92, 138, 0.18) 0%, transparent 44%),
+              radial-gradient(circle at 50% 92%, rgba(255, 159, 69, 0.12) 0%, transparent 48%);
   animation: bgFloat 22s ease-in-out infinite;
 }
 
-/* ヒーロー上部の金の細線 */
+/* ヒーロー上部のブランドライン */
 .hero::after {
   content: '';
   position: absolute;
   top: 0; left: 50%;
   transform: translateX(-50%);
   width: min(680px, 88%);
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--gold), transparent);
-  opacity: 0.6;
+  height: 2px;
+  background: var(--gradient-hero);
+  opacity: 0.8;
+  border-radius: 2px;
 }
 
 @keyframes bgFloat {
@@ -105,11 +104,11 @@ body::after {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: rgba(232, 200, 119, 0.08);
+  background: rgba(108, 92, 231, 0.10);
   border: 1px solid var(--hairline);
-  color: var(--gold-soft);
+  color: var(--primary);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   padding: 7px 20px;
   border-radius: 50px;
   margin-bottom: 26px;
@@ -122,9 +121,10 @@ body::after {
 .hero-badge::after {
   content: '';
   width: 14px;
-  height: 1px;
-  background: var(--gold-deep);
-  opacity: 0.7;
+  height: 2px;
+  background: var(--primary-light);
+  border-radius: 2px;
+  opacity: 0.8;
 }
 
 .hero h1 {
@@ -134,16 +134,17 @@ body::after {
   line-height: 1.35;
   letter-spacing: 0.5px;
   margin-bottom: 22px;
+  color: var(--text-main);
 }
 
 .hero h1 .highlight {
-  background: linear-gradient(110deg, #C9A24B 0%, #E8C877 25%, #FFF6D8 48%, #E8C877 72%, #C9A24B 100%);
+  background: linear-gradient(110deg, #6C5CE7 0%, #A78BFA 30%, #FF5C8A 60%, #FF9F45 100%);
   background-size: 220% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   animation: goldShimmer 6.5s linear infinite;
-  filter: drop-shadow(0 2px 14px rgba(232, 200, 119, 0.25));
+  filter: drop-shadow(0 3px 16px rgba(108, 92, 231, 0.22));
 }
 
 @keyframes goldShimmer {
@@ -173,7 +174,7 @@ body::after {
   text-decoration: none;
   overflow: hidden;
   transition: transform 0.25s, box-shadow 0.25s;
-  box-shadow: 0 6px 26px rgba(108, 92, 231, 0.42), inset 0 1px 0 rgba(255,255,255,0.25);
+  box-shadow: 0 10px 28px rgba(108, 92, 231, 0.40), inset 0 1px 0 rgba(255,255,255,0.3);
 }
 
 /* 光沢スイープ */
@@ -182,7 +183,7 @@ body::after {
   position: absolute;
   top: 0; left: -120%;
   width: 60%; height: 100%;
-  background: linear-gradient(100deg, transparent, rgba(255,255,255,0.4), transparent);
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,0.5), transparent);
   transform: skewX(-20deg);
   animation: shine 4.5s ease-in-out infinite;
 }
@@ -194,22 +195,22 @@ body::after {
 
 .cta-btn:hover {
   transform: translateY(-3px);
-  box-shadow: 0 12px 36px rgba(108, 92, 231, 0.55), inset 0 1px 0 rgba(255,255,255,0.25);
+  box-shadow: 0 16px 38px rgba(108, 92, 231, 0.52), inset 0 1px 0 rgba(255,255,255,0.3);
 }
 
 .cta-btn-secondary {
-  background: transparent;
-  border: 1px solid var(--hairline);
-  color: var(--gold-soft);
-  box-shadow: none;
+  background: #fff;
+  border: 1.5px solid var(--hairline);
+  color: var(--primary);
+  box-shadow: 0 6px 18px rgba(90, 70, 200, 0.08);
 }
 
 .cta-btn-secondary::after { display: none; }
 
 .cta-btn-secondary:hover {
-  background: rgba(232, 200, 119, 0.06);
-  border-color: var(--gold);
-  box-shadow: none;
+  background: rgba(108, 92, 231, 0.06);
+  border-color: var(--primary);
+  box-shadow: 0 10px 24px rgba(90, 70, 200, 0.14);
 }
 
 /* ===== Sections ===== */
@@ -229,17 +230,18 @@ section:nth-child(even) {
   font-weight: 700;
   letter-spacing: 0.5px;
   margin-bottom: 14px;
+  color: var(--text-main);
 }
 
-/* 見出し下の金のあしらい */
+/* 見出し下のブランドあしらい */
 .section-title::after {
   content: '';
   display: block;
-  width: 46px;
-  height: 2px;
+  width: 50px;
+  height: 3px;
   margin: 16px auto 0;
-  background: var(--gradient-gold);
-  border-radius: 2px;
+  background: var(--gradient-hero);
+  border-radius: 3px;
 }
 
 .section-sub {
@@ -263,12 +265,12 @@ section:nth-child(even) {
   padding: 17px 4px;
   font-size: 16px;
   color: var(--text-sub);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--card-border);
 }
 
 .pain-list li::before {
   content: '❝';
-  color: var(--gold);
+  color: var(--accent);
   font-weight: 700;
   font-size: 18px;
   line-height: 1.2;
@@ -286,30 +288,18 @@ section:nth-child(even) {
 
 .feature-card {
   position: relative;
-  background: linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.01));
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: var(--bg-card);
+  border: 1px solid var(--card-border);
   border-radius: var(--radius);
   padding: 32px 28px;
-  transition: transform 0.25s, border-color 0.25s;
-  backdrop-filter: blur(4px);
-}
-
-.feature-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: var(--radius);
-  padding: 1px;
-  background: linear-gradient(160deg, var(--hairline), transparent 45%);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
+  transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
+  box-shadow: var(--card-shadow);
 }
 
 .feature-card:hover {
   transform: translateY(-5px);
-  border-color: rgba(232, 200, 119, 0.28);
+  border-color: rgba(108, 92, 231, 0.35);
+  box-shadow: 0 18px 40px rgba(90, 70, 200, 0.16);
 }
 
 .feature-icon {
@@ -321,17 +311,16 @@ section:nth-child(even) {
   justify-content: center;
   font-size: 24px;
   margin-bottom: 18px;
-  color: var(--gold);
-  background: linear-gradient(155deg, rgba(232,200,119,0.16), rgba(232,200,119,0.04));
-  border: 1px solid var(--hairline);
-  box-shadow: inset 0 1px 0 rgba(243,225,168,0.15);
+  color: #fff;
+  background: var(--gradient-1);
+  box-shadow: 0 8px 18px rgba(108, 92, 231, 0.30);
 }
 
 .feature-icon svg { width: 27px; height: 27px; }
 
-/* 絵文字→金の細線アイコン共通 */
+/* アイコン共通 */
 .merit-icon {
-  color: var(--gold);
+  color: var(--primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -343,6 +332,7 @@ section:nth-child(even) {
   font-size: 18px;
   font-weight: 700;
   margin-bottom: 8px;
+  color: var(--text-main);
 }
 
 .feature-card p {
@@ -362,17 +352,18 @@ section:nth-child(even) {
 
 .stat-card {
   text-align: center;
-  background: linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.01));
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: var(--bg-card);
+  border: 1px solid var(--card-border);
   border-radius: var(--radius);
   padding: 30px 16px;
+  box-shadow: var(--card-shadow);
 }
 
 .stat-number {
   font-family: var(--font-serif);
   font-size: clamp(28px, 6vw, 42px);
   font-weight: 900;
-  background: linear-gradient(110deg, #C9A24B, #E8C877 30%, #FFF6D8 50%, #E8C877 70%, #C9A24B);
+  background: linear-gradient(110deg, #6C5CE7, #A78BFA 40%, #FF5C8A 100%);
   background-size: 220% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -387,27 +378,151 @@ section:nth-child(even) {
   letter-spacing: 0.5px;
 }
 
+/* ===== 先輩の声（Voice / 実例） ===== */
+.voice {
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.voice-card {
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 32px 28px;
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+}
+
+.voice-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--gradient-hero);
+}
+
+.voice-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.voice-avatar {
+  width: 58px;
+  height: 58px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-serif);
+  font-size: 26px;
+  font-weight: 900;
+  color: #fff;
+  background: var(--gradient-hero);
+  box-shadow: 0 8px 20px rgba(108, 92, 231, 0.30);
+}
+
+.voice-name {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.voice-attr {
+  font-size: 12.5px;
+  color: var(--text-sub);
+  margin-top: 3px;
+}
+
+.voice-stats {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.voice-stat {
+  flex: 1;
+  min-width: 110px;
+  text-align: center;
+  background: linear-gradient(180deg, rgba(108,92,231,0.08), rgba(255,92,138,0.05));
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  padding: 15px 8px;
+}
+
+.voice-stat .n {
+  display: block;
+  font-family: var(--font-serif);
+  font-size: 23px;
+  font-weight: 900;
+  line-height: 1.2;
+  background: linear-gradient(110deg, #6C5CE7, #A78BFA 45%, #FF5C8A 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.voice-stat .l {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-top: 5px;
+  letter-spacing: 0.3px;
+}
+
+.voice-body {
+  font-size: 14.5px;
+  color: var(--text-sub);
+  line-height: 2;
+}
+
+.voice-body strong { color: var(--text-main); font-weight: 700; }
+
+.voice-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 18px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--primary);
+  text-decoration: none;
+  transition: color 0.2s, gap 0.2s;
+}
+
+.voice-link:hover { color: var(--accent); gap: 10px; }
+
+.voice-disclaimer {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 20px;
+  line-height: 1.7;
+}
+
 /* ===== 代表プロフィール（Founder） ===== */
 .founder {
   max-width: 620px;
   margin: 0 auto;
   position: relative;
-  background:
-    radial-gradient(120% 140% at 0% 0%, rgba(232,200,119,0.08), transparent 45%),
-    linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.012));
-  border: 1px solid var(--hairline);
+  background: var(--bg-card);
+  border: 1px solid var(--card-border);
   border-radius: var(--radius);
   padding: 38px 34px;
   overflow: hidden;
+  box-shadow: var(--card-shadow);
 }
 
 .founder::before {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0;
-  height: 2px;
-  background: var(--gradient-gold);
-  opacity: 0.85;
+  height: 3px;
+  background: var(--gradient-hero);
 }
 
 .founder-head {
@@ -428,13 +543,13 @@ section:nth-child(even) {
   font-family: var(--font-serif);
   font-size: 30px;
   font-weight: 900;
-  color: #1b1508;
-  background-color: var(--gold-deep);
+  color: #fff;
+  background-color: var(--primary);
   background-image: url("taitan.jpg");
   background-size: 235%;
   background-position: 46% 12%;
   background-repeat: no-repeat;
-  box-shadow: 0 0 0 1px var(--gold-deep), 0 6px 20px rgba(201, 162, 75, 0.35);
+  box-shadow: 0 0 0 2px rgba(108,92,231,0.35), 0 8px 22px rgba(108, 92, 231, 0.30);
   overflow: hidden;
   text-indent: -9999px;
 }
@@ -448,7 +563,8 @@ section:nth-child(even) {
 
 .founder-role {
   font-size: 12.5px;
-  color: var(--gold-soft);
+  color: var(--primary);
+  font-weight: 600;
   letter-spacing: 0.5px;
   margin-top: 3px;
 }
@@ -469,11 +585,12 @@ section:nth-child(even) {
 
 .founder-tags span {
   font-size: 12px;
-  color: var(--gold-soft);
+  color: var(--primary);
+  font-weight: 600;
   padding: 5px 13px;
   border: 1px solid var(--hairline);
   border-radius: 50px;
-  background: rgba(232, 200, 119, 0.05);
+  background: rgba(108, 92, 231, 0.06);
 }
 
 /* ===== SNSリンク ===== */
@@ -490,7 +607,7 @@ section:nth-child(even) {
   padding: 11px 22px;
   border-radius: 50px;
   border: 1px solid var(--hairline);
-  background: rgba(255,255,255,0.02);
+  background: rgba(108,92,231,0.04);
   color: var(--text-main);
   text-decoration: none;
   font-size: 14px;
@@ -502,8 +619,8 @@ section:nth-child(even) {
 
 .social-btn:hover {
   transform: translateY(-2px);
-  border-color: var(--gold);
-  background: rgba(232, 200, 119, 0.07);
+  border-color: var(--primary);
+  background: rgba(108, 92, 231, 0.09);
 }
 
 .social-btn .note-mark {
@@ -522,10 +639,11 @@ section:nth-child(even) {
 }
 
 .qa-item {
-  background: linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.01));
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: var(--bg-card);
+  border: 1px solid var(--card-border);
   border-radius: var(--radius);
   padding: 24px 28px;
+  box-shadow: var(--card-shadow);
 }
 
 .qa-item .q {
@@ -534,12 +652,13 @@ section:nth-child(even) {
   margin-bottom: 10px;
   display: flex;
   gap: 10px;
+  color: var(--text-main);
 }
 
 .qa-item .q::before {
   content: 'Q';
   font-family: var(--font-serif);
-  color: var(--gold);
+  color: var(--primary);
   font-weight: 900;
   flex-shrink: 0;
 }
@@ -555,7 +674,7 @@ section:nth-child(even) {
 .final-cta {
   text-align: center;
   padding: 90px 20px;
-  background: linear-gradient(180deg, var(--bg-section) 0%, var(--bg-dark) 100%);
+  background: linear-gradient(160deg, #EEE9FC 0%, #FBEDF4 100%);
   position: relative;
 }
 
@@ -565,9 +684,10 @@ section:nth-child(even) {
   top: 0; left: 50%;
   transform: translateX(-50%);
   width: min(560px, 86%);
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--gold), transparent);
-  opacity: 0.5;
+  height: 2px;
+  background: var(--gradient-hero);
+  opacity: 0.7;
+  border-radius: 2px;
 }
 
 .final-cta h2 {
@@ -575,6 +695,7 @@ section:nth-child(even) {
   font-size: clamp(23px, 5vw, 34px);
   font-weight: 700;
   margin-bottom: 18px;
+  color: var(--text-main);
 }
 
 .final-cta p {
@@ -603,7 +724,7 @@ footer {
   padding: 40px 20px;
   font-size: 13px;
   color: var(--text-muted);
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid var(--card-border);
 }
 
 .footer-social {
@@ -626,7 +747,7 @@ footer {
   transition: color 0.2s, border-color 0.2s;
 }
 
-.footer-social a:hover { color: var(--gold-soft); border-color: var(--gold); }
+.footer-social a:hover { color: var(--primary); border-color: var(--primary); }
 
 .footer-social svg { width: 15px; height: 15px; }
 
@@ -637,4 +758,5 @@ footer {
   .founder { padding: 30px 22px; }
   .founder-head { gap: 14px; }
   .founder-avatar { width: 58px; height: 58px; font-size: 26px; }
+  .voice-card { padding: 28px 22px; }
 }
