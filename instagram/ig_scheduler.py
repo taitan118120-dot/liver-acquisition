@@ -27,6 +27,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import config  # noqa: F401 - configを先にimportしてキャッシュに載せる
 
 from ig_content_generator import generate_posts, load_posts
+from ig_viral_generator import generate_viral_posts
 from ig_poster import post_next
 
 
@@ -193,7 +194,8 @@ def run(generate_if_empty=False, source_type="auto", dry_run=False):
     # 失敗回数が上限に達した投稿をスキップ対象にする
     unposted = [
         p for p in posts
-        if not p["posted"] and p.get("image_path") and p.get("fail_count", 0) < MAX_RETRY
+        if not p["posted"] and not p.get("archived")
+        and p.get("image_path") and p.get("fail_count", 0) < MAX_RETRY
     ]
     failed = [p for p in posts if not p["posted"] and p.get("fail_count", 0) >= MAX_RETRY]
 
@@ -206,7 +208,12 @@ def run(generate_if_empty=False, source_type="auto", dry_run=False):
         print("未投稿コンテンツがないため、新規生成します...\n")
         gen_failed = False
         try:
-            result = generate_posts(source_type=source_type, count=1, dry_run=dry_run)
+            # 2026-07-11: バズ特化カルーセルに全面転換。
+            # auto/viral → ig_viral_generator、blog/twitter は旧ジェネレータ（後方互換）
+            if source_type in ("auto", "viral"):
+                result = generate_viral_posts(count=1, dry_run=dry_run)
+            else:
+                result = generate_posts(source_type=source_type, count=1, dry_run=dry_run)
             if not result:
                 print("[WARNING] コンテンツ生成に失敗しました（API一時障害の可能性）")
                 gen_failed = True
@@ -231,7 +238,8 @@ def run(generate_if_empty=False, source_type="auto", dry_run=False):
         posts = load_posts()
         unposted = [
             p for p in posts
-            if not p["posted"] and p.get("image_path") and p.get("fail_count", 0) < MAX_RETRY
+            if not p["posted"] and not p.get("archived")
+            and p.get("image_path") and p.get("fail_count", 0) < MAX_RETRY
         ]
 
     if not unposted:
@@ -281,8 +289,8 @@ def main():
     parser = argparse.ArgumentParser(description="Instagram自動投稿スケジューラ")
     parser.add_argument("--generate", action="store_true",
                         help="未投稿がなければ自動生成してから投稿")
-    parser.add_argument("--source", choices=["blog", "twitter", "auto"], default="auto",
-                        help="コンテンツソース（default: auto）")
+    parser.add_argument("--source", choices=["viral", "blog", "twitter", "auto"], default="auto",
+                        help="コンテンツソース（default: auto = バズカルーセル）")
     parser.add_argument("--test", action="store_true",
                         help="テスト実行（投稿しない）")
     args = parser.parse_args()

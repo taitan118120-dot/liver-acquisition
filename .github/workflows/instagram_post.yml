@@ -8,10 +8,11 @@ on:
   workflow_dispatch:  # 手動実行も可能
     inputs:
       source:
-        description: 'コンテンツソース'
+        description: 'コンテンツソース（auto/viral=バズカルーセル）'
         type: choice
         options:
           - auto
+          - viral
           - blog
           - twitter
         default: auto

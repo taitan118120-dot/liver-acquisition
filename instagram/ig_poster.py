@@ -275,17 +275,21 @@ class PermanentMediaError(Exception):
     pass
 
 
-def create_media_container(image_url, caption, max_retries=3):
+def create_media_container(image_url, caption, max_retries=3, is_carousel_item=False):
     """Instagram Graph APIでメディアコンテナを作成（リトライ付き）。
     TokenExpiredError: トークン期限切れ時に送出。
     PermanentMediaError: 画像URL起因の永続エラー時に送出（別URLで再試行を促す）。
+    is_carousel_item=True: カルーセルの子コンテナとして作成（captionなし）。
     """
     url = f"{GRAPH_API_BASE}/{config.INSTAGRAM_BUSINESS_ID}/media"
     payload = {
         "image_url": image_url,
-        "caption": caption,
         "access_token": config.INSTAGRAM_ACCESS_TOKEN,
     }
+    if is_carousel_item:
+        payload["is_carousel_item"] = "true"
+    else:
+        payload["caption"] = caption
 
     for attempt in range(max_retries):
         try:
@@ -337,6 +341,46 @@ def create_media_container(image_url, caption, max_retries=3):
                 continue
 
         print(f"[ERROR] コンテナ作成失敗 (code={error_code}, subcode={error_subcode}): {error_msg}")
+        return None
+
+    return None
+
+
+def create_carousel_container(children_ids, caption, max_retries=3):
+    """カルーセル親コンテナを作成（子コンテナIDをまとめる）"""
+    url = f"{GRAPH_API_BASE}/{config.INSTAGRAM_BUSINESS_ID}/media"
+    payload = {
+        "media_type": "CAROUSEL",
+        "children": ",".join(children_ids),
+        "caption": caption,
+        "access_token": config.INSTAGRAM_ACCESS_TOKEN,
+    }
+
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(url, data=payload, timeout=60)
+            data = response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"  [RETRY] カルーセルコンテナ作成エラー: {e} ({attempt + 1}/{max_retries})")
+            if attempt < max_retries - 1:
+                time.sleep(5 * (attempt + 1))
+                continue
+            return None
+
+        if "id" in data:
+            print(f"  カルーセルコンテナ作成: {data['id']}")
+            return data["id"]
+
+        error = data.get("error", {})
+        error_msg = error.get("message", str(data))
+        error_code = error.get("code", "N/A")
+        if error_code == 190:
+            raise TokenExpiredError(error_msg)
+        if error_code in (-2, 2) or "timeout" in error_msg.lower():
+            if attempt < max_retries - 1:
+                time.sleep(10 * (attempt + 1))
+                continue
+        print(f"[ERROR] カルーセルコンテナ作成失敗 (code={error_code}): {error_msg}")
         return None
 
     return None
@@ -470,6 +514,78 @@ def post_to_instagram(image_path, caption, dry_run=False):
         return False, "Instagram投稿公開失敗", True
 
 
+def post_carousel_to_instagram(image_paths, caption, dry_run=False):
+    """複数画像をカルーセルとして投稿。(success, error_msg, is_transient) を返す。"""
+    if dry_run:
+        print(f"[DRY RUN] Instagramカルーセル投稿:")
+        print(f"  スライド{len(image_paths)}枚: {[os.path.basename(p) for p in image_paths]}")
+        print(f"  キャプション: {caption[:100]}...")
+        return True, None, False
+
+    if not config.INSTAGRAM_ACCESS_TOKEN or not config.INSTAGRAM_BUSINESS_ID:
+        msg = "INSTAGRAM_ACCESS_TOKEN / INSTAGRAM_BUSINESS_ID が未設定"
+        print(f"[ERROR] {msg}")
+        return False, msg, False
+
+    if len(image_paths) < 2 or len(image_paths) > 10:
+        return False, f"カルーセルは2〜10枚必須（{len(image_paths)}枚）", False
+
+    # 1. 各スライドをホスティング→子コンテナ作成
+    children = []
+    for i, path in enumerate(image_paths):
+        tried_providers = set()
+        container_id = None
+        last_error = None
+        while True:
+            provider, image_url = upload_image_public(path, exclude=tried_providers)
+            if not image_url:
+                return False, f"スライド{i + 1}のホスティング全滅: {last_error}", not tried_providers
+            tried_providers.add(provider)
+            print(f"  [SLIDE {i + 1}/{len(image_paths)}] {provider}: {image_url}")
+            try:
+                container_id = create_media_container(image_url, "", is_carousel_item=True)
+            except TokenExpiredError as e:
+                return False, f"トークン期限切れ: {e}", False
+            except PermanentMediaError as e:
+                last_error = str(e)
+                print(f"[FALLBACK] スライド{i + 1}のURLが拒否 → 別経路で再試行")
+                continue
+            break
+        if not container_id:
+            return False, f"スライド{i + 1}の子コンテナ作成失敗", True
+        if not check_container_status(container_id):
+            return False, f"スライド{i + 1}の子コンテナ処理失敗", True
+        children.append(container_id)
+
+    # 2. カルーセル親コンテナ→公開
+    try:
+        carousel_id = create_carousel_container(children, caption)
+    except TokenExpiredError as e:
+        return False, f"トークン期限切れ: {e}", False
+    if not carousel_id:
+        return False, "カルーセルコンテナ作成失敗", True
+    if not check_container_status(carousel_id):
+        return False, "カルーセルコンテナ処理失敗", True
+
+    post_id = publish_media(carousel_id)
+    if post_id:
+        return True, None, False
+    return False, "カルーセル公開失敗", True
+
+
+def _resolve_target_images(target):
+    """投稿エントリから (単画像パス, カルーセルパスリスト) を解決。
+    image_paths が2枚以上あればカルーセル、それ以外は単画像として扱う。
+    """
+    raw_paths = target.get("image_paths") or []
+    resolved = [_resolve_image_path(p) for p in raw_paths]
+    resolved = [p for p in resolved if p and os.path.exists(p)]
+    if len(resolved) >= 2:
+        return None, resolved
+    single = _resolve_image_path(target.get("image_path"))
+    return single, None
+
+
 def log_post(post_id, caption, success):
     """投稿ログを記録"""
     os.makedirs(os.path.dirname(POST_LOG_CSV), exist_ok=True)
@@ -516,12 +632,14 @@ def post_by_id(post_id, dry_run=False):
 
     print(f"投稿: {target['title']}")
 
-    image_path = _resolve_image_path(target.get("image_path"))
-    if not image_path or not os.path.exists(image_path):
-        print(f"[ERROR] 画像ファイルが見つかりません: {target.get('image_path')}")
-        return False
-
-    success, error_msg, _ = post_to_instagram(image_path, target["caption"], dry_run=dry_run)
+    single_path, carousel_paths = _resolve_target_images(target)
+    if carousel_paths:
+        success, error_msg, _ = post_carousel_to_instagram(carousel_paths, target["caption"], dry_run=dry_run)
+    else:
+        if not single_path or not os.path.exists(single_path):
+            print(f"[ERROR] 画像ファイルが見つかりません: {target.get('image_path')}")
+            return False
+        success, error_msg, _ = post_to_instagram(single_path, target["caption"], dry_run=dry_run)
     log_post(post_id, target["caption"], success)
 
     if success and not dry_run:
@@ -548,7 +666,8 @@ def post_next(dry_run=False):
         posts = load_posts()
         unposted = [
             p for p in posts
-            if not p["posted"] and p.get("image_path") and p.get("fail_count", 0) < MAX_RETRY
+            if not p["posted"] and not p.get("archived")
+            and p.get("image_path") and p.get("fail_count", 0) < MAX_RETRY
         ]
 
         if not unposted:
@@ -561,8 +680,8 @@ def post_next(dry_run=False):
         target = unposted[0]
         print(f"次の投稿: {target['title']} (永続エラー{target.get('fail_count', 0)}回)")
 
-        resolved_path = _resolve_image_path(target["image_path"])
-        if not resolved_path or not os.path.exists(resolved_path):
+        single_path, carousel_paths = _resolve_target_images(target)
+        if not carousel_paths and (not single_path or not os.path.exists(single_path)):
             error_msg = f"画像ファイルが見つかりません: {target['image_path']}"
             print(f"[ERROR] {error_msg}")
             target["fail_count"] = MAX_RETRY  # 即スキップ扱い
@@ -570,9 +689,14 @@ def post_next(dry_run=False):
             save_posts(posts)
             continue  # 次の候補へ
 
-        success, error_msg, is_transient = post_to_instagram(
-            resolved_path, target["caption"], dry_run=dry_run
-        )
+        if carousel_paths:
+            success, error_msg, is_transient = post_carousel_to_instagram(
+                carousel_paths, target["caption"], dry_run=dry_run
+            )
+        else:
+            success, error_msg, is_transient = post_to_instagram(
+                single_path, target["caption"], dry_run=dry_run
+            )
         if not dry_run:
             log_post(target["id"], target["caption"], success)
         last_is_transient = is_transient
