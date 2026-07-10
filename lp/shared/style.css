@@ -730,6 +730,18 @@ section:nth-child(even) {
   letter-spacing: 0.5px;
 }
 
+.cta-gift {
+  display: inline-block;
+  margin-top: 14px;
+  padding: 8px 18px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--primary-dark);
+  background: rgba(108, 92, 231, 0.08);
+  border: 1px solid rgba(108, 92, 231, 0.3);
+  border-radius: 999px;
+}
+
 /* ===== Footer ===== */
 footer {
   text-align: center;

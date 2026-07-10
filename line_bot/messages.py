@@ -3,13 +3,19 @@
 import re
 from datetime import datetime, timedelta
 
+# 友だち追加特典（リードマグネット）
+GUIDE_URL = "https://taitan-pro-lp-targets.netlify.app/shared/pococha_starter_guide.pdf"
+
 STEP_MESSAGES = {
     "welcome": {
         "text": (
             "友だち追加ありがとうございます！\n"
             "TAITAN PROのマネージャーです 🙌\n\n"
-            "ライバーに興味を持ってくれたんですね。\n"
-            "何でも気軽に聞いてください！\n\n"
+            "🎁 まずは友だち追加特典をどうぞ！\n"
+            "『Pococha新人期スタートダッシュガイド』\n"
+            "（最初の30日でやることを全部まとめた非売品PDFです）\n"
+            f"▼ こちらから読めます\n{GUIDE_URL}\n\n"
+            "ライバーについて、何でも気軽に聞いてください！\n\n"
             "▼ よくある質問\n"
             "「収入」→ ライバーの収入目安\n"
             "「始め方」→ 始めるまでの流れ\n"
@@ -296,9 +302,23 @@ AUTO_REPLIES = {
     ),
 }
 
+AUTO_REPLIES["特典"] = (
+    "🎁 友だち追加特典はこちらです！\n\n"
+    "『Pococha新人期スタートダッシュガイド』\n"
+    "最初の30日でやること（準備・初配信・御新規さん対応・ロードマップ）を\n"
+    "全部まとめた非売品PDFです。\n"
+    f"▼ こちらから読めます\n{GUIDE_URL}\n\n"
+    "読んで気になったことがあれば、そのまま聞いてくださいね。\n"
+    "「面談」と送ってもらえれば、あなたに合わせた\n"
+    "スタートダッシュ計画も一緒に立てられます😊"
+)
+
 # カタカナ表記でも同じ応答を返す
 AUTO_REPLIES["ティックトック"] = AUTO_REPLIES["tiktok"]
 AUTO_REPLIES["ポコチャ"] = AUTO_REPLIES["pococha"]
+AUTO_REPLIES["ガイド"] = AUTO_REPLIES["特典"]
+AUTO_REPLIES["pdf"] = AUTO_REPLIES["特典"]
+AUTO_REPLIES["プレゼント"] = AUTO_REPLIES["特典"]
 
 # キーワードにマッチしなかった場合のデフォルト返信（初回のみ・短く）
 # ※キーワード一覧は友だち追加時のwelcomeにのみ載せる。繰り返し表示しない
