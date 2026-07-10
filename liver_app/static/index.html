@@ -3,34 +3,34 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
-<meta name="theme-color" content="#0f1419" />
+<meta name="theme-color" content="#ec4899" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="TAITAN X" />
+<meta name="apple-mobile-web-app-title" content="TAITAN DM" />
 <link rel="manifest" href="/manifest.webmanifest" />
 <link rel="apple-touch-icon" href="/icon-192.png" />
-<title>TAITAN PRO X DM</title>
+<title>TAITAN PRO DM</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script defer src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js"></script>
 <style>
-  html, body { background: #eff3f4; min-height: 100vh; }
+  html, body { background: #fdf2f8; min-height: 100vh; }
   body { padding-bottom: env(safe-area-inset-bottom); padding-top: env(safe-area-inset-top); -webkit-tap-highlight-color: transparent; }
-  .tab-btn.active { background: #0f1419; color: white; }
+  .tab-btn.active { background: #ec4899; color: white; }
   .card { background: white; border-radius: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
   pre.msg { white-space: pre-wrap; word-break: break-word; background:#fafafa; padding:.75rem; border-radius:.5rem; font-family: inherit; font-size:.9rem; line-height:1.5; }
   .btn { padding: .65rem 1rem; border-radius: .6rem; font-weight: 600; transition: transform .06s; }
   .btn:active { transform: scale(.97); }
-  .btn-primary { background: #0f1419; color: white; }
+  .btn-primary { background: #ec4899; color: white; }
   .btn-secondary { background: #f3f4f6; color: #111827; }
   .btn-danger { background: #ef4444; color: white; }
   .btn-ghost { background: transparent; color: #6b7280; }
-  .chip { padding:.25rem .6rem; border-radius:999px; background:#dbeafe; color:#1e40af; font-size:.8rem; display:inline-block; margin:.15rem; }
+  .chip { padding:.25rem .6rem; border-radius:999px; background:#fce7f3; color:#9d174d; font-size:.8rem; display:inline-block; margin:.15rem; }
   .badge { padding:.15rem .5rem; border-radius:.4rem; font-size:.7rem; font-weight:600; display:inline-block; }
   .badge-beginner { background:#fce7f3; color:#9d174d; }
   .badge-agency { background:#dbeafe; color:#1e40af; }
   .badge-existing { background:#fef3c7; color:#92400e; }
   .subtab-btn { padding:.4rem .8rem; border-radius:.4rem; font-size:.85rem; background:#f3f4f6; color:#374151; }
-  .subtab-btn.active { background:#0f1419; color:white; }
+  .subtab-btn.active { background:#ec4899; color:white; }
   input[type=text], input[type=number], textarea { width:100%; padding:.6rem .8rem; border-radius:.5rem; border:1px solid #e5e7eb; background:white; font-size:1rem; }
   textarea { font-family: inherit; min-height: 10rem; }
   label { display:block; font-size:.85rem; color:#374151; margin-bottom:.25rem; font-weight:500; }
@@ -38,12 +38,12 @@
 </head>
 <body x-data="app()" x-init="init()" class="text-gray-900">
 
-<header class="bg-black text-white px-4 pt-3 pb-2 shadow sticky top-0 z-10">
+<header class="bg-pink-500 text-white px-4 pt-3 pb-2 shadow sticky top-0 z-10">
   <div class="flex items-center justify-between">
     <div class="flex items-center gap-2">
-      <img src="logo.jpg" alt="TAITAN PRO" width="34" height="35" style="width:34px;height:auto;border-radius:9px;box-shadow:0 2px 6px rgba(0,0,0,.4);">
+      <img src="logo.jpg" alt="TAITAN PRO" width="34" height="35" style="width:34px;height:auto;border-radius:9px;box-shadow:0 2px 6px rgba(0,0,0,.25);">
     <div>
-      <div class="text-lg font-bold">𝕏 TAITAN PRO X DM</div>
+      <div class="text-lg font-bold">TAITAN PRO DM</div>
       <div class="text-xs opacity-80" x-show="me.name">
         <span x-text="me.role==='owner' ? '👑 ' : '👤 '"></span>
         <span x-text="me.name"></span>
@@ -56,20 +56,20 @@
     </div>
   </div>
   <div class="mt-2 flex gap-1 text-sm">
-    <button class="tab-btn flex-1 py-2 rounded-md bg-zinc-700" :class="{'active': tab==='queue'}" @click="tab='queue'; refresh()">
+    <button class="tab-btn flex-1 py-2 rounded-md bg-pink-400/40" :class="{'active': tab==='queue'}" @click="tab='queue'; refresh()">
       <span>キュー</span>
       <span class="ml-1 text-xs" x-text="`(${stats.queue})`"></span>
     </button>
-    <button class="tab-btn flex-1 py-2 rounded-md bg-zinc-700" :class="{'active': tab==='research'}" @click="tab='research'" x-show="isOwner">
+    <button class="tab-btn flex-1 py-2 rounded-md bg-pink-400/40" :class="{'active': tab==='research'}" @click="tab='research'" x-show="isOwner">
       リサーチ
     </button>
-    <button class="tab-btn flex-1 py-2 rounded-md bg-zinc-700" :class="{'active': tab==='settings'}" @click="tab='settings'; loadSettings()" x-show="isOwner">
+    <button class="tab-btn flex-1 py-2 rounded-md bg-pink-400/40" :class="{'active': tab==='settings'}" @click="tab='settings'; loadSettings()" x-show="isOwner">
       設定
     </button>
-    <button class="tab-btn flex-1 py-2 rounded-md bg-zinc-700" :class="{'active': tab==='members'}" @click="tab='members'; loadMembers()" x-show="isOwner">
+    <button class="tab-btn flex-1 py-2 rounded-md bg-pink-400/40" :class="{'active': tab==='members'}" @click="tab='members'; loadMembers()" x-show="isOwner">
       メンバー
     </button>
-    <button class="tab-btn flex-1 py-2 rounded-md bg-zinc-700" :class="{'active': tab==='stats'}" @click="tab='stats'; loadStats()">
+    <button class="tab-btn flex-1 py-2 rounded-md bg-pink-400/40" :class="{'active': tab==='stats'}" @click="tab='stats'; loadStats()">
       <span x-text="isOwner ? '統計' : '実績'"></span>
     </button>
   </div>
@@ -89,7 +89,7 @@
       <button class="subtab-btn" :class="{'active': queueFilter==='all'}" @click="queueFilter='all'">
         全て<span class="ml-1" x-text="`(${leads.length})`"></span>
       </button>
-      <button class="subtab-btn" :class="{'active': queueFilter==='beginner'}" @click="queueFilter='beginner'">
+      <button class="subtab-btn" :class="{'active': queueFilter==='beginner'}" @click="queueFilter='beginner'; beginnerSubFilter='all'">
         🌱未経験<span class="ml-1" x-text="`(${leads.filter(l=>l.target_type==='beginner').length})`"></span>
       </button>
       <button class="subtab-btn" :class="{'active': queueFilter==='existing_liver'}" @click="queueFilter='existing_liver'">
@@ -97,6 +97,18 @@
       </button>
       <button class="subtab-btn" :class="{'active': queueFilter==='agency'}" @click="queueFilter='agency'">
         🏢代理店<span class="ml-1" x-text="`(${leads.filter(l=>l.target_type==='agency').length})`"></span>
+      </button>
+    </div>
+    <!-- 未経験の中の推し活サブフィルタ (2026-05-07) -->
+    <div x-show="queueFilter==='beginner'" class="flex gap-1 px-1 ml-4 mt-1 overflow-x-auto" style="border-left:2px solid #fbcfe8; padding-left:.5rem;">
+      <button class="subtab-btn" :class="{'active': beginnerSubFilter==='all'}" @click="beginnerSubFilter='all'">
+        全部<span class="ml-1" x-text="`(${leads.filter(l=>l.target_type==='beginner').length})`"></span>
+      </button>
+      <button class="subtab-btn" :class="{'active': beginnerSubFilter==='normal'}" @click="beginnerSubFilter='normal'">
+        🌱通常<span class="ml-1" x-text="`(${leads.filter(l=>l.target_type==='beginner' && !isOshikatsuTag(l.source_tag)).length})`"></span>
+      </button>
+      <button class="subtab-btn" :class="{'active': beginnerSubFilter==='oshikatsu'}" @click="beginnerSubFilter='oshikatsu'">
+        💖推し活<span class="ml-1" x-text="`(${leads.filter(l=>l.target_type==='beginner' && isOshikatsuTag(l.source_tag)).length})`"></span>
       </button>
     </div>
 
@@ -116,7 +128,7 @@
               <span x-text="lead.name || lead.username"></span>
               <span class="badge"
                     :class="{'badge-beginner': lead.target_type==='beginner', 'badge-agency': lead.target_type==='agency', 'badge-existing': lead.target_type==='existing_liver'}"
-                    x-text="badgeLabel(lead.target_type)"></span>
+                    x-text="badgeLabel(lead.target_type, lead.source_tag)"></span>
             </div>
             <div class="text-sm text-gray-500">@<span x-text="lead.username"></span></div>
           </div>
@@ -126,12 +138,12 @@
           </div>
         </div>
         <div class="text-xs text-gray-600 line-clamp-3" x-text="lead.bio"></div>
-        <div class="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded">
-          ⚠️ 送信前に目視確認: 顔写真／ふくよかすぎ／本人不明 などをチェック
+        <div x-show="lead.target_type !== 'agency'" class="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded">
+          ⚠️ 送信前に目視確認: 顔写真／外国人／本人不明 などをチェック
         </div>
 
         <div class="flex gap-2">
-          <a :href="lead.app_url" class="btn btn-primary flex-1 text-center text-sm">𝕏 アプリで開く</a>
+          <a :href="lead.app_url" class="btn btn-primary flex-1 text-center text-sm">📱 IGで開く</a>
           <a :href="lead.profile_url" target="_blank" rel="noopener" class="btn btn-secondary text-sm">🌐</a>
         </div>
 
@@ -172,7 +184,7 @@
       <h3 class="font-bold text-base">スキップ理由を選択</h3>
       <p class="text-xs opacity-70">理由ごとに学習され、似た傾向のリードを以後非表示にします</p>
       <div class="grid grid-cols-2 gap-2 mt-3">
-        <template x-for="r in ['業者っぽい','同業者','子供・赤ちゃん','ふくよか','鍵アカ','送信不可','その他']" :key="r">
+        <template x-for="r in ['業者っぽい','同業者','外国人','別事業者','送信不可','その他']" :key="r">
           <button class="btn btn-secondary text-sm" @click="skip(skipTarget, r)" x-text="r"></button>
         </template>
       </div>
@@ -183,35 +195,31 @@
   <!-- =========== リサーチ =========== -->
   <section x-show="tab==='research'" class="space-y-4">
     <div class="card p-4">
-      <h2 class="font-bold mb-2">検索キーワード設定</h2>
+      <h2 class="font-bold mb-2">ハッシュタグ設定</h2>
       <div class="flex gap-1 mb-3 overflow-x-auto">
-        <button class="subtab-btn" :class="{'active': keywordTab==='beginner'}" @click="keywordTab='beginner'">🌱未経験</button>
-        <button class="subtab-btn" :class="{'active': keywordTab==='existing_liver'}" @click="keywordTab='existing_liver'">🎤既存ライバー</button>
-        <button class="subtab-btn" :class="{'active': keywordTab==='agency'}" @click="keywordTab='agency'">🏢代理店</button>
+        <button class="subtab-btn" :class="{'active': hashtagTab==='beginner'}" @click="hashtagTab='beginner'">🌱未経験</button>
+        <button class="subtab-btn" :class="{'active': hashtagTab==='existing_liver'}" @click="hashtagTab='existing_liver'">🎤既存ライバー</button>
+        <button class="subtab-btn" :class="{'active': hashtagTab==='agency'}" @click="hashtagTab='agency'">🏢代理店</button>
       </div>
       <div class="mb-3">
-        <template x-for="(kw, i) in (settings.keywords_by_type[keywordTab] || [])" :key="i">
+        <template x-for="(tag, i) in (settings.hashtags_by_type[hashtagTab] || [])" :key="i">
           <span class="chip">
-            <span x-text="kw"></span>
-            <button class="ml-1 text-blue-700" @click="removeKeywordFromType(keywordTab, i)">×</button>
+            #<span x-text="tag"></span>
+            <button class="ml-1 text-pink-700" @click="removeTagFromType(hashtagTab, i)">×</button>
           </span>
         </template>
       </div>
       <div class="flex gap-2">
-        <input type="text" x-model="newKeyword" placeholder="新規キーワード（スペース区切りでAND検索）" @keydown.enter="addKeywordToType(keywordTab)" />
-        <button class="btn btn-secondary" @click="addKeywordToType(keywordTab)">追加</button>
+        <input type="text" x-model="newTag" placeholder="新規タグ（#不要）" @keydown.enter="addTagToType(hashtagTab)" />
+        <button class="btn btn-secondary" @click="addTagToType(hashtagTab)">追加</button>
       </div>
-      <div class="text-xs text-gray-500 mt-2">
-        ※ <code>lang:ja -is:retweet -is:reply</code> は自動付与。<code>"完全一致"</code> や <code>OR</code> も使えます
-      </div>
-      <button class="btn btn-secondary mt-2 w-full text-sm" @click="saveSettings()">キーワード保存</button>
+      <button class="btn btn-secondary mt-2 w-full text-sm" @click="saveSettings()">タグ保存</button>
     </div>
 
     <div class="card p-4">
       <h2 class="font-bold mb-2">リサーチ実行</h2>
       <div class="text-sm text-gray-600 mb-3">
-        対象タイプを選び、設定済みキーワードでツイート検索 → 投稿者プロフィールを精査 → キュー追加。
-        <br><span class="text-xs text-amber-700">※ X API v2 Bearer Token 必須（Free枠100reads/月）。Macからの一括ingestはchrome MCP経由を推奨。</span>
+        対象タイプを選び、設定済みタグから投稿者を取得 → プロフィール精査 → キュー追加。
       </div>
       <div class="space-y-1 mb-3">
         <label class="flex items-center gap-2 text-sm">
@@ -246,6 +254,42 @@
           </details>
         </template>
       </div>
+    </div>
+
+    <div class="card p-4">
+      <h2 class="font-bold mb-2">📌 アカウント指定リサーチ</h2>
+      <div class="text-sm text-gray-600 mb-3">
+        指定アカウントの<b>フォロワー</b>または<b>最新投稿のいいね</b>からリードを取得。
+      </div>
+      <div class="mb-2">
+        <label class="text-sm">対象アカウント (@username, 改行区切り)</label>
+        <textarea x-model="accountResearch.accounts" rows="3" placeholder="competitor_ig&#10;another_account" style="width:100%;box-sizing:border-box;padding:.6rem;border-radius:.5rem;border:1px solid #e5e7eb;font-family:monospace;font-size:.9rem;"></textarea>
+      </div>
+      <div class="mb-2">
+        <label class="text-sm">取得元</label>
+        <div class="flex gap-3 text-sm mt-1">
+          <label class="flex items-center gap-1"><input type="radio" x-model="accountResearch.source" value="followers" /> 👥 フォロワー</label>
+          <label class="flex items-center gap-1"><input type="radio" x-model="accountResearch.source" value="likers" /> ❤️ いいね</label>
+        </div>
+      </div>
+      <div class="mb-2">
+        <label class="text-sm">分類ヒント（bio判定で自動上書きあり）</label>
+        <select x-model="accountResearch.target_type" style="width:100%;padding:.5rem;border-radius:.5rem;border:1px solid #e5e7eb;">
+          <option value="beginner">🌱 未経験</option>
+          <option value="existing_liver">🎤 既存ライバー</option>
+          <option value="agency">🏢 代理店</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="text-sm">1アカウントあたり取得件数 (10〜500)</label>
+        <input type="number" x-model.number="accountResearch.per_account" min="10" max="500" style="width:100%;padding:.5rem;border-radius:.5rem;border:1px solid #e5e7eb;" />
+      </div>
+      <button class="btn btn-primary w-full py-3 text-base"
+              @click="runAccountResearch()"
+              :disabled="research.running">
+        <span x-show="!research.running">🔍 アカウントから取得</span>
+        <span x-show="research.running">実行中...</span>
+      </button>
     </div>
 
     <div class="card p-4">
@@ -335,11 +379,11 @@
     </div>
 
     <div class="card p-4">
-      <h2 class="font-bold mb-2">X API Bearer Token（手動上書き）</h2>
+      <h2 class="font-bold mb-2">IG Cookie（手動フォールバック）</h2>
       <div class="text-xs text-gray-500 mb-2">
-        通常は環境変数 <code>TWITTER_BEARER_TOKEN</code> から読み込み。手動上書きはここに貼付（developer.x.com の Project & App から発行）。
+        通常はMacのChromeから自動取得します。うまくいかない場合のみ、Chrome DevTools → Network → instagram.com リクエストの Cookie ヘッダを貼付。
       </div>
-      <textarea x-model="settings.x_bearer_token" placeholder="AAAAAAAAAAAAAAAAAAAAA..."></textarea>
+      <textarea x-model="settings.ig_cookie_raw" placeholder="sessionid=...; ds_user_id=...;"></textarea>
     </div>
 
     <button class="btn btn-primary w-full py-3" @click="saveSettings()">
@@ -347,7 +391,7 @@
     </button>
   </section>
 
-  <!-- =========== 統計 =========== -->
+  <!-- =========== 統計 / 実績 =========== -->
   <section x-show="tab==='stats'" class="space-y-4">
     <div class="grid grid-cols-2 gap-3">
       <div class="card p-4 text-center">
@@ -414,7 +458,7 @@
               <div class="text-xs text-gray-500" x-text="`1日${m.daily_limit}件`"></div>
             </div>
             <div class="text-right text-xs">
-              <div>本日 <b class="text-blue-500" x-text="(m.stats||{}).sent_today||0"></b></div>
+              <div>本日 <b class="text-pink-500" x-text="(m.stats||{}).sent_today||0"></b></div>
               <div>今月 <b x-text="(m.stats||{}).sent_month||0"></b></div>
               <div>累計 <b x-text="(m.stats||{}).sent_total||0"></b></div>
             </div>
@@ -443,7 +487,7 @@
         <li>「🔗 リンク」をコピーして、作業者にチャットで送る</li>
         <li>作業者は iPhone Safari でリンクを開く（自動ログイン）</li>
         <li>「ホーム画面に追加」でPWA化</li>
-        <li>キュータブからDM送信。送信ごとに自動カウント</li>
+        <li>キュータブからDM送信。送信ごとに自動カウント＋報酬計算</li>
       </ol>
     </div>
   </section>
@@ -459,22 +503,43 @@ function app() {
     stats: { sent_today: 0, daily_limit: 20, remaining: 0, queue: 0, sent_total: 0, total: 0 },
     leads: [],
     queueFilter: 'all',
+    beginnerSubFilter: 'all',  // 'all' | 'normal' | 'oshikatsu' (未経験タブ内のサブフィルタ)
+    OSHIKATSU_TAGS: new Set([
+      '推し活','推し活女子','推し活アカ','推し活仲間募集',
+      '推し活初心者','推しのいる生活','推し事',
+      'ジャニヲタ','ジャニーズ担当','アイドル好き',
+      'Vtuber推し','二次元推し','担当','単担','箱推し',
+      'ガチ恋','現場参戦',
+      // 推し活拡張 (2026-07-01) — db.py の _DEFAULT_HASHTAGS_BEGINNER と同期
+      '推し','推し様','推しのいる暮らし','推しのいる生活最高',
+      '推し活垢','推し活記録','推し活はじめました',
+      '推し活グッズ','推し活デコ','推ししか勝たん',
+      'オタ活','オタク女子','オタクさんと繋がりたい','ヲタ活',
+      'アニメ好き','アニメ好きな人と繋がりたい','アニメ好きさんと繋がりたい',
+      'アニメ垢','声優好き','声優オタク',
+      '2.5次元','2.5次元舞台','2.5次元俳優',
+      'アイドルオタク','ドルオタ','地下アイドル好き',
+      'K-POP好き','韓国アイドル好き',
+      'Vtuber好き','にじさんじ','ホロライブ','ゲーム実況好き',
+      'ライブ参戦','参戦服','現場担','遠征オタク',
+    ]),
     expanded: {},
     copied: {},
     variationIdx: {},  // {lead_id: 選択中バリエーションindex}
     skipTarget: null,  // スキップ理由モーダル: 対象 lead_id
     settings: {
-      keywords: [], keywords_by_type: { beginner: [], existing_liver: [], agency: [] },
+      hashtags: [], hashtags_by_type: { beginner: [], existing_liver: [], agency: [] },
       templates: { beginner: '', existing_liver: '', agency: '' },
-      max_followers: 10000, max_followers_existing: 5000,
+      max_followers: 10000, max_followers_existing: 1000,
       min_followers: 1, max_ratio: 5, age_min: 18, age_max: 40, daily_limit: 20,
-      template: '', x_bearer_token: ''
+      template: '', ig_cookie_raw: ''
     },
     saved: false,
-    newKeyword: '',
-    keywordTab: 'beginner',
+    newTag: '',
+    hashtagTab: 'beginner',
     templateTab: 'beginner',
     researchTypes: { beginner: true, existing_liver: true, agency: true },
+    accountResearch: { accounts: '', source: 'followers', target_type: 'existing_liver', per_account: 100 },
     research: { running: false, stage: '', fetched: 0, added: 0, log: [], error: null },
     recentSent: [],
     recentRuns: [],
@@ -485,15 +550,30 @@ function app() {
 
     get isOwner() { return this.me.role === 'owner'; },
 
-    get filteredLeads() {
-      if (this.queueFilter === 'all') return this.leads;
-      return this.leads.filter(l => (l.target_type || 'beginner') === this.queueFilter);
+    isOshikatsuTag(tag) {
+      return !!tag && this.OSHIKATSU_TAGS.has(tag);
     },
 
-    badgeLabel(t) {
-      return t === 'agency' ? '🏢代理店'
-        : t === 'existing_liver' ? '🎤既存'
-        : '🌱未経験';
+    get filteredLeads() {
+      let arr = this.leads;
+      if (this.queueFilter !== 'all') {
+        arr = arr.filter(l => (l.target_type || 'beginner') === this.queueFilter);
+      }
+      if (this.queueFilter === 'beginner' && this.beginnerSubFilter !== 'all') {
+        if (this.beginnerSubFilter === 'oshikatsu') {
+          arr = arr.filter(l => this.isOshikatsuTag(l.source_tag));
+        } else if (this.beginnerSubFilter === 'normal') {
+          arr = arr.filter(l => !this.isOshikatsuTag(l.source_tag));
+        }
+      }
+      return arr;
+    },
+
+    badgeLabel(t, tag) {
+      if (t === 'agency') return '🏢代理店';
+      if (t === 'existing_liver') return '🎤既存';
+      if (this.isOshikatsuTag(tag)) return '💖推し活';
+      return '🌱未経験';
     },
 
     async init() {
@@ -558,11 +638,11 @@ function app() {
       if (!this.settings.templates || typeof this.settings.templates !== 'object') {
         this.settings.templates = { beginner: [], existing_liver: [], agency: [] };
       }
-      if (!this.settings.keywords_by_type || typeof this.settings.keywords_by_type !== 'object') {
-        this.settings.keywords_by_type = { beginner: this.settings.keywords || [], existing_liver: [], agency: [] };
+      if (!this.settings.hashtags_by_type || typeof this.settings.hashtags_by_type !== 'object') {
+        this.settings.hashtags_by_type = { beginner: this.settings.hashtags || [], existing_liver: [], agency: [] };
       }
       ['beginner','existing_liver','agency'].forEach(k => {
-        if (!Array.isArray(this.settings.keywords_by_type[k])) this.settings.keywords_by_type[k] = [];
+        if (!Array.isArray(this.settings.hashtags_by_type[k])) this.settings.hashtags_by_type[k] = [];
         // 旧形式 (str) を [str] に正規化
         const v = this.settings.templates[k];
         if (typeof v === 'string') {
@@ -604,18 +684,18 @@ function app() {
       this.recentRuns = r.runs;
     },
 
-    addKeywordToType(type) {
-      const t = (this.newKeyword || '').trim();
+    addTagToType(type) {
+      const t = (this.newTag || '').trim().replace(/^#/, '');
       if (!t) return;
-      if (!this.settings.keywords_by_type[type]) this.settings.keywords_by_type[type] = [];
-      if (!this.settings.keywords_by_type[type].includes(t)) {
-        this.settings.keywords_by_type[type].push(t);
+      if (!this.settings.hashtags_by_type[type]) this.settings.hashtags_by_type[type] = [];
+      if (!this.settings.hashtags_by_type[type].includes(t)) {
+        this.settings.hashtags_by_type[type].push(t);
       }
-      this.newKeyword = '';
+      this.newTag = '';
     },
 
-    removeKeywordFromType(type, i) {
-      this.settings.keywords_by_type[type].splice(i, 1);
+    removeTagFromType(type, i) {
+      this.settings.hashtags_by_type[type].splice(i, 1);
     },
 
     async runResearch() {
@@ -629,6 +709,32 @@ function app() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ target_types: types })
+      });
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        alert('リサーチ開始失敗: ' + (j.error || r.status));
+        return;
+      }
+      this.refreshStatus();
+      this.loadRuns();
+    },
+
+    async runAccountResearch() {
+      const accounts = (this.accountResearch.accounts || '')
+        .split(/[\n,\s]+/).map(s => s.trim()).filter(Boolean);
+      if (accounts.length === 0) {
+        alert('対象アカウントを1つ以上入力してください');
+        return;
+      }
+      const r = await fetch('/api/research-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accounts,
+          source: this.accountResearch.source,
+          target_type: this.accountResearch.target_type,
+          per_account: this.accountResearch.per_account || 100,
+        })
       });
       if (!r.ok) {
         const j = await r.json().catch(() => ({}));

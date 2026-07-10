@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e0f13">
+<title>交流会スケジュール｜TAITAN PRO 代理店獲得</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon.svg">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="交流会">
+<style>
+  :root{
+    --bg:#0e0f13; --card:#181a21; --card2:#1f222b; --line:rgba(255,255,255,.07);
+    --txt:#f2f3f5; --sub:#9aa0ad; --accent:#6ee7b7; --accent2:#60a5fa;
+    --warn:#fbbf24; --danger:#f87171; --radius:16px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
+    padding:env(safe-area-inset-top) 0 calc(80px + env(safe-area-inset-bottom));}
+  header{position:sticky;top:0;z-index:10;background:rgba(14,15,19,.85);backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--line);padding:14px 16px 12px;}
+  h1{font-size:17px;margin:0 0 2px;font-weight:800}
+  .subt{font-size:12px;color:var(--sub)}
+  .brandrow{display:flex;align-items:center;gap:10px}
+  .brandlogo{width:36px;height:auto;border-radius:9px;flex-shrink:0;
+    box-shadow:0 2px 8px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.08)}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 6px;text-align:center}
+  .stat .n{font-size:18px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .stat .l{font-size:10px;color:var(--sub);margin-top:2px}
+  .tabs{display:flex;gap:8px;padding:12px 16px 4px}
+  .tab{flex:1;text-align:center;padding:8px;border-radius:10px;font-size:13px;font-weight:700;
+    background:var(--card);border:1px solid var(--line);color:var(--sub)}
+  .tab.on{background:linear-gradient(135deg,rgba(110,231,183,.18),rgba(96,165,250,.18));
+    color:var(--txt);border-color:rgba(110,231,183,.4)}
+  .month{font-size:13px;font-weight:800;color:var(--sub);padding:16px 18px 6px}
+  .list{padding:0 14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:14px;margin-bottom:10px;transition:.15s}
+  .row1{display:flex;align-items:center;gap:10px}
+  .date{min-width:54px;text-align:center}
+  .date .d{font-size:22px;font-weight:800;line-height:1}
+  .date .w{font-size:11px;color:var(--sub)}
+  .date.soon .d{color:var(--accent)}
+  .date.past .d{color:#555}
+  .info{flex:1;min-width:0}
+  .nm{font-size:15px;font-weight:700;margin-bottom:3px}
+  .meta{font-size:12px;color:var(--sub);display:flex;flex-wrap:wrap;gap:8px}
+  .fit{font-size:12px;font-weight:800}
+  .fit.A{color:var(--accent)} .fit.B{color:var(--accent2)} .fit.C{color:var(--sub)}
+  .badge{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;white-space:nowrap}
+  .b-未定{background:rgba(255,255,255,.08);color:var(--sub)}
+  .b-申込済{background:rgba(96,165,250,.18);color:var(--accent2)}
+  .b-参加済{background:rgba(110,231,183,.18);color:var(--accent)}
+  .b-見送り{background:rgba(248,113,113,.15);color:var(--danger)}
+  .detail{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);display:none}
+  .detail.open{display:block}
+  .seg{display:flex;gap:6px;margin:8px 0}
+  .seg button{flex:1;padding:7px 4px;font-size:12px;font-weight:700;border-radius:9px;
+    border:1px solid var(--line);background:var(--card2);color:var(--sub)}
+  .seg button.on{background:linear-gradient(135deg,rgba(110,231,183,.22),rgba(96,165,250,.22));
+    color:var(--txt);border-color:rgba(110,231,183,.45)}
+  .counters{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
+  .ctr{background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:8px;text-align:center}
+  .ctr .cl{font-size:10px;color:var(--sub);margin-bottom:4px}
+  .ctrbtns{display:flex;align-items:center;justify-content:center;gap:10px}
+  .ctrbtns button{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);
+    background:var(--card);color:var(--txt);font-size:16px;font-weight:700;line-height:1}
+  .ctrbtns .v{min-width:22px;font-size:17px;font-weight:800}
+  textarea{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:10px;
+    color:var(--txt);padding:9px;font-size:13px;font-family:inherit;resize:vertical;min-height:46px;margin-top:4px}
+  .lk{display:inline-block;margin-top:10px;font-size:13px;font-weight:700;color:var(--accent2);
+    text-decoration:none;border:1px solid rgba(96,165,250,.35);border-radius:9px;padding:7px 12px}
+  .delx{float:right;font-size:12px;color:var(--danger);background:none;border:none;margin-top:8px}
+  .fab{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));z-index:20;
+    width:56px;height:56px;border-radius:50%;border:none;font-size:28px;color:#0e0f13;font-weight:800;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 8px 24px rgba(0,0,0,.4)}
+  .modal{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.6);display:none;
+    align-items:flex-end;justify-content:center}
+  .modal.open{display:flex}
+  .sheet{background:var(--card);width:100%;max-width:520px;border-radius:20px 20px 0 0;
+    padding:20px 18px calc(24px + env(safe-area-inset-bottom));max-height:88vh;overflow:auto}
+  .sheet h2{font-size:16px;margin:0 0 14px}
+  label{display:block;font-size:12px;color:var(--sub);margin:10px 0 4px}
+  input,select{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:10px;
+    color:var(--txt);padding:10px;font-size:14px;font-family:inherit}
+  .save{width:100%;margin-top:18px;padding:13px;border:none;border-radius:12px;font-size:15px;font-weight:800;
+    color:#0e0f13;background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .ghost{width:100%;margin-top:10px;padding:11px;border:1px solid var(--line);border-radius:12px;
+    font-size:13px;font-weight:700;color:var(--sub);background:none}
+  .tools{display:flex;gap:8px;padding:6px 16px 0}
+  .tools button{flex:1;font-size:11px;color:var(--sub);background:var(--card);border:1px solid var(--line);
+    border-radius:9px;padding:7px}
+  .empty{text-align:center;color:var(--sub);font-size:13px;padding:40px 20px}
+</style>
+</head>
+<body>
+<header>
+  <div class="brandrow">
+    <img class="brandlogo" src="logo.jpg" alt="TAITAN PRO" width="36" height="37">
+    <div>
+      <h1>交流会スケジュール</h1>
+      <div class="subt">TAITAN PRO 代理店パートナー獲得｜石川・金沢</div>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="n" id="s-up">0</div><div class="l">今後の予定</div></div>
+    <div class="stat"><div class="n" id="s-card">0</div><div class="l">名刺 累計</div></div>
+    <div class="stat"><div class="n" id="s-int">0</div><div class="l">興味あり</div></div>
+    <div class="stat"><div class="n" id="s-line">0</div><div class="l">LINE交換</div></div>
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab on" data-f="up">今後</div>
+  <div class="tab" data-f="done">参加済</div>
+  <div class="tab" data-f="all">すべて</div>
+</div>
+<div class="tools">
+  <button id="export">⬇ バックアップ書き出し</button>
+  <button id="import">⬆ 読み込み</button>
+  <input type="file" id="file" accept="application/json" hidden>
+</div>
+
+<div id="list" class="list"></div>
+
+<button class="fab" id="add">＋</button>
+
+<div class="modal" id="modal">
+  <div class="sheet">
+    <h2 id="mtitle">イベント追加</h2>
+    <input type="hidden" id="f-id">
+    <label>イベント名</label><input id="f-name" placeholder="例：金沢レパンビジネス交流会">
+    <label>開催日</label><input id="f-date" type="date">
+    <label>時間（任意）</label><input id="f-time" placeholder="19:15〜20:45">
+    <label>場所</label><input id="f-place" placeholder="金沢">
+    <label>参加費（任意）</label><input id="f-fee" placeholder="無料 / 有料 / 記載なし">
+    <label>相性</label>
+    <select id="f-fit"><option value="◎">◎ 本命</option><option value="○">○ 良い</option><option value="△">△ 様子見</option></select>
+    <label>申込URL（任意）</label><input id="f-url" placeholder="https://...">
+    <button class="save" id="save">保存</button>
+    <button class="ghost" id="cancel">キャンセル</button>
+  </div>
+</div>
+
+<script>
+const KEY='kouryukai_events_v1';
+const WD=['日','月','火','水','木','金','土'];
+const SEED=[
+  {name:'金沢鼓門レパンビジネス交流会',date:'2026-06-24',time:'14:15〜15:45',place:'金沢',fee:'記載なし',fit:'◎',url:'https://www.kokuchpro.com/event/ac4ba1d2c0bbac7cef333f98d4649417/3777549/'},
+  {name:'ベル・クルール異業種交流会',date:'2026-06-27',time:'14:00〜15:30',place:'金沢',fee:'記載なし',fit:'○',url:'https://www.kokuchpro.com/event/21b4359810f0d028017744625dc405c1/'},
+  {name:'日曜の夜会 in小松',date:'2026-06-28',time:'18:30〜20:30',place:'小松',fee:'記載なし',fit:'○',url:'https://www.kokuchpro.com/event/0fd3ef66270f75aa0e743a2b3f9e42f1/'},
+  {name:'日曜の夜会 vol.18 in金沢',date:'2026-07-12',time:'18:30〜21:00',place:'金沢',fee:'無料',fit:'○',url:'https://www.kokuchpro.com/event/acbc3ddd69cbcf31a226802c7593871c/'},
+  {name:'プレゼン実践ランチ交流会',date:'2026-07-25',time:'10:00〜13:00',place:'金沢',fee:'有料',fit:'△',url:'https://www.kokuchpro.com/event/4c25131568582f958ab1443e3e1031a2/3823786/'},
+  {name:'金沢レパンビジネス交流会',date:'2026-07-29',time:'19:15〜20:45',place:'金沢',fee:'記載なし',fit:'◎',url:'https://www.kokuchpro.com/event/fb93fb3a8506e3cfc55ce2db40b31100/3808335/'},
+  {name:'日曜の夜会 vol.19 in金沢',date:'2026-08-09',time:'18:30〜21:00',place:'金沢',fee:'無料',fit:'○',url:'https://www.kokuchpro.com/event/f47aea4a3ed9bea9b5aec40e8960c31e/'}
+];
+let data=load(), filter='up';
+
+function load(){
+  try{const r=JSON.parse(localStorage.getItem(KEY));if(Array.isArray(r))return r;}catch(e){}
+  const seeded=SEED.map((e,i)=>({id:'s'+i,...e,status:'未定',cards:0,interested:0,line:0,note:''}));
+  localStorage.setItem(KEY,JSON.stringify(seeded));return seeded;
+}
+function save(){localStorage.setItem(KEY,JSON.stringify(data));render();}
+function today(){const d=new Date();d.setHours(0,0,0,0);return d;}
+function fitCls(f){return f==='◎'?'A':f==='○'?'B':'C';}
+
+function render(){
+  // stats
+  const up=data.filter(e=>new Date(e.date)>=today() && e.status!=='見送り').length;
+  document.getElementById('s-up').textContent=up;
+  document.getElementById('s-card').textContent=data.reduce((a,e)=>a+(+e.cards||0),0);
+  document.getElementById('s-int').textContent=data.reduce((a,e)=>a+(+e.interested||0),0);
+  document.getElementById('s-line').textContent=data.reduce((a,e)=>a+(+e.line||0),0);
+
+  let arr=[...data].sort((a,b)=>a.date<b.date?-1:1);
+  if(filter==='up') arr=arr.filter(e=>new Date(e.date)>=today());
+  if(filter==='done') arr=arr.filter(e=>e.status==='参加済');
+  const list=document.getElementById('list');
+  if(!arr.length){list.innerHTML='<div class="empty">イベントがありません。＋で追加できます。</div>';return;}
+  let html='',curM='';
+  arr.forEach(e=>{
+    const dt=new Date(e.date+'T00:00');
+    const m=dt.getFullYear()+'年'+(dt.getMonth()+1)+'月';
+    if(m!==curM){curM=m;html+=`<div class="month">${m}</div>`;}
+    const isPast=dt<today();
+    const soon=!isPast && (dt-today())/86400000<=7;
+    const dcls=isPast?'past':(soon?'soon':'');
+    html+=`<div class="card" data-id="${e.id}">
+      <div class="row1" onclick="toggle('${e.id}')">
+        <div class="date ${dcls}"><div class="d">${dt.getDate()}</div><div class="w">${WD[dt.getDay()]}</div></div>
+        <div class="info">
+          <div class="nm">${esc(e.name)}</div>
+          <div class="meta"><span class="fit ${fitCls(e.fit)}">${e.fit}</span><span>${esc(e.place)}</span>
+          ${e.time?`<span>${esc(e.time)}</span>`:''}${e.fee?`<span>${esc(e.fee)}</span>`:''}</div>
+        </div>
+        <span class="badge b-${e.status}">${e.status}</span>
+      </div>
+      <div class="detail" id="dt-${e.id}">
+        <div class="seg" data-id="${e.id}">
+          ${['未定','申込済','参加済','見送り'].map(s=>`<button class="${e.status===s?'on':''}" onclick="setStatus('${e.id}','${s}')">${s}</button>`).join('')}
+        </div>
+        <div class="counters">
+          ${ctr(e.id,'cards','名刺交換',e.cards)}
+          ${ctr(e.id,'interested','興味あり',e.interested)}
+          ${ctr(e.id,'line','LINE交換',e.line)}
+        </div>
+        <textarea placeholder="メモ（誰と話したか・フォロー予定など）" onchange="setNote('${e.id}',this.value)">${esc(e.note||'')}</textarea>
+        ${e.url?`<a class="lk" href="${esc(e.url)}" target="_blank" rel="noopener">申込ページを開く ↗</a>`:''}
+        <button class="delx" onclick="del('${e.id}')">削除</button>
+      </div>
+    </div>`;
+  });
+  list.innerHTML=html;
+}
+function ctr(id,k,label,v){
+  return `<div class="ctr"><div class="cl">${label}</div>
+    <div class="ctrbtns"><button onclick="bump('${id}','${k}',-1)">−</button>
+    <span class="v">${v||0}</span><button onclick="bump('${id}','${k}',1)">＋</button></div></div>`;
+}
+function esc(s){return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function find(id){return data.find(e=>e.id===id);}
+window.toggle=id=>document.getElementById('dt-'+id).classList.toggle('open');
+window.setStatus=(id,s)=>{find(id).status=s;save();setTimeout(()=>document.getElementById('dt-'+id)?.classList.add('open'),0);};
+window.bump=(id,k,n)=>{const e=find(id);e[k]=Math.max(0,(+e[k]||0)+n);save();setTimeout(()=>document.getElementById('dt-'+id)?.classList.add('open'),0);};
+window.setNote=(id,v)=>{find(id).note=v;localStorage.setItem(KEY,JSON.stringify(data));};
+window.del=id=>{if(confirm('このイベントを削除しますか？')){data=data.filter(e=>e.id!==id);save();}};
+
+// tabs
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  t.classList.add('on');filter=t.dataset.f;render();
+});
+// modal
+const modal=document.getElementById('modal');
+function openModal(e){
+  document.getElementById('mtitle').textContent=e?'イベント編集':'イベント追加';
+  document.getElementById('f-id').value=e?e.id:'';
+  ['name','date','time','place','fee','url'].forEach(k=>document.getElementById('f-'+k).value=e?e[k]||'':'');
+  document.getElementById('f-fit').value=e?e.fit:'○';
+  modal.classList.add('open');
+}
+document.getElementById('add').onclick=()=>openModal(null);
+document.getElementById('cancel').onclick=()=>modal.classList.remove('open');
+modal.onclick=ev=>{if(ev.target===modal)modal.classList.remove('open');};
+document.getElementById('save').onclick=()=>{
+  const id=document.getElementById('f-id').value;
+  const v=k=>document.getElementById('f-'+k).value.trim();
+  if(!v('name')||!v('date')){alert('イベント名と開催日は必須です');return;}
+  const obj={name:v('name'),date:v('date'),time:v('time'),place:v('place')||'金沢',fee:v('fee'),fit:document.getElementById('f-fit').value,url:v('url')};
+  if(id){Object.assign(find(id),obj);}
+  else{data.push({id:'u'+Date.now(),...obj,status:'未定',cards:0,interested:0,line:0,note:''});}
+  modal.classList.remove('open');save();
+};
+// backup
+document.getElementById('export').onclick=()=>{
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='kouryukai_'+new Date().toISOString().slice(0,10)+'.json';a.click();
+};
+document.getElementById('import').onclick=()=>document.getElementById('file').click();
+document.getElementById('file').onchange=ev=>{
+  const f=ev.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{const d=JSON.parse(r.result);if(Array.isArray(d)){data=d;save();alert('読み込みました');}}catch(e){alert('読み込み失敗');}};
+  r.readAsText(f);
+};
+render();
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{});}
+</script>
+</body>
+</html>

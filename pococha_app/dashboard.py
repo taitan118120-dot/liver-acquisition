@@ -240,6 +240,8 @@ HTML = """<!doctype html><html lang="ja"><head><meta charset="utf-8">
  :root{--bg:#0f1115;--card:#1a1d24;--ink:#e8eaed;--sub:#9aa0a8;--ac:#ff5e8a;--ok:#46d39a;--warn:#ffb454}
  *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,"Hiragino Sans",sans-serif;font-size:14px}
  header{padding:16px 20px;border-bottom:1px solid #262a33;position:sticky;top:0;background:var(--bg);z-index:5}
+ .brandrow{display:flex;align-items:center;gap:12px}
+ .brandlogo{width:40px;height:auto;border-radius:10px;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.07)}
  h1{font-size:18px;margin:0}.meta{color:var(--sub);font-size:12px;margin-top:4px}
  .tabs{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
  .tab{padding:7px 16px;border-radius:999px;background:var(--card);color:var(--sub);cursor:pointer;border:1px solid #262a33}
@@ -275,8 +277,8 @@ HTML = """<!doctype html><html lang="ja"><head><meta charset="utf-8">
  .srow .nm{font-weight:700;min-width:140px}.srow .rs{flex:1}.srow .go{color:var(--sub);font-size:12px}
  .ok{color:var(--ok)}
 </style></head><body>
-<header><h1>所属ライバー ダッシュボード</h1>
-<div class="meta">__GEN__ 時点 ／ __N__ 名 ・ 名前をクリックで詳細</div>
+<header><div class="brandrow"><img class="brandlogo" src="logo.jpg" alt="TAITAN PRO" width="40" height="41"><div><h1>所属ライバー ダッシュボード</h1>
+<div class="meta">__GEN__ 時点 ／ __N__ 名 ・ 名前をクリックで詳細</div></div></div>
 <div class="tabs" id="tabs"></div></header>
 <main><section class="summary" id="summary"></section><div id="app"></div></main>
 <script>

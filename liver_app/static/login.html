@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+<meta name="theme-color" content="#ec4899" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="TAITAN DM" />
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="apple-touch-icon" href="/icon-192.png" />
+<title>TAITAN PRO DM ログイン</title>
+<style>
+  html, body { background: #fdf2f8; min-height: 100vh; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Helvetica Neue", sans-serif; color: #111827; }
+  .wrap { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 1rem; }
+  .card { background: white; border-radius: 1.25rem; box-shadow: 0 4px 20px rgba(0,0,0,.08); padding: 2rem; width: 100%; max-width: 22rem; }
+  h1 { font-size: 1.25rem; margin: 0 0 .25rem; color: #ec4899; }
+  p.sub { font-size: .9rem; color: #374151; margin: 0 0 1rem; line-height: 1.55; }
+  .notice { background: #fef3c7; border: 1px solid #fde68a; color: #78350f; padding: .85rem .9rem; border-radius: .6rem; font-size: .85rem; line-height: 1.55; margin-bottom: 1rem; }
+  label { display: block; font-size: .85rem; color: #374151; margin-bottom: .35rem; font-weight: 500; }
+  input[type=password] { width: 100%; box-sizing: border-box; padding: .75rem .9rem; border-radius: .6rem; border: 1px solid #e5e7eb; background: white; font-size: 1rem; }
+  button { width: 100%; margin-top: 1rem; padding: .8rem; border: 0; border-radius: .6rem; background: #ec4899; color: white; font-weight: 700; font-size: 1rem; }
+  button.ghost { background: transparent; color: #9ca3af; font-weight: 500; font-size: .8rem; padding: .5rem; margin-top: 1.25rem; }
+  button:active { transform: scale(.98); }
+  .err { color: #ef4444; font-size: .85rem; margin-top: .75rem; min-height: 1.25rem; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <img src="logo.jpg" alt="TAITAN PRO" width="72" height="75" style="display:block;width:72px;height:auto;border-radius:16px;margin:0 auto .75rem;box-shadow:0 6px 18px rgba(236,72,153,.18);border:1px solid rgba(0,0,0,.06);">
+    <h1 style="text-align:center;">TAITAN PRO DM</h1>
+
+    <div id="worker-view">
+      <div class="notice">
+        <b>📩 マネージャーから送られたリンクを開いてください</b><br>
+        自動でログインされます。パスワード入力は不要です。
+      </div>
+      <p class="sub">リンクが見当たらない場合は、マネージャーに再発行を依頼してください。</p>
+      <button type="button" class="ghost" id="show-owner">▸ 管理者ログイン</button>
+    </div>
+
+    <form id="f" class="hidden">
+      <p class="sub">⚠️ 管理者専用。作業者の方はマネージャーから受け取った<b>リンク</b>からログインしてください。</p>
+      <label for="pw">管理者パスワード</label>
+      <input id="pw" type="password" autocomplete="off" />
+      <button type="submit">管理者としてログイン</button>
+      <div class="err" id="err"></div>
+    </form>
+  </div>
+</div>
+<script>
+document.getElementById('show-owner').addEventListener('click', () => {
+  document.getElementById('worker-view').classList.add('hidden');
+  document.getElementById('f').classList.remove('hidden');
+  document.getElementById('pw').focus();
+});
+
+const f = document.getElementById('f');
+const err = document.getElementById('err');
+f.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  err.textContent = '';
+  const pw = document.getElementById('pw').value;
+  try {
+    const r = await fetch('/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({password: pw}),
+      credentials: 'same-origin',
+    });
+    if (r.ok) {
+      location.href = '/';
+    } else {
+      err.textContent = 'パスワードが違います';
+    }
+  } catch (e2) {
+    err.textContent = '接続エラー';
+  }
+});
+</script>
+</body>
+</html>

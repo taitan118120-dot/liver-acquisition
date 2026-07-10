@@ -17,7 +17,12 @@
             background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
             padding: 24px 32px;
             border-bottom: 1px solid #334155;
+            display: flex;
+            align-items: center;
+            gap: 16px;
         }
+        .header .logo { width: 48px; height: auto; border-radius: 12px; flex-shrink: 0;
+            box-shadow: 0 3px 10px rgba(0,0,0,.4); border: 1px solid rgba(255,255,255,.08); }
         .header h1 { font-size: 24px; font-weight: 700; }
         .header p { color: #94a3b8; margin-top: 4px; font-size: 14px; }
         .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
@@ -150,8 +155,11 @@
 </head>
 <body>
     <div class="header">
-        <h1>ライバー獲得ダッシュボード</h1>
-        <p id="updated-at">データを読み込んでください</p>
+        <img class="logo" src="logo.jpg" alt="TAITAN PRO" width="48" height="50">
+        <div>
+            <h1>ライバー獲得ダッシュボード</h1>
+            <p id="updated-at">データを読み込んでください</p>
+        </div>
     </div>
 
     <div class="container">

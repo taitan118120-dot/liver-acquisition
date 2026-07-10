@@ -100,6 +100,16 @@ body {
 
 .hero-content { position: relative; z-index: 1; }
 
+.hero-logo {
+  display: block;
+  width: clamp(104px, 26vw, 140px);
+  height: auto;
+  margin: 0 auto 22px;
+  border-radius: 22px;
+  box-shadow: 0 10px 28px rgba(108, 92, 231, 0.22), 0 2px 6px rgba(20, 16, 40, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
 .hero-badge {
   display: inline-flex;
   align-items: center;
