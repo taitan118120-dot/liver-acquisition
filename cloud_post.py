@@ -258,11 +258,14 @@ def post_thread(client, thread_texts, first_media_id=None):
 
 
 def main():
-    # 人間化①: 定時投稿のbot臭を消す。cronは固定でも投稿は0〜38分ランダムに遅らせ、
-    # 毎回バラけた分(:00ちょうどを避ける)で着弾させる。SKIP_JITTER=1 で無効化(手動テスト用)
+    # 人間化①: :00ちょうどの着弾を避ける小ジッター。SKIP_JITTER=1 で無効化(手動テスト用)
+    # 大きな時刻バラつきは GitHub Actions の cron 遅延（実測4〜50分）が勝手に与えてくれる。
+    # 注意: ここの待機は auto_post.yml の `timeout 360s` より必ず短くすること。
+    # 旧実装の0〜38分ジッターは timeout 180s と矛盾し、2026-06-15〜07-10 の26日間
+    # 投稿成功が3回だけという事実上の全停止を起こした（ランは緑のままだった）。
     if os.environ.get("SKIP_JITTER") != "1":
-        jitter = random.randint(0, 38 * 60)
-        print(f"[jitter] {jitter // 60}分{jitter % 60}秒待機してから投稿します")
+        jitter = random.randint(0, 120)
+        print(f"[jitter] {jitter}秒待機してから投稿します")
         time.sleep(jitter)
 
     # 環境変数からAPIキーを取得（GitHub Secretsから注入）

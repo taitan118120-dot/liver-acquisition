@@ -19,7 +19,7 @@ env:
 jobs:
   post:
     runs-on: ubuntu-24.04
-    timeout-minutes: 8   # 25分暴走防止（実処理は30秒以内のはず）
+    timeout-minutes: 12   # 暴走防止（実処理はジッター最大2分+投稿で3分以内のはず）
     steps:
       - uses: actions/checkout@v5
         with:
@@ -33,24 +33,25 @@ jobs:
 
       - name: 投稿実行
         id: post
-        continue-on-error: true   # API側の403/レート制限でワークフロー全体を落とさない
-        timeout-minutes: 4         # スクリプト単体の暴走を防ぐ
+        continue-on-error: true   # 失敗判定は最後の「結果サマリ」ステップで行う
+        timeout-minutes: 7         # スクリプト単体の暴走を防ぐ
         env:
           TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
           TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
           TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
           TWITTER_ACCESS_TOKEN_SECRET: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
-        # `timeout` で180秒を超えたら強制中断（403連鎖時の暴走対策）。
-        # スクリプトが exit 1 を返してもワークフローは緑のまま。
+        # `timeout` で360秒を超えたら強制中断（403連鎖時の暴走対策）。
+        # 注意: cloud_post.py 側のジッター上限より必ず長くすること。
+        # 旧180sはジッター0〜38分と矛盾し26日間の投稿全停止を招いた(2026-07-11修正)。
         run: |
           set +e
-          timeout 180s python cloud_post.py
+          timeout 360s python cloud_post.py
           rc=$?
           echo "post_exit_code=$rc" >> "$GITHUB_OUTPUT"
           if [ $rc -eq 124 ]; then
-            echo "::warning::cloud_post.py が180秒を超えたため強制中断しました（403連鎖の可能性）"
+            echo "::warning::cloud_post.py が360秒を超えたため強制中断しました（403連鎖の可能性）"
           elif [ $rc -ne 0 ]; then
-            echo "::warning::cloud_post.py が exit $rc で終了しました（API側の問題の可能性 / 投稿スキップ扱い）"
+            echo "::warning::cloud_post.py が exit $rc で終了しました"
           else
             echo "投稿成功"
           fi
@@ -58,20 +59,34 @@ jobs:
 
       - name: 投稿履歴を保存
         # 成功・失敗いずれの場合も data/ の差分は保存（次回の重複防止に必要）
+        # 他ワークフロー(Threads等)が先にpushしていると競合するので pull --rebase + リトライ
         if: always()
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add data/ || true
-          git diff --staged --quiet || git commit -m "投稿ログ更新 (post_rc=${{ steps.post.outputs.post_exit_code }})"
-          git push || true
+          if git diff --staged --quiet; then
+            echo "保存すべき差分なし"
+            exit 0
+          fi
+          git commit -m "投稿ログ更新 (post_rc=${{ steps.post.outputs.post_exit_code }})"
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push && exit 0
+            echo "push失敗 (試行 $i/3) → リトライ"
+            sleep 5
+          done
+          echo "::warning::投稿ログのpushに3回失敗しました（次回実行で重複スキップされるため致命的ではない）"
 
       - name: 結果サマリ
+        # 投稿できなかったらランを赤にする。
+        # → auto_retry.yml が1回だけ自動再実行し、auto_fix.yml がIssueで通知する。
+        # 旧実装は常に緑で「26日間投稿ゼロ」に気づけなかったため、緑の偽装は廃止。
         if: always()
         run: |
           rc="${{ steps.post.outputs.post_exit_code }}"
           if [ "$rc" = "0" ]; then
             echo "✅ 投稿完了"
           else
-            echo "⚠️ 投稿スキップ (exit=$rc) — X API側の問題か、全候補が重複の可能性。ワークフローは正常終了。"
+            echo "❌ 投稿失敗 (exit=$rc) — X API側の問題か、全候補が重複の可能性。自動リトライ＋Issue通知が発動します。"
+            exit 1
           fi

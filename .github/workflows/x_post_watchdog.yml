@@ -1,0 +1,97 @@
+name: X投稿ウォッチドッグ
+
+# X自動投稿の「サイレント停止」を構造的に検知する番犬。
+#
+# 背景: 2026-06-15〜07-10、ジッターとtimeoutの矛盾で26日間ほぼ投稿ゼロだったのに
+# ランは緑successのままで誰も気づけなかった（IGトークン失効と同じ「緑の嘘」パターン）。
+# ワークフローの成否ではなく「実際に投稿が成功した痕跡」（投稿ログコミット post_rc=0）
+# を直接監視するので、原因が何であれ投稿が止まれば必ず検知される。
+#
+# 動作: 直近36時間に post_rc=0 の投稿ログコミットが1件もなければ
+#   1. 自動投稿ワークフローを即時トリガー（自己回復の試み）
+#   2. Issueを作成/更新して通知
+#
+# 注意: 投稿ログのコミットメッセージ「投稿ログ更新 (post_rc=」の形式を
+# auto_post.yml 側で変える場合は、ここの grep も必ず合わせて変更すること。
+
+on:
+  schedule:
+    - cron: '40 0 * * *'   # 毎日 JST 9:40（朝8時枠の投稿後にチェック）
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+  issues: write
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: 直近36時間の実投稿を確認
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          since=$(date -u -d '36 hours ago' +%Y-%m-%dT%H:%M:%SZ)
+          echo "since=$since で投稿成功コミットを検索"
+          count=$(gh api "repos/$GITHUB_REPOSITORY/commits?since=$since&per_page=100" \
+            --jq '[.[].commit.message | select(startswith("投稿ログ更新 (post_rc=0"))] | length')
+          echo "投稿成功コミット: $count 件"
+          echo "ok_count=$count" >> "$GITHUB_OUTPUT"
+
+      - name: 停止検知 → 自動投稿を即時トリガー
+        if: steps.check.outputs.ok_count == '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "36時間以上Xへの実投稿がありません。自動投稿を即時実行します。"
+          gh workflow run auto_post.yml --repo "$GITHUB_REPOSITORY"
+
+      - name: 停止検知 → Issue通知
+        if: steps.check.outputs.ok_count == '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'X自動投稿が36時間以上成功していません（ウォッチドッグ検知）';
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const match = existing.find(i => i.title === title);
+            const body = [
+              '## X投稿ウォッチドッグ検知',
+              '',
+              '直近36時間、`投稿ログ更新 (post_rc=0)` のコミットが1件もありません。',
+              'ワークフローが緑でも実投稿が止まっている可能性があります。',
+              '',
+              '- 自動投稿ワークフローを即時トリガー済み（自己回復の試み）',
+              '- 明日も検知された場合はこのIssueにコメントが追加されます',
+              '',
+              '## 原因確認コマンド',
+              '```bash',
+              'gh run list --workflow=auto_post.yml --limit 10',
+              'gh run view <RUN_ID> --log | grep -E "jitter|WARN|ERROR|投稿"',
+              '```',
+              '',
+              '---',
+              '_このIssueは `.github/workflows/x_post_watchdog.yml` により自動生成されました。_',
+            ].join('\n');
+            if (match) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: match.number,
+                body: `再検知: ${new Date().toISOString()} 時点でも直近36時間の実投稿がありません。`,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+              });
+            }
