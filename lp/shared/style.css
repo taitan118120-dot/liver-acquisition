@@ -394,6 +394,8 @@ section:nth-child(even) {
   overflow: hidden;
 }
 
+.voice-card + .voice-card { margin-top: 20px; }
+
 .voice-card::before {
   content: '';
   position: absolute;
