@@ -1319,6 +1319,7 @@ def update_article(article_num, session=None, note_id_map=None, dry_run=False):
 
         if res.get("url") and not res.get("draft_only"):
             print(f"  再投稿成功: {res['url']}")
+            _guard_tags_after_publish(res["url"], article_num, title)
             return {"success": True, "url": res["url"]}
         if res.get("url"):
             print(f"  下書き保存済み（手動公開が必要）: {res['url']}")
@@ -1368,6 +1369,28 @@ def update_all_articles(dry_run=False):
 
 # ─── メイン投稿処理 ──────────────────────────────────
 
+def _guard_tags_after_publish(url, article_num=None, title=None):
+    """公開後にタグ抜けを検証し、不足なら publish ページUIで自動付与する。
+    公開PUTの `hashtags` フィールドは note.com に無視されタグ0になるため、
+    ここで確実に塞ぐ（project_note_remote_update メモ参照）。
+    失敗しても投稿自体は成功扱いのまま（例外を握り潰す）。"""
+    try:
+        m = re.search(r"/n/(n[0-9a-f]+)", url or "")
+        if not m:
+            return
+        key = m.group(1)
+        import note_tag_guard
+        res = note_tag_guard.ensure_tags(key, article_num=article_num, title=title)
+        if res.get("already"):
+            print(f"  [tag-guard] タグOK（{res['already']}個）")
+        elif res.get("ok"):
+            print(f"  [tag-guard] タグ自動付与: {res.get('before')}→{res.get('after')}個")
+        else:
+            print(f"  [tag-guard] ⚠️ タグ付与に失敗: {res}")
+    except Exception as e:
+        print(f"  [tag-guard] スキップ（例外）: {e}")
+
+
 def post_article(article_num, dry_run=False):
     filepath = get_article_file(article_num)
     if not filepath:
@@ -1404,6 +1427,7 @@ def post_article(article_num, dry_run=False):
             if http_result["url"] and not http_result["draft_only"]:
                 log_result(article_num, title, http_result["url"], True)
                 mark_as_published(article_num)
+                _guard_tags_after_publish(http_result["url"], article_num, title)
                 return {"success": True, "url": http_result["url"]}
             # publish=True を渡しているので通常ここには来ないが、保険
             log_result(article_num, title, http_result["url"], True, "HTTP経由で下書き保存（手動公開が必要）")
@@ -1415,6 +1439,7 @@ def post_article(article_num, dry_run=False):
             if pw_result["url"] and not pw_result["draft_only"]:
                 log_result(article_num, title, pw_result["url"], True, "Playwright経由で公開")
                 mark_as_published(article_num)
+                _guard_tags_after_publish(pw_result["url"], article_num, title)
                 return {"success": True, "url": pw_result["url"]}
             if pw_result["url"] and pw_result["draft_only"]:
                 log_result(article_num, title, pw_result["url"], True, "Playwright経由で下書き保存（手動公開が必要）")

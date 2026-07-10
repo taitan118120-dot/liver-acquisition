@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.taitanpro.note-tag-guard</string>
+
+  <!-- Note公開記事のタグ付け忘れを毎日自動監査＋修復（安全網） -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/python3</string>
+    <string>/Users/mitataisei/ライバー獲得/note_tag_guard.py</string>
+    <string>--fix</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/mitataisei/ライバー獲得</string>
+
+  <key>StandardOutPath</key>
+  <string>/Users/mitataisei/ライバー獲得/data/note_tag_guard.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/mitataisei/ライバー獲得/data/note_tag_guard.log</string>
+
+  <!-- 毎日 23:10（日中の投稿がすべて終わった後にまとめて回収） -->
+  <key>StartCalendarInterval</key>
+  <dict><key>Hour</key><integer>23</integer><key>Minute</key><integer>10</integer></dict>
+</dict>
+</plist>
