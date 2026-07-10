@@ -1,0 +1,33 @@
+name: LINE Bot keepalive
+
+# Render無料枠は約15分アクセスがないとスリープし、次アクセスの起動に約50秒かかる。
+# その間に来るLINEのfollow/messageイベントは再送されず消える（＝友だち追加の取りこぼし）。
+# 定期的にpingして常時起動させることで、イベントを取りこぼさない。
+# ※万一このpingが遅延しても、app.py側の「follow取りこぼし回収」で二重に保護している。
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'   # 10分おき
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    continue-on-error: true
+    steps:
+      - name: Renderのbotを起こす
+        shell: bash
+        run: |
+          set +e
+          URL="https://liver-acquisition.onrender.com/"
+          for i in 1 2 3; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 "$URL")
+            echo "ping #$i -> HTTP $code"
+            if [ "$code" = "200" ]; then
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "keepalive: 200が返らなかった（次サイクルで再試行）"
+          exit 0

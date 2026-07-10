@@ -382,6 +382,24 @@ class WebhookHandler(BaseHTTPRequestHandler):
                 users = load_json(USERS_FILE)
                 user_data = users.get(user_id, {})
 
+                # followイベント取りこぼしの回収（恒久対策）
+                # Render無料枠のコールドスタート等でfollowを受信できなくても、
+                # 初回メッセージが来た時点で新規ユーザーとして登録し、ウェルカムを送る。
+                # これで「友だち追加されたのにBotが無反応・流入元も取れない」取りこぼしを防ぐ。
+                if user_id and user_id != ADMIN_USER_ID and user_id not in users:
+                    print(f"[RECOVER] follow未受信ユーザーを初回メッセージで回収: {user_id[:8]}...")
+                    user_data = {
+                        "follow_date": datetime.now().isoformat(),
+                        "step_sent": ["welcome"],
+                        "unfollowed": False,
+                        "follow_recovered": True,
+                    }
+                    users[user_id] = user_data
+                    save_json(USERS_FILE, users)
+                    # ウェルカムはpushで送信（この後の返信でreply_tokenを使うため）
+                    send_line_message(user_id, STEP_MESSAGES["welcome"]["text"])
+                    schedule_step_messages(user_id)
+
                 # 面談確定後・手動対応中は自動送信しない（担当が直接返信する）
                 if user_data.get("auto_paused"):
                     print(f"[PAUSED] {user_id[:8]}... (手動対応中、自動応答スキップ)")
