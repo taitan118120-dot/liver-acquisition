@@ -20,7 +20,7 @@ STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 # 旧: 単一共有パスワード。互換のため残す（owner ユーザの token として登録される）
 APP_PASSWORD = os.environ.get("APP_PASSWORD", "").strip()
 AUTH_COOKIE = "x_dm_auth"
-PWA_PUBLIC_PATHS = {"/manifest.webmanifest", "/sw.js", "/icon-192.png", "/icon-512.png", "/login", "/login.html", "/logout"}
+PWA_PUBLIC_PATHS = {"/manifest.webmanifest", "/sw.js", "/icon-192.png", "/icon-512.png", "/logo.jpg", "/login", "/login.html", "/logout"}
 
 app = Flask(__name__, static_folder=None)
 app.config["JSON_AS_ASCII"] = False
