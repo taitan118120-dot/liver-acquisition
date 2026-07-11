@@ -4,7 +4,8 @@ import re
 from datetime import datetime, timedelta
 
 # 友だち追加特典（リードマグネット）
-GUIDE_URL = "https://taitan-pro-lp-targets.netlify.app/shared/pococha_starter_guide.pdf"
+# Netlifyはトークン失効で自動デプロイ不可のため、GitHub raw配信（公開repo・即反映）
+GUIDE_URL = "https://raw.githubusercontent.com/taitan118120-dot/liver-acquisition/main/lp/shared/pococha_starter_guide.pdf"
 
 STEP_MESSAGES = {
     "welcome": {
