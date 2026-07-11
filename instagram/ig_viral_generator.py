@@ -195,7 +195,7 @@ def _build_prompt(theme):
 - リスナーは必ず「リスナーさん」と書く（呼び捨て禁止）
 - 「絶対稼げる」「必ず」「誰でも」「保証」などの断定・誇大表現は禁止
 - 「手数料なし/0円」という表現は禁止（報酬の話は「還元率100%」のみ可）
-- DM誘導・LINE誘導・URLは一切書かない
+- DM誘導・URL・「公式LINE」の文言は一切書かない（誘導は下記キャプションルールの指定CTA1行のみ）
 
 【出力JSONスキーマ】
 {{
@@ -213,7 +213,7 @@ def _build_prompt(theme):
 - 中身はスライドの補足or裏話を2〜3段落。全部は書かない（画像を読ませる）
 - 終盤に必ずコメント誘導の質問を1つ（「あなたはどっち？」「経験ある人コメントで教えて」等）
 - 「📌 保存して配信前に見返してね」の1行を入れる
-- 宣伝は「配信ノウハウを週3で発信中 → {BRAND}」の1行だけ。無料相談・事務所の勧誘文は書かない
+- 宣伝は「🎁 プロフィールのリンクから『Pococha新人期スタートダッシュガイド』（非売品PDF）を無料配布中」の1行だけ。無料相談・事務所の勧誘文は書かない
 - 最後にハッシュタグを5個ちょうど、1行で。#ライバー #ライブ配信 は固定、残り3個はテーマに合わせる（#Pococha #ポコチャ #TikTokLIVE #配信初心者 #ポコチャライバー #雑談配信 #ライバー事務所 などから）。#副業 系は最大1個
 - 絵文字はキャプション全体で3個まで
 
@@ -256,7 +256,7 @@ def generate_slide_content(theme, dry_run=False):
 
 def _dummy_content(theme):
     return {
-        "caption": f"{theme['title']}のテストキャプション。\n\n📌 保存して配信前に見返してね\n\n配信ノウハウを週3で発信中 → {BRAND}\n\n#ライバー #ライブ配信 #Pococha #配信初心者 #ポコチャ",
+        "caption": f"{theme['title']}のテストキャプション。\n\n📌 保存して配信前に見返してね\n\n🎁 プロフィールのリンクから『Pococha新人期スタートダッシュガイド』（非売品PDF）を無料配布中\n\n#ライバー #ライブ配信 #Pococha #配信初心者 #ポコチャ",
         "slides": [
             {"type": "cover", "hook": "初配信、\n誰も来なくて\n当たり前です。", "sub": "むしろ正常"},
             {"type": "point", "heading": "0人スタートが普通", "body": "有名人以外は全員0人から。\n来ないのは失敗じゃなくて、\nただのスタートラインです。"},
@@ -499,7 +499,8 @@ def render_last(slide, palette, path, total):
     b1 = draw.textbbox((0, 0), t1, font=c_font1)
     draw.text(((W - (b1[2] - b1[0])) // 2, box_y0 + 44), t1, font=c_font1, fill=INK)
     c_font2 = _get_font(700, 40)
-    t2 = f"フォローで配信ノウハウ週3更新 → {BRAND}"
+    # NotoSansJPに絵文字グリフがないため画像内は絵文字なし
+    t2 = "プロフのリンクで新人ガイド無料配布中"
     b2 = draw.textbbox((0, 0), t2, font=c_font2)
     draw.text(((W - (b2[2] - b2[0])) // 2, box_y0 + 140), t2, font=c_font2,
               fill=palette["accent"])
@@ -538,10 +539,16 @@ def render_carousel(content, theme, base_index):
 # キャプション後処理
 # =====================================================================
 
+# キャプションの特典CTA（プロフのリンク＝LINE友だち追加へ誘導）
+CAPTION_CTA = "🎁 プロフィールのリンクから『Pococha新人期スタートダッシュガイド』（非売品PDF）を無料配布中"
+
+
 def polish_caption(caption):
     caption = _fix_listener_san(caption.strip())
     # URL除去（保険）
     caption = re.sub(r"https?://\S+", "", caption)
+    # 旧CTA（アカウント宣伝行）が残っていたら特典CTAに置換
+    caption = re.sub(r"^.*配信ノウハウを週3で発信中.*$", CAPTION_CTA, caption, flags=re.MULTILINE)
     # ハッシュタグ個数を5個に強制
     tags = re.findall(r"#[\wぁ-んァ-ヶー一-龥0-9_]+", caption)
     seen, uniq = set(), []
@@ -557,6 +564,9 @@ def polish_caption(caption):
         uniq.append(t)
     body = re.sub(r"#[\wぁ-んァ-ヶー一-龥0-9_]+", "", caption).rstrip()
     body = re.sub(r"\n{3,}", "\n\n", body).rstrip()
+    # 特典CTAが抜けていたら末尾に足す（保険）
+    if "スタートダッシュガイド" not in body:
+        body += "\n\n" + CAPTION_CTA
     pool = ["#ライバー", "#ライブ配信", "#Pococha", "#ポコチャ", "#配信初心者",
             "#TikTokLIVE", "#ポコチャライバー", "#雑談配信"]
     for t in pool:

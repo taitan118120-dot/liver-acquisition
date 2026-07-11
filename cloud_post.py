@@ -45,6 +45,41 @@ KEYWORD_TO_CATEGORY = {
 MAX_RETRIES = 3
 RETRY_WAIT_SEC = 5
 
+# ─── LINE登録特典（リードマグネット）CTA ───
+# 本文にリンクを入れるとXはリーチを大きく落とすため、投稿成功後に
+# 自分の投稿へリプライでぶら下げる（リンクペナルティ回避の定石）。
+# 毎回だと宣伝臭が強すぎるので確率で付与。文面は重複403回避のため複数用意。
+LINE_URL = "https://lin.ee/xchCfdn"
+CTA_REPLY_RATE = 0.34
+CTA_REPLY_VARIANTS = [
+    "🎁 Pocochaの最初の30日でやることを全部まとめた非売品PDF\n"
+    "『新人期スタートダッシュガイド』を無料配布中\n"
+    f"受け取りはこちら → {LINE_URL}",
+    "配信これから始める人へ🎁\n"
+    "新人期の動き方を1冊にした『Pococha新人期スタートダッシュガイド』（非売品PDF）を"
+    f"LINE友だち追加でプレゼント中です → {LINE_URL}",
+    "新人期に何をやるかで、その後が決まります。\n"
+    "🎁 やることを全部まとめた非売品ガイドPDFを無料配布中\n"
+    f"→ {LINE_URL}",
+    "🎁 無料プレゼント\n"
+    "『Pococha新人期スタートダッシュガイド』\n"
+    "最初の30日のやることリスト・時間帯戦略まで全部入りの非売品PDFです\n"
+    f"→ {LINE_URL}",
+]
+
+
+def maybe_post_cta_reply(client, tweet_id):
+    """確率でリードマグネットCTAを自分の投稿へのリプライとして投稿する。
+    失敗しても本体投稿は成功済みなので握りつぶす（非致命）。"""
+    if random.random() > CTA_REPLY_RATE:
+        return
+    text = random.choice(CTA_REPLY_VARIANTS)
+    try:
+        resp = client.create_tweet(text=text, in_reply_to_tweet_id=tweet_id)
+        print(f"  CTAリプライ投稿: {resp.data['id']}")
+    except Exception as e:
+        print(f"  [WARN] CTAリプライ失敗（本体投稿は成功済み）: {e}")
+
 # 投稿済みテキストハッシュファイル（完全な重複防止用）
 POSTED_HASHES_FILE = "data/posted_text_hashes.txt"
 RECENT_IDS_FILE = "data/recent_post_ids.txt"
@@ -349,6 +384,7 @@ def main():
                 tweet_ids = post_thread(client, thread_texts, first_media_id=media_id)
                 print(f"スレッド投稿成功: {post['id']} ({len(tweet_ids)}件)")
                 save_posted_hash(h)
+                maybe_post_cta_reply(client, tweet_ids[-1])
             else:
                 # 通常投稿: ハッシュタグを自動付与
                 hashtags = pick_hashtags(post["text"])
@@ -373,6 +409,7 @@ def main():
                 print(f"投稿成功: {post['id']} → {response.data['id']}")
                 print(f"  ハッシュタグ: {' '.join(hashtags)}")
                 save_posted_hash(h)
+                maybe_post_cta_reply(client, response.data["id"])
 
             # 投稿済みIDを記録
             recent_ids.add(post["id"])
