@@ -141,6 +141,8 @@ Pococha・TikTok LIVE合わせて150名以上の実運用データから導い�
 ---
 
 **▼ 無料相談はこちら**
-[TAITAN PRO 公式LINE](https://lin.ee/816qtxyj)に「TikTok LIVEが伸びない」と送ってください。
+🎁 **友だち追加特典**：『Pococha新人期スタートダッシュガイド』——最初の30日でやることを全部まとめた非売品PDFを、LINE登録した方全員に無料でお渡ししています。
+
+[TAITAN PRO 公式LINE](https://lin.ee/xchCfdn)に「TikTok LIVEが伸びない」と送ってください。
 
 #TikTokLIVE #TikTok #伸びない原因 #ライバー #ライブ配信 #副業 #フォロワー増やし方 #TikTok攻略 #ライバー事務所 #TAITANPRO

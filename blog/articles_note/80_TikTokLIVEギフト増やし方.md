@@ -141,6 +141,8 @@ TikTok LIVE・Pococha合わせて150名以上が所属するTAITAN PROの実デ�
 ---
 
 **▼ 無料相談はこちら**
-[TAITAN PRO 公式LINE](https://lin.ee/816qtxyj)に「TikTokのギフト増やしたい」と送ってください。
+🎁 **友だち追加特典**：『Pococha新人期スタートダッシュガイド』——最初の30日でやることを全部まとめた非売品PDFを、LINE登録した方全員に無料でお渡ししています。
+
+[TAITAN PRO 公式LINE](https://lin.ee/xchCfdn)に「TikTokのギフト増やしたい」と送ってください。
 
 #TikTokLIVE #TikTok #ギフト #ライバー #ライブ配信 #副業 #稼ぎ方 #TikTok稼ぎ方 #ライバー事務所 #TAITANPRO

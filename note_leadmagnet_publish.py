@@ -48,14 +48,14 @@ def verify(key):
     return d
 
 
-def publish_one(key):
+def publish_one(key, transform_fn=None):
     from playwright.sync_api import sync_playwright
     s = req_session()
     d = get_note(s, key, draft=False)
     note_id = d["id"]
     title = d["name"]
     old_body = d["body"]
-    new_body = transform(key, old_body)
+    new_body = (transform_fn or transform)(key, old_body)
     if new_body is None:
         print("  skip（済み or CTAなし）")
         return "skip"
@@ -159,6 +159,34 @@ def publish_one(key):
     return "ok"
 
 
+# ── 例外記事の修復用transform ──
+# 2026-07-12判明: #78〜82は死にリンク lin.ee/816qtxyj（404）を使用、
+# #48/#60/#94はLINE CTA自体が無かった。
+DEAD_LINK = "lin.ee/816qtxyj"
+
+CTA_TAIL_HTML = (
+    LM_HTML +
+    '<p><strong><a href="https://lin.ee/xchCfdn" target="_blank" rel="noopener nofollow">'
+    "LINEで特典を受け取る →</a></strong></p>"
+)
+
+
+def transform_fix_dead_link(key, html):
+    """死にリンクを正リンクへ置換してから特典段落を挿入"""
+    if DEAD_LINK not in html and "スタートダッシュガイド" in html:
+        return None
+    html = html.replace(DEAD_LINK, "lin.ee/xchCfdn")
+    out = transform(key, html)
+    return out if out is not None else html
+
+
+def transform_append_cta(key, html):
+    """LINE CTAが無い記事の末尾に特典段落＋LINEリンクを追加"""
+    if "スタートダッシュガイド" in html:
+        return None
+    return html + CTA_TAIL_HTML
+
+
 def _load_log():
     if os.path.exists(LOG_FILE):
         with open(LOG_FILE, encoding="utf-8") as f:
@@ -198,6 +226,12 @@ if __name__ == "__main__":
             print(f"[verify {k}]"); verify(k)
     elif args[0] == "--all":
         run_all()
+    elif args[0] == "--fix-dead-link":
+        for k in args[1:]:
+            print(f"[fix-dead-link {k}]"); publish_one(k, transform_fix_dead_link)
+    elif args[0] == "--append-cta":
+        for k in args[1:]:
+            print(f"[append-cta {k}]"); publish_one(k, transform_append_cta)
     else:
         for k in args:
             print(f"[publish {k}]"); publish_one(k)
