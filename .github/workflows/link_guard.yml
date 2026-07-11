@@ -1,0 +1,92 @@
+name: 死にリンク番犬
+
+# 全媒体のリンク切れを構造的に検知する番犬。
+#
+# 背景: 2026-07-12、公開Note記事5本が404の旧LINEリンク lin.ee/816qtxyj を
+# 使い続けていたことが発覚（読者を長期間404に誘導していた）。
+# リンクは「書いた時点で正しい」だけでは足りず、切れた瞬間に気づく仕組みが必要。
+#
+# 動作: 毎日1回 link_guard.py を実行し、
+#   - リポジトリ内コンテンツ＋公開Note全記事からURLを抽出して実チェック
+#   - 許可リスト外の lin.ee URL（typo・旧リンク混入）も検知
+#   - 死にリンクがあればランを赤にし、Issueを作成/更新して通知
+
+on:
+  schedule:
+    - cron: '20 0 * * *'   # 毎日 JST 9:20
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  link-guard:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 依存パッケージインストール
+        run: pip install requests
+
+      - name: リンク実チェック（リポジトリ＋公開Note全記事）
+        id: guard
+        run: python3 link_guard.py
+
+      - name: 検知 → Issue通知
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const title = '死にリンク検知（リンク番犬）';
+            let report = {dead: [], warn: []};
+            try {
+              report = JSON.parse(fs.readFileSync('data/link_guard_report.json', 'utf8'));
+            } catch (e) {}
+            const deadLines = report.dead.map(d =>
+              `- \`${d.url}\`\n  - 理由: ${d.reason}\n  - 出現: ${d.sources.slice(0, 8).join(', ')}`
+            ).join('\n');
+            const body = [
+              '## 死にリンク番犬 検知',
+              '',
+              '読者の目に触れるリンクに切れているものがあります。**放置すると読者を404に誘導し続けます。**',
+              '',
+              '## 検知されたリンク',
+              deadLines || '(レポート読込失敗。ランのログを確認)',
+              '',
+              '## 対処',
+              '1. 正しいURLに置換（公式LINEの正リンクは `https://lin.ee/xchCfdn` のみ）',
+              '2. 公開済みNote記事は `note_leadmagnet_publish.py` の機構（fetch-PUT＋タグ復元）で修正',
+              '3. 修正後 `python3 link_guard.py` がローカルで緑になることを確認',
+              '',
+              '---',
+              '_このIssueは `.github/workflows/link_guard.yml` により自動生成されました。_',
+            ].join('\n');
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const match = existing.find(i => i.title === title);
+            if (match) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: match.number,
+                body: `再検知: ${new Date().toISOString()}\n\n${deadLines}`,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+              });
+            }
