@@ -774,8 +774,10 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
-    "created_at": "2026-06-16T12:00:00"
+    "posted": true,
+    "created_at": "2026-06-16T12:00:00",
+    "posted_at": "2026-07-11T11:57:21",
+    "media_id": "18006481787942772"
   },
   {
     "text": "TikTokライブで伸びる子、才能ある子じゃなかった。\n\nバトルで負けても、見てる人が少なくても、「今日もやるか」を続けられる子。地味だけど、それが一番の才能なのかも。",
