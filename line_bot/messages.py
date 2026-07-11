@@ -6,7 +6,14 @@ from datetime import datetime, timedelta
 # 友だち追加特典（リードマグネット）
 # Netlifyはトークン失効でデプロイ不可のため、GitHub公開repoをjsDelivr CDN経由で配信
 # （raw.githubusercontentはoctet-streamでダウンロード扱いになる。jsDelivrはapplication/pdfでインライン表示）
-GUIDE_URL = "https://cdn.jsdelivr.net/gh/taitan118120-dot/liver-acquisition@main/lp/shared/pococha_starter_guide.pdf"
+# URLは @main ではなくPDF更新コミットのSHA固定にする。@mainだとURLが変わらず
+# LINEアプリ内ブラウザ/iOS Safariが旧PDFを端末キャッシュし続けて更新が反映されないため、
+# PDFを差し替えたら下記SHAも更新すること（そのコミットのハッシュを入れる）。
+GUIDE_PDF_SHA = "55b020513f971d6a4e6fd1183ab7062d1c80e5e9"
+GUIDE_URL = (
+    "https://cdn.jsdelivr.net/gh/taitan118120-dot/liver-acquisition@"
+    f"{GUIDE_PDF_SHA}/lp/shared/pococha_starter_guide.pdf"
+)
 
 STEP_MESSAGES = {
     "welcome": {
