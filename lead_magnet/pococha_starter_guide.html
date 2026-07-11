@@ -61,10 +61,8 @@
     margin-bottom: 8mm;
   }
   .cover h1 .grad {
-    background: linear-gradient(115deg, #A78BFA 0%, #FF5C8A 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    /* background-clip:text はPDF印刷で矩形化するため単色にする */
+    color: #E27FC0;
   }
   .cover p.sub { font-size: 12pt; color: #b9b3d6; margin-bottom: 18mm; }
   .cover .footer-line { font-size: 9.5pt; color: #8e86a6; letter-spacing: 0.1em; }
