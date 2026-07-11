@@ -4,8 +4,9 @@ import re
 from datetime import datetime, timedelta
 
 # 友だち追加特典（リードマグネット）
-# Netlifyはトークン失効で自動デプロイ不可のため、GitHub raw配信（公開repo・即反映）
-GUIDE_URL = "https://raw.githubusercontent.com/taitan118120-dot/liver-acquisition/main/lp/shared/pococha_starter_guide.pdf"
+# Netlifyはトークン失効でデプロイ不可のため、GitHub公開repoをjsDelivr CDN経由で配信
+# （raw.githubusercontentはoctet-streamでダウンロード扱いになる。jsDelivrはapplication/pdfでインライン表示）
+GUIDE_URL = "https://cdn.jsdelivr.net/gh/taitan118120-dot/liver-acquisition@main/lp/shared/pococha_starter_guide.pdf"
 
 STEP_MESSAGES = {
     "welcome": {
