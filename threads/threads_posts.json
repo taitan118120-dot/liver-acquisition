@@ -785,8 +785,10 @@
     "tags": [],
     "link": "https://lin.ee/xchCfdn",
     "reply_control": "everyone",
-    "posted": false,
-    "created_at": "2026-06-16T12:00:00"
+    "posted": true,
+    "created_at": "2026-06-16T12:00:00",
+    "posted_at": "2026-07-11T23:48:37",
+    "media_id": "17934013569313498"
   },
   {
     "text": "配信始めて最初につまずくの、緊張じゃなくて回線だったりする。\n\n画質が粗い、コメントが遅れる、それだけで人は離れる。気合いの前に、まずWi-Fiの近くで喋る。入口は意外とそこ。",
