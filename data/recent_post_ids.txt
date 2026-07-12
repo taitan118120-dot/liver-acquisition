@@ -230,6 +230,7 @@ g_follow02
 g_follow03
 g_follow06
 g_follow07
+g_follow08
 g_follow09
 g_follow10
 t01
