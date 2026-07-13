@@ -1400,22 +1400,26 @@ def _guard_tags_after_publish(url, article_num=None, title=None):
     """公開後にタグ抜けを検証し、不足なら publish ページUIで自動付与する。
     公開PUTの `hashtags` フィールドは note.com に無視されタグ0になるため、
     ここで確実に塞ぐ（project_note_remote_update メモ参照）。
-    失敗しても投稿自体は成功扱いのまま（例外を握り潰す）。"""
+    失敗しても投稿自体は成功扱いのまま（例外を握り潰す）。戻り値はタグ確保の成否。"""
     try:
         m = re.search(r"/n/(n[0-9a-f]+)", url or "")
         if not m:
-            return
+            return False
         key = m.group(1)
         import note_tag_guard
         res = note_tag_guard.ensure_tags(key, article_num=article_num, title=title)
         if res.get("already"):
             print(f"  [tag-guard] タグOK（{res['already']}個）")
+            return True
         elif res.get("ok"):
             print(f"  [tag-guard] タグ自動付与: {res.get('before')}→{res.get('after')}個")
+            return True
         else:
             print(f"  [tag-guard] ⚠️ タグ付与に失敗: {res}")
+            return False
     except Exception as e:
         print(f"  [tag-guard] スキップ（例外）: {e}")
+        return False
 
 
 def _resolve_cover_image(article_num):
@@ -1519,10 +1523,10 @@ def post_article(article_num, dry_run=False):
         print(f"\n  ⚠️ 同タイトルの公開記事が既に存在: {dup_url}")
         print("  → 重複投稿を回避し、既存記事のタグ/カバーを検証・修復します")
         mark_as_published(article_num)
-        _guard_tags_after_publish(dup_url, article_num, title)
+        tags_ok = _guard_tags_after_publish(dup_url, article_num, title)
         eyecatch_ok = _ensure_eyecatch_after_publish(dup_url, article_num)
         log_result(article_num, title, dup_url, True, "重複ガード: 既存記事を再利用")
-        return {"success": True, "url": dup_url,
+        return {"success": True, "url": dup_url, "tags_ok": tags_ok,
                 "eyecatch_ok": eyecatch_ok, "duplicate_skipped": True}
 
     email, password = get_credentials()
@@ -1538,9 +1542,10 @@ def post_article(article_num, dry_run=False):
             if http_result["url"] and not http_result["draft_only"]:
                 log_result(article_num, title, http_result["url"], True)
                 mark_as_published(article_num)
-                _guard_tags_after_publish(http_result["url"], article_num, title)
+                tags_ok = _guard_tags_after_publish(http_result["url"], article_num, title)
                 eyecatch_ok = _ensure_eyecatch_after_publish(http_result["url"], article_num)
-                return {"success": True, "url": http_result["url"], "eyecatch_ok": eyecatch_ok}
+                return {"success": True, "url": http_result["url"],
+                        "tags_ok": tags_ok, "eyecatch_ok": eyecatch_ok}
             # publish=True を渡しているので通常ここには来ないが、保険
             log_result(article_num, title, http_result["url"], True, "HTTP経由で下書き保存（手動公開が必要）")
             mark_as_published(article_num)
@@ -1551,9 +1556,10 @@ def post_article(article_num, dry_run=False):
             if pw_result["url"] and not pw_result["draft_only"]:
                 log_result(article_num, title, pw_result["url"], True, "Playwright経由で公開")
                 mark_as_published(article_num)
-                _guard_tags_after_publish(pw_result["url"], article_num, title)
+                tags_ok = _guard_tags_after_publish(pw_result["url"], article_num, title)
                 eyecatch_ok = _ensure_eyecatch_after_publish(pw_result["url"], article_num)
-                return {"success": True, "url": pw_result["url"], "eyecatch_ok": eyecatch_ok}
+                return {"success": True, "url": pw_result["url"],
+                        "tags_ok": tags_ok, "eyecatch_ok": eyecatch_ok}
             if pw_result["url"] and pw_result["draft_only"]:
                 log_result(article_num, title, pw_result["url"], True, "Playwright経由で下書き保存（手動公開が必要）")
                 mark_as_published(article_num)
@@ -1636,6 +1642,11 @@ def main():
             print("⚠️ カバー画像の自動設定に失敗（記事は公開済み）。"
                   "python3 note_set_eyecatch.py <番号> <note_key> でリカバリしてください。")
             sys.exit(4)
+        if (not args.dry_run and not result.get("draft_only")
+                and not result.get("tags_ok", True)):
+            # 記事は公開済み。auto_retryの再実行が重複ガード経由でタグを再付与する
+            print("⚠️ タグ自動付与に失敗（記事は公開済み）。再実行で修復されます。")
+            sys.exit(5)
         if skipped_no_cover:
             # 投稿自体は成功。カバー無し記事の放置に気づけるようexit 3で赤くする
             sys.exit(3)
