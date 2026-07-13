@@ -1424,6 +1424,30 @@ def _resolve_cover_image(article_num):
     return note_set_eyecatch.resolve_image(article_num)
 
 
+def _find_published_by_title(title):
+    """note.com上に同タイトルの公開記事が既にないか公開APIで確認（重複投稿ガード）。
+    auto_retryやrunの再実行は同一コミットで走るため、ログCSV上は「未投稿」に見えても
+    実際は公開済みのことがある。git状態に依存しないこのチェックが最後の砦。"""
+    try:
+        import requests
+        title = (title or "").strip()
+        for page in range(1, 4):  # 直近数十本を見れば十分
+            r = requests.get(
+                f"https://note.com/api/v2/creators/taitan_118/contents?kind=note&page={page}",
+                headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
+            if r.status_code != 200:
+                return None
+            d = r.json().get("data", {})
+            for it in d.get("contents", []):
+                if (it.get("name") or "").strip() == title:
+                    return f"https://note.com/taitan_118/n/{it.get('key')}"
+            if d.get("isLastPage", True) or not d.get("contents"):
+                break
+    except Exception as e:
+        print(f"  [dup-guard] 確認失敗（続行）: {e}")
+    return None
+
+
 def _ensure_eyecatch_after_publish(url, article_num):
     """公開直後にカバー画像（アイキャッチ）を自動設定する。
     失敗しても投稿自体は成功扱いのまま。呼び出し元がexit codeで可視化する。"""
@@ -1432,6 +1456,17 @@ def _ensure_eyecatch_after_publish(url, article_num):
         if not m:
             print("  [eyecatch] URLからnote_keyを取れずスキップ")
             return False
+        # 既に設定済みなら何もしない（冪等。リトライ実行時の二重アップロード防止）
+        try:
+            import requests
+            r = requests.get(f"https://note.com/api/v3/notes/{m.group(1)}",
+                             headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
+            ec = (r.json().get("data", {}).get("eyecatch") or "") if r.status_code == 200 else ""
+            if "uploads/images" in ec:
+                print("  [eyecatch] 既に設定済み")
+                return True
+        except Exception:
+            pass
         import note_set_eyecatch
         time.sleep(5)  # 公開直後はeditorへの反映を少し待つ
         res = note_set_eyecatch.set_eyecatch(article_num, m.group(1))
@@ -1477,6 +1512,18 @@ def post_article(article_num, dry_run=False):
         print(f"\n  ⚠️ {msg}")
         log_result(article_num, title, "", False, msg)
         return {"success": False, "error": msg, "no_cover": True}
+
+    # 重複投稿ガード: 同タイトルが既に公開済みなら投稿せず、既存記事を修復して終わる
+    dup_url = _find_published_by_title(title)
+    if dup_url:
+        print(f"\n  ⚠️ 同タイトルの公開記事が既に存在: {dup_url}")
+        print("  → 重複投稿を回避し、既存記事のタグ/カバーを検証・修復します")
+        mark_as_published(article_num)
+        _guard_tags_after_publish(dup_url, article_num, title)
+        eyecatch_ok = _ensure_eyecatch_after_publish(dup_url, article_num)
+        log_result(article_num, title, dup_url, True, "重複ガード: 既存記事を再利用")
+        return {"success": True, "url": dup_url,
+                "eyecatch_ok": eyecatch_ok, "duplicate_skipped": True}
 
     email, password = get_credentials()
 

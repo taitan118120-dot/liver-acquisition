@@ -69,4 +69,11 @@ jobs:
           git pull --rebase || true
           git add data/note_auto_post_log.csv data/note_keyword_tracker.json 2>/dev/null || true
           git diff --staged --quiet || git commit -m "Note自動投稿ログ $(TZ=Asia/Tokyo date +'%Y-%m-%d %H:%M')"
-          git push || true
+          # pushの失敗を握り潰すと「投稿済み」記録が消えて次回の重複投稿要因になるためリトライする
+          # （それでも失敗した場合はposter側のタイトル重複ガードが最後の砦）
+          for i in 1 2 3; do
+            git push && break
+            echo "push失敗 (試行$i) → rebaseして再試行"
+            sleep 5
+            git pull --rebase || true
+          done || true
