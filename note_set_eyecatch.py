@@ -202,50 +202,31 @@ def set_eyecatch(article_num, note_key, headless=True):
         # editor の autosave に任せる
         time.sleep(5)
 
-        # publish 状態を維持するため PUT /v1/text_notes/{id} を再送信
-        # まず note id 取得
-        try:
-            id_result = page.evaluate(
-                """async (key) => {
-                    const url = `/api/v3/notes/${key}?draft=true&ts=${Date.now()}`;
-                    const resp = await fetch(url, {credentials: 'include', headers: {'X-Requested-With':'XMLHttpRequest'}});
-                    return {status: resp.status, body: await resp.text()};
-                }""",
-                note_key
-            )
-            data = json.loads(id_result["body"]).get("data", {}) if id_result["status"] == 200 else {}
-            note_id = data.get("id") or data.get("note", {}).get("id")
-            eyecatch_url = data.get("eyecatch") or data.get("note", {}).get("eyecatch")
-            print(f"  [PW] note id={note_id}, eyecatch={eyecatch_url}")
-        except Exception as e:
-            note_id = None
-            eyecatch_url = None
-            print(f"  [PW] note取得失敗: {e}")
-
-        # 公開状態を維持して PUT を再送（hashtags/body はサーバ既存値で問題ないが、念のため明示）
-        if note_id:
+        # draft API（editorと同じデータ源。公開APIより反映が速い）で設定を確認する。
+        # editorページ内の相対fetchは editor.note.com に飛んで常に404だったため、
+        # cookie共有済みの ctx.request で note.com オリジンへ直接投げる。
+        # 再公開PUT({"status":"published"})は不要（記事は公開済みのまま維持される）で、
+        # fetch-PUTはタグ消失の副作用があるため送らない。
+        eyecatch_url = None
+        for attempt in range(1, 7):
             try:
-                put_result = page.evaluate(
-                    """async ({id, payload}) => {
-                        const m = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
-                        const xsrf = m ? decodeURIComponent(m[1]) : null;
-                        const headers = {'Content-Type': 'application/json', 'Accept':'application/json', 'X-Requested-With':'XMLHttpRequest'};
-                        if (xsrf) headers['X-XSRF-TOKEN'] = xsrf;
-                        const resp = await fetch(`/api/v1/text_notes/${id}`, {
-                            method: 'PUT', headers, credentials: 'include',
-                            body: JSON.stringify(payload),
-                        });
-                        return {status: resp.status, body: (await resp.text()).slice(0, 400)};
-                    }""",
-                    {"id": note_id, "payload": {"status": "published"}}
-                )
-                print(f"  [PW] re-publish PUT: {put_result['status']}")
+                r = ctx.request.get(
+                    f"https://note.com/api/v3/notes/{note_key}?draft=true&ts={int(time.time()*1000)}",
+                    headers={"X-Requested-With": "XMLHttpRequest"}, timeout=20000)
+                data = json.loads(r.text()).get("data", {}) if r.ok else {}
+                ec = data.get("eyecatch") or (data.get("note") or {}).get("eyecatch") or ""
+                if "uploads/images" in ec:
+                    eyecatch_url = ec
+                    print(f"  [PW] draft APIでeyecatch確認OK (attempt {attempt})")
+                    break
+                print(f"  [PW] draft API eyecatch未反映 (attempt {attempt})")
             except Exception as e:
-                print(f"  [PW] re-publish失敗: {e}")
+                print(f"  [PW] draft API確認エラー: {str(e)[:80]}")
+            time.sleep(5)
 
         browser.close()
 
-    # editor内fetchはオリジン都合で取れないことがあるため、公開側APIで最終確認する。
+    # draft APIで確認できなかった場合の保険として、公開側APIでも最終確認する。
     # アップロード直後は公開APIへの反映に数十秒かかることがあるのでリトライする。
     if not eyecatch_url:
         try:

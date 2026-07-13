@@ -28,12 +28,12 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
       - name: Playwrightブラウザをキャッシュ
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ runner.os }}-v1
@@ -53,7 +53,7 @@ jobs:
 
       - name: ログイン失敗時の診断情報をアップロード
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: login-diagnostics-${{ github.run_id }}
           path: data/login_diag/

@@ -274,10 +274,21 @@ def ensure_tags(key, hashtags=None, article_num=None, title=None, min_tags=MIN_T
         return {"key": key, "ok": True, "already": len(note["tags"])}
     if not hashtags:
         hashtags = generate_hashtags(title or note["name"], article_num)
-    _fix_keys([(key, hashtags)])
-    after = get_note(session, key)
-    return {"key": key, "ok": bool(after and len(after["tags"]) >= min_tags),
-            "before": len(note["tags"]), "after": len(after["tags"]) if after else 0}
+    # UI付与は「公開に進む」ボタン未表示等で単発失敗しうるため最大2ラウンド試行。
+    # 検証も公開APIへの反映ラグで直後は0に見えることがあるためリトライする。
+    after_cnt = len(note["tags"])
+    for round_no in range(1, 3):
+        _fix_keys([(key, hashtags)])
+        for _ in range(3):
+            time.sleep(8)
+            after = get_note(session, key)
+            after_cnt = len(after["tags"]) if after else 0
+            if after_cnt >= min_tags:
+                return {"key": key, "ok": True, "before": len(note["tags"]),
+                        "after": after_cnt, "rounds": round_no}
+        print(f"  [tag-guard] round {round_no} 後もタグ{after_cnt}個 → "
+              f"{'再試行' if round_no < 2 else '断念'}")
+    return {"key": key, "ok": False, "before": len(note["tags"]), "after": after_cnt}
 
 
 def audit_and_fix(min_tags=MIN_TAGS, recent=None, dry_run=False):
