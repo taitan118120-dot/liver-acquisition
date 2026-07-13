@@ -137,6 +137,11 @@ def _send_step_if_active(user_id, step_name, text):
             print(f"[STEP] Skipped '{step_name}' for {user_id[:8]}... ({reason})")
             _remove_schedule(user_id, step_name)
             return
+        # 再起動やstate復元で同じスケジュールが蘇っても二重送信しない
+        if step_name in user.get("step_sent", []):
+            print(f"[STEP] Skipped '{step_name}' for {user_id[:8]}... (already sent)")
+            _remove_schedule(user_id, step_name)
+            return
         send_line_message(user_id, text)
         # step_sent を記録
         if user_id in users:
@@ -168,6 +173,8 @@ def cancel_user_steps(user_id):
 def schedule_step_messages(user_id):
     """友だち追加時にステップ配信をスケジュール（永続化対応）"""
     schedules = load_json(SCHEDULE_FILE, [])
+    # 再follow等での二重スケジュール防止
+    schedules = [s for s in schedules if s["user_id"] != user_id]
     now = datetime.now()
 
     for step_name, delay in STEP_DELAYS.items():
@@ -301,7 +308,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
         self.end_headers()
-        self.wfile.write(b"TAITAN PRO LINE Bot is running (guide-v3-shapinned)")
+        self.wfile.write(b"TAITAN PRO LINE Bot is running (guide-v4-stepdedup)")
 
     def do_POST(self):
         content_length = int(self.headers.get("Content-Length", 0))
