@@ -1,7 +1,12 @@
 name: 失敗ジョブ自動リトライ
 
-# GitHub側の一時障害（Runner未割り当て / Internal server error 等）で
-# ワークフローが失敗したとき、失敗ジョブだけを自動で1回だけ再実行する。
+# GitHub側の一時障害（Runner未割り当て / action download失敗 / Internal server error 等）で
+# ワークフローが失敗したとき、失敗ジョブだけを自動で再実行する。
+# - 1回目の失敗: 原因を問わず再実行
+# - 2回目の失敗: エラーがGitHubインフラ起因のときだけ、90秒待ってもう1回だけ再実行
+#   （インフラ障害は数分続くことがあり、即時リトライ1回では同じ障害を踏み直すため）
+# - 3回目以降: 再実行しない（auto_fix.yml のIssue通知に任せる）
+# スクリプト自体の失敗は2回目以降リトライしないので無限ループしない。
 
 on:
   workflow_run:
@@ -20,22 +25,41 @@ on:
 
 permissions:
   actions: write
+  checks: read
   contents: read
 
 jobs:
   retry:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    # 失敗した最初の試行だけを対象にする（再実行後の再失敗ではループさせない）
+    timeout-minutes: 10
     if: >
       github.event.workflow_run.conclusion == 'failure' &&
-      github.event.workflow_run.run_attempt == 1
+      github.event.workflow_run.run_attempt < 3
     steps:
       - name: 失敗ジョブを再実行
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RUN_ID: ${{ github.event.workflow_run.id }}
+          ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
           WF_NAME: ${{ github.event.workflow_run.name }}
         run: |
-          echo "「$WF_NAME」(run $RUN_ID) が失敗。失敗ジョブを再実行します。"
+          if [ "$ATTEMPT" -ge 2 ]; then
+            # 2回目以降はGitHubインフラ起因の失敗のみ対象（コード起因の失敗をループさせない）
+            infra_regex='Failed to resolve action download info|An error occurred while sending the request|Internal server error|lost communication with the server|received a shutdown signal|did not respond to a cancelation|deprovision'
+            failed_job_ids=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/attempts/$ATTEMPT/jobs" \
+              --jq '.jobs[] | select(.conclusion == "failure") | .id')
+            messages=""
+            for job_id in $failed_job_ids; do
+              messages="$messages$(gh api "repos/$GITHUB_REPOSITORY/check-runs/$job_id/annotations" --jq '[.[].message] | join("\n")')"$'\n'
+            done
+            echo "失敗ジョブのエラー内容:"
+            echo "$messages"
+            if ! echo "$messages" | grep -qiE "$infra_regex"; then
+              echo "GitHubインフラ起因のエラーではないため再実行しません（auto_fix.yml のIssue通知に任せます）"
+              exit 0
+            fi
+            echo "インフラ起因の連続失敗。障害が引くのを90秒待ってから再実行します。"
+            sleep 90
+          fi
+          echo "「$WF_NAME」(run $RUN_ID, attempt $ATTEMPT) が失敗。失敗ジョブを再実行します。"
           gh run rerun "$RUN_ID" --failed --repo "$GITHUB_REPOSITORY"

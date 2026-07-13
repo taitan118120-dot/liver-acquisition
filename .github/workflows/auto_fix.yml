@@ -87,3 +87,43 @@ jobs:
               });
               core.info(`Created issue #${created.number}`);
             }
+
+  # 自動リトライ等で復旧したら、対応する失敗Issueを自動クローズする
+  # （開きっぱなしのIssueが溜まると本物の障害が埋もれるため）
+  close-on-recovery:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Close matching failure issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+            const title = `ワークフロー失敗: ${run.name}`;
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const match = existing.find(i => i.title === title);
+            if (!match) {
+              core.info('該当する失敗Issueなし');
+              return;
+            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: match.number,
+              body: `復旧: [Run #${run.id}](${run.html_url}) が成功しました。自動クローズします。`,
+            });
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: match.number,
+              state: 'closed',
+            });
+            core.info(`Closed issue #${match.number}`);
