@@ -78,9 +78,24 @@ BROAD_TAGS = ["ライブ配信", "ライバー", "副業", "初心者", "在宅�
               "スマホ副業", "配信のコツ", "リスナー", "お金の勉強", "働き方"]
 
 
+def _env_cookies():
+    """CI用: NOTE_COOKIES_JSON Secret のcookieリストを返す（無ければNone）。"""
+    raw = os.environ.get("NOTE_COOKIES_JSON", "").strip()
+    if not raw:
+        return None
+    try:
+        cookies = json.loads(raw)
+        return cookies if isinstance(cookies, list) and cookies else None
+    except json.JSONDecodeError:
+        return None
+
+
 def refresh_cookies():
     """Chrome の note.com cookie を browser_cookie3 で読み、note_cookies.json を最新化。
-    stale cookie による Playwright ログイン失敗（=更新できずタグ抜け）を防ぐ。"""
+    stale cookie による Playwright ログイン失敗（=更新できずタグ抜け）を防ぐ。
+    CI（browser_cookie3なし）では NOTE_COOKIES_JSON Secret をそのまま使うためスキップ。"""
+    if _env_cookies() is not None:
+        return None
     import browser_cookie3
     cj = browser_cookie3.chrome(domain_name="note.com")
     out = []
@@ -96,9 +111,15 @@ def refresh_cookies():
 
 def make_session():
     import requests
-    import browser_cookie3
     s = requests.Session()
-    s.cookies = browser_cookie3.chrome(domain_name="note.com")
+    env = _env_cookies()
+    if env is not None:
+        for c in env:
+            s.cookies.set(c["name"], c["value"],
+                          domain=c.get("domain", ".note.com"), path=c.get("path", "/"))
+    else:
+        import browser_cookie3
+        s.cookies = browser_cookie3.chrome(domain_name="note.com")
     s.headers.update({
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
                       "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
@@ -169,10 +190,17 @@ def generate_hashtags(title, article_num=None):
 
 # ── Playwright UI でタグを付与（fetch-PUTは効かないため必須）──
 def _load_pw_cookies():
-    cookies = json.loads(COOKIE_FILE.read_text())
+    cookies = _env_cookies() or json.loads(COOKIE_FILE.read_text())
+    out = []
     for c in cookies:
-        c["sameSite"] = (c.get("sameSite") or "Lax").capitalize()
-    return cookies
+        out.append({
+            "name": c["name"], "value": c["value"],
+            "domain": c.get("domain", ".note.com"), "path": c.get("path", "/"),
+            "httpOnly": bool(c.get("httpOnly", False)),
+            "secure": bool(c.get("secure", True)),
+            "sameSite": (c.get("sameSite") or "Lax").capitalize(),
+        })
+    return out
 
 
 def set_tags_via_ui(page, key, hashtags):
