@@ -245,18 +245,23 @@ def set_eyecatch(article_num, note_key, headless=True):
 
         browser.close()
 
-    # editor内fetchはオリジン都合で取れないことがあるため、公開側APIで最終確認する
+    # editor内fetchはオリジン都合で取れないことがあるため、公開側APIで最終確認する。
+    # アップロード直後は公開APIへの反映に数十秒かかることがあるのでリトライする。
     if not eyecatch_url:
         try:
             import requests
-            r = requests.get(
-                f"https://note.com/api/v3/notes/{note_key}",
-                headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
-            data = r.json().get("data", {}) if r.status_code == 200 else {}
-            ec = data.get("eyecatch") or ""
-            if "uploads/images" in ec:
-                eyecatch_url = ec
-                print(f"  [verify] 公開APIでeyecatch確認OK")
+            for attempt in range(1, 6):
+                time.sleep(10)
+                r = requests.get(
+                    f"https://note.com/api/v3/notes/{note_key}",
+                    headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
+                data = r.json().get("data", {}) if r.status_code == 200 else {}
+                ec = data.get("eyecatch") or ""
+                if "uploads/images" in ec:
+                    eyecatch_url = ec
+                    print(f"  [verify] 公開APIでeyecatch確認OK (attempt {attempt})")
+                    break
+                print(f"  [verify] eyecatch未反映 (attempt {attempt})")
         except Exception as e:
             print(f"  [verify] 公開API確認失敗: {e}")
 
