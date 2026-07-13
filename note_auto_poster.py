@@ -151,6 +151,32 @@ def get_latest_unpublished():
     return None
 
 
+def get_unpublished_queue():
+    """未投稿の記事番号を投稿優先順（get_latest_unpublishedと同じ走査順）で全部返す。"""
+    published = get_published_article_nums()
+    queue = []
+
+    if os.path.exists(TRACKER_FILE):
+        try:
+            with open(TRACKER_FILE, "r", encoding="utf-8") as f:
+                tracker = json.load(f)
+            for item in reversed(tracker.get("used", [])):
+                num = item.get("article_number")
+                if num and not item.get("published", False) and num not in published:
+                    queue.append(num)
+        except (json.JSONDecodeError, KeyError):
+            pass
+
+    pattern = os.path.join(ARTICLES_DIR, "*.md")
+    for filepath in reversed(sorted(glob.glob(pattern))):
+        match = re.match(r"(\d+)_", os.path.basename(filepath))
+        if match:
+            num = int(match.group(1))
+            if num not in published and num not in queue:
+                queue.append(num)
+    return queue
+
+
 def format_body_for_note(body):
     try:
         sys.path.insert(0, BASE_DIR)
@@ -1320,6 +1346,7 @@ def update_article(article_num, session=None, note_id_map=None, dry_run=False):
         if res.get("url") and not res.get("draft_only"):
             print(f"  再投稿成功: {res['url']}")
             _guard_tags_after_publish(res["url"], article_num, title)
+            _ensure_eyecatch_after_publish(res["url"], article_num)
             return {"success": True, "url": res["url"]}
         if res.get("url"):
             print(f"  下書き保存済み（手動公開が必要）: {res['url']}")
@@ -1391,6 +1418,33 @@ def _guard_tags_after_publish(url, article_num=None, title=None):
         print(f"  [tag-guard] スキップ（例外）: {e}")
 
 
+def _resolve_cover_image(article_num):
+    """カバー画像 blog/images/{num}_*.png のパスを返す（無ければNone）。"""
+    import note_set_eyecatch
+    return note_set_eyecatch.resolve_image(article_num)
+
+
+def _ensure_eyecatch_after_publish(url, article_num):
+    """公開直後にカバー画像（アイキャッチ）を自動設定する。
+    失敗しても投稿自体は成功扱いのまま。呼び出し元がexit codeで可視化する。"""
+    try:
+        m = re.search(r"/n/(n[0-9a-f]+)", url or "")
+        if not m:
+            print("  [eyecatch] URLからnote_keyを取れずスキップ")
+            return False
+        import note_set_eyecatch
+        time.sleep(5)  # 公開直後はeditorへの反映を少し待つ
+        res = note_set_eyecatch.set_eyecatch(article_num, m.group(1))
+        if res.get("ok") and res.get("eyecatch_url"):
+            print(f"  [eyecatch] 設定OK: {res['eyecatch_url'][:80]}")
+            return True
+        print(f"  [eyecatch] ⚠️ 設定失敗/未確認: {res.get('reason') or res}")
+        return False
+    except Exception as e:
+        print(f"  [eyecatch] ⚠️ 例外: {e}")
+        return False
+
+
 def post_article(article_num, dry_run=False):
     filepath = get_article_file(article_num)
     if not filepath:
@@ -1401,6 +1455,7 @@ def post_article(article_num, dry_run=False):
     hashtags = get_hashtags_for_article(article_num)
     formatted_body = format_body_for_note(body)
     body_html = markdown_to_html(formatted_body)
+    cover = _resolve_cover_image(article_num)
 
     print(f"\n{'='*50}")
     print(f"  Note.com 自動投稿（API方式）")
@@ -1409,10 +1464,19 @@ def post_article(article_num, dry_run=False):
     print(f"  タイトル: {title}")
     print(f"  文字数: {len(formatted_body)}文字")
     print(f"  ハッシュタグ: {' '.join('#' + t for t in hashtags[:10])}")
+    print(f"  カバー画像: {os.path.basename(cover) if cover else '⚠️ なし'}")
 
     if dry_run:
         print("\n  [dry-run] 投稿スキップ")
         return {"success": True, "dry_run": True}
+
+    # カバー画像なしの記事は公開しない（付け忘れ防止ガード）。
+    # blog/images/ に {num}_*.png を追加すれば次回実行で投稿される。
+    if not cover:
+        msg = f"カバー画像なし: blog/images/{article_num}_*.png を追加してください（公開中止）"
+        print(f"\n  ⚠️ {msg}")
+        log_result(article_num, title, "", False, msg)
+        return {"success": False, "error": msg, "no_cover": True}
 
     email, password = get_credentials()
 
@@ -1428,7 +1492,8 @@ def post_article(article_num, dry_run=False):
                 log_result(article_num, title, http_result["url"], True)
                 mark_as_published(article_num)
                 _guard_tags_after_publish(http_result["url"], article_num, title)
-                return {"success": True, "url": http_result["url"]}
+                eyecatch_ok = _ensure_eyecatch_after_publish(http_result["url"], article_num)
+                return {"success": True, "url": http_result["url"], "eyecatch_ok": eyecatch_ok}
             # publish=True を渡しているので通常ここには来ないが、保険
             log_result(article_num, title, http_result["url"], True, "HTTP経由で下書き保存（手動公開が必要）")
             mark_as_published(article_num)
@@ -1440,7 +1505,8 @@ def post_article(article_num, dry_run=False):
                 log_result(article_num, title, pw_result["url"], True, "Playwright経由で公開")
                 mark_as_published(article_num)
                 _guard_tags_after_publish(pw_result["url"], article_num, title)
-                return {"success": True, "url": pw_result["url"]}
+                eyecatch_ok = _ensure_eyecatch_after_publish(pw_result["url"], article_num)
+                return {"success": True, "url": pw_result["url"], "eyecatch_ok": eyecatch_ok}
             if pw_result["url"] and pw_result["draft_only"]:
                 log_result(article_num, title, pw_result["url"], True, "Playwright経由で下書き保存（手動公開が必要）")
                 mark_as_published(article_num)
@@ -1482,6 +1548,8 @@ def main():
                 print(f"  更新失敗: {result.get('error')}")
         return
 
+    skipped_no_cover = []
+
     if args.post:
         article_num = args.post
         # 既に投稿済みの場合は警告して正常終了
@@ -1489,10 +1557,23 @@ def main():
             print(f"記事 #{article_num} は既に投稿済みです。スキップします。")
             sys.exit(0)
     elif args.post_latest:
-        article_num = get_latest_unpublished()
-        if article_num is None:
+        queue = get_unpublished_queue()
+        if not queue:
             print("未投稿の記事がありません（全て投稿済み）")
             sys.exit(0)
+        # カバー画像のある記事を優先して投稿（無い記事は飛ばしてキューを止めない）
+        article_num = None
+        for num in queue:
+            if args.dry_run or _resolve_cover_image(num):
+                article_num = num
+                break
+            skipped_no_cover.append(num)
+        if skipped_no_cover:
+            print(f"⚠️ カバー画像なしでスキップ: {skipped_no_cover} "
+                  f"（blog/images/ に {{番号}}_*.png を追加してください）")
+        if article_num is None:
+            print("投稿できる記事がありません（未投稿は全てカバー画像なし）")
+            sys.exit(3)
     else:
         parser.print_help()
         return
@@ -1503,6 +1584,14 @@ def main():
             print("\n下書き保存完了（公開APIが利用不可のため手動公開が必要です）")
         else:
             print("\n投稿完了!")
+        if (not args.dry_run and not result.get("draft_only")
+                and not result.get("eyecatch_ok")):
+            print("⚠️ カバー画像の自動設定に失敗（記事は公開済み）。"
+                  "python3 note_set_eyecatch.py <番号> <note_key> でリカバリしてください。")
+            sys.exit(4)
+        if skipped_no_cover:
+            # 投稿自体は成功。カバー無し記事の放置に気づけるようexit 3で赤くする
+            sys.exit(3)
     else:
         print(f"\n投稿失敗: {result.get('error', 'unknown')}")
         sys.exit(1)
