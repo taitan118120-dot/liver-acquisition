@@ -308,7 +308,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
         self.end_headers()
-        self.wfile.write(b"TAITAN PRO LINE Bot is running (guide-v4-stepdedup)")
+        self.wfile.write(b"TAITAN PRO LINE Bot is running (guide-v5-notify-keepalive)")
 
     def do_POST(self):
         content_length = int(self.headers.get("Content-Length", 0))
@@ -370,6 +370,15 @@ class WebhookHandler(BaseHTTPRequestHandler):
                 # ステップ配信スケジュール
                 schedule_step_messages(user_id)
 
+                # 管理者に即時通知（Botだけが知っているリードを作らない）
+                name = get_display_name(user_id)
+                notify_admin(
+                    "🆕 新しい友だちが追加されました\n"
+                    f"名前: {name or '(取得失敗)'}\n"
+                    f"ID: {user_id[:8]}\n\n"
+                    "welcomeと特典PDFは自動送信済みです。"
+                )
+
             elif event_type == "message":
                 msg = event.get("message", {})
                 if msg.get("type") != "text":
@@ -406,6 +415,13 @@ class WebhookHandler(BaseHTTPRequestHandler):
                     # ウェルカムはpushで送信（この後の返信でreply_tokenを使うため）
                     send_line_message(user_id, STEP_MESSAGES["welcome"]["text"])
                     schedule_step_messages(user_id)
+                    name = get_display_name(user_id)
+                    notify_admin(
+                        "🆕 新しい友だちを回収しました（follow未受信→初回メッセージで登録）\n"
+                        f"名前: {name or '(取得失敗)'}\n"
+                        f"ID: {user_id[:8]}\n\n"
+                        "welcomeと特典PDFは今送信しました。"
+                    )
 
                 # 面談確定後・手動対応中は自動送信しない（担当が直接返信する）
                 if user_data.get("auto_paused"):
@@ -422,6 +438,13 @@ class WebhookHandler(BaseHTTPRequestHandler):
                         save_json(USERS_FILE, users)
                         print(f"[SOURCE] {user_id[:8]}... -> {source}")
                         reply_line_message(reply_token, SOURCE_THANKS, user_id)
+                        name = get_display_name(user_id)
+                        notify_admin(
+                            "📍 流入元が分かりました\n"
+                            f"名前: {name or '(取得失敗)'}\n"
+                            f"ID: {user_id[:8]}\n"
+                            f"流入元: {source}"
+                        )
                         continue
 
                 # 面談の日程候補への返答待ち
@@ -491,6 +514,33 @@ class WebhookHandler(BaseHTTPRequestHandler):
         pass
 
 
+# --- 自己keepalive ---
+# Render無料枠は「外部からのリクエスト」が15分ないとスリープする。
+# GitHub Actionsのcron pingは実際には数時間おきにしか走らないことがある（cron遅延）ため、
+# プロセス自身が公開URLを定期的に叩いてスリープを防ぐ。
+# （自分の公開URL経由のアクセスはRenderのプロキシを通るので、外部リクエストとして扱われる）
+# 万一プロセスが落ちて眠っても、Actionsのpingが次に走った時点で起こされ、以後は自走する。
+SELF_URL = os.environ.get("SELF_URL", "https://liver-acquisition.onrender.com/")
+SELF_PING_INTERVAL = 8 * 60  # 秒。15分のスリープ閾値より十分短く
+
+
+def start_self_keepalive():
+    from urllib.request import urlopen
+
+    def _loop():
+        while True:
+            time.sleep(SELF_PING_INTERVAL)
+            try:
+                with urlopen(SELF_URL, timeout=30) as res:
+                    res.read(64)
+            except Exception as e:
+                print(f"[KEEPALIVE] self-ping failed: {e}")
+
+    t = threading.Thread(target=_loop, daemon=True)
+    t.start()
+    print(f"[KEEPALIVE] self-ping every {SELF_PING_INTERVAL}s -> {SELF_URL}")
+
+
 # --- メイン ---
 def main():
     if not LINE_CHANNEL_ACCESS_TOKEN:
@@ -517,6 +567,9 @@ def main():
 
     # 未送信のステップ配信を復元
     restore_pending_steps()
+
+    # スリープ防止の自己ping
+    start_self_keepalive()
 
     server = HTTPServer(("0.0.0.0", port), WebhookHandler)
     print(f"[START] TAITAN PRO LINE Bot running on port {port}")
