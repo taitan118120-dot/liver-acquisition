@@ -137,6 +137,25 @@ def _send_step_if_active(user_id, step_name, text):
             print(f"[STEP] Skipped '{step_name}' for {user_id[:8]}... ({reason})")
             _remove_schedule(user_id, step_name)
             return
+        # 面談フローに入った人（日程提示済み）には送らない。
+        # 番号選択を通らずチャット手動調整→LINE通話で面談済みになるケースがあり、
+        # その場合 auto_paused が立たないまま「その後いかがですか？」が飛んでしまう
+        if user.get("meeting_offered") or user.get("awaiting_slot"):
+            print(f"[STEP] Skipped '{step_name}' for {user_id[:8]}... (meeting flow)")
+            _remove_schedule(user_id, step_name)
+            return
+        # 直近12時間以内にメッセージをくれた人＝会話が生きている相手にも送らない
+        # （担当が手動でやり取り中の可能性が高く、放置者向けの文面が不自然になる）
+        last = user.get("last_user_message_at")
+        if last:
+            try:
+                idle = datetime.now() - datetime.fromisoformat(last)
+                if idle < timedelta(hours=12):
+                    print(f"[STEP] Skipped '{step_name}' for {user_id[:8]}... (recent conversation)")
+                    _remove_schedule(user_id, step_name)
+                    return
+            except ValueError:
+                pass
         # 再起動やstate復元で同じスケジュールが蘇っても二重送信しない
         if step_name in user.get("step_sent", []):
             print(f"[STEP] Skipped '{step_name}' for {user_id[:8]}... (already sent)")
@@ -308,7 +327,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
         self.end_headers()
-        self.wfile.write(b"TAITAN PRO LINE Bot is running (guide-v5-notify-keepalive)")
+        self.wfile.write(b"TAITAN PRO LINE Bot is running (guide-v6-engaged-guard)")
 
     def do_POST(self):
         content_length = int(self.headers.get("Content-Length", 0))
@@ -423,6 +442,12 @@ class WebhookHandler(BaseHTTPRequestHandler):
                         "welcomeと特典PDFは今送信しました。"
                     )
 
+                # 最終受信時刻を記録（フォローアップの「会話中スキップ」判定に使う）
+                if user_id and user_id != ADMIN_USER_ID and user_id in users:
+                    user_data["last_user_message_at"] = datetime.now().isoformat()
+                    users[user_id] = user_data
+                    save_json(USERS_FILE, users)
+
                 # 面談確定後・手動対応中は自動送信しない（担当が直接返信する）
                 if user_data.get("auto_paused"):
                     print(f"[PAUSED] {user_id[:8]}... (手動対応中、自動応答スキップ)")
@@ -502,6 +527,29 @@ class WebhookHandler(BaseHTTPRequestHandler):
                     save_json(USERS_FILE, users)
                     reply_line_message(reply_token, replies, user_id)
                 else:
+                    # 日程提示後の自由回答（番号でも日時でもキーワードでもない）
+                    # → 個別の相談・返事の可能性が高いので自動対応をやめて手動に切り替える
+                    if user_data.get("awaiting_slot") or user_data.get("meeting_offered"):
+                        user_data["awaiting_slot"] = False
+                        user_data["auto_paused"] = True
+                        users[user_id] = user_data
+                        save_json(USERS_FILE, users)
+                        cancel_user_steps(user_id)
+                        reply_line_message(
+                            reply_token,
+                            "メッセージありがとうございます！\n"
+                            "内容を確認して、担当からこのLINEでご連絡しますね😊",
+                            user_id,
+                        )
+                        name = get_display_name(user_id)
+                        notify_admin(
+                            "✋ 手動対応に切り替えました（面談フロー中に自由メッセージ）\n"
+                            f"名前: {name or '(取得失敗)'}\n"
+                            f"ID: {user_id[:8]}\n"
+                            f"内容: {text[:200]}\n\n"
+                            "この人への自動送信は停止済みです。直接返信してください。"
+                        )
+                        continue
                     # DEFAULT_REPLY は初回メッセージ時のみ送信
                     if not user_data.get("default_replied"):
                         reply_line_message(reply_token, DEFAULT_REPLY, user_id)
