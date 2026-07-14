@@ -327,7 +327,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
         self.end_headers()
-        self.wfile.write(b"TAITAN PRO LINE Bot is running (guide-v8-17live)")
+        self.wfile.write(b"TAITAN PRO LINE Bot is running (guide-v9-slots21-24-jst)")
 
     def do_POST(self):
         content_length = int(self.headers.get("Content-Length", 0))

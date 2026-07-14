@@ -79,16 +79,17 @@ WEEKDAYS_JA = ["月", "火", "水", "木", "金", "土", "日"]
 
 
 def make_slot_candidates(now=None):
-    """明日20時 / 明後日21時 / 次の土曜13時 の3候補を生成"""
+    """明日21時 / 明後日22時 / 次の土曜21時 の3候補を生成
+    ※担当が対応できるのは21〜24時のみ。この枠の外の時間を候補に出さないこと"""
     now = now or datetime.now()
     slots = [
-        (now + timedelta(days=1)).replace(hour=20, minute=0),
-        (now + timedelta(days=2)).replace(hour=21, minute=0),
+        (now + timedelta(days=1)).replace(hour=21, minute=0),
+        (now + timedelta(days=2)).replace(hour=22, minute=0),
     ]
     days_to_sat = (5 - now.weekday()) % 7
     if days_to_sat <= 2:
         days_to_sat += 7
-    slots.append((now + timedelta(days=days_to_sat)).replace(hour=13, minute=0))
+    slots.append((now + timedelta(days=days_to_sat)).replace(hour=21, minute=0))
     return [f"{s.month}/{s.day}({WEEKDAYS_JA[s.weekday()]}) {s.hour}:00〜" for s in slots]
 
 
@@ -117,7 +118,8 @@ def make_meeting_offer(intro=MEETING_OFFER_INTRO):
         f"② {c[1]}\n"
         f"③ {c[2]}\n\n"
         "合う時間がなければ、ご希望の日時をそのまま送ってもらってもOKです！\n"
-        "（例：「金曜の21時」「日曜の昼」）"
+        "夜21時〜24時の間だと調整しやすいです🌙\n"
+        "（例：「金曜の22時」「日曜の21時半」）"
     )
     return text, c
 
