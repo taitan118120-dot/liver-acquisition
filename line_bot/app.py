@@ -6,6 +6,7 @@ TAITAN PRO LINE Bot - Webhookサーバー
 """
 
 import os
+import re
 import json
 import hashlib
 import hmac
@@ -298,13 +299,47 @@ def handle_admin_command(text):
 
 
 # --- キーワード応答 ---
+_URL_RE = re.compile(r"https?://\S+")
+
+
 def find_auto_reply(text):
-    """ユーザーメッセージからキーワードを探して自動返信テキストを返す"""
-    text_normalized = text.strip().lower()
+    """ユーザーメッセージからキーワードを探して自動返信テキストを返す
+
+    URL部分はキーワード判定から除外する。プロフィールリンクの共有
+    （例: pococha.comのURL）は質問ではないので、URL内の文字列に
+    反応して解説を送り返さない。
+    """
+    text_normalized = _URL_RE.sub(" ", text).strip().lower()
+    if not text_normalized:
+        # メッセージがURLだけ＝リンク共有。自動応答しない
+        return None
     for keyword, reply in AUTO_REPLIES.items():
         if keyword.lower() in text_normalized:
             return reply
     return None
+
+
+def switch_to_manual(user_id, user_data, users, reply_token, text, reason):
+    """自動対応をやめて手動対応に切り替える（以降の自動送信を全停止）"""
+    user_data["awaiting_slot"] = False
+    user_data["auto_paused"] = True
+    users[user_id] = user_data
+    save_json(USERS_FILE, users)
+    cancel_user_steps(user_id)
+    reply_line_message(
+        reply_token,
+        "メッセージありがとうございます！\n"
+        "内容を確認して、担当からこのLINEでご連絡しますね😊",
+        user_id,
+    )
+    name = get_display_name(user_id)
+    notify_admin(
+        f"✋ 手動対応に切り替えました（{reason}）\n"
+        f"名前: {name or '(取得失敗)'}\n"
+        f"ID: {user_id[:8]}\n"
+        f"内容: {text[:200]}\n\n"
+        "この人への自動送信は停止済みです。直接返信してください。"
+    )
 
 
 # --- 署名検証 ---
@@ -327,7 +362,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
         self.end_headers()
-        self.wfile.write(b"TAITAN PRO LINE Bot is running (guide-v9-slots21-24-jst)")
+        self.wfile.write(b"TAITAN PRO LINE Bot is running (guide-v10-no-autoreply-after-meeting)")
 
     def do_POST(self):
         content_length = int(self.headers.get("Content-Length", 0))
@@ -449,7 +484,9 @@ class WebhookHandler(BaseHTTPRequestHandler):
                     save_json(USERS_FILE, users)
 
                 # 面談確定後・手動対応中は自動送信しない（担当が直接返信する）
-                if user_data.get("auto_paused"):
+                # meeting_scheduled は auto_paused とセットで立つはずだが、
+                # 手動での状態修正等で片方だけになっても止まるよう両方見る
+                if user_data.get("auto_paused") or user_data.get("meeting_scheduled"):
                     print(f"[PAUSED] {user_id[:8]}... (手動対応中、自動応答スキップ)")
                     continue
 
@@ -497,7 +534,14 @@ class WebhookHandler(BaseHTTPRequestHandler):
                         )
                         print(f"[MEETING] {user_id[:8]}... -> {slot}")
                         continue
-                    # 日程と判定できない場合は通常の応答に流す（質問の可能性）
+                    # 日程と判定できない返信は、手動調整の相談や個別の返事。
+                    # キーワード応答に流すと文中の「ポコチャ」等の一語に
+                    # 解説Botが反応してしまうので、必ず手動対応へ切り替える
+                    switch_to_manual(
+                        user_id, user_data, users, reply_token, text,
+                        "日程候補への自由文返信",
+                    )
+                    continue
 
                 # 「面談」キーワード → LINE内で日程候補を提示
                 if "面談" in text or "めんだん" in text:
@@ -530,24 +574,9 @@ class WebhookHandler(BaseHTTPRequestHandler):
                     # 日程提示後の自由回答（番号でも日時でもキーワードでもない）
                     # → 個別の相談・返事の可能性が高いので自動対応をやめて手動に切り替える
                     if user_data.get("awaiting_slot") or user_data.get("meeting_offered"):
-                        user_data["awaiting_slot"] = False
-                        user_data["auto_paused"] = True
-                        users[user_id] = user_data
-                        save_json(USERS_FILE, users)
-                        cancel_user_steps(user_id)
-                        reply_line_message(
-                            reply_token,
-                            "メッセージありがとうございます！\n"
-                            "内容を確認して、担当からこのLINEでご連絡しますね😊",
-                            user_id,
-                        )
-                        name = get_display_name(user_id)
-                        notify_admin(
-                            "✋ 手動対応に切り替えました（面談フロー中に自由メッセージ）\n"
-                            f"名前: {name or '(取得失敗)'}\n"
-                            f"ID: {user_id[:8]}\n"
-                            f"内容: {text[:200]}\n\n"
-                            "この人への自動送信は停止済みです。直接返信してください。"
+                        switch_to_manual(
+                            user_id, user_data, users, reply_token, text,
+                            "面談フロー中に自由メッセージ",
                         )
                         continue
                     # DEFAULT_REPLY は初回メッセージ時のみ送信
