@@ -185,6 +185,7 @@ evo_360
 evo_370
 evo_374
 evo_375
+evo_393
 evo_476
 evo_486
 g01
