@@ -22,7 +22,7 @@ KEYS_FILE = os.path.join(BASE_DIR, "data", "published_note_keys.json")
 LOG_FILE = os.path.join(BASE_DIR, "data", "leadmagnet_update_log.json")
 
 LM_HTML = (
-    "<p>🎁 <strong>友だち追加特典</strong>：『Pococha新人期スタートダッシュガイド』——"
+    "<p>🎁 <strong>友だち追加特典</strong>：『ライバー新人期スタートダッシュガイド』——"
     "最初の30日でやることを全部まとめた非売品PDFを、LINE登録した方全員に無料でお渡ししています。</p>"
 )
 

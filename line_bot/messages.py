@@ -9,10 +9,10 @@ from datetime import datetime, timedelta
 # URLは @main ではなくPDF更新コミットのSHA固定にする。@mainだとURLが変わらず
 # LINEアプリ内ブラウザ/iOS Safariが旧PDFを端末キャッシュし続けて更新が反映されないため、
 # PDFを差し替えたら下記SHAも更新すること（そのコミットのハッシュを入れる）。
-GUIDE_PDF_SHA = "55b020513f971d6a4e6fd1183ab7062d1c80e5e9"
+GUIDE_PDF_SHA = "1a5a8463019fde43e3a9b71b17e7a1de0b9c7243"
 GUIDE_URL = (
     "https://cdn.jsdelivr.net/gh/taitan118120-dot/liver-acquisition@"
-    f"{GUIDE_PDF_SHA}/lp/shared/pococha_starter_guide.pdf"
+    f"{GUIDE_PDF_SHA}/lp/shared/liver_starter_guide.pdf"
 )
 
 STEP_MESSAGES = {
@@ -22,8 +22,9 @@ STEP_MESSAGES = {
             "Pococha・TikTok LIVE・17LIVE専門のライバー事務所\n"
             "TAITAN PROのマネージャーです 🙌\n\n"
             "🎁 まずは友だち追加特典をどうぞ！\n"
-            "『Pococha新人期スタートダッシュガイド』\n"
-            "（最初の30日でやることを全部まとめた非売品PDFです）\n"
+            "『ライバー新人期スタートダッシュガイド』\n"
+            "（最初の30日でやることを全部まとめた非売品PDF。\n"
+            "Pococha・TikTok LIVE・17LIVEどれでも使えます）\n"
             f"▼ こちらから読めます\n{GUIDE_URL}\n\n"
             "ライバーについて、何でも気軽に聞いてください！\n\n"
             "▼ よくある質問\n"
@@ -393,9 +394,10 @@ AUTO_REPLIES = {
 
 AUTO_REPLIES["特典"] = (
     "🎁 友だち追加特典はこちらです！\n\n"
-    "『Pococha新人期スタートダッシュガイド』\n"
+    "『ライバー新人期スタートダッシュガイド』\n"
     "最初の30日でやること（準備・初配信・御新規さん対応・ロードマップ）を\n"
     "全部まとめた非売品PDFです。\n"
+    "（Pococha・TikTok LIVE・17LIVEどれでも使えます）\n"
     f"▼ こちらから読めます\n{GUIDE_URL}\n\n"
     "読んで気になったことがあれば、そのまま聞いてくださいね。\n"
     "「面談」と送ってもらえれば、あなたに合わせた\n"

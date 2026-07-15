@@ -19,7 +19,7 @@ from note_leadmagnet_publish import publish_one, verify
 EARLY_MARK = "先に特典だけ受け取る"
 EARLY_HTML = (
     "<p>🎁 <strong>先に特典だけ受け取るのもOK</strong>：配信の最初の30日でやることを"
-    "全部まとめた非売品PDF『Pococha新人期スタートダッシュガイド』を、"
+    "全部まとめた非売品PDF『ライバー新人期スタートダッシュガイド』を、"
     '<a href="https://lin.ee/xchCfdn">公式LINEの友だち追加</a>で無料でお渡ししています。</p>'
 )
 
