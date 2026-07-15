@@ -9,13 +9,16 @@ Note.com 自動投稿（API方式）
   python3 note_auto_poster.py --post-latest            # 最新未投稿記事を投稿
   python3 note_auto_poster.py --post 27                 # 指定番号の記事を投稿
   python3 note_auto_poster.py --post-latest --dry-run   # 投稿せず確認のみ
+  python3 note_auto_poster.py --update 27 28            # 公開中の記事を in-place 更新
+  python3 note_auto_poster.py --update-all              # 公開中の全記事を in-place 更新
 
 環境変数:
-  NOTE_EMAIL    - Note.comログインメール
-  NOTE_PASSWORD - Note.comログインパスワード
+  NOTE_EMAIL          - Note.comログインメール（--post 用）
+  NOTE_PASSWORD       - Note.comログインパスワード（--post 用）
+  NOTE_COOKIES_JSON   - ログインcookie配列（--update 系のCI実行用。ローカルはChrome cookie自動）
 
 必要:
-  pip install requests
+  pip install requests playwright   # --update 系は playwright(chromium) が必須
 """
 
 import os
@@ -38,6 +41,10 @@ TRACKER_FILE = os.path.join(DATA_DIR, "note_keyword_tracker.json")
 LOG_FILE = os.path.join(DATA_DIR, "note_auto_post_log.csv")
 
 NOTE_API_BASE = "https://note.com/api"
+NOTE_CREATOR = "taitan_118"
+NOTE_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+           "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+RECAPTCHA_SITEKEY = "6LefXTAsAAAAADYVISEItAl0IX1rgSGQ-asNy56w"
 
 # ─── ユーティリティ ───────────────────────────────────
 
@@ -1202,8 +1209,11 @@ def api_publish(session, note_key):
 
 
 # ─── 投稿済み記事のキーマッピング ─────────────────────
-# 実際に公開済みの記事のみ（API確認済み 2026-04-09）
-# 投稿済みの全記事（キーが不明な古い記事はダミー値）
+# ⚠ これは post 時の「二重投稿スキップ用の記事番号台帳」であって、更新には使わない。
+#    #1〜24 は実keyが無いダミー値（"published"）で、退役済み記事も混在する。
+#    更新（--update / --update-all）の key 解決は fetch_published_title_key_map()
+#    （公開中の記事のみを返す creator contents API）でタイトル突合して行うため、
+#    ここに退役済み記事が残っていても再公開事故は起きない。
 PUBLISHED_KEYS = {
     1: "published", 2: "published", 3: "published", 4: "published",
     5: "published", 6: "published", 7: "published", 8: "published",
@@ -1236,147 +1246,225 @@ def get_published_article_nums():
     return published
 
 
-def resolve_note_ids(session, urlname="taitan_118"):
-    """投稿済み記事の数値IDを取得"""
-    print(f"  投稿済み記事のID解決中...")
-    id_map = {}
-    page = 1
-    while True:
-        resp = session.get(
-            f"{NOTE_API_BASE}/v2/creators/{urlname}/contents",
-            params={"kind": "note", "page": page, "size": 50},
-            timeout=30,
-        )
-        if resp.status_code != 200:
-            print(f"  ⚠ 記事一覧取得失敗: HTTP {resp.status_code}")
-            break
-        data = resp.json()
-        contents = data.get("data", {}).get("contents", [])
-        if not contents:
-            break
-        for note in contents:
-            key = note.get("key", "")
-            note_id = note.get("id")
-            if key and note_id:
-                id_map[key] = note_id
-        page += 1
-    print(f"  {len(id_map)}件の記事IDを取得")
-    # デバッグ: 最初の3件のkeyを表示
-    for k, v in list(id_map.items())[:3]:
-        print(f"    key={k} → id={v}")
-    return id_map
+def _note_session():
+    """GET用のrequestsセッション（CI=NOTE_COOKIES_JSON / ローカル=Chrome cookie 両対応）。
+    note_tag_guard.make_session が両環境のcookie読み込みを既に解決しているので流用する。"""
+    import note_tag_guard
+    return note_tag_guard.make_session()
 
 
-def api_update_article(session, note_key, note_id, title, body_html, hashtags):
-    """既存記事をAPIで更新（数値IDを使用）"""
-    print(f"  記事更新中... (key={note_key}, id={note_id})")
-
-    note_data = {
-        "note": {
-            "name": title,
-            "body": body_html,
-            "hashtag_notes_attributes": [
-                {"hashtag_attributes": {"name": tag}} for tag in hashtags[:10]
-            ],
-        }
-    }
-
-    # 数値IDで更新（note_keyでは404になる）
-    update_attempts = [
-        ("PUT",   f"{NOTE_API_BASE}/v1/text_notes/{note_id}"),
-        ("PATCH", f"{NOTE_API_BASE}/v1/text_notes/{note_id}"),
-        ("PUT",   f"{NOTE_API_BASE}/v1/notes/{note_id}"),
-    ]
-
-    for method, url in update_attempts:
+def fetch_published_title_key_map():
+    """公開中の全記事の {タイトル: key} を返す。
+    creator contents API は「公開中」の記事しか返さないため、退役済み（非公開）記事は
+    自然に載らない＝更新対象から除外される（これが再公開事故の再発防止の要）。"""
+    key_map = {}
+    for page in range(1, 30):
         try:
-            if method == "PUT":
-                resp = session.put(url, json=note_data, timeout=30)
-            elif method == "PATCH":
-                resp = session.patch(url, json=note_data, timeout=30)
-            else:
-                resp = session.post(url, json=note_data, timeout=30)
-
-            print(f"    {method} .../{note_id} → HTTP {resp.status_code}")
-
-            if resp.status_code in [200, 201]:
-                print(f"  更新成功")
-                return True
-            elif resp.status_code == 422:
-                detail = resp.text[:200]
-                print(f"    422: {detail}")
-                # CSRF系失敗の可能性 → HTML meta含む再取得
-                _clear_csrf_state(session)
-                _acquire_csrf_token(session)
+            r = requests.get(
+                f"{NOTE_API_BASE}/v2/creators/{NOTE_CREATOR}/contents",
+                params={"kind": "note", "page": page},
+                headers={"User-Agent": NOTE_UA}, timeout=25)
         except Exception as e:
-            print(f"    失敗: {e}")
-            continue
+            print(f"  ⚠ 公開一覧取得失敗（page={page}）: {e}")
+            break
+        if r.status_code != 200:
+            print(f"  ⚠ 公開一覧取得失敗: HTTP {r.status_code}")
+            break
+        d = r.json().get("data", {})
+        for it in d.get("contents", []):
+            name = (it.get("name") or "").strip()
+            if name and it.get("key"):
+                key_map.setdefault(name, it["key"])  # 同名重複は先頭（新しい方）を採用
+        if d.get("isLastPage", True) or not d.get("contents"):
+            break
+    return key_map
 
-    print(f"  ⚠ API更新失敗")
-    return False
+
+def _get_note_id(key):
+    """公開key から数値id を取得（draft_save / PUT に必須）。"""
+    try:
+        s = _note_session()
+        r = s.get(f"{NOTE_API_BASE}/v3/notes/{key}", timeout=25)
+        if r.status_code != 200:
+            return None
+        return r.json().get("data", {}).get("id")
+    except Exception as e:
+        print(f"  ⚠ note_id取得失敗（key={key}）: {e}")
+        return None
 
 
-def update_article(article_num, session=None, note_id_map=None, dry_run=False):
-    """既存記事を更新（新規下書き作成→公開で実質置換）"""
+def _inplace_update_note(key, note_id, title, body_html):
+    """公開中の note (key/id) を新本文で in-place 更新する。新規再投稿はしない。
+    editor.note.com を開き draft_save → reCAPTCHA v3 → PUT status=published。
+    フォロワーへの更新通知はOFF。タグ復元とeyecatchは呼び出し元が担当する。
+    参考: note_leadmagnet_publish.publish_one / project_note_remote_update。"""
+    from playwright.sync_api import sync_playwright
+    import note_tag_guard
+
+    note_tag_guard.refresh_cookies()          # CIではno-op、ローカルではChrome cookieを最新化
+    pw_cookies = note_tag_guard._load_pw_cookies()
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(
+            headless=True,
+            args=["--no-sandbox", "--disable-blink-features=AutomationControlled"])
+        ctx = browser.new_context(user_agent=NOTE_UA, locale="ja-JP",
+                                  viewport={"width": 1400, "height": 900},
+                                  bypass_csp=True)
+        ctx.add_cookies(pw_cookies)
+        page = ctx.new_page()
+        page.goto(f"https://editor.note.com/notes/{key}/edit",
+                  wait_until="domcontentloaded", timeout=60000)
+        try:
+            page.wait_for_load_state("networkidle", timeout=20000)
+        except Exception:
+            pass
+        time.sleep(3)
+
+        # draft_save（既存idへ本文を保存）
+        ds = page.evaluate(
+            """async ({url, payload}) => {
+                const m = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
+                const h = {"Content-Type":"application/json","Accept":"application/json","X-Requested-With":"XMLHttpRequest"};
+                if (m) h["X-XSRF-TOKEN"] = decodeURIComponent(m[1]);
+                const r = await fetch(url, {method:"POST", headers:h, credentials:"include", body:JSON.stringify(payload)});
+                return {status:r.status, body:(await r.text()).slice(0,300)};
+            }""",
+            {"url": f"{NOTE_API_BASE}/v1/text_notes/draft_save?id={note_id}",
+             "payload": {"body": body_html, "body_length": len(body_html), "name": title}})
+        print(f"  [PW] draft_save: {ds['status']}")
+        if ds["status"] not in (200, 201):
+            browser.close()
+            raise Exception(f"draft_save失敗: {ds}")
+
+        # publish ページで reCAPTCHA v3。CSPで wait_for_function(eval) が使えないため
+        # evaluate でポーリングする。grecaptcha は enterprise 版に移行している可能性があり両対応。
+        page.goto(f"https://editor.note.com/notes/{key}/publish",
+                  wait_until="domcontentloaded", timeout=40000)
+        for _ in range(20):
+            try:
+                ready = page.evaluate(
+                    "()=>{const g=(window.grecaptcha&&window.grecaptcha.enterprise)||window.grecaptcha;"
+                    "return !!(g&&typeof g.execute==='function');}")
+                if ready:
+                    break
+            except Exception:
+                pass
+            time.sleep(1)
+        time.sleep(2)
+        try:
+            rc = page.evaluate(
+                """async (sitekey) => {
+                    const g=(window.grecaptcha&&window.grecaptcha.enterprise)||window.grecaptcha;
+                    if(!g||typeof g.execute!=='function') return {error:'no grecaptcha'};
+                    try{
+                        const t=await g.execute(sitekey,{action:'note_post'});
+                        const r=await fetch('/api/v3/challenges/verifications',{method:'POST',
+                          headers:{'Content-Type':'application/json','Accept':'application/json','X-Requested-With':'XMLHttpRequest'},
+                          credentials:'include',
+                          body:JSON.stringify({g_recaptcha_token_v3:t,g_recaptcha_action_v3:'note_post',via:'note_post'})});
+                        return {status:r.status, body:(await r.text()).slice(0,200)};
+                    }catch(e){return {error:String(e)}}
+                }""", RECAPTCHA_SITEKEY)
+        except Exception as e:
+            rc = {"error": str(e)}
+        print(f"  [PW] recaptcha verifications: {rc}")
+
+        # PUT で再公開。hashtags は note.com に無視されるため（タグ復元は ensure_tags が担う）
+        # ここでは既存タグを渡しつつ、確実な復元は後段に委ねる。eyecatch は触らない。
+        put_payload = {
+            "status": "published", "name": title,
+            "free_body": body_html, "pay_body": "", "body_length": len(body_html),
+            "price": 0, "hashtags": [],
+            "disable_comment": False,
+            "send_notifications_flag": False, "limited": False,
+        }
+        pr = page.evaluate(
+            """async ({url, payload}) => {
+                const m = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
+                const h = {"Content-Type":"application/json","Accept":"application/json","X-Requested-With":"XMLHttpRequest"};
+                if (m) h["X-XSRF-TOKEN"] = decodeURIComponent(m[1]);
+                const r = await fetch(url, {method:"PUT", headers:h, credentials:"include", body:JSON.stringify(payload)});
+                return {status:r.status, body:(await r.text()).slice(0,400)};
+            }""",
+            {"url": f"{NOTE_API_BASE}/v1/text_notes/{note_id}", "payload": put_payload})
+        print(f"  [PW] PUT: {pr['status']}")
+        browser.close()
+        if pr["status"] not in (200, 201):
+            raise Exception(f"PUT失敗: {pr}")
+    return True
+
+
+def update_article(article_num, key_map=None, dry_run=False):
+    """既存の公開記事を in-place で更新する（新規再投稿しない）。
+    ローカルMarkdownの最新本文を、公開中の同タイトル記事の note id に対して
+    draft_save→PUT で上書きし、タグをensure_tagsで復元、eyecatchを検証・修復する。
+    公開一覧に無い記事（退役済み/非公開）は触らずスキップして再公開事故を防ぐ。"""
     filepath = get_article_file(article_num)
     if not filepath:
         print(f"  記事ファイルが見つかりません: #{article_num}")
         return {"success": False, "error": "file_not_found"}
 
     title, body = parse_article(filepath)
-    hashtags = get_hashtags_for_article(article_num)
     formatted_body = format_body_for_note(body)
     body_html = markdown_to_html(formatted_body)
 
+    if key_map is None:
+        key_map = fetch_published_title_key_map()
+    key = key_map.get(title.strip())
+
     print(f"  #{article_num:02d} {title[:50]}")
-    print(f"  文字数: {len(formatted_body)}文字 / HTML: {len(body_html)}文字")
+    if not key:
+        print("  → 公開中に同タイトル記事なし。スキップ（退役済み/非公開の可能性）")
+        return {"success": True, "skipped": True, "reason": "not_published"}
+    print(f"  key={key}  文字数: {len(formatted_body)} / HTML: {len(body_html)}")
 
     if dry_run:
         print("  [dry-run] 更新スキップ")
-        return {"success": True, "dry_run": True}
+        return {"success": True, "dry_run": True, "key": key}
 
     try:
-        # 新規下書き作成→公開（既存記事と同じタイトルで再投稿）。本命はHTTP経路。
-        try:
-            res = _http_full_post(session, title, body_html, hashtags, publish=True)
-        except _HttpCsrfFailed as http_e:
-            print(f"  HTTP経路失敗 → Playwright経路に切替: {http_e}")
-            res = _playwright_full_post(title, body_html, hashtags, publish=True)
+        note_id = _get_note_id(key)
+        if not note_id:
+            return {"success": False, "error": "note_id_not_found", "key": key}
 
-        if res.get("url") and not res.get("draft_only"):
-            print(f"  再投稿成功: {res['url']}")
-            _guard_tags_after_publish(res["url"], article_num, title)
-            _ensure_eyecatch_after_publish(res["url"], article_num)
-            return {"success": True, "url": res["url"]}
-        if res.get("url"):
-            print(f"  下書き保存済み（手動公開が必要）: {res['url']}")
-            return {"success": True, "url": res["url"], "draft_only": True}
-        return {"success": False, "error": "publish_failed"}
+        _inplace_update_note(key, note_id, title, body_html)
+        url = f"https://note.com/{NOTE_CREATOR}/n/{key}"
+        print(f"  更新成功（in-place）: {url}")
+
+        # 公開PUTはタグを消すため必ずUIで復元し、eyecatchも検証・修復する
+        tags_ok = _guard_tags_after_publish(url, article_num, title)
+        eyecatch_ok = _ensure_eyecatch_after_publish(url, article_num)
+        return {"success": True, "url": url, "key": key,
+                "tags_ok": tags_ok, "eyecatch_ok": eyecatch_ok}
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        print(f"  更新失敗: {e}")
+        return {"success": False, "error": str(e), "key": key}
 
 
 def update_all_articles(dry_run=False):
-    """全投稿済み記事を更新"""
-    email, password = get_credentials()
-    session = api_login(email, password)
-
-    # 数値IDを一括取得
-    note_id_map = {} if dry_run else resolve_note_ids(session)
+    """公開中の全記事を、対応するローカルMarkdownで in-place 更新する。
+    退役済み（非公開）記事は公開一覧に載らないので自動的にスキップされる。"""
+    key_map = fetch_published_title_key_map()
+    files = sorted(glob.glob(os.path.join(ARTICLES_DIR, "*.md")))
 
     results = {"success": 0, "fail": 0, "skip": 0}
-    total = len(PUBLISHED_KEYS)
+    total = len(files)
 
     print(f"\n{'='*50}")
-    print(f"  Note.com 記事一括更新（API方式）")
-    print(f"  対象: {total}記事")
+    print(f"  Note.com 記事一括更新（in-place方式）")
+    print(f"  公開中: {len(key_map)}記事 / ローカル: {total}ファイル")
     print(f"{'='*50}\n")
 
-    for i, (num, key) in enumerate(sorted(PUBLISHED_KEYS.items()), 1):
-        print(f"── {i}/{total} ──────────────────────────")
-        result = update_article(num, session=session, note_id_map=note_id_map, dry_run=dry_run)
+    for i, filepath in enumerate(files, 1):
+        m = re.match(r"(\d+)_", os.path.basename(filepath))
+        if not m:
+            continue
+        num = int(m.group(1))
+        print(f"── {i}/{total} #{num} ──────────────────────────")
+        result = update_article(num, key_map=key_map, dry_run=dry_run)
 
-        if result.get("dry_run"):
+        if result.get("dry_run") or result.get("skipped"):
             results["skip"] += 1
         elif result.get("success"):
             results["success"] += 1
@@ -1384,9 +1472,9 @@ def update_all_articles(dry_run=False):
             results["fail"] += 1
             print(f"  エラー: {result.get('error')}")
 
-        # レート制限対策
-        if i < total and not dry_run:
-            time.sleep(2)
+        # 連投検知を避ける（実更新した記事の後だけ待つ）
+        if i < total and not dry_run and not result.get("skipped"):
+            time.sleep(8)
 
     print(f"\n{'='*50}")
     print(f"  完了: 成功 {results['success']} / 失敗 {results['fail']} / スキップ {results['skip']}")
@@ -1585,20 +1673,23 @@ def main():
     args = parser.parse_args()
 
     if args.update_all:
-        update_all_articles(dry_run=args.dry_run)
+        res = update_all_articles(dry_run=args.dry_run)
+        if res.get("fail"):
+            sys.exit(1)  # 一部失敗はCIで赤くして気づけるようにする
         return
 
     if args.update:
-        session = None
-        note_id_map = {}
-        if not args.dry_run:
-            email, password = get_credentials()
-            session = api_login(email, password)
-            note_id_map = resolve_note_ids(session)
+        key_map = fetch_published_title_key_map()
+        failed = 0
         for num in args.update:
-            result = update_article(num, session=session, note_id_map=note_id_map, dry_run=args.dry_run)
+            result = update_article(num, key_map=key_map, dry_run=args.dry_run)
             if not result.get("success") and not result.get("dry_run"):
                 print(f"  更新失敗: {result.get('error')}")
+                failed += 1
+            if len(args.update) > 1 and not args.dry_run and not result.get("skipped"):
+                time.sleep(8)
+        if failed:
+            sys.exit(1)
         return
 
     skipped_no_cover = []
