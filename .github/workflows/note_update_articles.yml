@@ -32,7 +32,11 @@ jobs:
           python-version: '3.11'
 
       - name: 依存パッケージインストール
-        run: pip install requests
+        # in-place更新の本文PUTとタグ/eyecatch復元(note_tag_guard/note_set_eyecatch)は
+        # editor.note.com をPlaywrightで開く。chromium 無しでは常に失敗するため必ず入れる。
+        run: |
+          pip install requests playwright
+          python -m playwright install --with-deps chromium
 
       - name: "全記事を更新"
         if: github.event.inputs.articles == '' && github.event.inputs.dry_run != 'true'
