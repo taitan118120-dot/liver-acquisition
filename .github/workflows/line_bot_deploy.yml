@@ -25,7 +25,10 @@ jobs:
             echo "::error::RENDER_DEPLOY_HOOK secretが未設定です（Render Settings > Deploy HookのURLを登録してください）"
             exit 1
           fi
-          curl -fsS -o /dev/null -w "deploy trigger: HTTP %{http_code}\n" "$HOOK"
+          # フックURLが応答しないことがある（2026-07-15にcurlが15分ハングしjobごとキャンセル）。
+          # タイムアウト＋リトライで確実に失敗を検知する。
+          curl -fsS --max-time 30 --retry 3 --retry-all-errors -o /dev/null \
+            -w "deploy trigger: HTTP %{http_code}\n" "$HOOK"
 
       - name: Wait until service responds
         run: |
