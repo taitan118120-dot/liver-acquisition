@@ -895,8 +895,10 @@
     "tags": [],
     "link": "https://lin.ee/xchCfdn",
     "reply_control": "everyone",
-    "posted": false,
-    "created_at": "2026-06-16T14:00:00"
+    "posted": true,
+    "created_at": "2026-06-16T14:00:00",
+    "posted_at": "2026-07-16T23:53:37",
+    "media_id": "17917622127202922"
   },
   {
     "text": "有名人が同じアプリに来たら終わり、って思われがちだけど、実は逆。\n\n投げ銭ってコミュニケーションがいる世界だから、一人ひとりとちゃんと向き合えてる人は、誰が来ても揺るがない。",
