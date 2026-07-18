@@ -928,8 +928,10 @@
     "tags": [],
     "link": "https://lin.ee/xchCfdn",
     "reply_control": "everyone",
-    "posted": false,
-    "created_at": "2026-06-16T14:00:00"
+    "posted": true,
+    "created_at": "2026-06-16T14:00:00",
+    "posted_at": "2026-07-18T11:57:51",
+    "media_id": "18127958812649285"
   },
   {
     "text": "TikTokライブって、Pocochaみたいに「やり方を教えてくれる人」がいないんだよな。\n\nだから最初はみんな迷子になる。向いてないんじゃなくて、ただ教わってないだけ、ってことが本当に多い。",
