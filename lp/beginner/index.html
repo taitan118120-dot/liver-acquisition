@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260720k">
+  <link rel="stylesheet" href="style.css?v=20260720m">
   <!-- JSが動く環境でのみ出現アニメを有効化（JS無効時にコンテンツが隠れないようにする） -->
   <script>document.documentElement.className += ' js';</script>
 
@@ -110,22 +110,21 @@
 
   <!-- ============ 2. ファーストビュー ============ -->
   <section class="hero" id="top">
-    <span class="blob b1" aria-hidden="true"></span>
-    <span class="blob b2" aria-hidden="true"></span>
-    <span class="blob b3" aria-hidden="true"></span>
+    <!-- 画像差し替え：ファーストビューのメインビジュアル -->
+    <div class="hero-visual">
+      <img src="../shared/img/hero-liver.jpg" alt="スマホで配信を始める女性のイラスト" width="768" height="768" fetchpriority="high">
+    </div>
 
     <div class="hero-inner">
       <span class="hero-eyebrow">TAITAN PRO ライバー募集</span>
 
-      <h1>スマホ1台で<br><span class="accent">月20万円</span>も目指せる<br>ライバーという働き方</h1>
+      <h1 class="hero-title">
+        <span class="ht-line"><em>スマホ1台</em>で</span>
+        <span class="ht-line"><em>月20万円</em>も目指せる</span>
+        <span class="ht-line">ライバーという働き方</span>
+      </h1>
 
-      <p class="hero-sub">
-        未経験OK。顔出しなしOK。<br>
-        あなたのペースで始められる新しい働き方です。
-      </p>
-
-      <!-- 画像差し替え：ファーストビューのメインビジュアル -->
-      <img class="illust" src="../shared/img/hero-liver.jpg" alt="スマホで配信を始める女性のイラスト" width="900" height="900" fetchpriority="high">
+      <p class="hero-catch">未経験の方もスタートしやすい環境</p>
 
       <!-- 実績バッジ -->
       <div class="badge-row">

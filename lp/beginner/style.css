@@ -213,37 +213,43 @@ img { max-width: 100%; height: auto; display: block; }
   letter-spacing: 0.02em;
 }
 
-/* ===== ヒーロー ===== */
+/* ===== ヒーロー（参考LP風：開いた瞬間にメインビジュアル＋白帯見出し） ===== */
 .hero {
   position: relative;
-  padding: calc(var(--header-h) + 44px) 20px 56px;
+  padding: var(--header-h) 0 48px;
   text-align: center;
-  background:
-    radial-gradient(120% 70% at 15% 0%, var(--pink-soft) 0%, transparent 60%),
-    radial-gradient(110% 70% at 90% 10%, var(--lav-soft) 0%, transparent 58%),
-    linear-gradient(180deg, #FFFDFB 0%, #FDF6F1 100%);
+  background: linear-gradient(180deg, #FFFDFB 0%, #FDF6F1 100%);
   overflow: hidden;
 }
 
-/* 背景のふわっとした装飾 */
-.hero .blob {
+/* メインビジュアル：スマホでは画面幅いっぱいに大きく見せる */
+.hero-visual {
+  position: relative;
+  width: 100%;
+}
+
+.hero-visual img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* 画像の下端をヒーロー背景色にふわっと溶け込ませる */
+.hero-visual::after {
+  content: "";
   position: absolute;
-  border-radius: 50%;
-  filter: blur(2px);
-  opacity: 0.5;
+  left: 0; right: 0; bottom: 0;
+  height: 34%;
+  background: linear-gradient(180deg, transparent 0%, #FDF6F1 92%);
   pointer-events: none;
 }
-.hero .blob.b1 { width: 150px; height: 150px; background: var(--pink-mid); top: 12%; left: -46px; }
-.hero .blob.b2 { width: 120px; height: 120px; background: var(--lav-mid); bottom: 14%; right: -38px; }
-.hero .blob.b3 { width: 70px;  height: 70px;  background: #FFE6B8; top: 60%; left: 6%; }
 
-.hero-inner { position: relative; z-index: 1; }
-
-.hero-logo {
-  width: 88px;
-  margin: 0 auto 18px;
-  border-radius: 20px;
-  box-shadow: var(--shadow);
+.hero-inner {
+  position: relative;
+  z-index: 1;
+  padding: 0 16px;
+  /* 見出しの白帯を画像の下部に重ねる */
+  margin-top: -21vw;
 }
 
 .hero-eyebrow {
@@ -252,73 +258,132 @@ img { max-width: 100%; height: auto; display: block; }
   font-weight: 800;
   letter-spacing: 0.12em;
   color: var(--lav);
-  background: var(--white);
+  background: rgba(255, 255, 255, 0.9);
   border: 1px solid var(--lav-mid);
   padding: 6px 18px;
   border-radius: var(--r-pill);
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 
-.hero h1 {
-  font-size: clamp(27px, 7.4vw, 40px);
+/* 1行ごとに白帯を敷いた大見出し */
+.hero-title {
+  margin-bottom: 16px;
+}
+
+.hero-title .ht-line {
+  display: inline-block;
+  background: var(--white);
+  box-shadow: 0 6px 22px rgba(64, 55, 47, 0.10);
+  padding: 2px 16px;
+  margin: 4px 0;
+  font-size: clamp(27px, 7.8vw, 54px);
   font-weight: 900;
-  line-height: 1.5;
+  line-height: 1.42;
   letter-spacing: 0.01em;
-  margin-bottom: 18px;
 }
 
-.hero h1 .accent {
-  background: linear-gradient(90deg, var(--pink), var(--lav));
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+.hero-title em {
+  font-style: normal;
+  color: var(--pink);
 }
 
-.hero-sub {
-  font-size: 15px;
-  color: var(--text-sub);
-  line-height: 2;
+/* サブキャッチ：マーカー強調で大きく */
+.hero-catch {
+  font-size: clamp(18px, 5.4vw, 28px);
+  font-weight: 900;
+  line-height: 1.6;
   margin-bottom: 26px;
+  background: linear-gradient(transparent 60%, #FFE6B8 60%);
+  display: inline-block;
+  padding: 0 6px;
 }
 
-/* 丸バッジ（未経験OK / ノルマなし / 地方OK …） */
+/* 丸バッジ（未経験OK / ノルマなし / 地方OK …）大きめの塗りつぶし円 */
 .badge-row {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 10px;
+  gap: 12px;
   margin-bottom: 30px;
 }
 
 .badge {
-  width: 86px;
-  height: 86px;
+  width: 104px;
+  height: 104px;
   border-radius: 50%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  font-size: 12.5px;
+  font-size: 14.5px;
   font-weight: 800;
   line-height: 1.35;
   color: var(--text);
-  background: var(--white);
-  border: 2px solid var(--pink-mid);
-  box-shadow: 0 5px 14px rgba(224, 138, 147, 0.16);
-  padding: 6px;
+  background: var(--pink-mid);
+  box-shadow: 0 6px 16px rgba(224, 138, 147, 0.22);
+  padding: 8px;
 }
 
 .badge:nth-child(even) {
-  border-color: var(--lav-mid);
-  box-shadow: 0 5px 14px rgba(165, 148, 184, 0.16);
+  background: var(--lav-mid);
+  box-shadow: 0 6px 16px rgba(165, 148, 184, 0.22);
 }
 
 .badge .b-top {
-  font-size: 10.5px;
+  font-size: 11.5px;
   font-weight: 700;
-  color: var(--text-muted);
+  color: var(--text-sub);
   letter-spacing: 0.04em;
+}
+
+/* PC：画像を右側に大きく、見出しを左に重ねる2カラム構成 */
+@media (min-width: 900px) {
+  .hero {
+    text-align: left;
+    min-height: 660px;
+    padding: calc(var(--header-h) + 56px) 0 64px;
+  }
+
+  .hero-visual {
+    position: absolute;
+    top: 0; right: 0; bottom: 0;
+    width: 54%;
+  }
+
+  .hero-visual img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center top;
+  }
+
+  /* 左右のフェードで背景に溶け込ませる */
+  .hero-visual::after {
+    top: 0; bottom: 0; left: 0; right: auto;
+    width: 30%;
+    height: auto;
+    background: linear-gradient(90deg, #FDF9F5 0%, transparent 100%);
+  }
+
+  .hero-inner {
+    margin: 0 auto;
+    max-width: 1160px;
+    padding: 0 40px;
+  }
+
+  .hero-inner > * { max-width: 640px; }
+
+  .hero-title .ht-line { padding: 4px 22px; }
+
+  .badge-row {
+    justify-content: flex-start;
+    max-width: 720px;
+  }
+
+  /* CTA一式は左カラム内に揃える（画像に被せない） */
+  .hero .line-btn.is-block { max-width: 480px; margin: 0; }
+  .hero .cta-note { max-width: 480px; }
 }
 
 /* ===== セクション共通 ===== */
