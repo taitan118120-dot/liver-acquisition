@@ -1088,6 +1088,35 @@ img.case-avatar {
   border: 2px solid var(--pink-mid);
 }
 
+/* 実例カード内の実績タイムライン */
+.case-log {
+  list-style: none;
+  margin: 16px 0 4px;
+  border-top: 1px dashed var(--border);
+}
+
+.case-log li {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  padding: 9px 0;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--text-sub);
+  border-bottom: 1px dashed var(--border);
+}
+
+.case-log .d {
+  flex-shrink: 0;
+  width: 52px;
+  font-size: 11.5px;
+  font-weight: 900;
+  color: var(--pink);
+  letter-spacing: 0.02em;
+}
+
+.case-log strong { color: var(--text); font-weight: 800; }
+
 /* 本人のプロフィールへ飛ぶリンク */
 .case-profile {
   display: inline-flex;

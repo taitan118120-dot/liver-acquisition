@@ -44,8 +44,9 @@ SUBJECT_PREFIX = "young japanese woman in her twenties, casual comfortable cloth
 CUTS = {
     "hero-liver": (
         SUBJECT_PREFIX + "sitting relaxed at home holding a smartphone with both hands, "
-        "smiling warmly at the phone, cozy living room with plants and soft cushions",
-        101,
+        "clearly open eyes looking down at the phone screen, gentle natural smile, "
+        "well drawn symmetrical face, cozy living room with plants and soft cushions",
+        231,
     ),
     "worry-start": (
         SUBJECT_PREFIX + "sitting at a desk at home looking thoughtful and unsure, "
