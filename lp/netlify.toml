@@ -11,6 +11,18 @@
   [headers.values]
     Cache-Control = "public, max-age=604800"
 
+# beginner LP は shared/ ではなく自前のCSS/JSを持つ。
+# HTML側で ?v=YYYYMMDD のクエリを付けてキャッシュバストしているので長めのmax-ageで安全。
+[[headers]]
+  for = "/beginner/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
+[[headers]]
+  for = "/beginner/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
 [[headers]]
   for = "/*.html"
   [headers.values]
