@@ -557,7 +557,7 @@ section:nth-child(even) {
   font-weight: 900;
   color: #fff;
   background-color: var(--primary);
-  background-image: url("taitan.jpg");
+  background-image: url("taitan.jpg?v=20260720");
   background-size: 235%;
   background-position: 46% 12%;
   background-repeat: no-repeat;
