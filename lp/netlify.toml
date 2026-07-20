@@ -1,5 +1,8 @@
 [build]
   publish = "."
+  # lp/ 配下に変更がない push（X/Threads/IG/Note の投稿ログ更新など）ではデプロイをスキップする。
+  # 2026-07: ログコミット毎の無駄デプロイで無料枠300クレジット/月を使い切ったための対策。
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- ."
 
 [[redirects]]
   from = "/"
