@@ -730,6 +730,13 @@ img { max-width: 100%; height: auto; display: block; }
 
 .note-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
 
+/* タイトルとメタ情報を縦に積む */
+.note-card > span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
 .note-card img {
   width: 58px; height: 58px;
   flex-shrink: 0;
@@ -1626,4 +1633,145 @@ html.js .reveal.is-visible { opacity: 1; transform: none; }
   .badge { width: 76px; height: 76px; font-size: 11.5px; }
   .mech-box .m-title { font-size: 12px; }
   .site-header .brand span { display: none; }
+}
+
+/* ===== PC：セクションをワイドに使う（参考：souplelive.com）=====
+   モバイルは1カラムのまま。900px以上でカード類を横並びにして
+   左右の余白を活かすレイアウトに切り替える。 */
+@media (min-width: 900px) {
+  .container { max-width: 1140px; padding: 0 40px; }
+
+  .sec { padding: 92px 0; }
+  .sec-head { margin-bottom: 50px; }
+  .sec-title { font-size: clamp(26px, 3vw, 34px); }
+  .sec-title br { display: none; }
+  .sec-sub { font-size: 15px; }
+
+  .illust-lead { width: 340px; margin-bottom: 40px; }
+
+  /* 悩み：3カラムの縦積みカード（吹き出しのしっぽは上向きに） */
+  .worry-list {
+    max-width: none;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 26px;
+  }
+
+  .worry {
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .worry .avatar { width: 120px; height: 120px; }
+
+  .worry .bubble {
+    flex: none;
+    width: 100%;
+    text-align: center;
+    font-size: 15px;
+  }
+
+  .worry .bubble::before {
+    top: -12px; left: calc(50% - 9px);
+    border-width: 0 9px 12px 9px;
+    border-color: transparent transparent var(--border) transparent;
+  }
+
+  .worry .bubble::after {
+    top: -10px; left: calc(50% - 8px);
+    border-width: 0 8px 11px 8px;
+    border-color: transparent transparent var(--white) transparent;
+  }
+
+  .worry-answer { max-width: 820px; font-size: 16.5px; }
+
+  /* 3ステップ：横並び */
+  .steps {
+    max-width: none;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 26px;
+  }
+
+  .step { flex: 1; }
+  .step-arrow { display: none; }
+
+  /* 稼げる仕組み */
+  .mech { max-width: 680px; padding: 34px 30px; }
+
+  /* 必要なもの：2カラム */
+  .needs {
+    max-width: 900px;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 24px;
+  }
+
+  .need-box { flex: 1; }
+  .compare-note { max-width: 900px; }
+
+  /* 選ばれる理由：3カラム */
+  .reasons {
+    max-width: none;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 26px;
+  }
+
+  .reason { flex: 1; }
+
+  /* 働き方の実例：2カラム */
+  .cases {
+    max-width: none;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+    gap: 26px;
+  }
+
+  .case-disclaimer { max-width: none; }
+
+  /* 安心ポイント：3カラム */
+  .safety { max-width: none; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+
+  /* 代表紹介 */
+  .person { max-width: 820px; padding: 36px 40px; }
+
+  /* 相談からデビューまで：横並びのステッパー */
+  .flow {
+    max-width: none;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+  }
+
+  .flow-item {
+    margin-bottom: 0;
+    padding: 24px 20px 22px;
+  }
+
+  .flow-item::before {
+    position: static;
+    display: block;
+    writing-mode: horizontal-tb;
+    margin-bottom: 8px;
+  }
+
+  .flow-item h3 { font-size: 15px; }
+
+  /* FAQ・テーブル類は読みやすい幅に広げる */
+  .faq { max-width: 780px; }
+  .about-table { max-width: 780px; }
+
+  /* note記事カード：2カラム */
+  .notes {
+    max-width: 900px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .campaign { max-width: 680px; }
+  .scarcity-card { max-width: 720px; padding: 40px 48px; }
 }
