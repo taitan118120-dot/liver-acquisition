@@ -88,12 +88,15 @@ CUTS = {
         "cozy warm room, soft round bokeh of warm lamps in the background",
         308,
     ),
+    # 2026-07-21: 機材が不自然だったため人物主役の構図に引き直し
     "setup": (
-        "smartphone mounted on a small tripod and a ring light "
-        "on a tidy white desk with a small plant, sharp focus on the gear, "
-        "a young japanese woman smiling softly blurred in the background, "
-        "simple minimal streaming corner at home",
-        209,
+        "beautiful natural japanese woman in her mid twenties, black shoulder-length bob hair, "
+        "cream knit sweater, sitting at a tidy white desk in a bright cozy room, "
+        "a smartphone clearly mounted on a small black tripod on the desk in front of her, "
+        "a ring light stand at the side, small potted plant, "
+        "simple minimal home live streaming setup, "
+        "relaxed smile facing the smartphone camera, hands folded together on the desk",
+        403,
     ),
     "safety": (
         SUBJECT_PREFIX + "relaxed on a sofa wrapped in a soft blanket, "
