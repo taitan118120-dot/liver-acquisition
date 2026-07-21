@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 # URLは @main ではなくPDF更新コミットのSHA固定にする。@mainだとURLが変わらず
 # LINEアプリ内ブラウザ/iOS Safariが旧PDFを端末キャッシュし続けて更新が反映されないため、
 # PDFを差し替えたら下記SHAも更新すること（そのコミットのハッシュを入れる）。
-GUIDE_PDF_SHA = "1a5a8463019fde43e3a9b71b17e7a1de0b9c7243"
+GUIDE_PDF_SHA = "5538f2de3dc85efe3fc42066cb303cf89c03df97"
 GUIDE_URL = (
     "https://cdn.jsdelivr.net/gh/taitan118120-dot/liver-acquisition@"
     f"{GUIDE_PDF_SHA}/lp/shared/liver_starter_guide.pdf"
