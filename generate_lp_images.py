@@ -94,7 +94,10 @@ CUTS = {
         "cozy warm room, soft round bokeh of warm lamps in the background",
         308,
     ),
-    # 2026-07-21: 機材が不自然だったため人物主役の構図に引き直し
+    # 2026-07-21: Pollinations(flux)は三脚・リングライト等の機材が毎回破綻するため、
+    # 現行の setup.jpg は Gemini (gemini-2.5-flash-image) で生成したものに差し替え済み。
+    # 再生成するときは note_image_generator.py と同じ Gemini 経路を使うこと。
+    # 以下の定義は Pollinations 用の控え。
     "setup": (
         "beautiful natural japanese woman in her mid twenties, black shoulder-length bob hair, "
         "cream knit sweater, sitting at a tidy white desk in a bright cozy room, "
