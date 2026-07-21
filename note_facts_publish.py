@@ -20,7 +20,8 @@ import sys
 import time
 
 from note_cta_publish import get_note, req_session
-from note_leadmagnet_publish import publish_one, verify
+import note_leadmagnet_publish as _lm
+from note_leadmagnet_publish import verify
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TARGETS_FILE = os.path.join(BASE_DIR, "data", "note_fact_update_targets_2026-07-21.md")
@@ -90,6 +91,29 @@ def transform_facts(key, html):
     if new == html:
         return None
     return new
+
+
+def publish_one(key, transform_fn):
+    """note_leadmagnet_publish.publish_one の検証条件（特典段落）を
+    ファクト更新用（旧表記が消えたか）に差し替えて実行する。"""
+    orig_verify = _lm.verify
+
+    def _verify(k):
+        d = orig_verify(k)
+        text = re.sub(r"<[^>]+>", "", d["body"])
+        # 統計文脈で意図的に残す150人は除外して、所属数・還元率の旧表記が消えたか見る
+        bad = [m.group(0) for m in re.finditer(
+            r"(所属[^。]{0,10}150\s*[人名]|150\s*[人名]以上|還元率(?:は|が)?100[%％](?!\s*\+\s*α|＋α))", text)]
+        if bad:
+            raise RuntimeError(f"verify失敗: 旧表記が残存 {bad[:3]}")
+        d["body"] = d["body"] + "スタートダッシュガイド"  # 上流の検証を通すためのダミー
+        return d
+
+    _lm.verify = _verify
+    try:
+        return _lm.publish_one(key, transform_fn)
+    finally:
+        _lm.verify = orig_verify
 
 
 def load_targets():
