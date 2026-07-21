@@ -43,7 +43,7 @@ COMPANY_INFO = (
     "提携配信代理店: 11社\n"
     "未経験スタート率: 93%\n"
     "代表: 元Pococha Sランク達成者 / ミクチャ8,000人中ミスターコン1位\n"
-    "対応プラットフォーム: Pococha, 17LIVE, SHOWROOM 他"
+    "対応プラットフォーム: Pococha, TikTok LIVE, 17LIVE"
 )
 
 COMMON_BENEFITS = (
@@ -111,7 +111,7 @@ TARGET_DATA = {
         # Wantedly用
         "what_we_do": (
             "TAITAN PROは、200名のライバーが所属するライバーマネジメント事務所です。\n\n"
-            "Pococha、17LIVE、SHOWROOMなど11社の配信プラットフォームと提携し、\n"
+            "Pococha・TikTok LIVE・17LIVE に対応し、11の配信代理店と提携。\n"
             "一人ひとりに最適な配信環境を提供しています。\n\n"
             "所属ライバーの93%が完全未経験からスタート。\n"
             "「スマホ1台で、自分のペースで稼げる」新しい働き方を広げています。"

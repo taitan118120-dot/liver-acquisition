@@ -63,7 +63,7 @@ TAITAN PRO（タイタンプロ）
 提携配信代理店: 11社
 未経験スタート率: 93%
 代表: 元Pococha Sランク達成者 / ミクチャ8,000人中ミスターコン1位
-対応プラットフォーム: Pococha, 17LIVE, SHOWROOM 他
+対応プラットフォーム: Pococha, TikTok LIVE, 17LIVE
 
 ■ 応募方法
 LINE で無料相談: https://lin.ee/xchCfdn
