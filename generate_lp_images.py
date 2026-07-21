@@ -101,10 +101,13 @@ CUTS = {
         "feeling safe and comfortable at home",
         114,
     ),
+    # 2026-07-21: 顔が不自然だったため別人（黒ボブ・白ブラウス）へ引き直し
     "meeting": (
-        SUBJECT_PREFIX + "smiling and waving at a laptop screen "
+        "beautiful natural japanese woman in her mid twenties, light makeup, "
+        "black shoulder-length bob hair, white blouse, "
+        "smiling and waving at a laptop screen "
         "during a friendly online video call at home, relaxed consultation mood",
-        113,
+        733,
     ),
     # 働き方の実例：主婦ライバーのイメージカット（case-avatar 用・正方形バストアップ）
     "liver-housewife": (
