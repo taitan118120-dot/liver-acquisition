@@ -27,119 +27,88 @@ BASE_DIR = Path(__file__).resolve().parent
 OUT_DIR = BASE_DIR / "lp" / "shared" / "img"
 
 # ---- 全カット共通のスタイル指定（ここを変えると絵柄が一括で変わる） ----
+# 2026-07-21: フラットイラスト → ヒーロー写真(hero-liver-photo.jpg)に合わせた
+# 実写風ライフスタイルフォトへ刷新。全カットに人物を入れて「自分ごと化」させる。
 STYLE = (
-    "flat vector illustration, soft pastel color palette, "
-    "dusty pink lavender and cream tones, "
-    "clean minimal shapes, no outlines, gentle rounded forms, "
-    "modern japanese web illustration style, warm and friendly atmosphere, "
-    "soft ambient lighting, plenty of white space, "
-    "pure white background, centered composition, "
+    "photorealistic lifestyle photography, soft natural window light, "
+    "warm cream and pastel pink japanese apartment interior, "
+    "cozy comfortable atmosphere, shallow depth of field, "
+    "high resolution, sharp focus on the person, "
     "NO text, NO letters, NO words, NO logos, NO watermark, "
-    "NOT photorealistic, NOT 3D render, NOT anime, flat 2D only"
+    "NOT illustration, NOT anime, NOT 3D render"
 )
 
-SUBJECT_PREFIX = "young japanese woman in her twenties, casual comfortable clothes, natural relaxed expression, "
+SUBJECT_PREFIX = (
+    "pretty young japanese woman in her early twenties, natural makeup, "
+    "dark brown medium-long hair, casual cute comfortable clothes, "
+)
 
 # ---- カット定義：ファイル名 -> (被写体プロンプト, seed) ----
 CUTS = {
-    "hero-liver": (
-        SUBJECT_PREFIX + "sitting relaxed at home holding a smartphone with both hands, "
-        "clearly open eyes looking down at the phone screen, gentle natural smile, "
-        "well drawn symmetrical face, cozy living room with plants and soft cushions",
-        231,
-    ),
     "worry-start": (
-        SUBJECT_PREFIX + "sitting at a desk at home looking thoughtful and unsure, "
-        "hand resting on cheek, laptop closed in front of her, contemplative mood",
+        SUBJECT_PREFIX + "sitting at a small desk at home in front of a laptop, "
+        "resting her chin on one hand, slightly troubled thoughtful expression, "
+        "searching for a work-from-home job, daytime room",
         102,
     ),
     "worry-skill": (
-        SUBJECT_PREFIX + "standing with slightly hunched shoulders looking hesitant and shy, "
-        "hands clasped together, small question marks floating around her head",
+        SUBJECT_PREFIX + "sitting on a sofa hugging a soft cushion, "
+        "unsure shy expression looking slightly away, lacking confidence mood",
         103,
     ),
     "worry-time": (
-        SUBJECT_PREFIX + "looking tired after work, holding a bag, "
-        "a large wall clock behind her, busy schedule feeling",
+        SUBJECT_PREFIX + "in office casual clothes just back home in the evening, "
+        "sitting on her bed still holding a tote bag, tired but gentle expression, "
+        "warm lamp light, busy daily life feeling",
         104,
     ),
     "step-stream": (
-        SUBJECT_PREFIX + "tapping the screen of a smartphone mounted on a small tripod, "
-        "about to start a live stream, simple ring light beside her",
-        105,
+        SUBJECT_PREFIX + "sitting comfortably in her cozy room facing the camera, "
+        "a blurred smartphone on a small tripod in the near foreground edge, "
+        "gentle excited smile, about to start a live stream, ring light glow, "
+        "her hands resting relaxed on her lap",
+        205,
     ),
     "step-talk": (
-        SUBJECT_PREFIX + "talking cheerfully to a smartphone on a stand, "
-        "speech bubbles and heart icons floating around, lively conversation",
-        106,
+        SUBJECT_PREFIX + "waving hello at the camera as if greeting her "
+        "livestream viewers, bright happy laughing expression, "
+        "sitting in her cozy room, lively fun mood, one open hand waving",
+        206,
     ),
     "step-reward": (
-        "flat illustration of a smartphone standing upright with an upward growth chart on screen, "
-        "coins and small heart icons rising gently around it, no people",
+        SUBJECT_PREFIX + "holding her smartphone with both hands close to her chest, "
+        "looking at the screen with a delighted happy smile, "
+        "pleasant surprise, warm evening light",
         107,
     ),
     "mechanism": (
-        "flat illustration of a smartphone with a rising bar chart, "
-        "a clock icon and small heart icons arranged around it, "
-        "clean infographic feeling, no people",
-        108,
+        SUBJECT_PREFIX + "seen completely from behind, back of her head, "
+        "face not visible at all, she is live streaming, "
+        "smartphone mounted on a tripod in front of her, "
+        "cozy warm room, soft round bokeh of warm lamps in the background",
+        308,
     ),
     "setup": (
-        "flat illustration of a simple live streaming setup at home, "
-        "smartphone on a tripod, ring light, small desk with a plant, "
-        "no people, tidy minimal scene",
-        109,
-    ),
-    "case-student": (
-        SUBJECT_PREFIX + "university student style with a tote bag, "
-        "sitting on the floor of her room with a smartphone, books nearby, casual and youthful",
-        110,
-    ),
-    "case-housewife": (
-        SUBJECT_PREFIX + "at home in a bright kitchen and living space, "
-        "holding a smartphone with a calm gentle smile, homey domestic atmosphere",
-        111,
-    ),
-    "fans": (
-        "flat illustration of a smartphone screen surrounded by many small floating heart icons "
-        "and simple abstract people silhouettes cheering, warm supportive feeling, pastel colors",
-        112,
-    ),
-    "meeting": (
-        SUBJECT_PREFIX + "having a friendly online video call on a laptop, "
-        "another person visible on the laptop screen, relaxed consultation mood",
-        113,
+        "smartphone mounted on a small tripod and a ring light "
+        "on a tidy white desk with a small plant, sharp focus on the gear, "
+        "a young japanese woman smiling softly blurred in the background, "
+        "simple minimal streaming corner at home",
+        209,
     ),
     "safety": (
-        SUBJECT_PREFIX + "sitting calmly and peacefully with a relieved gentle expression, "
-        "a soft protective shield shape glowing behind her, feeling of safety and reassurance",
+        SUBJECT_PREFIX + "relaxed on a sofa wrapped in a soft blanket, "
+        "holding a warm mug with both hands, gentle relieved smile, "
+        "feeling safe and comfortable at home",
         114,
     ),
-    "age": (
-        "flat illustration of four different japanese women of various ages standing together, "
-        "student, office worker, mother, and middle aged woman, "
-        "each holding a smartphone, friendly diverse group",
-        115,
-    ),
-    "desk": (
-        "flat illustration of a cozy home desk in the evening, "
-        "smartphone on a stand, warm lamp light, a mug and a small plant, "
-        "no people, calm night atmosphere",
-        116,
-    ),
-    "no-face": (
-        SUBJECT_PREFIX + "streaming without showing her face, seen from behind over her shoulder, "
-        "facing a smartphone on a stand, microphone icon floating, privacy friendly mood",
-        117,
-    ),
-    "prepare": (
-        SUBJECT_PREFIX + "checking a notebook checklist while sitting at a desk, "
-        "smartphone beside her, preparing and planning mood",
-        118,
+    "meeting": (
+        SUBJECT_PREFIX + "smiling and waving at a laptop screen "
+        "during a friendly online video call at home, relaxed consultation mood",
+        113,
     ),
 }
 
-TEST_CUTS = ["hero-liver", "worry-start", "step-talk"]
+TEST_CUTS = ["worry-start", "step-talk", "mechanism"]
 
 
 def generate(prompt: str, seed: int, size: int = 1024, retries: int = 6) -> Image.Image:
