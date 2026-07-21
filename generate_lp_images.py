@@ -106,6 +106,15 @@ CUTS = {
         "during a friendly online video call at home, relaxed consultation mood",
         113,
     ),
+    # 働き方の実例：主婦ライバーのイメージカット（case-avatar 用・正方形バストアップ）
+    "liver-housewife": (
+        "pretty japanese woman in her early thirties, natural makeup, "
+        "dark brown medium-long hair, soft beige knit, "
+        "bust-up portrait facing the camera, gentle warm smile, "
+        "relaxed at home in a bright tidy living room, "
+        "calm confident housewife atmosphere",
+        410,
+    ),
 }
 
 TEST_CUTS = ["worry-start", "step-talk", "mechanism"]
