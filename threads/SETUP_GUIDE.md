@@ -92,7 +92,7 @@ GEMINI_API_KEY=xxx python threads/threads_content.py --gen 6 --angle liver
 ## 運用ルール（安全 & 規約）
 - **投稿のみ**。フォロー/DM/いいねの自動化は絶対にやらない。
 - 1日2回まで。リンクは全投稿に貼らない（約3本に1本）。
-- 確定ファクト厳守（還元率100%／所属150人以上／Pococha歴4年／B帯月20-30万）。
+- 確定ファクト厳守（還元率100%+α／所属200名／Pococha歴4年／B帯月20-30万）。
   「絶対稼げる」等の断定・誇大はNG。
 - 代理店募集は**報酬を釣り文句にしない**（Wantedly作法。マルチ表現NG）。
 - 受け皿は公式LINE `lin.ee/xchCfdn` ／ LP `taitan-pro-lp.netlify.app`。
