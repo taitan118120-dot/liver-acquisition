@@ -18,16 +18,40 @@
   <!-- JSが動く環境でのみ出現アニメを有効化（JS無効時にコンテンツが隠れないようにする） -->
   <script>document.documentElement.className += ' js';</script>
 
-  <!-- ここにGoogleタグ（Google タグ / GA4 / Google 広告のグローバルサイトタグを貼る） -->
-  <!-- 例：
-       <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
-       <script>
-         window.dataLayer = window.dataLayer || [];
-         function gtag(){dataLayer.push(arguments);}
-         gtag('js', new Date());
-         gtag('config', 'G-XXXXXXXXXX');
-       </script>
-  -->
+  <!-- ============ 計測タグ設定 ============
+       ▼ここの3つのIDを書き換えるだけで計測が有効になります。
+         空のままなら計測タグは読み込まれません（誤ったIDでの計測事故を防ぐため）。
+
+         GA4_ID       : GA4の測定ID。GA4管理画面 > 管理 > データストリーム で確認（G-から始まる）
+         ADS_ID       : Google広告のコンバージョンID。広告管理画面 > 目標 > コンバージョン
+                        > 該当CV > タグを設定 で確認（AW-から始まる）
+         ADS_CV_LABEL : 同じ画面に出る「コンバージョンラベル」の文字列
+
+       ADS_ID と ADS_CV_LABEL を入れると、LINEボタンのクリックが
+       Google広告のコンバージョンとして自動で送信されます（計測処理は script.js）。
+       ==================================================== -->
+  <script>
+    window.TAITAN_TRACKING = {
+      GA4_ID: '',
+      ADS_ID: '',
+      ADS_CV_LABEL: ''
+    };
+    (function () {
+      var cfg = window.TAITAN_TRACKING;
+      var ids = [cfg.GA4_ID, cfg.ADS_ID].filter(Boolean);
+      if (!ids.length) return;
+
+      window.dataLayer = window.dataLayer || [];
+      window.gtag = function () { window.dataLayer.push(arguments); };
+      window.gtag('js', new Date());
+      ids.forEach(function (id) { window.gtag('config', id); });
+
+      var s = document.createElement('script');
+      s.async = true;
+      s.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(ids[0]);
+      document.head.appendChild(s);
+    })();
+  </script>
 
   <!-- ここにGoogleタグ（Google タグマネージャー のコンテナスニペット / head 用） -->
 
@@ -292,7 +316,7 @@
   </section>
 
   <!-- ============ 6. 稼げる仕組みの図解 ============ -->
-  <section class="sec tint-lav">
+  <section class="sec tint-lav" id="reward">
     <div class="container reveal">
       <div class="sec-head">
         <span class="sec-label">HOW IT WORKS</span>
@@ -405,7 +429,7 @@
   </section>
 
   <!-- ============ 8. 選ばれる3つの理由 ============ -->
-  <section class="sec">
+  <section class="sec" id="reasons">
     <div class="container reveal">
       <div class="sec-head">
         <span class="sec-label">REASONS</span>
@@ -456,7 +480,7 @@
   </section>
 
   <!-- ============ 9. 働き方の実例 ============ -->
-  <section class="sec tint-lav">
+  <section class="sec tint-lav" id="cases">
     <div class="container reveal">
       <div class="sec-head">
         <span class="sec-label">CASE</span>
@@ -776,7 +800,7 @@
   </section>
 
   <!-- ============ 13. よくあるご質問 ============ -->
-  <section class="sec">
+  <section class="sec" id="faq">
     <div class="container reveal">
       <div class="sec-head">
         <span class="sec-label">FAQ</span>

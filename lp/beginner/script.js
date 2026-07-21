@@ -7,6 +7,46 @@
 
 document.addEventListener('DOMContentLoaded', function () {
 
+  /* ---------- アンカー付きURLで着地したときは即時ジャンプ ----------
+     html { scroll-behavior: smooth } はページ内リンク用。
+     広告サイトリンク等で「/beginner/#faq」のように着地した場合まで
+     スムーススクロールになると、ページ全体を延々と流れてから
+     目的地に着く悪い体験になるため、初回だけ即時で飛ばす。
+     さらにWebフォント適用でページ高さが変わって着地位置がズレるため、
+     フォント読込後にもう一度位置を合わせ直す（ユーザーが自分で
+     スクロールを始めていたら補正しない）。 */
+  if (location.hash) {
+    var userScrolled = false;
+    ['wheel', 'touchstart', 'keydown'].forEach(function (ev) {
+      window.addEventListener(ev, function () { userScrolled = true; },
+        { once: true, passive: true });
+    });
+
+    var jumpToHash = function () {
+      if (userScrolled) return;
+      // ビューポート幅が取れていない（バックグラウンドタブ等で
+      // レイアウト未確定の）状態で飛ぶと位置がズレるため、
+      // 実寸が出てから改めて飛ぶ
+      if (!window.innerWidth) {
+        window.addEventListener('resize', jumpToHash, { once: true });
+        return;
+      }
+      var landing = document.getElementById(location.hash.slice(1));
+      if (!landing) return;
+      document.documentElement.style.scrollBehavior = 'auto';
+      landing.scrollIntoView({ block: 'start' });
+      setTimeout(function () {
+        document.documentElement.style.scrollBehavior = '';
+      }, 0);
+    };
+
+    jumpToHash();
+    window.addEventListener('load', jumpToHash);
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(jumpToHash);
+    }
+  }
+
   /* ---------- スクロール出現 ---------- */
   var revealTargets = document.querySelectorAll('.reveal');
 
@@ -57,6 +97,15 @@ document.addEventListener('DOMContentLoaded', function () {
           cta_label: label,
           page_path: window.location.pathname
         });
+
+        // Google 広告のコンバージョン（index.html の TAITAN_TRACKING に
+        // ADS_ID と ADS_CV_LABEL を入れると送信されます）
+        var cfg = window.TAITAN_TRACKING || {};
+        if (cfg.ADS_ID && cfg.ADS_CV_LABEL) {
+          window.gtag('event', 'conversion', {
+            send_to: cfg.ADS_ID + '/' + cfg.ADS_CV_LABEL
+          });
+        }
       }
 
       // Google タグマネージャー
