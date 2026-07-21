@@ -17,7 +17,7 @@ Xはリンク可・審査なし。募集を直接出してOK。LPへ直リンク
 【ライブ配信ライバー募集】
 
 スマホ1台・在宅・全国どこからでも📱
-Pococha / TikTok LIVE で"好きなこと"を配信するお仕事です。
+Pococha / TikTok LIVE / 17LIVE で"好きなこと"を配信するお仕事です。
 
 ✔ 還元率100%+α
 ✔ 配信する時間・曜日は自分で決める
@@ -50,7 +50,7 @@ https://taitan-pro-lp.netlify.app/
 配信する日も時間も全部自分で決められるのが、このお仕事のいいところ。
 スマホ1台あれば全国どこからでも始められます📱
 
-Pococha/TikTokライバー募集中→ https://taitan-pro-lp.netlify.app/
+Pococha/TikTok/17LIVEライバー募集中→ https://taitan-pro-lp.netlify.app/
 #ライバー募集 #在宅ワーク #おうち時間
 ```
 
