@@ -26,7 +26,7 @@
 | ID | 名称 | 種別 | 月予算 | 日予算 | 役割 |
 |---|---|---|---|---|---|
 | A | TAITANPRO_顕在層_事務所探し | 検索 | 65,000円 | 2,140円 | 本命。事務所を探している層に予算とCVデータを集中させる |
-| C | TAITANPRO_競合名_テスト | 検索 | 30,000円 | 990円 | 他事務所を検討中の層。10社に入札して当たり社名を探す（2026-07-21ユーザー判断で3万に増額） |
+| C | TAITANPRO_競合名_テスト | 検索 | 30,000円 | 990円 | 他事務所を検討中の層。**321とベガプロモーションの2社のみ**に厚く入札（2026-07-21ユーザー決定） |
 | − | 予備枠 | − | 5,000円 | − | 週1チェックでCPA最良の枠に上乗せ。未消化なら使わない |
 
 ※ 旧キャンペーンB（検討層）は**廃止し、Aの1広告グループ（A5）に縮小統合**した。理由：「なるには/稼げる」系の情報収集クエリはCVRが最も低いうえ、既にNote記事群とAI経由流入（GEO）で無償獲得できている領域であり、広告費を投じる優先度が最下位のため。詳細は §3。
@@ -292,30 +292,23 @@
 
 ### 4-1. 競合事務所リスト（2026-07-20 Web調査で裏取り済み）
 
-**第1弾：初月に入札する10社**（月3万円なら1社あたり月3,000円の露出が確保でき、初月からCTR判定できる）
+**入札するのは2社のみ**（2026-07-21ユーザー決定。月3万円 ÷ 2社 ＝ 1社あたり月1.5万円の厚い露出）
 
 | 社名 | 主戦場 | 調査で確認した特徴 |
 |---|---|---|
-| 321 inc.（サニーゴ） | Pococha | ゆうこす創業。所属7,000人超、Pococha最大手格 |
+| 321 inc.（サニーゴ） | Pococha | ゆうこす創業。所属7,000人超、Pococha最大手格。検索ボリューム最大の本命 |
 | ベガプロモーション | Pococha他 | 所属15,000人超の最大規模。ノルマなし訴求 |
-| アルファ | Pococha / TikTok | DeNA出身者設立のPococha特化。国内最大級を自称 |
-| WASABI | Pococha | 高還元・特別報酬制度が売り。所属2,500人超 |
-| DAG | Pococha / 17 | 両アプリ公認の老舗 |
-| Star Creation | TikTok LIVE | TikTok公認MCN国内最大級。総フォロワー3億超 |
-| studio15 | TikTok LIVE | ByteDance正式契約MCN。300組所属 |
-| PPP STUDIO | TikTok LIVE | 大手MCN |
-| KIRINZ | TikTok LIVE / 複数 | ライバー事務所メディアも運営し検索需要が見込める |
-| ReStart | TikTok LIVE / 17 | 両公認エージェント |
 
-**第2弾：CTR実績を見て入れ替える候補（5社）**
+**入れ替え候補（成果が出なければここから。追加はユーザー承認を取ってから）**
 
 | 社名 | 主戦場 |
 |---|---|
-| TORIHADA | TikTok LIVE |
-| TimeTicket Production | TikTok LIVE（公式提携） |
-| NeoBright | 複数アプリ |
-| ULTRA SOCIAL | TikTok LIVE |
-| StockForce | 17LIVE特化（優先度低。Pococha/TikTok志望とズレる） |
+| アルファ | Pococha / TikTok |
+| WASABI | Pococha |
+| DAG | Pococha / 17 |
+| Star Creation | TikTok LIVE |
+| studio15 | TikTok LIVE |
+| PPP STUDIO / KIRINZ / ReStart / TORIHADA 他 | TikTok LIVE系 |
 
 **入札しない社名**
 
@@ -338,7 +331,7 @@
 > **⚠️ 汎用語の単体入札禁止**：「321」「アルファ」「WASABI」は一般名詞・数字と衝突するため、**社名単体では絶対に登録しない**（"321"だけだと無関係な検索に出て予算が溶ける）。必ず「事務所」「ライバー」等との複合で登録する。「ベガプロモーション」「スタークリエーション」のような固有性が高い名前のみ単体登録可。
 > 表記ゆれも登録する：321＝「321 事務所」「サニーゴ」、Star Creation＝「スタークリエーション」等。
 
-※ 10社 × 4〜5型 ＝ 約45キーワードで開始。1社あたり月3,000円の露出でCTR判定に足るデータが1ヶ月で貯まる。表示が伸びない社名は第2弾と入れ替える。
+※ 2社 × 4〜5型＋表記ゆれ ＝ 15キーワード前後で開始。2社の検索ボリュームだけで月3万円を消化しきれない場合は無理に使わず、余りは実質Aに回る（週1チェックの予算付け替えで対応）。
 
 **調査ソース**：[321.inc コラム](https://321.inc/column/8/)、[buzz-navi 事務所ランキング](https://buzz-navi.jp/pococha-office/)、[LIVE配信研究所 30社一覧](https://live-for-everyone.com/liver-agency-list/)、[KIRINZ TikTok事務所18選](https://kirinz.tokyo/liver_magazine/140/)、[TikTokライブ研究室](https://restart-live.jp/media/recommend-tiktoklive-agency/)、[agencynavi 43社一覧](https://www.agencynavi-liver.com/list/)
 
