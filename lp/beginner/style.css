@@ -1775,3 +1775,116 @@ html.js .reveal.is-visible { opacity: 1; transform: none; }
   .campaign { max-width: 680px; }
   .scarcity-card { max-width: 720px; padding: 40px 48px; }
 }
+
+/* ========================================================================
+   2026-07-21 デザインリッチ化（参考：souplelive.com）
+   ・全セクション上端に波形ディバイダー（直前セクションの色を自動継承）
+   ・ティントセクションに白の装飾（円・ドット・キラキラ・波線）
+   ・白セクションにドットグリッド＋くすみピンクの装飾
+   ・見出しラベル/ステップ番号/アクセントを暖色グラデに
+   ======================================================================== */
+:root {
+  --grad: linear-gradient(118deg, #F5BE8F 0%, #E4849C 62%, #D97F97 100%);
+}
+
+/* ---- 波形ディバイダー ---- */
+.sec { position: relative; padding: 78px 0 62px; }
+.sec > .container { position: relative; z-index: 1; }
+
+.sec::before {
+  content: "";
+  position: absolute;
+  top: -1px; left: 0; right: 0;
+  height: 40px;
+  background: var(--wave-c, transparent);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%201440%2060'%20preserveAspectRatio='none'%3E%3Cpath%20d='M0%200H1440V22C1220%2054%201030%2010%20800%2024C560%2038%20330%2058%20130%2042C84%2038%2040%2032%200%2022Z'/%3E%3C/svg%3E") center top / 100% 100% no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%201440%2060'%20preserveAspectRatio='none'%3E%3Cpath%20d='M0%200H1440V22C1220%2054%201030%2010%20800%2024C560%2038%20330%2058%20130%2042C84%2038%2040%2032%200%2022Z'/%3E%3C/svg%3E") center top / 100% 100% no-repeat;
+  pointer-events: none;
+}
+
+/* 直前セクションの背景色を波の色として継承 */
+.sec + .sec { --wave-c: #FFFFFF; }
+.hero + .sec { --wave-c: #FDF6F1; }
+.sec.tint-pink + .sec { --wave-c: var(--pink-soft); }
+.sec.tint-lav  + .sec { --wave-c: var(--lav-soft); }
+.sec.tint-cream + .sec { --wave-c: var(--cream); }
+.sec.scarcity + .sec { --wave-c: #FDF4F1; }
+
+/* ---- ティントセクション：白の装飾背景 ---- */
+.sec.tint-pink, .sec.tint-lav, .sec.tint-cream {
+  background-image: url("deco-tl.svg"), url("deco-br.svg");
+  background-repeat: no-repeat, no-repeat;
+  background-position: left -90px top -60px, right -90px bottom -60px;
+  background-size: 480px 420px, 480px 420px;
+}
+.sec.tint-pink { background-color: var(--pink-soft); }
+.sec.tint-lav  { background-color: var(--lav-soft); }
+.sec.tint-cream{ background-color: var(--cream); }
+
+/* ---- 白セクション：ドットグリッド＋くすみピンク装飾 ---- */
+.sec:not(.tint-pink):not(.tint-lav):not(.tint-cream):not(.scarcity) {
+  background-color: var(--white);
+  background-image:
+    url("deco-tl-pink.svg"),
+    url("deco-br-pink.svg"),
+    radial-gradient(rgba(224, 138, 147, 0.09) 1.4px, transparent 1.4px);
+  background-repeat: no-repeat, no-repeat, repeat;
+  background-position: left -90px top -60px, right -90px bottom -60px, 0 0;
+  background-size: 480px 420px, 480px 420px, 28px 28px;
+}
+
+/* ---- クロージング（scarcity）：ピンク装飾を重ねる ---- */
+.sec.scarcity {
+  background-image:
+    url("deco-tl-pink.svg"),
+    url("deco-br-pink.svg"),
+    linear-gradient(150deg, #FDF4F1 0%, #F8F3F1 100%);
+  background-repeat: no-repeat, no-repeat, no-repeat;
+  background-position: left -90px top -60px, right -90px bottom -60px, 0 0;
+  background-size: 480px 420px, 480px 420px, 100% 100%;
+}
+
+/* ---- ファーストビューにも薄く装飾 ---- */
+.hero {
+  background-image:
+    url("deco-tl-pink.svg"),
+    url("deco-br-pink.svg"),
+    linear-gradient(180deg, #FFFDFB 0%, #FDF6F1 100%);
+  background-repeat: no-repeat, no-repeat, no-repeat;
+  background-position: left -100px top -40px, right -100px bottom -60px, 0 0;
+  background-size: 480px 420px, 480px 420px, 100% 100%;
+}
+
+/* ---- 暖色グラデのアクセント ---- */
+.sec-label {
+  background: var(--grad);
+  color: #fff;
+  padding: 5px 16px;
+  border-radius: var(--r-pill);
+  letter-spacing: 0.14em;
+  box-shadow: 0 4px 12px rgba(224, 138, 147, 0.28);
+}
+
+.sec-title .accent {
+  background: linear-gradient(118deg, #E89A6E 0%, #E0768F 55%, #CF6E8A 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.step .n { background: var(--grad); }
+
+.campaign .ribbon { background: var(--grad); }
+
+.timeline::before { background: linear-gradient(180deg, #F5BE8F, #E4849C); }
+
+/* ---- PC調整 ---- */
+@media (min-width: 900px) {
+  .sec { padding: 104px 0 92px; }
+  .sec::before { height: 56px; }
+  .sec.tint-pink, .sec.tint-lav, .sec.tint-cream,
+  .sec:not(.tint-pink):not(.tint-lav):not(.tint-cream):not(.scarcity),
+  .sec.scarcity {
+    background-position: left -40px top -40px, right -40px bottom -40px, 0 0;
+  }
+}
