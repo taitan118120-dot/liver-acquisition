@@ -43,6 +43,14 @@ SUBJECT_PREFIX = (
     "dark brown medium-long hair, casual cute comfortable clothes, "
 )
 
+# STEPカード3枚（step-*）用。上半身だけに寄せて脚・手の破綻を防ぐ
+STEP_SUBJECT = (
+    "pretty japanese woman in her early twenties, natural light makeup, "
+    "dark brown medium-long hair, cream knit sweater, "
+    "waist-up portrait, upper body only, legs not visible, "
+    "natural relaxed hands, "
+)
+
 # ---- カット定義：ファイル名 -> (被写体プロンプト, seed) ----
 CUTS = {
     "worry-start": (
@@ -62,24 +70,22 @@ CUTS = {
         "warm lamp light, busy daily life feeling",
         104,
     ),
+    # 2026-07-21: 全身構図だと脚・手が破綻したので waist-up（上半身のみ）へ変更して引き直し
     "step-stream": (
-        SUBJECT_PREFIX + "sitting comfortably in her cozy room facing the camera, "
-        "a blurred smartphone on a small tripod in the near foreground edge, "
-        "gentle excited smile, about to start a live stream, ring light glow, "
-        "her hands resting relaxed on her lap",
-        205,
+        STEP_SUBJECT + "sitting at a desk in her cozy bright room, "
+        "gentle excited smile looking at a smartphone mounted on a small tripod "
+        "in front of her, about to start a live stream, soft ring light glow",
+        601,
     ),
     "step-talk": (
-        SUBJECT_PREFIX + "waving hello at the camera as if greeting her "
-        "livestream viewers, bright happy laughing expression, "
-        "sitting in her cozy room, lively fun mood, one open hand waving",
-        206,
+        STEP_SUBJECT + "waving hello with one open hand at the camera, "
+        "bright happy laughing expression, cozy room, lively fun mood",
+        611,
     ),
     "step-reward": (
-        SUBJECT_PREFIX + "holding her smartphone with both hands close to her chest, "
-        "looking at the screen with a delighted happy smile, "
-        "pleasant surprise, warm evening light",
-        107,
+        STEP_SUBJECT + "holding a smartphone with both hands near her chest, "
+        "looking at the screen with a delighted happy smile, warm evening light",
+        621,
     ),
     "mechanism": (
         SUBJECT_PREFIX + "seen completely from behind, back of her head, "
