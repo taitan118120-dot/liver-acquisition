@@ -234,6 +234,10 @@ def markdown_to_html(body_text):
             html += f"<p>・{item_text}</p>"
         elif stripped.startswith("---"):
             html += "<hr>"
+        elif re.match(r"<(figure|ol|ul|table)\b", stripped):
+            # note独自の埋め込みカード(figure)や番号付きリストはMarkdownで表現できないため、
+            # 原稿に生HTMLで置いてあるものはそのまま通す（--update でカードが消えるのを防ぐ）
+            html += stripped
         else:
             converted = convert_inline_markdown(stripped)
             html += f"<p>{converted}</p>"
