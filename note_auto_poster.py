@@ -228,9 +228,9 @@ def markdown_to_html(body_text):
         if not stripped:
             html += "<br>"
         elif stripped.startswith("## "):
-            html += f"<h2>{stripped[3:].strip()}</h2>"
+            html += f"<h2>{convert_heading_markdown(stripped[3:].strip())}</h2>"
         elif stripped.startswith("### "):
-            html += f"<h3>{stripped[4:].strip()}</h3>"
+            html += f"<h3>{convert_heading_markdown(stripped[4:].strip())}</h3>"
         elif stripped.startswith("- "):
             item_text = convert_inline_markdown(stripped[2:].strip())
             html += f"<p>・{item_text}</p>"
@@ -269,6 +269,15 @@ def convert_inline_markdown(text):
     # 太字: **text** → <strong>text</strong>
     text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
     return text
+
+
+def convert_heading_markdown(text):
+    """見出し行のインラインMarkdownを変換する。
+    見出しはnote側で既に太字表示されるため <strong> は残さず落とす。
+    （これを通さないと `## 「**月20万円**」…` の ** が生のまま読者に見えてしまう）
+    """
+    text = convert_inline_markdown(text)
+    return text.replace("<strong>", "").replace("</strong>", "")
 
 
 # ─── Note.com API ────────────────────────────────────
