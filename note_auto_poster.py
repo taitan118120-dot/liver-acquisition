@@ -11,6 +11,8 @@ Note.com 自動投稿（API方式）
   python3 note_auto_poster.py --post-latest --dry-run   # 投稿せず確認のみ
   python3 note_auto_poster.py --update 27 28            # 公開中の記事を in-place 更新
   python3 note_auto_poster.py --update-all              # 公開中の全記事を in-place 更新
+  python3 note_auto_poster.py --update 3 --accept-fuzzy # タイトル変更済み記事も候補1件なら更新
+  python3 note_auto_poster.py --link 3 nXXXXXXXX        # 番号→note key を台帳に手動登録
 
 環境変数:
   NOTE_EMAIL          - Note.comログインメール（--post 用）
@@ -1280,6 +1282,123 @@ def fetch_published_title_key_map():
     return key_map
 
 
+# ─── key の解決（タイトル完全一致に依存しない経路） ───────────
+# 2026-07-22の一括更新（107本指定→91本更新）で、note側でタイトルが微修正された記事
+# （例: ローカル「…7つのチェックポイント【2026年版】」 vs 公開側「…7つのチェックポイント」）が
+# 「同タイトルなし＝退役済み」として黙って除外され、禁止表現・旧ファクトが残った。
+# → ①番号→key の台帳（KEYMAP_FILE）を正とし、②無い場合のみタイトル突合、
+#   ③完全一致しなければ正規化・類似度で候補を出して「候補あり」として警告する。
+KEYMAP_FILE = os.path.join(DATA_DIR, "note_key_map.json")
+
+# 候補とみなす正規化後の類似度（これ未満は無関係とみなす）
+FUZZY_THRESHOLD = 0.82
+
+
+def load_key_map_file():
+    """{記事番号(int): {"key":…, "title":…, "linked_at":…}} を返す。"""
+    if not os.path.exists(KEYMAP_FILE):
+        return {}
+    try:
+        with open(KEYMAP_FILE, "r", encoding="utf-8") as f:
+            raw = json.load(f)
+    except Exception as e:
+        print(f"  ⚠ key台帳の読み込み失敗（無視して続行）: {e}")
+        return {}
+    out = {}
+    for k, v in (raw or {}).items():
+        try:
+            num = int(k)
+        except (TypeError, ValueError):
+            continue
+        out[num] = v if isinstance(v, dict) else {"key": v}
+    return out
+
+
+def save_key_link(article_num, key, title="", how=""):
+    """番号→key を台帳に記録する。次回以降タイトル突合なしで解決できるようにする。"""
+    data = load_key_map_file()
+    prev = data.get(article_num, {})
+    if prev.get("key") == key:
+        return False
+    data[article_num] = {
+        "key": key,
+        "title": (title or "").strip(),
+        "linked_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "linked_by": how or "auto",
+    }
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with open(KEYMAP_FILE, "w", encoding="utf-8") as f:
+        json.dump({str(n): v for n, v in sorted(data.items())},
+                  f, ensure_ascii=False, indent=2)
+        f.write("\n")
+    return True
+
+
+def _normalize_title(t):
+    """タイトルのゆれを吸収する。【】等の注釈括弧を落とし、記号・空白・全半角を潰す。
+    長音符「ー」は語の一部（ライバー等）なので残す。"""
+    import unicodedata
+    s = unicodedata.normalize("NFKC", t or "")
+    s = re.sub(r"[【\[（(〔《].*?[】\]）)〕》]", "", s)   # 【2026年版】などの注釈を除去
+    s = s.lower()
+    s = re.sub(r"[\s|｜/／:：・,、。.!！?？~〜\-–—_'\"“”‘’＆&+＋]+", "", s)
+    return s
+
+
+def find_title_candidates(title, key_map, limit=3):
+    """完全一致しなかったタイトルについて、正規化一致・前方一致・類似度で候補を返す。
+    戻り値: [{"title":…, "key":…, "how":…, "score":…}]（scoreの高い順）"""
+    import difflib
+    norm = _normalize_title(title)
+    if not norm:
+        return []
+    cands = []
+    for name, key in key_map.items():
+        n = _normalize_title(name)
+        if not n:
+            continue
+        if n == norm:
+            how, score = "正規化一致", 1.0
+        elif n.startswith(norm) or norm.startswith(n):
+            how, score = "前方一致", 0.99
+        else:
+            score = difflib.SequenceMatcher(None, norm, n).ratio()
+            if score < FUZZY_THRESHOLD:
+                continue
+            how = "類似"
+        cands.append({"title": name, "key": key, "how": how, "score": score})
+    cands.sort(key=lambda c: -c["score"])
+    return cands[:limit]
+
+
+def resolve_article_key(article_num, title, key_map, accept_fuzzy=False):
+    """記事番号＋タイトルから公開中記事の key を解決する。
+    戻り値 {"key":…|None, "how":…, "candidates":[…], "note":…}
+    how: mapfile / exact / fuzzy(採用) / なし（key=None）"""
+    published_keys = set(key_map.values())
+    linked = load_key_map_file().get(article_num) or {}
+    note = ""
+
+    if linked.get("key"):
+        if linked["key"] in published_keys:
+            return {"key": linked["key"], "how": "mapfile", "candidates": []}
+        note = (f"台帳のkey={linked['key']}は公開一覧に無い"
+                "（退役/非公開、またはkeyが古い）。タイトル突合に切り替え")
+
+    key = key_map.get((title or "").strip())
+    if key:
+        save_key_link(article_num, key, title, how="exact")
+        return {"key": key, "how": "exact", "candidates": [], "note": note}
+
+    cands = find_title_candidates(title, key_map)
+    if cands and accept_fuzzy and (len(cands) == 1 or cands[0]["score"] >= 0.999):
+        c = cands[0]
+        save_key_link(article_num, c["key"], c["title"], how=f"fuzzy:{c['how']}")
+        return {"key": c["key"], "how": f"fuzzy:{c['how']}",
+                "candidates": cands, "note": note}
+    return {"key": None, "how": "", "candidates": cands, "note": note}
+
+
 def _get_note_id(key):
     """公開key から数値id を取得（draft_save / PUT に必須）。"""
     try:
@@ -1395,10 +1514,11 @@ def _inplace_update_note(key, note_id, title, body_html):
     return True
 
 
-def update_article(article_num, key_map=None, dry_run=False):
+def update_article(article_num, key_map=None, dry_run=False, accept_fuzzy=False):
     """既存の公開記事を in-place で更新する（新規再投稿しない）。
-    ローカルMarkdownの最新本文を、公開中の同タイトル記事の note id に対して
+    ローカルMarkdownの最新本文を、公開中の記事の note id に対して
     draft_save→PUT で上書きし、タグをensure_tagsで復元、eyecatchを検証・修復する。
+    key解決は 台帳(data/note_key_map.json) → タイトル完全一致 → 曖昧一致（候補提示のみ）。
     公開一覧に無い記事（退役済み/非公開）は触らずスキップして再公開事故を防ぐ。"""
     filepath = get_article_file(article_num)
     if not filepath:
@@ -1411,13 +1531,33 @@ def update_article(article_num, key_map=None, dry_run=False):
 
     if key_map is None:
         key_map = fetch_published_title_key_map()
-    key = key_map.get(title.strip())
 
     print(f"  #{article_num:02d} {title[:50]}")
+    res = resolve_article_key(article_num, title, key_map, accept_fuzzy=accept_fuzzy)
+    if res.get("note"):
+        print(f"  ⚠ {res['note']}")
+    key = res["key"]
+
     if not key:
+        cands = res["candidates"]
+        if cands:
+            # 公開中だがタイトルが変わっている可能性が高い。黙って落とすと
+            # 禁止表現・旧ファクトが残るので、必ず候補を表示して手当てを促す。
+            print("  → ⚠️ タイトル完全一致なし。ただし公開中に候補あり（自動更新はしない）:")
+            for c in cands:
+                print(f"       [{c['how']} {c['score']:.2f}] {c['title']}  key={c['key']}")
+            top = cands[0]
+            print(f"     採用するなら: python3 note_auto_poster.py "
+                  f"--link {article_num} {top['key']}   # 台帳に登録して次回から自動解決")
+            print(f"     一括で採用するなら --accept-fuzzy を付けて再実行")
+            return {"success": True, "skipped": True, "reason": "ambiguous_title",
+                    "candidates": cands}
         print("  → 公開中に同タイトル記事なし。スキップ（退役済み/非公開の可能性）")
         return {"success": True, "skipped": True, "reason": "not_published"}
-    print(f"  key={key}  文字数: {len(formatted_body)} / HTML: {len(body_html)}")
+
+    if res["how"].startswith("fuzzy"):
+        print(f"  ⚠ 曖昧一致を採用（{res['how']}）: 公開側タイトル「{res['candidates'][0]['title']}」")
+    print(f"  key={key} ({res['how']})  文字数: {len(formatted_body)} / HTML: {len(body_html)}")
 
     if dry_run:
         print("  [dry-run] 更新スキップ")
@@ -1442,13 +1582,51 @@ def update_article(article_num, key_map=None, dry_run=False):
         return {"success": False, "error": str(e), "key": key}
 
 
-def update_all_articles(dry_run=False):
+def _print_update_summary(key_map, results):
+    """公開記事数 / 更新 / スキップ内訳（退役済み・候補あり）を明示する。
+    「退役済み」と「タイトル不一致だが公開中」は対処が正反対なので必ず分けて出す。"""
+    amb = results.get("ambiguous", [])
+    print(f"\n{'='*50}")
+    print(f"  公開記事数 {len(key_map)} / 更新 {results['success']} / 失敗 {results['fail']}"
+          f" / スキップ {results['skip']}")
+    print(f"    スキップ内訳: 退役済み（公開一覧に無い） {results.get('skip_retired', 0)}本"
+          f" / タイトル不一致の候補あり {len(amb)}本")
+    if amb:
+        print("    ⚠️ 以下は公開中の可能性が高い（放置すると旧本文が残ります）:")
+        for a in amb:
+            top = a["candidates"][0]
+            print(f"      #{a['num']:02d} ローカル「{a['title'][:40]}」")
+            print(f"           → 公開側候補「{top['title'][:40]}」 key={top['key']} "
+                  f"({top['how']} {top['score']:.2f})")
+        nums = " ".join(str(a["num"]) for a in amb)
+        print(f"    採用するなら: python3 note_auto_poster.py --update {nums} --accept-fuzzy")
+    print(f"{'='*50}")
+
+
+def _tally_update_result(results, result, num=None, title=None):
+    # dry-run は key が解決できた＝更新対象なので「更新」側に数える（本番と同じ内訳を出す）
+    if result.get("skipped"):
+        results["skip"] += 1
+        if result.get("reason") == "ambiguous_title":
+            results.setdefault("ambiguous", []).append(
+                {"num": num, "title": title or "", "candidates": result["candidates"]})
+        elif result.get("reason") == "not_published":
+            results["skip_retired"] = results.get("skip_retired", 0) + 1
+    elif result.get("success"):
+        results["success"] += 1
+    else:
+        results["fail"] += 1
+        print(f"  エラー: {result.get('error')}")
+    return results
+
+
+def update_all_articles(dry_run=False, accept_fuzzy=False):
     """公開中の全記事を、対応するローカルMarkdownで in-place 更新する。
     退役済み（非公開）記事は公開一覧に載らないので自動的にスキップされる。"""
     key_map = fetch_published_title_key_map()
     files = sorted(glob.glob(os.path.join(ARTICLES_DIR, "*.md")))
 
-    results = {"success": 0, "fail": 0, "skip": 0}
+    results = {"success": 0, "fail": 0, "skip": 0, "skip_retired": 0, "ambiguous": []}
     total = len(files)
 
     print(f"\n{'='*50}")
@@ -1462,23 +1640,16 @@ def update_all_articles(dry_run=False):
             continue
         num = int(m.group(1))
         print(f"── {i}/{total} #{num} ──────────────────────────")
-        result = update_article(num, key_map=key_map, dry_run=dry_run)
-
-        if result.get("dry_run") or result.get("skipped"):
-            results["skip"] += 1
-        elif result.get("success"):
-            results["success"] += 1
-        else:
-            results["fail"] += 1
-            print(f"  エラー: {result.get('error')}")
+        result = update_article(num, key_map=key_map, dry_run=dry_run,
+                                accept_fuzzy=accept_fuzzy)
+        title, _ = parse_article(filepath)
+        _tally_update_result(results, result, num=num, title=title)
 
         # 連投検知を避ける（実更新した記事の後だけ待つ）
         if i < total and not dry_run and not result.get("skipped"):
             time.sleep(8)
 
-    print(f"\n{'='*50}")
-    print(f"  完了: 成功 {results['success']} / 失敗 {results['fail']} / スキップ {results['skip']}")
-    print(f"{'='*50}")
+    _print_update_summary(key_map, results)
     return results
 
 
@@ -1670,26 +1841,44 @@ def main():
     parser.add_argument("--update", type=int, nargs="+", help="指定番号の記事を更新")
     parser.add_argument("--update-all", action="store_true", help="全投稿済み記事を更新")
     parser.add_argument("--dry-run", action="store_true", help="投稿/更新せず確認のみ")
+    parser.add_argument("--accept-fuzzy", action="store_true",
+                        help="タイトル曖昧一致の候補が1件なら採用して更新（既定は候補表示のみ）")
+    parser.add_argument("--link", nargs=2, metavar=("NUM", "KEY"),
+                        help="記事番号→note keyを台帳(data/note_key_map.json)に手動登録")
     args = parser.parse_args()
 
+    if args.link:
+        num, key = int(args.link[0]), args.link[1].strip()
+        fp = get_article_file(num)
+        title = parse_article(fp)[0] if fp else ""
+        save_key_link(num, key, title, how="manual")
+        print(f"台帳に登録: #{num} → {key}  ({title[:40]})")
+        return
+
     if args.update_all:
-        res = update_all_articles(dry_run=args.dry_run)
+        res = update_all_articles(dry_run=args.dry_run, accept_fuzzy=args.accept_fuzzy)
         if res.get("fail"):
             sys.exit(1)  # 一部失敗はCIで赤くして気づけるようにする
+        if res.get("ambiguous"):
+            sys.exit(6)  # 「公開中なのに更新されていない」を見逃さないよう赤くする
         return
 
     if args.update:
         key_map = fetch_published_title_key_map()
-        failed = 0
+        results = {"success": 0, "fail": 0, "skip": 0, "skip_retired": 0, "ambiguous": []}
         for num in args.update:
-            result = update_article(num, key_map=key_map, dry_run=args.dry_run)
-            if not result.get("success") and not result.get("dry_run"):
-                print(f"  更新失敗: {result.get('error')}")
-                failed += 1
+            result = update_article(num, key_map=key_map, dry_run=args.dry_run,
+                                    accept_fuzzy=args.accept_fuzzy)
+            fp = get_article_file(num)
+            _tally_update_result(results, result, num=num,
+                                 title=parse_article(fp)[0] if fp else "")
             if len(args.update) > 1 and not args.dry_run and not result.get("skipped"):
                 time.sleep(8)
-        if failed:
+        _print_update_summary(key_map, results)
+        if results["fail"]:
             sys.exit(1)
+        if results["ambiguous"]:
+            sys.exit(6)
         return
 
     skipped_no_cover = []
