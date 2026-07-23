@@ -1,0 +1,8 @@
+媒体,優先度,料金,合言葉,tracker_channel,掲載URL,アカウント作成,掲載日,掲載ステータス,応募数,メモ
+代理店本舗,1,無料0円(確認済),代理店DB,agency_dairiten,https://dairitenboshu.com/keisai,未,,未掲載,0,【本命】2026-06-23裏取り:無料0円明記/個人事業主OK/フォーム申込→メールで掲載用フォームURL→審査→最短翌日〜5営業日掲載。マルチ系NGだが当方非該当。Chrome自動操作は禁止ドメイン→本人手動申込
+ビジェント,2,有料(電話営業/前入金),代理店BG,agency_bgent,https://www.bgent.net/lp/enterprise,未,,保留,0,2026-06-23確認:無料ではない。資料請求→専任コンサル電話→審査→定額前入金→3-7営業日掲載。費用判断要。当面保留
+代理店募集.com,3,有料のみ(無料廃止),代理店BS,agency_bseeds,https://b-seeds.com/muryo,未,,却下,0,2026-06-23確認:「現在無料掲載は受け付けておりません」有料のみ。却下
+OpenLink(friendlink),4,無料(掲示板),代理店FL,agency_friendlink,https://friendlink.jp/bbs/list/11/,未,,未掲載,0,掲示板・即掲載。Chrome禁止ドメインで自動操作不可→本人手動。無料の可能性高いが要本人確認
+カケハシ,5,要確認,代理店KK,agency_kakehashi,https://www.kkhashi.com/,未,,未掲載,0,代理店・FC専門。Chrome禁止ドメイン。FC文脈=有料の可能性。本人確認
+代理店大百科/BIZee,6,無料,代理店BZ,agency_bizee,,未,,未掲載,0,新興無料系。URL未確定・要特定
+アントレ,7,要確認(大手),代理店EN,agency_entrenet,https://entrenet.jp/,未,,未掲載,0,独立・開業大手。Chrome禁止ドメイン。基本有料の見込み。集客力最大だがコスト要確認
