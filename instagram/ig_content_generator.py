@@ -218,12 +218,12 @@ def generate_caption(article, dry_run=False):
 ⑧保存促進＋ハッシュタグ
    - 「📌 後で見返せるように保存推奨」の1行を入れる
    - その後に空行をはさんでハッシュタグを以下の比率で出す:
-     ・大ボリューム(投稿100万件以上): 4個 例 #ライバー #ライブ配信 #Pococha #在宅ワーク
-     ・中ボリューム(10万〜100万): 6個 例 #ライバー募集 #ポコチャ #ライバー事務所 #ライバーになりたい #フリーランス #自分らしく働く
-     ・スモール/ニッチ(〜10万): 5個 例 #ライバーデビュー #ポコチャ攻略 #ライバー事務所選び #タイタンプロ #配信初心者
-   - 計15個。記事内容に合わせて入れ替えて構わないが、必ずこのボリューム別構成。
+     ・大ボリューム(投稿100万件以上): 2個 例 #ライバー #Pococha
+     ・中ボリューム(10万〜100万): 2個 例 #ライバー募集 #ライバー事務所
+     ・スモール/ニッチ(〜10万): 1個 例 #ポコチャ攻略
+   - 計5個ちょうど。6個以上は付けない。記事内容に合わせて入れ替えて構わないが、必ずこのボリューム別構成。
    - 「#副業」系（#副業/#副業女子/#スマホ副業/#副業始めたい 等）は **最大1個まで**。連呼禁止。
-   - ハッシュタグは1行にまとめず、改行で大→中→小の3グループに分ける。
+   - ハッシュタグは1行にまとめてよい。5個だけ。
    - 毎回同じタグセットの繰り返しを避けるため、記事内容に合う変化を入れる。
 
 【厳守事項】
@@ -434,9 +434,24 @@ def _polish_caption(text):
 
     # 7. ハッシュタグの個数チェック
     # 2026-05-16: IGからサイバーセキュリティ警告が出たため、毎回同じセットを避けてランダム化。
-    # 計18→計15に減量、「副業」系の偏りも抑制。
-    tags = _HASHTAG_RE.findall(tag_part)
-    if len(tags) < 10:
+    # 2026-07-10: IG推奨（3〜5個）に合わせ最大5個に減量。多すぎるとスパム判定＆リーチ低下。
+    _SIDEJOB = {"#副業", "#副業女子", "#副業始めたい", "#スマホ副業"}
+    _raw_tags = _HASHTAG_RE.findall(tag_part)
+    # 重複除去＋「副業」系は1個まで
+    tags = []
+    seen = set()
+    sidejob_used = False
+    for t in _raw_tags:
+        if t in seen:
+            continue
+        if t in _SIDEJOB:
+            if sidejob_used:
+                continue
+            sidejob_used = True
+        seen.add(t)
+        tags.append(t)
+
+    if len(tags) < 5:
         import random as _rd
         # プール: 大/中/小ごとに多めに用意し、ランダム選抜（fingerprint対策）
         pool_large = [
@@ -453,10 +468,6 @@ def _polish_caption(text):
             "#TikTokLIVE収益化", "#ライバー事務所選び", "#Pococha攻略",
             "#ライブ配信デビュー", "#配信初心者",
         ]
-        # 「副業」系は1つだけ混ぜる（連呼回避）
-        pool_sidejob = ["#副業", "#副業女子", "#副業始めたい", "#スマホ副業"]
-
-        seen = set(tags)
 
         def _pick(pool, n):
             available = [t for t in pool if t not in seen]
@@ -465,17 +476,15 @@ def _polish_caption(text):
             seen.update(picked)
             return picked
 
-        large = _pick(pool_large, 3) + _pick(pool_sidejob, 1)  # 計4
-        medium = _pick(pool_medium, 6)
-        small = _pick(pool_small, 5)
-        tags = list(tags) + large + medium + small
-        tags = tags[:15]
-        # 大/中/小の3行に分けて再構築
-        tag_part = (
-            " ".join(tags[:4]) + "\n"
-            + " ".join(tags[4:10]) + "\n"
-            + " ".join(tags[10:15])
-        )
+        # 不足分を大→中→小の順で補充（大2/中2/小1のバランス）
+        for t in _pick(pool_large, 2) + _pick(pool_medium, 2) + _pick(pool_small, 1):
+            if len(tags) >= 5:
+                break
+            tags.append(t)
+
+    # 最大5個に丸めて1行で再構築
+    tags = tags[:5]
+    tag_part = " ".join(tags)
 
     polished = body_part.rstrip() + "\n\n" + tag_part.strip()
 

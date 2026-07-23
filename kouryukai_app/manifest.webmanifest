@@ -1,0 +1,12 @@
+{
+  "name": "交流会スケジュール｜TAITAN PRO",
+  "short_name": "交流会",
+  "description": "石川・金沢の交流会で代理店パートナーを獲得するためのスケジュール＆成果記録アプリ",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0e0f13",
+  "theme_color": "#0e0f13",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

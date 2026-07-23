@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>P-Bandai Sniper インストール</title>
+<style>
+  body { font-family: -apple-system, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 20px; line-height: 1.7; }
+  h1 { font-size: 22px; }
+  .btn {
+    display: inline-block;
+    background: linear-gradient(180deg, #ff3b30 0%, #c70016 100%);
+    color: white !important;
+    padding: 16px 28px;
+    font-size: 18px;
+    font-weight: bold;
+    border-radius: 10px;
+    text-decoration: none !important;
+    box-shadow: 0 4px 16px rgba(255,59,48,.4);
+    cursor: grab;
+  }
+  .btn:hover { transform: translateY(-2px); }
+  .step { background: #f5f5f7; border-left: 4px solid #0a84ff; padding: 14px 18px; margin: 14px 0; border-radius: 6px; }
+  .warn { background: #fff5e0; border-left: 4px solid #ff9500; padding: 14px 18px; margin: 14px 0; border-radius: 6px; }
+  code { background: #eee; padding: 2px 6px; border-radius: 4px; font-size: 14px; }
+  kbd { background: #fff; border: 1px solid #ccc; border-bottom-width: 2px; padding: 2px 8px; border-radius: 4px; font-size: 13px; }
+</style>
+</head>
+<body>
+<h1>🎯 P-Bandai Sniper — インストール</h1>
+
+<p><b>下の赤いボタンを Chrome のブックマークバーにドラッグ＆ドロップ</b>するだけです。</p>
+
+<p style="text-align:center; margin: 30px 0;">
+  <a class="btn" href="javascript://%20%E3%82%BB%E3%83%83%E3%83%88%E3%82%A2%E3%83%83%E3%83%97:%20//%201)%20Chrome%20%E3%81%AB%20Tampermonkey%20%E6%8B%A1%E5%BC%B5%E3%82%92%E3%82%A4%E3%83%B3%E3%82%B9%E3%83%88%E3%83%BC%E3%83%AB%20//%202)%20Tampermonkey%20%E3%83%80%E3%83%83%E3%82%B7%E3%83%A5%E3%83%9C%E3%83%BC%E3%83%89%20%E2%86%92%20%E6%96%B0%E8%A6%8F%E3%82%B9%E3%82%AF%E3%83%AA%E3%83%97%E3%83%88%20%E2%86%92%20%E3%81%93%E3%81%AE%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB%E5%85%A8%E6%96%87%E3%82%92%E8%B2%BC%E3%82%8A%E4%BB%98%E3%81%91%20%E2%86%92%20%E4%BF%9D%E5%AD%98%20//%203)%20%E5%95%86%E5%93%81%E3%83%9A%E3%83%BC%E3%82%B8%E3%82%92%E9%96%8B%E3%81%84%E3%81%A6%E7%99%BA%E5%A3%B2%E9%96%8B%E5%A7%8B%E3%82%92%E5%BE%85%E3%81%A4%E3%80%82%E7%99%BA%E5%A3%B2%E3%81%AE%E7%9E%AC%E9%96%93%E3%81%AB%E8%87%AA%E5%8B%95%E3%81%A7%E3%82%AB%E3%83%BC%E3%83%88%E6%8A%95%E5%85%A5%E2%86%92%E3%82%AB%E3%83%BC%E3%83%88%E7%94%BB%E9%9D%A2%E9%81%B7%E7%A7%BB%E2%86%92%E8%B3%BC%E5%85%A5%E6%89%8B%E7%B6%9A%E3%81%8D%E3%81%B8%E9%80%B2%E3%82%80%20//%204)%20%E3%80%8C%E6%B3%A8%E6%96%87%E7%A2%BA%E5%AE%9A%E3%80%8D%E3%83%9C%E3%82%BF%E3%83%B3%E3%81%AF%E6%8A%BC%E3%81%95%E3%81%AA%E3%81%84%EF%BC%88%E6%89%8B%E5%8B%95%E3%81%A7%E7%A2%BA%E8%AA%8D%E3%81%97%E3%81%A6%E3%81%8B%E3%82%89%E8%87%AA%E5%88%86%E3%81%A7%E6%8A%BC%E3%81%99%EF%BC%89%20(function()%20{%20'use%20strict';%20//%20%E2%9A%A0%EF%B8%8F%20%E3%83%86%E3%82%B9%E3%83%88%E6%99%82%E3%81%AF%20true%E3%80%81%E6%9C%AC%E7%95%AA(%E6%98%8E%E6%97%A512%E6%99%82)%E3%81%AF%20false%20%E3%81%AB%E3%81%99%E3%82%8B%20//%20true:%20%E3%82%AF%E3%83%AA%E3%83%83%E3%82%AF%E5%AF%BE%E8%B1%A1%E3%82%92%E8%B5%A4%E3%81%8F%E5%85%89%E3%82%89%E3%81%9B%E3%82%8B%E3%81%A0%E3%81%91%E3%81%A7%E5%AE%9F%E3%82%AF%E3%83%AA%E3%83%83%E3%82%AF%E3%81%97%E3%81%AA%E3%81%84%EF%BC%88%E3%83%AD%E3%82%B0%E3%82%A4%E3%83%B3%E4%B8%AD%E3%81%A7%E3%82%82%E3%82%AB%E3%83%BC%E3%83%88%E3%81%AB%E5%85%A5%E3%82%89%E3%81%AA%E3%81%84%EF%BC%89%20//%20false:%20%E6%9C%AC%E7%95%AA%E3%82%AF%E3%83%AA%E3%83%83%E3%82%AF%E7%99%BA%E7%81%AB%20const%20DRY_RUN%20=%20true;%20const%20isItemPage%20=%20location.pathname.startsWith('/item/');%20const%20isCartPage%20=%20location.pathname.startsWith('/cart');%20//%20-------%20UI%20helpers%20-------%20function%20banner(msg,%20color)%20{%20console.log('[SNIPER]',%20msg);%20const%20div%20=%20document.createElement('div');%20div.textContent%20=%20msg;%20div.style.cssText%20=%20`position:fixed;top:10px;right:10px;background:${color%20||%20'#ff3b30'};color:#fff;padding:12px%2016px;font-size:14px;font-weight:bold;z-index:99999;border-radius:6px;box-shadow:0%204px%2012px%20rgba(0,0,0,.3);font-family:-apple-system,sans-serif`;%20if%20(document.body)%20document.body.appendChild(div);%20setTimeout(()%20=>%20div.remove(),%204000);%20}%20function%20beep()%20{%20try%20{%20const%20ctx%20=%20new%20(window.AudioContext%20||%20window.webkitAudioContext)();%20const%20osc%20=%20ctx.createOscillator();%20const%20gain%20=%20ctx.createGain();%20osc.connect(gain);%20gain.connect(ctx.destination);%20osc.frequency.value%20=%20880;%20gain.gain.value%20=%200.4;%20osc.start();%20osc.stop(ctx.currentTime%20+%200.4);%20}%20catch%20(e)%20{}%20}%20//%20-------%20Button%20finders%20-------%20function%20findButtonByText(regex)%20{%20const%20candidates%20=%20document.querySelectorAll('button,%20a,%20input[type="submit"],%20input[type="button"],%20[role="button"]');%20for%20(const%20b%20of%20candidates)%20{%20const%20text%20=%20(b.innerText%20||%20b.textContent%20||%20b.value%20||%20'').trim();%20if%20(regex.test(text))%20return%20b;%20}%20return%20null;%20}%20function%20isClickable(btn)%20{%20if%20(!btn)%20return%20false;%20if%20(btn.disabled%20===%20true)%20return%20false;%20if%20(btn.getAttribute('aria-disabled')%20===%20'true')%20return%20false;%20if%20(btn.classList%20&&%20(btn.classList.contains('disabled')%20||%20btn.classList.contains('is-disabled')))%20return%20false;%20const%20cs%20=%20window.getComputedStyle(btn);%20if%20(cs.display%20===%20'none'%20||%20cs.visibility%20===%20'hidden'%20||%20parseFloat(cs.opacity)%20<%200.3)%20return%20false;%20if%20(cs.pointerEvents%20===%20'none')%20return%20false;%20return%20true;%20}%20//%20-------%20Item%20page%20logic%20-------%20let%20cartClicked%20=%20false;%20function%20tryCart()%20{%20if%20(cartClicked)%20return;%20//%20%E3%80%8C%E3%82%AB%E3%83%BC%E3%83%88%E3%81%AB%E5%85%A5%E3%82%8C%E3%82%8B%E3%80%8D%E3%80%8C%E3%82%AB%E3%83%BC%E3%83%88%E3%81%AB%E3%81%84%E3%82%8C%E3%82%8B%E3%80%8D%E3%80%8C%E7%A8%AE%E9%A1%9E%E3%82%92%E9%81%B8%E3%82%93%E3%81%A7%E3%82%AB%E3%83%BC%E3%83%88%E3%81%AB%E3%81%84%E3%82%8C%E3%82%8B%E3%80%8D%E3%80%8C%E3%81%94%E4%BA%88%E7%B4%84%E3%81%AF%E3%81%93%E3%81%A1%E3%82%89%E3%80%8D%E3%82%92%E5%85%A8%E9%83%A8%E5%AF%BE%E8%B1%A1%20const%20candidates%20=%20document.querySelectorAll('button,%20a,%20input[type="submit"],%20input[type="button"],%20[role="button"]');%20let%20target%20=%20null;%20for%20(const%20b%20of%20candidates)%20{%20const%20text%20=%20(b.innerText%20||%20b.textContent%20||%20b.value%20||%20'').trim();%20if%20(/%E3%82%AB%E3%83%BC%E3%83%88(%E3%81%AB|%E3%81%B8)?(%E5%85%A5|%E3%81%84)%E3%82%8C%E3%82%8B|%E3%81%94%E4%BA%88%E7%B4%84%E3%81%AF%E3%81%93%E3%81%A1%E3%82%89/.test(text))%20{%20if%20(!isClickable(b))%20continue;%20//%20%E4%BA%88%E7%B4%84%E9%96%8B%E5%A7%8B%E5%89%8D%E3%81%AF%E3%80%8C%E4%BA%88%E7%B4%84%E5%8F%97%E4%BB%98%E9%96%8B%E5%A7%8B%E5%89%8D%E3%81%A7%E3%81%99%E3%80%8D%E3%81%A8%E3%81%84%E3%81%86%E3%83%A1%E3%83%83%E3%82%BB%E3%83%BC%E3%82%B8%E3%81%8C%E8%BF%91%E3%81%8F%E3%81%AB%E3%81%82%E3%82%8B%E3%81%AF%E3%81%9A%E3%81%AA%E3%81%AE%E3%81%A7%E3%82%B9%E3%82%AD%E3%83%83%E3%83%97%20const%20ctx%20=%20(b.closest('section,div,form')%20||%20document.body).innerText%20||%20'';%20if%20(/%E4%BA%88%E7%B4%84%E5%8F%97%E4%BB%98%E9%96%8B%E5%A7%8B%E5%89%8D|%E4%BA%88%E7%B4%84%E9%96%8B%E5%A7%8B%E4%BA%88%E5%AE%9A|%E3%82%88%E3%82%8A%E4%BA%88%E7%B4%84%E9%96%8B%E5%A7%8B|%E5%8F%97%E4%BB%98%E9%96%8B%E5%A7%8B%E5%89%8D/.test(ctx)%20&&%20!/%E4%BA%88%E7%B4%84%E9%96%8B%E5%A7%8B%E3%81%97%E3%81%BE%E3%81%97%E3%81%9F/.test(ctx))%20{%20//%20%E3%81%BE%E3%81%A0%E4%BA%88%E7%B4%84%E5%89%8D%E3%81%AA%E3%81%AE%E3%81%A7%E3%82%AF%E3%83%AA%E3%83%83%E3%82%AF%E3%81%97%E3%81%AA%E3%81%84%20continue;%20}%20target%20=%20b;%20break;%20}%20}%20if%20(!target)%20return;%20cartClicked%20=%20true;%20if%20(DRY_RUN)%20{%20target.style.outline%20=%20'4px%20solid%20#ff3b30';%20target.style.boxShadow%20=%20'0%200%2020px%20rgba(255,59,48,.8)';%20banner('%F0%9F%A7%AA%20[DRY_RUN]%20%E3%81%93%E3%81%93%E3%82%92%E3%82%AF%E3%83%AA%E3%83%83%E3%82%AF%E3%81%97%E3%81%BE%E3%81%99%EF%BC%88%E5%AE%9F%E3%82%AF%E3%83%AA%E3%83%83%E3%82%AF%E3%81%AA%E3%81%97%EF%BC%89',%20'#ff9500');%20beep();%20return;%20}%20banner('%F0%9F%8E%AF%20%E3%82%AB%E3%83%BC%E3%83%88%E6%8A%95%E5%85%A5%E3%82%AF%E3%83%AA%E3%83%83%E3%82%AF%EF%BC%81',%20'#34c759');%20beep();%20target.click();%20}%20//%20-------%20Cart%20page%20logic%20-------%20let%20checkoutClicked%20=%20false;%20function%20tryCheckout()%20{%20if%20(checkoutClicked)%20return;%20const%20btn%20=%20findButtonByText(/%E8%B3%BC%E5%85%A5%E6%89%8B%E7%B6%9A%E3%81%8D|%E6%B3%A8%E6%96%87%E6%89%8B%E7%B6%9A%E3%81%8D|%E3%83%AC%E3%82%B8%E3%81%B8%E9%80%B2%E3%82%80|%E3%81%8A%E6%94%AF%E6%89%95%E3%81%84%E3%81%B8/);%20if%20(!btn)%20return;%20if%20(!isClickable(btn))%20return;%20checkoutClicked%20=%20true;%20if%20(DRY_RUN)%20{%20btn.style.outline%20=%20'4px%20solid%20#ff3b30';%20btn.style.boxShadow%20=%20'0%200%2020px%20rgba(255,59,48,.8)';%20banner('%F0%9F%A7%AA%20[DRY_RUN]%20%E8%B3%BC%E5%85%A5%E6%89%8B%E7%B6%9A%E3%81%8D%E3%83%9C%E3%82%BF%E3%83%B3%E3%82%92%E3%82%AF%E3%83%AA%E3%83%83%E3%82%AF%E3%81%97%E3%81%BE%E3%81%99%EF%BC%88%E5%AE%9F%E3%82%AF%E3%83%AA%E3%83%83%E3%82%AF%E3%81%AA%E3%81%97%EF%BC%89',%20'#ff9500');%20beep();%20return;%20}%20banner('%E2%9E%A1%EF%B8%8F%20%E8%B3%BC%E5%85%A5%E6%89%8B%E7%B6%9A%E3%81%8D%E3%81%B8%E9%80%B2%E8%A1%8C%EF%BC%88%E6%B3%A8%E6%96%87%E7%A2%BA%E5%AE%9A%E3%81%AF%E6%89%8B%E5%8B%95%EF%BC%89',%20'#0a84ff');%20beep();%20btn.click();%20}%20//%20-------%20Boot%20-------%20function%20start()%20{%20if%20(isItemPage)%20{%20banner('%F0%9F%91%80%20%E7%9B%A3%E8%A6%96%E9%96%8B%E5%A7%8B:%20%E7%99%BA%E5%A3%B2%E3%81%AE%E7%9E%AC%E9%96%93%E3%81%AB%E8%87%AA%E5%8B%95%E3%82%AB%E3%83%BC%E3%83%88%E6%8A%95%E5%85%A5',%20'#0a84ff');%20tryCart();%20const%20obs%20=%20new%20MutationObserver(tryCart);%20obs.observe(document.body,%20{%20childList:%20true,%20subtree:%20true,%20attributes:%20true,%20attributeFilter:%20['disabled',%20'aria-disabled',%20'class',%20'style']%20});%20//%20200ms%E3%83%9D%E3%83%BC%E3%83%AA%E3%83%B3%E3%82%B0%E4%BD%B5%E7%94%A8%EF%BC%88Mutation%E5%8F%96%E3%82%8A%E3%81%93%E3%81%BC%E3%81%97%E5%AF%BE%E7%AD%96%EF%BC%89%20setInterval(tryCart,%20200);%20}%20if%20(isCartPage)%20{%20banner('%F0%9F%9B%92%20%E3%82%AB%E3%83%BC%E3%83%88%E5%88%B0%E9%81%94%E3%80%82%E8%B3%BC%E5%85%A5%E6%89%8B%E7%B6%9A%E3%81%8D%E3%81%B8%E8%87%AA%E5%8B%95%E9%80%B2%E8%A1%8C%EF%BC%88%E6%B3%A8%E6%96%87%E7%A2%BA%E5%AE%9A%E3%81%AF%E6%89%8B%E5%8B%95%EF%BC%89',%20'#0a84ff');%20//%20%E3%82%AB%E3%83%BC%E3%83%88%E3%83%9A%E3%83%BC%E3%82%B8%E3%81%AEDOM%E3%81%8C%E5%9B%BA%E3%81%BE%E3%82%8B%E3%81%BE%E3%81%A7%E5%B0%91%E3%81%97%E5%BE%85%E3%81%A4%20setTimeout(tryCheckout,%20500);%20const%20obs%20=%20new%20MutationObserver(tryCheckout);%20obs.observe(document.body,%20{%20childList:%20true,%20subtree:%20true%20});%20setInterval(tryCheckout,%20300);%20}%20}%20if%20(document.readyState%20===%20'loading')%20{%20document.addEventListener('DOMContentLoaded',%20start);%20}%20else%20{%20start();%20}%20})();">🎯 P-Bandai Sniper</a>
+</p>
+
+<div class="step">
+  <b>ステップ1: ブックマークバーを表示</b><br>
+  Chromeで <kbd>⌘ + Shift + B</kbd> を押す（バーが出てなければ）
+</div>
+
+<div class="step">
+  <b>ステップ2: 上の赤ボタンをドラッグ</b><br>
+  ボタンを掴んだまま、ブックマークバー (画面上部の細い帯) に持っていって離す
+</div>
+
+<div class="step">
+  <b>ステップ3: テスト</b><br>
+  ① 商品ページを開く: <a href="https://p-bandai.jp/item/item-1000232939/" target="_blank">テスト用商品（アンパンマンスタイ）</a><br>
+  ② ブックマークバーの「🎯 P-Bandai Sniper」をクリック<br>
+  ③ 右上に青いバナー → オレンジ「🧪 [DRY_RUN]」 → カートボタンが赤く光る = 成功
+</div>
+
+<div class="warn">
+  <b>⚠️ 本番（明日 4/27 12:00）の使い方</b><br>
+  1. 11:55 に商品ページ <a href="https://p-bandai.jp/item/item-1000249423/" target="_blank">予約商品ページ</a> を開く<br>
+  2. ブックマーク「🎯 P-Bandai Sniper」をクリック → 「監視開始」バナーが出ればOK<br>
+  3. あとは何もしないで12:00を待つ。発売の瞬間にカート自動投入＋購入手続きへ自動遷移<br>
+  4. 注文確定の手前で必ず止まる → 自分で確認して確定ボタンを押す<br>
+  <br>
+  <b>★ DRY_RUN モード</b>: 現在は安全のため <code>DRY_RUN=true</code>。本番前に sniper.user.js の冒頭を <code>const DRY_RUN = false;</code> に書き換えて、再度この install.html を <code>python3 build_bookmarklet.py</code> で再生成 → ブックマークを上書きしてください。<br>
+  <br>
+  <b>もしくは: 当日11:55に「本番版ブックマーク」を別途用意しておく</b>のが安全。
+</div>
+
+<p style="color:#888; font-size: 13px;">
+  生成元: sniper.user.js / 利用規約違反のリスクは自己責任。プレミアムバンダイのToSは自動化アクセスを禁止しています。
+</p>
+</body>
+</html>

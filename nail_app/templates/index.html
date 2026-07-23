@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#e7a6b0">
+  <title>ネイル自動投稿</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/static/icon-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="ネイル投稿">
+  <style>
+    :root{ --pink:#e7a6b0; --pink-d:#d67f8d; --bg:#fdf6f4; --ink:#4a3b3e; --muted:#9a8a8d; }
+    *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    body{ margin:0; font-family:-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;
+      background:var(--bg); color:var(--ink); min-height:100vh; }
+    header{ text-align:center; padding:24px 16px 8px; }
+    header h1{ font-size:20px; margin:0; letter-spacing:.05em; }
+    header .sub{ color:var(--muted); font-size:13px; margin-top:4px; }
+    .wrap{ max-width:480px; margin:0 auto; padding:16px 20px 60px; }
+    .card{ background:#fff; border-radius:20px; padding:24px; box-shadow:0 6px 24px rgba(200,140,150,.12); }
+    .pick{ display:block; width:100%; border:none; border-radius:18px;
+      background:linear-gradient(135deg,var(--pink),var(--pink-d)); color:#fff;
+      font-size:20px; font-weight:700; padding:28px 16px; cursor:pointer;
+      box-shadow:0 8px 20px rgba(214,127,141,.35); }
+    .pick:active{ transform:scale(.98); }
+    .pick .emoji{ font-size:34px; display:block; margin-bottom:6px; }
+    .hint{ text-align:center; color:var(--muted); font-size:13px; margin:14px 4px 0; line-height:1.7; }
+    input[type=file]{ display:none; }
+    #preview{ display:none; margin-top:18px; text-align:center; }
+    #preview img{ max-width:100%; border-radius:16px; }
+    .status{ margin-top:18px; padding:16px; border-radius:14px; font-size:15px; line-height:1.7; display:none; }
+    .status.show{ display:block; }
+    .status.loading{ background:#fff4ef; color:#b57a53; }
+    .status.ok{ background:#eef8ef; color:#3f8a4f; }
+    .status.err{ background:#fdeeee; color:#c05656; }
+    .spinner{ width:22px; height:22px; border:3px solid #f0d3c8; border-top-color:var(--pink-d);
+      border-radius:50%; animation:spin 1s linear infinite; display:inline-block; vertical-align:middle; margin-right:8px; }
+    @keyframes spin{ to{ transform:rotate(360deg); } }
+    .caption-box{ margin-top:12px; background:#faf7f7; border-radius:12px; padding:12px 14px;
+      font-size:13px; white-space:pre-wrap; color:#6b585b; max-height:200px; overflow:auto; }
+    .warn{ background:#fff8e6; color:#9a7b2e; border-radius:14px; padding:14px 16px; font-size:13px;
+      line-height:1.7; margin-bottom:16px; }
+    .foot{ text-align:center; margin-top:26px; font-size:13px; }
+    .foot a{ color:var(--muted); text-decoration:none; margin:0 10px; }
+    .again{ display:none; width:100%; margin-top:16px; border:2px solid var(--pink);
+      background:#fff; color:var(--pink-d); border-radius:16px; padding:16px; font-size:17px; font-weight:700; }
+    .memo{ margin-bottom:14px; }
+    .memo label{ display:block; font-size:13px; color:var(--muted); margin:0 4px 6px; }
+    .memo textarea{ width:100%; border:2px solid #f0d8d8; border-radius:14px; padding:12px 14px;
+      font-size:15px; font-family:inherit; resize:none; color:var(--ink); background:#fffdfd; }
+    .memo textarea::placeholder{ color:#cbb8bb; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>💅 ネイル自動投稿</h1>
+    <div class="sub">{% if salon %}{{ salon }}・{% endif %}{{ area }}</div>
+  </header>
+  <div class="wrap">
+    {% if not configured %}
+    <div class="warn">
+      ⚠️ まだ Instagram との連携が終わっていません。<br>
+      アカウントを作ってから連携すると、この画面から自動投稿できるようになります。<br>
+      <small>（未設定: {{ missing|join(', ') }}）</small>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="memo" id="memoWrap">
+        <label for="memo">ひとことメモ（任意・空でOK）</label>
+        <textarea id="memo" rows="2" placeholder="例：秋のニュアンスネイル / ご来店ありがとうございました 等"></textarea>
+      </div>
+      <button class="pick" id="pickBtn">
+        <span class="emoji">📷</span>
+        ネイルの写真を選ぶ
+      </button>
+      <input type="file" id="fileInput" accept="image/*" capture="environment">
+      <div class="hint">
+        写真を選ぶだけ。<br>
+        ハッシュタグは写真に合わせて自動で付けて{% if auto_post %}投稿します{% else %}下書きにします{% endif %} ✨
+      </div>
+
+      <div id="preview"><img id="previewImg" alt=""></div>
+
+      <div class="status" id="status"></div>
+
+      <button class="again" id="againBtn">もう1枚 投稿する</button>
+    </div>
+
+    <div class="foot">
+      <a href="/history">📋 これまでの投稿</a>
+      <a href="/logout">ログアウト</a>
+    </div>
+  </div>
+
+  <script>
+    const pickBtn = document.getElementById('pickBtn');
+    const fileInput = document.getElementById('fileInput');
+    const preview = document.getElementById('preview');
+    const previewImg = document.getElementById('previewImg');
+    const statusEl = document.getElementById('status');
+    const againBtn = document.getElementById('againBtn');
+    const AUTO = {{ 'true' if auto_post else 'false' }};
+
+    pickBtn.addEventListener('click', () => fileInput.click());
+    againBtn.addEventListener('click', () => { reset(); fileInput.click(); });
+
+    function reset(){
+      statusEl.className = 'status';
+      statusEl.innerHTML = '';
+      preview.style.display = 'none';
+      againBtn.style.display = 'none';
+      pickBtn.style.display = 'block';
+      document.getElementById('memoWrap').style.display = 'block';
+      document.getElementById('memo').value = '';
+      fileInput.value = '';
+    }
+
+    function show(cls, html){
+      statusEl.className = 'status show ' + cls;
+      statusEl.innerHTML = html;
+    }
+
+    fileInput.addEventListener('change', async () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      // プレビュー
+      const reader = new FileReader();
+      reader.onload = e => { previewImg.src = e.target.result; preview.style.display = 'block'; };
+      reader.readAsDataURL(file);
+
+      pickBtn.style.display = 'none';
+      document.getElementById('memoWrap').style.display = 'none';
+      show('loading', '<span class="spinner"></span> ハッシュタグを付けて投稿しています…');
+
+      const fd = new FormData();
+      fd.append('photo', file);
+      fd.append('memo', document.getElementById('memo').value || '');
+      try{
+        const res = await fetch('/api/post', { method:'POST', body: fd });
+        const data = await res.json();
+        if (data.ok && data.status === 'posted'){
+          show('ok', '✅ Instagramに投稿できました！' +
+            (data.caption ? '<div class="caption-box">'+escapeHtml(data.caption)+'</div>' : ''));
+        } else if (data.ok && data.status === 'draft'){
+          show('ok', '📝 下書きを保存しました（確認後に投稿されます）' +
+            (data.caption ? '<div class="caption-box">'+escapeHtml(data.caption)+'</div>' : ''));
+        } else {
+          show('err', '⚠️ ' + (data.error || 'うまくいきませんでした') +
+            (data.caption ? '<div class="caption-box">'+escapeHtml(data.caption)+'</div>' : ''));
+        }
+      } catch(err){
+        show('err', '⚠️ 通信エラーが起きました。もう一度お試しください。');
+      }
+      againBtn.style.display = 'block';
+    });
+
+    function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+    if ('serviceWorker' in navigator){
+      navigator.serviceWorker.register('/sw.js').catch(()=>{});
+    }
+  </script>
+</body>
+</html>

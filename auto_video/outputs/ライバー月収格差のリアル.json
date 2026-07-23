@@ -1,0 +1,28 @@
+{
+  "topic": "ライバー月収のリアル格差",
+  "angle": "下位50%と上位トップの月収の落差を数字階段で見せる",
+  "title": "ライバー月収格差のリアル",
+  "caption": "ライバーの月収って実際どのくらい差があるの？下位50%〜トップまでリアルな数字を公開。TAITAN PROのLINEで無料診断受けると自分がどの層に入れるか分かるよ。 #ライバー副業 #在宅ワーク女子 #スマホ副業",
+  "hashtags": [
+    "#ライバー",
+    "#ライバー副業",
+    "#在宅ワーク女子",
+    "#スマホ副業",
+    "#副業女子",
+    "#TAITANPRO",
+    "#ライバー事務所",
+    "#在宅副業"
+  ],
+  "thumbnail_text": "ライバー月収の格差ヤバい",
+  "duration_sec": 36.58,
+  "beats": 8,
+  "mp4": "/Users/mitataisei/ライバー獲得/auto_video/outputs/ライバー月収格差のリアル.mp4",
+  "elapsed_sec": 102.5,
+  "model": "claude-sonnet-4-6",
+  "usage": {
+    "input_tokens": 1342,
+    "output_tokens": 1429,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0
+  }
+}

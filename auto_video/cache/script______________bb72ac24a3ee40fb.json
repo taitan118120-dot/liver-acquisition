@@ -1,0 +1,147 @@
+{
+  "title": "ライバー月収格差のリアル",
+  "caption": "ライバーの月収って実際どのくらい差があるの？下位50%〜トップまでリアルな数字を公開。TAITAN PROのLINEで無料診断受けると自分がどの層に入れるか分かるよ。 #ライバー副業 #在宅ワーク女子 #スマホ副業",
+  "hashtags": [
+    "#ライバー",
+    "#ライバー副業",
+    "#在宅ワーク女子",
+    "#スマホ副業",
+    "#副業女子",
+    "#TAITANPRO",
+    "#ライバー事務所",
+    "#在宅副業"
+  ],
+  "target_duration_sec": 26,
+  "beats": [
+    {
+      "id": 1,
+      "role": "hook",
+      "narration": "ライバーの月収、99%が現実を知らない。",
+      "caption": "99%が知らない\nライバーの月収",
+      "emphasis": [
+        "99%",
+        "月収"
+      ],
+      "emphasis_color": "red",
+      "voice": "young_f",
+      "sfx": "pop",
+      "big_number": null,
+      "visual_hint": "background motion: zoom_in"
+    },
+    {
+      "id": 2,
+      "role": "tension",
+      "narration": "実はほとんどの人が月数百円で終わってる。",
+      "caption": "ほとんどが\n月数百円で終了",
+      "emphasis": [
+        "月数百円",
+        "終わってる"
+      ],
+      "emphasis_color": "yellow",
+      "voice": "young_f",
+      "sfx": null,
+      "big_number": null,
+      "visual_hint": "background motion: static"
+    },
+    {
+      "id": 3,
+      "role": "payoff",
+      "narration": "下位50%の平均、月収は3,000円以下のケースが多い。",
+      "caption": "下位50%の平均\n月収3,000円以下",
+      "emphasis": [
+        "下位50%",
+        "3,000円以下"
+      ],
+      "emphasis_color": "cyan",
+      "voice": "young_f",
+      "sfx": null,
+      "big_number": null,
+      "visual_hint": "background motion: pan_left"
+    },
+    {
+      "id": 4,
+      "role": "payoff",
+      "narration": "上位30%になると月1〜5万円の層がぐっと増える。",
+      "caption": "上位30%で\n月1〜5万円",
+      "emphasis": [
+        "上位30%",
+        "月1〜5万円"
+      ],
+      "emphasis_color": "cyan",
+      "voice": "young_f",
+      "sfx": null,
+      "big_number": null,
+      "visual_hint": "background motion: pan_left"
+    },
+    {
+      "id": 5,
+      "role": "payoff",
+      "narration": "さらに上位10%では月20〜50万円を超えるケースも出てくる。",
+      "caption": "上位10%だと\n月20〜50万円超も",
+      "emphasis": [
+        "上位10%",
+        "月20〜50万円"
+      ],
+      "emphasis_color": "pink",
+      "voice": "young_f",
+      "sfx": "whoosh",
+      "big_number": "月50万円",
+      "visual_hint": "background motion: zoom_in"
+    },
+    {
+      "id": 6,
+      "role": "turn",
+      "narration": "実は差を生むのは顔でも声でもなく、サポート環境だった。",
+      "caption": "差を作るのは\nサポート環境",
+      "emphasis": [
+        "サポート環境",
+        "顔でも声でもなく"
+      ],
+      "emphasis_color": "yellow",
+      "voice": "young_f",
+      "sfx": "pop",
+      "big_number": null,
+      "visual_hint": "background motion: shake"
+    },
+    {
+      "id": 7,
+      "role": "resolution",
+      "narration": "TAITAN PROは個別コーチングで上位層を狙う戦略を組んでくれる。",
+      "caption": "TAITAN PROが\n戦略を個別サポート",
+      "emphasis": [
+        "TAITAN PRO",
+        "個別コーチング"
+      ],
+      "emphasis_color": "green",
+      "voice": "young_f",
+      "sfx": "tada",
+      "big_number": null,
+      "visual_hint": "background motion: pulse"
+    },
+    {
+      "id": 8,
+      "role": "cta",
+      "narration": "プロフのLINEから今すぐ無料診断を受けてみて。",
+      "caption": "プロフのLINEで\n無料診断いまスグ",
+      "emphasis": [
+        "無料診断",
+        "LINE"
+      ],
+      "emphasis_color": "pink",
+      "voice": "young_f",
+      "sfx": "pop",
+      "big_number": null,
+      "visual_hint": "background motion: pulse"
+    }
+  ],
+  "thumbnail_text": "ライバー月収の格差ヤバい",
+  "_topic": "ライバー月収のリアル格差",
+  "_angle": "下位50%と上位トップの月収の落差を数字階段で見せる",
+  "_model": "claude-sonnet-4-6",
+  "_usage": {
+    "input_tokens": 1342,
+    "output_tokens": 1429,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0
+  }
+}

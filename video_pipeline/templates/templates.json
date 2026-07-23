@@ -1,0 +1,86 @@
+{
+  "howto": {
+    "subtitle_y_ratio": 0.72,
+    "base_highlight_color": "#FFFF00",
+    "accent_color": "#FF3C3C",
+    "hook_bg_color": "#FF3C3C",
+    "hook_text_color": "#FFFFFF",
+    "default_font_size": 76,
+    "hook_font_size": 130,
+    "bgm_volume": 0.10,
+    "se_enabled": true,
+    "speed_ramp_enabled": true
+  },
+  "qa": {
+    "subtitle_y_ratio": 0.70,
+    "base_highlight_color": "#FFD60A",
+    "accent_color": "#00D9FF",
+    "hook_bg_color": "#FFD60A",
+    "hook_text_color": "#1a1a1a",
+    "default_font_size": 76,
+    "hook_font_size": 120,
+    "bgm_volume": 0.08,
+    "se_enabled": true,
+    "speed_ramp_enabled": true
+  },
+  "ranking": {
+    "subtitle_y_ratio": 0.74,
+    "base_highlight_color": "#FFFF00",
+    "accent_color": "#FF3C3C",
+    "hook_bg_color": "#FF3C3C",
+    "hook_text_color": "#FFFFFF",
+    "default_font_size": 80,
+    "hook_font_size": 140,
+    "bgm_volume": 0.12,
+    "se_enabled": true,
+    "speed_ramp_enabled": true
+  },
+  "explanation": {
+    "subtitle_y_ratio": 0.72,
+    "base_highlight_color": "#00D9FF",
+    "accent_color": "#FFFF00",
+    "hook_bg_color": "#1a1a2e",
+    "hook_text_color": "#FFFFFF",
+    "default_font_size": 72,
+    "hook_font_size": 110,
+    "bgm_volume": 0.08,
+    "se_enabled": true,
+    "speed_ramp_enabled": false
+  },
+  "emotional": {
+    "subtitle_y_ratio": 0.70,
+    "base_highlight_color": "#FF5CB8",
+    "accent_color": "#FFD60A",
+    "hook_bg_color": "#1a1a2e",
+    "hook_text_color": "#FFFFFF",
+    "default_font_size": 70,
+    "hook_font_size": 100,
+    "bgm_volume": 0.18,
+    "se_enabled": false,
+    "speed_ramp_enabled": false
+  },
+  "comedy": {
+    "subtitle_y_ratio": 0.72,
+    "base_highlight_color": "#FFFF00",
+    "accent_color": "#FF5CB8",
+    "hook_bg_color": "#00D9FF",
+    "hook_text_color": "#1a1a1a",
+    "default_font_size": 78,
+    "hook_font_size": 130,
+    "bgm_volume": 0.08,
+    "se_enabled": true,
+    "speed_ramp_enabled": true
+  },
+  "default": {
+    "subtitle_y_ratio": 0.72,
+    "base_highlight_color": "#FFFF00",
+    "accent_color": "#FF3C3C",
+    "hook_bg_color": "#FF3C3C",
+    "hook_text_color": "#FFFFFF",
+    "default_font_size": 72,
+    "hook_font_size": 120,
+    "bgm_volume": 0.12,
+    "se_enabled": true,
+    "speed_ramp_enabled": false
+  }
+}

@@ -1,0 +1,28 @@
+# fly.toml — TAITAN PRO DM PWA
+# 初回: flyctl launch --no-deploy で生成済み app 名を採用するか
+# 下記 app 名で flyctl apps create を実行してから flyctl deploy
+app = "taitan-pro-dm"
+primary_region = "nrt"  # 東京リージョン
+
+[build]
+
+[env]
+  PORT = "8080"
+  LIVER_APP_DB_PATH = "/data/data.sqlite"
+
+[[mounts]]
+  source = "liver_data"
+  destination = "/data"
+  initial_size = "1gb"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # 単一インスタンス前提（_research_state グローバル + SQLite ボリューム単独マウント）
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

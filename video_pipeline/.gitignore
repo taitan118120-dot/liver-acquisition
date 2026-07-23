@@ -1,0 +1,11 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+temp/*.json
+temp/*.wav
+outputs/*.mp4
+logs/*.log
+inputs/*.mp4
+assets/*.ttf
+assets/*.ttc

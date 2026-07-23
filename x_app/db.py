@@ -17,7 +17,7 @@ DB_PATH = os.environ.get(
 # ============================================================
 _DEFAULT_BEGINNER_TEMPLATE = (
     "✨スマホ1台で月20万円超のライバー育成中✨\n"
-    "TAITAN PROのたいたんと申します！\n\n"
+    "TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n"
     "投稿拝見してご連絡しました🙏\n"
     "未経験〜経験者まで、毎月20〜30名のライバーを育成しているライバー事務所です。\n\n"
     "🎁所属メリット🎁\n"
@@ -35,7 +35,7 @@ _DEFAULT_BEGINNER_TEMPLATE = (
 
 _DEFAULT_AGENCY_TEMPLATE_SIDEJOB = (
     "✨副業/独立志向の方へ：ライバースカウト事業のご紹介✨\n"
-    "TAITAN PROのたいたんと申します！\n\n"
+    "TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n"
     "副業・独立に興味あるとのこと、ご連絡しました🙏\n"
     "SNSで集客できる方なら相性◎の事業をご紹介しています。\n\n"
     "🎯1人スカウトで月3〜10万の継続収益（既存スキルそのまま活かせる）\n"
@@ -48,7 +48,7 @@ _DEFAULT_AGENCY_TEMPLATE_SIDEJOB = (
 
 _DEFAULT_AGENCY_TEMPLATE_OWNER = (
     "✨経営者さま向け：追加収益のご紹介✨\n"
-    "TAITAN PROのたいたんと申します！\n\n"
+    "TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n"
     "ご自身でも事業されてるとのこと、頑張られてて尊敬です🙏\n"
     "既存事業の追加収益として、ライバースカウト事業のご紹介です。\n\n"
     "🎯既存スタッフ・お客様をライバー化→月10万〜の副収入\n"
@@ -61,7 +61,7 @@ _DEFAULT_AGENCY_TEMPLATE_OWNER = (
 
 _DEFAULT_AGENCY_TEMPLATE_LIVER_FAN = (
     "✨ライバー興味ある方へ：別ルートのご紹介✨\n"
-    "TAITAN PROのたいたんと申します！\n\n"
+    "TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n"
     "ライバー興味あるとのこと、ご連絡しました🙏\n"
     "実は「ライバーをスカウトする側」も参入しやすい副業で\n\n"
     "🎯顔出しせず月3〜10万の継続収益\n"
@@ -74,7 +74,7 @@ _DEFAULT_AGENCY_TEMPLATE_LIVER_FAN = (
 
 _DEFAULT_EXISTING_LIVER_TEMPLATE = (
     "✨他事務所からの移籍/個人勢の所属サポート✨\n"
-    "TAITAN PROのたいたんと申します！\n\n"
+    "TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n"
     "配信されているのを拝見してご連絡しました🙏\n"
     "未経験〜経験者まで幅広くサポートしている、毎月20〜30名所属のライバー事務所です。\n\n"
     "🎁所属メリット🎁\n"
@@ -92,7 +92,7 @@ _DEFAULT_EXISTING_LIVER_TEMPLATE = (
 
 _DEFAULT_EXISTING_LIVER_TEMPLATE_2 = (
     "✨ポコチャ以外のライバーさん向け 特別キャンペーンのご案内✨\n"
-    "ライバー事務所TAITAN PROのたいたんと申します！\n\n"
+    "ライバー事務所TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n"
     "配信されているのを拝見してご連絡しました🙏\n"
     "現在ご活動中のライバーさん向けに、収益アップをサポートする\n"
     "【特別マネジメントプラン】をご案内しています。\n\n"
@@ -253,6 +253,59 @@ def init_db():
                         )
         except Exception:
             pass
+        # 送信者中立化マイグレーション (2026-07-15)
+        # 旧: "TAITAN PROのたいたんと申します！"（一人称）
+        # → 新: 事務所からの連絡 + 代表プロフィール（worker送信でも成立するよう中立化）
+        try:
+            OLD_INTRO_B = "ライバー事務所TAITAN PROのたいたんと申します！"
+            OLD_INTRO_A = "TAITAN PROのたいたんと申します！"
+            NEW_INTRO_B = (
+                "ライバー事務所TAITAN PROからのご連絡です！\n"
+                "代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。"
+            )
+            NEW_INTRO_A = (
+                "TAITAN PROからのご連絡です！\n"
+                "代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。"
+            )
+
+            def _patch(text):
+                if not isinstance(text, str):
+                    return text, False
+                if OLD_INTRO_B in text:
+                    return text.replace(OLD_INTRO_B, NEW_INTRO_B), True
+                if OLD_INTRO_A in text:
+                    return text.replace(OLD_INTRO_A, NEW_INTRO_A), True
+                return text, False
+
+            tpl_row = conn.execute("SELECT value FROM settings WHERE key='templates'").fetchone()
+            if tpl_row:
+                templates = json.loads(tpl_row["value"])
+                changed = False
+                if isinstance(templates, dict):
+                    for k, v in templates.items():
+                        if isinstance(v, list):
+                            for i, tpl in enumerate(v):
+                                new_tpl, did = _patch(tpl)
+                                if did:
+                                    v[i] = new_tpl
+                                    changed = True
+                if changed:
+                    conn.execute(
+                        "UPDATE settings SET value=? WHERE key='templates'",
+                        (json.dumps(templates, ensure_ascii=False),),
+                    )
+
+            old_tpl_row = conn.execute("SELECT value FROM settings WHERE key='template'").fetchone()
+            if old_tpl_row:
+                old_tpl = json.loads(old_tpl_row["value"])
+                new_tpl, did = _patch(old_tpl)
+                if did:
+                    conn.execute(
+                        "UPDATE settings SET value=? WHERE key='template'",
+                        (json.dumps(new_tpl, ensure_ascii=False),),
+                    )
+        except Exception:
+            pass  # マイグレーションは best-effort
         conn.commit()
 
 

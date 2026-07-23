@@ -1,0 +1,4 @@
+.env
+data/*.sqlite
+data/*.log
+__pycache__/

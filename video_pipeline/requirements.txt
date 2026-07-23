@@ -1,0 +1,23 @@
+# ===== Transcription (step1) =====
+# faster-whisper: CTranslate2製でローカルWhisperの3〜5倍高速。word_timestamps=True で単語単位抽出可能。
+faster-whisper>=1.0.3
+# OpenAI Whisper APIを使う場合に必要（step1 は --backend api で切替可能）
+openai>=1.30.0
+
+# ===== Logic Engine (step2) =====
+# Claude API（デフォルト）。OPENAIに切替可能
+anthropic>=0.40.0
+pydantic>=2.6.0
+tenacity>=8.2.3
+
+# ===== Renderer (step3) =====
+# MoviePyは2.xでAPI破壊的変更あり。1.0.3で固定
+moviepy==1.0.3
+Pillow>=10.2.0
+numpy>=1.26.0,<2.0
+imageio>=2.34.0
+imageio-ffmpeg>=0.4.9
+
+# ===== 共通 =====
+python-dotenv>=1.0.1
+loguru>=0.7.2

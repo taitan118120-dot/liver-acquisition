@@ -1,0 +1,13 @@
+.venv/
+data.sqlite
+data.sqlite-journal
+.migrated
+__pycache__/
+*.pyc
+flask.log
+tunnel.log
+overnight_log.txt
+auto_enrich_log.txt
+raw_candidates_*.json
+.app_password
+.db_uploaded
