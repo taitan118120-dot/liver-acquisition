@@ -8,3 +8,43 @@ instagram/token_info.json
 data/login_diag/
 # ローカルでエクスポートしたNote Cookie（Secret登録用・リポジトリに含めない）
 note_cookies.json
+# Claude Code のローカル設定（settings.local.json に許可履歴としてAPIキーが残るため公開厳禁）
+.claude/
+
+# === 2026-07-23 追加: public リポジトリのため以下は絶対に追跡しない ===
+
+# データベース本体・バックアップ（アプリのローカル状態。公開不可）
+*.db
+*.sqlite
+*.sqlite.*
+*.bak
+*.bak_*
+
+# ログ類（デプロイ・リサーチ・同期の実行ログ。認証URL等を含みうる）
+*.log
+liver_app/fly_login.log
+
+# 第三者の個人情報を含む収集データ（IGスカウト対象・リード・DM履歴）。公開厳禁
+data/leads.csv
+data/dm_log.csv
+data/ig_qualified.json
+data/ig_discovery_*.md
+data/ig_dm_queue_*.md
+data/recruitment_tracker.csv
+liver_app/data.sqlite.bak_*
+
+# 生成メディア（動画・音声・レンダー出力。容量が大きく再生成可能）
+*.mp4
+*.mov
+*.wav
+*.mp3
+*.zip
+
+# 動画生成パイプラインの中間・出力物（scripts/capcut/audio 等は再生成可能な生成物）
+shorts/scripts/
+shorts/capcut/
+shorts/audio/
+shorts/bgm/
+shorts/se/
+shorts/assets/
+shorts/render.log
