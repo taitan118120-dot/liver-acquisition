@@ -1905,8 +1905,15 @@ def main():
     elif args.post_latest:
         queue = get_unpublished_queue()
         if not queue:
-            print("未投稿の記事がありません（全て投稿済み）")
-            sys.exit(0)
+            # 在庫切れは exit 0 にしない。緑successのまま何日も投稿ゼロが続いて
+            # 気づけなかった事故（2026-07-25〜29に5日間停止）があるため、
+            # CIを赤くして通知を飛ばす。
+            print("❌ 未投稿の記事がありません（全て投稿済み）"
+                  " → blog/articles_note/ に新しい記事を追加してください")
+            sys.exit(3)
+        if len(queue) <= 3:
+            print(f"⚠️ 記事の残りが少なくなっています（あと{len(queue)}本: {queue}）。"
+                  f"1日1本ペースなのであと{len(queue)}日分です")
         # カバー画像のある記事を優先して投稿（無い記事は飛ばしてキューを止めない）
         article_num = None
         for num in queue:
