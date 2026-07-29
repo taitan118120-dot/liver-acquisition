@@ -3,3 +3,5 @@ data/*.sqlite
 data/publishers/
 data/comments_full_*.json
 data/dashboard.html
+data/sync.log
+data/sync_state.json

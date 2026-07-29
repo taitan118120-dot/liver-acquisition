@@ -12,6 +12,10 @@ Chrome のセッションCookieを browser_cookie3 で読み、organizer-ope に
 launchd（com.taitanpro.pococha-sync, 1日5回）が スリープ復帰直後に発火すると
 Wi-Fi 未接続で DNS が引けず落ちる。起動時のネット到達性待ち＋指数バックオフの
 リトライでそれを吸収し、最終的に失敗したら黙って死なずに exit 1 ＋ Issue 通知する。
+
+organizer-ope のログインCookieは5日で切れ、切れると403しか返らない（人間が
+Chrome でログインし直すまで自動復旧しない）。切れる前に事前通知し、切れていたら
+HTTPを撃つ前に理由を確定させる。
 """
 import argparse
 import json
@@ -39,6 +43,13 @@ NET_WAIT_SLEEP = 120    # その間隔（秒）→ 最大約10分、スリープ
 
 STATE_FILE = os.path.join(os.path.dirname(__file__), "data", "sync_state.json")
 ISSUE_TITLE = "Pococha月次同期が実行できていない（pococha-sync）"
+ISSUE_TITLE_COOKIE = "Pococha運営のログインがもうすぐ切れる（pococha-sync）"
+
+# organizer-ope のセッションCookieは「ログインから5日」で失効する（実測）。
+# 切れると403しか返らず、復旧には人間が Chrome でログインし直すしかない。
+# 切れてから気づくと最大5日ぶんのデータが欠測するので、切れる前に通知する。
+SESSION_COOKIE = "_pokota_organizer_ope_session"
+COOKIE_WARN_HOURS = 24
 
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36")
@@ -178,9 +189,66 @@ def _get_with_retry(session, url, timeout=30, attempts=RETRY_ATTEMPTS, label="")
     raise NetworkUnavailable(f"{label or url}: {attempts}回試行して失敗（最後: {last}）")
 
 
+def _post_issue(title, body, comment):
+    """GitHub Issue に集約（同題があればコメント）。note_tag_guard / link_guard と同じ思想。"""
+    here = os.path.dirname(os.path.abspath(__file__))
+    listed = subprocess.run(
+        ["gh", "issue", "list", "--state", "open", "--limit", "100",
+         "--json", "number,title"],
+        cwd=here, capture_output=True, text=True, timeout=60)
+    if listed.returncode != 0:
+        raise RuntimeError(listed.stderr.strip()[:200])
+    match = next((i for i in json.loads(listed.stdout or "[]")
+                  if i.get("title") == title), None)
+    if match:
+        cmd = ["gh", "issue", "comment", str(match["number"]), "--body", comment]
+    else:
+        cmd = ["gh", "issue", "create", "--title", title, "--body", body]
+    res = subprocess.run(cmd, cwd=here, capture_output=True, text=True, timeout=90)
+    if res.returncode != 0:
+        raise RuntimeError(res.stderr.strip()[:200])
+    return res.stdout.strip() or f"#{match['number']} にコメント"
+
+
+def notify_cookie_expiring(expires_at):
+    """Cookieが切れる前に知らせる。切れてから通知しても、気づくまでの数日は必ず欠測する。
+    同期自体は成功しているので notify_failure の抑止条件（今日成功したら黙る）には乗せられない。
+    1日1通に絞る（1日5回走るため）。"""
+    today = _today()
+    if _load_state().get("last_cookie_warn_date") == today:
+        return False
+    stamp = datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
+    exp = expires_at.strftime("%Y-%m-%d %H:%M")
+    body = "\n".join([
+        "## Pococha運営のログインがもうすぐ切れます",
+        "",
+        f"- 検知: {stamp}",
+        f"- 失効予定: **{exp}**（Cookie `{SESSION_COOKIE}`）",
+        "",
+        "失効すると同期は403で止まり、**ダッシュボードの月間ダイヤが古いまま**になります。",
+        "自動では復旧できません（ログインは人間しかできない）。",
+        "",
+        "## 対処（30秒）",
+        "1. Chrome で https://organizer-ope.pococha.com を開いてログインし直す",
+        "2. それだけ。次の同期（1日5回）が新しいCookieを拾います",
+        "",
+        "---",
+        "_このIssueは `sync_monthly.py`（launchd `com.taitanpro.pococha-sync`）が自動生成しました。_",
+    ])
+    try:
+        out = _post_issue(ISSUE_TITLE_COOKIE, body,
+                          f"再通知: {stamp}\n\n失効予定: {exp}\n"
+                          "Chrome で https://organizer-ope.pococha.com にログインし直してください。")
+        _save_state(last_cookie_warn_date=today, cookie_expires_at=expires_at.isoformat())
+        _log(f"[notify] ログイン失効の事前通知を送信: {out}")
+        return True
+    except Exception as e:
+        _log(f"[notify] 事前通知に失敗: {e}")
+        return False
+
+
 def notify_failure(reason, extra=""):
-    """最終失敗を可視化する。note_tag_guard / link_guard と同じく GitHub Issue に集約
-    （同題があればコメント）。黙って死ぬと『数値が古いまま気づかない』穴が残る。
+    """最終失敗を可視化する。黙って死ぬと『数値が古いまま気づかない』穴が残る。
 
     1日5回走るジョブなので通知条件を絞る:
       - 今日すでに成功した同期がある → 通知しない（次回リトライで足りている）
@@ -194,7 +262,6 @@ def notify_failure(reason, extra=""):
         _log("[notify] 今日は通知済みのためスキップ（1日1通）")
         return False
 
-    here = os.path.dirname(os.path.abspath(__file__))
     stamp = datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
     body = "\n".join([
         "## Pococha月次同期が実行できていない",
@@ -215,24 +282,10 @@ def notify_failure(reason, extra=""):
         "_このIssueは `sync_monthly.py`（launchd `com.taitanpro.pococha-sync`）が自動生成しました。_",
     ])
     try:
-        listed = subprocess.run(
-            ["gh", "issue", "list", "--state", "open", "--limit", "100",
-             "--json", "number,title"],
-            cwd=here, capture_output=True, text=True, timeout=60)
-        if listed.returncode != 0:
-            raise RuntimeError(listed.stderr.strip()[:200])
-        match = next((i for i in json.loads(listed.stdout or "[]")
-                      if i.get("title") == ISSUE_TITLE), None)
-        if match:
-            cmd = ["gh", "issue", "comment", str(match["number"]),
-                   "--body", f"再発: {stamp}\n\n理由: {reason}\n{extra}"]
-        else:
-            cmd = ["gh", "issue", "create", "--title", ISSUE_TITLE, "--body", body]
-        res = subprocess.run(cmd, cwd=here, capture_output=True, text=True, timeout=90)
-        if res.returncode != 0:
-            raise RuntimeError(res.stderr.strip()[:200])
+        out = _post_issue(ISSUE_TITLE, body,
+                          f"再発: {stamp}\n\n理由: {reason}\n{extra}")
         _save_state(last_notify_date=today, last_notify_reason=reason)
-        _log(f"[notify] GitHub Issue 通知済み: {res.stdout.strip() or match}")
+        _log(f"[notify] GitHub Issue 通知済み: {out}")
         return True
     except Exception as e:
         # 通知に失敗しても exit 1 は残るので launchd ログ＋終了コードで検知できる
@@ -253,6 +306,38 @@ def chrome_cookies():
         if "pococha" in (c.domain or "").lower():
             out.set_cookie(c)
     return out
+
+
+def session_expiry(jar):
+    """ログインCookieの失効時刻を返す（無ければ None）。
+
+    browser_cookie3 は失効済みのCookieもそのまま返すので、値があること＝有効ではない。
+    実際 2026-06-04 に失効した Cookie を 8週間ぶん送り続けて 403 を食らっていた。
+    """
+    for c in jar:
+        if c.name == SESSION_COOKIE and c.expires:
+            return datetime.fromtimestamp(c.expires, JST)
+    return None
+
+
+def check_session_cookie(jar):
+    """同期前にCookieの生死を判定する。
+    切れていれば HTTP を撃つ前に AuthExpired（403を5回食うより原因が明確に残る）。
+    生きていれば失効時刻を返す（呼び出し側が事前通知の要否を判断する）。"""
+    exp = session_expiry(jar)
+    if exp is None:
+        if not any(c.name == SESSION_COOKIE for c in jar):
+            raise AuthExpired(
+                f"Chrome に {SESSION_COOKIE} が無い"
+                "（organizer-ope にログインしていない／別プロファイルで見ている）")
+        return None  # セッションCookie（期限なし）＝ブラウザを閉じるまで有効
+    left = exp - datetime.now(JST)
+    if left.total_seconds() <= 0:
+        raise AuthExpired(
+            f"ログインCookieが {exp:%Y-%m-%d %H:%M} に失効している"
+            f"（{-left.days}日前）。Chrome でログインし直すまで復旧しません")
+    _log(f"  ログイン有効期限: {exp:%Y-%m-%d %H:%M}（残り {left.days}日{left.seconds // 3600}時間）")
+    return exp
 
 
 def hms_to_min(s):
@@ -355,9 +440,10 @@ def upsert(conn, rec):
 
 
 def sync(args):
-    """同期本体。成功件数を返す。到達不能/認証切れは例外で上に投げる。"""
+    """同期本体。(成功件数, Cookie失効時刻) を返す。到達不能/認証切れは例外で上に投げる。"""
     _log("Chrome Cookieを読み込み中...")
     jar = chrome_cookies()
+    cookie_exp = check_session_cookie(jar)
     session = requests.Session()
     session.cookies = jar
     session.headers.update({
@@ -378,7 +464,13 @@ def sync(args):
         for lv in livers:
             try:
                 rec = fetch_monthly(session, lv["id"], args.month)
-                if upsert(conn, rec):
+                if args.month and rec.get("month") != args.month:
+                    # &month= が効いていない（当月が返っている）。書くと「埋め戻せた」と
+                    # 誤認するので書かない。過去月の取り方が判明するまで --month は使えない。
+                    _log(f"  ❌ {lv['name']} ({lv['id']}): --month {args.month} を指定したが "
+                         f"{rec.get('month')} が返った（過去月クエリ未対応）→ 書き込まない")
+                    n_fail += 1
+                elif upsert(conn, rec):
                     _log(f"  ✅ {lv['name']} ({lv['id']}) {rec.get('month')}: "
                          f"月間ダイヤ {rec.get('total_dia')}")
                     n_ok += 1
@@ -404,7 +496,7 @@ def sync(args):
         _log("\nダッシュボード再生成...")
         subprocess.run([sys.executable, "dashboard.py"],
                        cwd=os.path.dirname(__file__), check=False)
-    return n_ok
+    return n_ok, cookie_exp
 
 
 def main():
@@ -430,7 +522,7 @@ def main():
             "Mac がスリープ/オフラインの可能性）")
 
     try:
-        n_ok = sync(args)
+        n_ok, cookie_exp = sync(args)
     except NetworkUnavailable as e:
         return fail(f"同期中にネットワークが切れて中断: {e}")
     except AuthExpired as e:
@@ -442,6 +534,14 @@ def main():
     _save_state(last_success_date=_today(),
                 last_success_at=datetime.now(JST).isoformat(),
                 last_success_count=n_ok)
+
+    # 成功していても、Cookieの寿命が尽きかけていれば今のうちに知らせる。
+    # 失効を待って通知すると、気づくまでの日数はそのまま欠測になる。
+    if cookie_exp and not args.no_notify:
+        left_h = (cookie_exp - datetime.now(JST)).total_seconds() / 3600
+        if left_h <= COOKIE_WARN_HOURS:
+            _log(f"\n⚠️  ログインCookieの残り {left_h:.0f}時間 → 事前通知")
+            notify_cookie_expiring(cookie_exp)
     return 0
 
 
