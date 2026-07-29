@@ -452,11 +452,19 @@ def sync(args):
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     })
 
+    before = next((c.value for c in jar if c.name == SESSION_COOKIE), None)
+
     _log("ライバー一覧取得中...")
     livers = fetch_publishers(session)
     if not livers:
         raise AuthExpired("ライバーが取れなかった。Cookie切れ or ログアウトの可能性")
     _log(f"  {len(livers)}名")
+
+    # サーバがアクセスのたびにセッションを延長するタイプなら、Set-Cookie を保存し直す
+    # だけで5日ごとの手動ログインを無くせる。判定材料をログに残しておく。
+    after = next((c.value for c in session.cookies if c.name == SESSION_COOKIE), None)
+    if before and after:
+        _log(f"  [session] Set-Cookieで更新された: {'はい' if after != before else 'いいえ（絶対期限）'}")
 
     conn = connect()
     n_ok, n_fail = 0, 0
