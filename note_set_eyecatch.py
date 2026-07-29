@@ -118,6 +118,28 @@ def set_eyecatch(article_num, note_key, headless=True):
             pass
         time.sleep(3)
 
+        # 既にアイキャッチが設定済みの場合、「画像を追加」ボタンは出ない。
+        # 先に既存カバーの削除ボタン（figure の兄弟）を押して未設定状態に戻す。
+        try:
+            holder = page.locator('div:has(> figure > img[alt="eyecatch"])').first
+            if holder.count() > 0:
+                print("  [PW] 既存eyecatch検出 → 削除して差し替える")
+                holder.locator("button").first.click(timeout=5000)
+                time.sleep(2)
+                # 確認ダイアログが出る場合に備える
+                for label in ("削除", "削除する", "OK", "はい"):
+                    try:
+                        b = page.get_by_role("button", name=label).first
+                        if b.count() > 0 and b.is_visible():
+                            b.click(timeout=2000)
+                            print(f"  [PW] 確認ダイアログ '{label}' クリック")
+                            break
+                    except Exception:
+                        continue
+                time.sleep(3)
+        except Exception as e:
+            print(f"  [PW] 既存eyecatch削除失敗: {str(e)[:80]}")
+
         # アイキャッチ「画像を追加」ボタン (aria-label) をクリック → モーダル表示
         clicked = False
         try:
