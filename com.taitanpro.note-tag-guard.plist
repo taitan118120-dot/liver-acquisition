@@ -21,8 +21,15 @@
   <key>StandardErrorPath</key>
   <string>/Users/mitataisei/ライバー獲得/data/note_tag_guard.log</string>
 
-  <!-- 毎日 23:10（日中の投稿がすべて終わった後にまとめて回収） -->
+  <!-- 23:10（日中の投稿がすべて終わった後にまとめて回収）＋ 09:10（保険）。
+       スリープ中の起動はスキップされ、実測で約半数の夜が名前解決失敗で落ちていたため、
+       時刻を2つにして片方が潰れても翌朝に回収できるようにしてある。
+       スクリプト側も起動時にネット到達性を数分待つ（note_tag_guard.py wait_for_network）。
+       監査は冪等なので1日2回走っても副作用はない。 -->
   <key>StartCalendarInterval</key>
-  <dict><key>Hour</key><integer>23</integer><key>Minute</key><integer>10</integer></dict>
+  <array>
+    <dict><key>Hour</key><integer>23</integer><key>Minute</key><integer>10</integer></dict>
+    <dict><key>Hour</key><integer>9</integer><key>Minute</key><integer>10</integer></dict>
+  </array>
 </dict>
 </plist>
