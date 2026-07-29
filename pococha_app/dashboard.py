@@ -136,6 +136,56 @@ def build_advice(data, alerts, snap, monthly, rank_hist, stream_daily, active_ev
     return tips
 
 
+def data_freshness(conn):
+    """データを最後に取り込めた日と、その古さを調べる。
+
+    月次レポート（monthly_reports.captured_at）と日次の一覧（snapshots.captured_on）
+    の新しい方を「最終取得」とする。当月の月次レポートが1件も無いか、最終取得が
+    2日以上前なら stale=True。
+    """
+    m = conn.execute("SELECT max(captured_at) v FROM monthly_reports").fetchone()["v"]
+    s = conn.execute("SELECT max(captured_on) v FROM snapshots").fetchone()["v"]
+    monthly_on = (m or "").strip()[:10] or None
+    snap_on = (s or "").strip()[:10] or None
+    last = max([d for d in (monthly_on, snap_on) if d], default=None)
+    days = _days_since(last)
+    this_month = conn.execute(
+        "SELECT count(*) c FROM monthly_reports WHERE month=?", (THIS_MONTH,),
+    ).fetchone()["c"] > 0
+    return {
+        "monthly_on": monthly_on, "snapshot_on": snap_on, "last": last, "days": days,
+        "this_month": this_month,
+        "stale": last is None or (days is not None and days >= 2) or not this_month,
+    }
+
+
+def freshness_html(f):
+    """ヘッダに出す「最終取得」テキストと、古いときの警告バッジを組み立てる。"""
+    if not f["last"]:
+        meta = '<span class="warn">最終取得: まだ一度も取れていません</span>'
+        banner = ('<div class="stale"><b>⚠ データがまだ1件もありません。</b><br>'
+                  'Chrome で organizer-ope.pococha.com を開いてログインし、'
+                  'もう一度データの取り込みを実行してください。</div>')
+        return meta, banner
+
+    ago = "今日" if f["days"] == 0 else (f"{f['days']}日前" if f["days"] is not None else "")
+    label = f"最終取得: {f['last']}" + (f"（{ago}）" if ago else "")
+    meta = f'<span class="{"warn" if f["stale"] else ""}">{label}</span>'
+    if not f["stale"]:
+        return meta, ""
+
+    y, mo = THIS_MONTH.split("-")
+    lines = []
+    if f["days"] is not None and f["days"] >= 2:
+        lines.append(f"<b>⚠ データが {f['days']}日前（{f['last']}）で止まっています。</b>")
+    if not f["this_month"]:
+        lines.append(f"{y}年{int(mo)}月の成績はまだ1件も取れていません。"
+                     "画面の「今月」の数字は空欄か、古い月のままです。")
+    lines.append("Chrome で organizer-ope.pococha.com を開いてログインし直すと、"
+                 "次の取り込みから元に戻ります。")
+    return meta, '<div class="stale">' + "<br>".join(lines) + "</div>"
+
+
 def collect(conn):
     livers = conn.execute("SELECT * FROM livers ORDER BY user_id").fetchall()
     out = []
@@ -213,6 +263,7 @@ def collect(conn):
                 "month_stream_days": month_stream_days,
                 "month_stream_min": month_stream_min,
                 "monthly_rank": monthly_rank,
+                "month_missing": monthly is None,
                 "dia_week_min": snap["dia_min_week"] if snap else None,
                 "dia_month_min": snap["dia_min_month"] if snap else None,
                 "stream_cur_h": snap["stream_cur_h"] if snap else None,
@@ -270,6 +321,8 @@ HTML = """<!doctype html><html lang="ja"><head><meta charset="utf-8">
  .adv.improve{background:#2c2516;border-left:3px solid #ffb454}
  .adv.tip{background:#23262e;border-left:3px solid #9aa0a8}
  .adv .ic{font-size:16px;line-height:1.4}
+ .stale{background:#3a1820;border:1px solid var(--ac);border-radius:12px;padding:14px 16px;margin-bottom:20px;line-height:1.8}
+ .stale b{color:#ff8fae}
  .summary{background:var(--card);border-radius:12px;padding:16px;margin-bottom:20px}
  .summary h2{font-size:14px;margin:0 0 8px}
  .srow{display:flex;align-items:center;gap:12px;padding:10px 6px;border-bottom:1px solid #262a33;cursor:pointer;border-radius:6px}
@@ -278,9 +331,10 @@ HTML = """<!doctype html><html lang="ja"><head><meta charset="utf-8">
  .ok{color:var(--ok)}
 </style></head><body>
 <header><div class="brandrow"><img class="brandlogo" src="logo.jpg" alt="TAITAN PRO" width="40" height="41"><div><h1>所属ライバー ダッシュボード</h1>
-<div class="meta">__GEN__ 時点 ／ __N__ 名 ・ 名前をクリックで詳細</div></div></div>
+<div class="meta">この画面を作った日時 __GEN__ ／ __N__ 名 ・ 名前をクリックで詳細</div>
+<div class="meta">__FRESHMETA__</div></div></div>
 <div class="tabs" id="tabs"></div></header>
-<main><section class="summary" id="summary"></section><div id="app"></div></main>
+<main>__STALE__<section class="summary" id="summary"></section><div id="app"></div></main>
 <script>
 const DATA = __DATA__;
 const SEVMK={high:'🔴',mid:'🟡',low:'⚪'};
@@ -296,9 +350,12 @@ function render(i){
   app.innerHTML=`
   <div class="kpis">
     ${kpi('今のランク',k.rank,k.move?k.move.text:'')}
-    ${kpi('今月のダイヤ',k.month_dia?.toLocaleString(),
-      '時間 '+(k.month_time_dia?.toLocaleString()??'-')+' ／ 盛り上がり '+(k.month_hype_dia?.toLocaleString()??'-'))}
-    ${kpi('今月の配信',(k.month_stream_days??'-')+'日',hm(k.month_stream_min))}
+    ${kpi('今月のダイヤ',k.month_missing?'未取得':k.month_dia?.toLocaleString(),
+      k.month_missing?'今月分はまだ取れていません':
+      '時間 '+(k.month_time_dia?.toLocaleString()??'-')+' ／ 盛り上がり '+(k.month_hype_dia?.toLocaleString()??'-'),
+      k.month_missing?'warn':'')}
+    ${kpi('今月の配信',k.month_missing?'未取得':(k.month_stream_days??'-')+'日',
+      k.month_missing?'今月分はまだ取れていません':hm(k.month_stream_min),k.month_missing?'warn':'')}
     ${kpi('今週のダイヤ',k.week_dia?.toLocaleString(),'時間 '+hm(k.dia_week_min))}
     ${kpi('マンスリー順位',k.monthly_rank?.toLocaleString())}
     ${kpi('フォロワー',k.followers?.toLocaleString(),'Lv'+(k.level??'-')+' ・ '+(k.region||'-'))}
@@ -354,15 +411,22 @@ renderSummary();render(0);
 def main():
     conn = connect()
     data = collect(conn)
+    fresh = data_freshness(conn)
     conn.close()
+    fresh_meta, stale_banner = freshness_html(fresh)
     html = (HTML
             .replace("__DATA__", json.dumps(data, ensure_ascii=False))
             .replace("__GEN__", NOW.strftime("%Y-%m-%d %H:%M"))
-            .replace("__N__", str(len(data))))
+            .replace("__N__", str(len(data)))
+            .replace("__FRESHMETA__", fresh_meta)
+            .replace("__STALE__", stale_banner))
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as f:
         f.write(html)
     print(f"生成: {OUT}（{len(data)}名）")
+    print(f"最終取得: {fresh['last'] or '—'}"
+          + (f" / {fresh['days']}日前" if fresh["days"] is not None else "")
+          + ("  ⚠ データが古いか欠けています" if fresh["stale"] else ""))
     if "--open" in sys.argv[1:]:
         subprocess.run(["open", OUT])
 
