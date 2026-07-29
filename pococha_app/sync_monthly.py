@@ -7,15 +7,21 @@ Chrome のセッションCookieを browser_cookie3 で読み、organizer-ope に
     python3 sync_monthly.py                # 今月分を同期 → dashboard.html 再生成
     python3 sync_monthly.py --month 2026-04  # 過去月を指定（前月遷移ボタン相当）
     python3 sync_monthly.py --no-dashboard   # ダッシュボード再生成を省略
+    python3 sync_monthly.py --no-notify      # 失敗してもGitHub Issueを立てない（手動実行用）
+
+launchd（com.taitanpro.pococha-sync, 1日5回）が スリープ復帰直後に発火すると
+Wi-Fi 未接続で DNS が引けず落ちる。起動時のネット到達性待ち＋指数バックオフの
+リトライでそれを吸収し、最終的に失敗したら黙って死なずに exit 1 ＋ Issue 通知する。
 """
 import argparse
+import json
 import os
 import re
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone, timedelta
 
-import browser_cookie3
 import requests
 
 sys.path.insert(0, os.path.dirname(__file__))
@@ -24,6 +30,26 @@ from db import connect
 JST = timezone(timedelta(hours=9))
 BASE = "https://organizer-ope.pococha.com"
 DOMAIN = "organizer-ope.pococha.com"
+
+# ── ネットワークリトライ設定（note_tag_guard.py と同じ思想）──
+RETRY_ATTEMPTS = 5      # 1回のGETあたりの試行回数（待機合計 約30秒: 2+4+8+16）
+RETRY_BASE = 2.0        # 指数バックオフの底
+NET_WAIT_ROUNDS = 6     # 起動時の到達性チェック回数
+NET_WAIT_SLEEP = 120    # その間隔（秒）→ 最大約10分、スリープ復帰後のWi-Fi再接続を待てる
+
+STATE_FILE = os.path.join(os.path.dirname(__file__), "data", "sync_state.json")
+ISSUE_TITLE = "Pococha月次同期が実行できていない（pococha-sync）"
+
+UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+      "(KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36")
+
+
+class NetworkUnavailable(RuntimeError):
+    """リトライを尽くしても organizer-ope に到達できなかった（＝同期自体が走っていない）"""
+
+
+class AuthExpired(RuntimeError):
+    """到達はできたが認証が切れている（Cookie切れ／ログアウト）。リトライしても直らない。"""
 
 LABEL_KEYS = [
     ("最終ランク", "final_rank", "str"),
@@ -55,11 +81,172 @@ INSERT_COLS = [
 ]
 
 
+def _log(msg):
+    """launchd のログにリアルタイムで残す（バッファされると失敗時に何も見えない）"""
+    print(msg)
+    sys.stdout.flush()
+
+
+def _today():
+    return datetime.now(JST).strftime("%Y-%m-%d")
+
+
+def _load_state():
+    try:
+        with open(STATE_FILE, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+def _save_state(**kv):
+    state = _load_state()
+    state.update(kv)
+    try:
+        os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
+        with open(STATE_FILE, "w", encoding="utf-8") as f:
+            json.dump(state, f, ensure_ascii=False, indent=2)
+    except OSError as e:
+        _log(f"[state] 保存できず（通知の重複抑止が効かない可能性）: {e}")
+    return state
+
+
+def _succeeded_today():
+    """今日すでに同期が成功しているか。1日5回走るので、
+    朝に成功していれば夕方の1回が落ちても通知しない（スパム防止）。
+    state ファイルが消えていても DB の captured_at で判定できるようにしておく。"""
+    today = _today()
+    if _load_state().get("last_success_date") == today:
+        return True
+    try:
+        conn = connect()
+        row = conn.execute(
+            "SELECT 1 FROM monthly_reports WHERE date(captured_at) = ? LIMIT 1",
+            (today,),
+        ).fetchone()
+        conn.close()
+        return row is not None
+    except Exception:
+        return False
+
+
+def wait_for_network(rounds=NET_WAIT_ROUNDS, sleep_s=NET_WAIT_SLEEP):
+    """organizer-ope に到達できるまで数分間隔で再確認する。
+    launchd の StartCalendarInterval は一度きりで再実行されないため、
+    スリープ復帰直後にWi-Fiが繋がるのをここで待たないとその回の同期がまるごと飛ぶ。
+    認証は見ない（403が返ってきても「到達できた」＝OK）。"""
+    for i in range(1, rounds + 1):
+        try:
+            requests.head(BASE + "/", headers={"User-Agent": UA},
+                          timeout=15, allow_redirects=True)
+            if i > 1:
+                _log(f"[net] {i}回目で {DOMAIN} に到達（復帰待ち成功）")
+            return True
+        except requests.RequestException as e:
+            _log(f"[net] 到達不可 {i}/{rounds}: {type(e).__name__}"
+                 + (f" → {sleep_s}秒待機" if i < rounds else " → 断念"))
+            if i < rounds:
+                time.sleep(sleep_s)
+    return False
+
+
+def _get_with_retry(session, url, timeout=30, attempts=RETRY_ATTEMPTS, label=""):
+    """GET を指数バックオフでリトライする。
+
+    - requests の例外（DNS失敗＝NameResolutionError/ConnectionError、タイムアウト等）→ リトライ
+    - 5xx / 429 → リトライ（pococha 側の一時不調）
+    - 401 / 403 → AuthExpired（Cookie切れ。何度やっても直らないので即中断）
+    - それ以外のステータス → そのまま Response を返す
+    尽きたら NetworkUnavailable を送出する（空データと誤認させないため None は返さない）。
+    """
+    last = None
+    for i in range(attempts):
+        try:
+            r = session.get(url, timeout=timeout)
+        except requests.RequestException as e:
+            last = f"{type(e).__name__}"
+        else:
+            if r.status_code in (401, 403):
+                raise AuthExpired(f"{label or url}: HTTP {r.status_code}（Cookie切れ／ログアウト）")
+            if r.status_code < 500 and r.status_code != 429:
+                return r
+            last = f"HTTP {r.status_code}"
+        if i < attempts - 1:
+            wait = RETRY_BASE ** (i + 1)
+            _log(f"  [retry {i + 1}/{attempts - 1}] {label or url} ← {last} / {wait:.0f}s待機")
+            time.sleep(wait)
+    raise NetworkUnavailable(f"{label or url}: {attempts}回試行して失敗（最後: {last}）")
+
+
+def notify_failure(reason, extra=""):
+    """最終失敗を可視化する。note_tag_guard / link_guard と同じく GitHub Issue に集約
+    （同題があればコメント）。黙って死ぬと『数値が古いまま気づかない』穴が残る。
+
+    1日5回走るジョブなので通知条件を絞る:
+      - 今日すでに成功した同期がある → 通知しない（次回リトライで足りている）
+      - 今日すでに通知済み → 通知しない（1日1通まで）
+    """
+    if _succeeded_today():
+        _log("[notify] 今日は既に同期成功済みのため通知しない")
+        return False
+    today = _today()
+    if _load_state().get("last_notify_date") == today:
+        _log("[notify] 今日は通知済みのためスキップ（1日1通）")
+        return False
+
+    here = os.path.dirname(os.path.abspath(__file__))
+    stamp = datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
+    body = "\n".join([
+        "## Pococha月次同期が実行できていない",
+        "",
+        f"- 発生: {stamp}",
+        f"- 理由: {reason}",
+        (f"- 詳細: {extra}" if extra else ""),
+        "",
+        "同期が走っていないため、**ダッシュボードの月間ダイヤ等が古いままです**。",
+        "",
+        "## 対処",
+        "1. Mac をオンラインにする",
+        "2. Chrome で https://organizer-ope.pococha.com にログインし直す（403＝Cookie切れの場合）",
+        "3. `python3 pococha_app/sync_monthly.py` を手動実行",
+        "4. ログ: `pococha_app/data/sync.log`",
+        "",
+        "---",
+        "_このIssueは `sync_monthly.py`（launchd `com.taitanpro.pococha-sync`）が自動生成しました。_",
+    ])
+    try:
+        listed = subprocess.run(
+            ["gh", "issue", "list", "--state", "open", "--limit", "100",
+             "--json", "number,title"],
+            cwd=here, capture_output=True, text=True, timeout=60)
+        if listed.returncode != 0:
+            raise RuntimeError(listed.stderr.strip()[:200])
+        match = next((i for i in json.loads(listed.stdout or "[]")
+                      if i.get("title") == ISSUE_TITLE), None)
+        if match:
+            cmd = ["gh", "issue", "comment", str(match["number"]),
+                   "--body", f"再発: {stamp}\n\n理由: {reason}\n{extra}"]
+        else:
+            cmd = ["gh", "issue", "create", "--title", ISSUE_TITLE, "--body", body]
+        res = subprocess.run(cmd, cwd=here, capture_output=True, text=True, timeout=90)
+        if res.returncode != 0:
+            raise RuntimeError(res.stderr.strip()[:200])
+        _save_state(last_notify_date=today, last_notify_reason=reason)
+        _log(f"[notify] GitHub Issue 通知済み: {res.stdout.strip() or match}")
+        return True
+    except Exception as e:
+        # 通知に失敗しても exit 1 は残るので launchd ログ＋終了コードで検知できる
+        _log(f"[notify] Issue通知に失敗（exit 1 のみで可視化）: {e}")
+        return False
+
+
 def chrome_cookies():
     """Chromeから pococha.com 系のCookieを取得（macOS Keychainパスフレーズ自動解決）.
     domain_name='organizer-ope.pococha.com' だと .pococha.com で登録されてる Cookie が
     マッチしないので、全体取得して pococha が含まれるものだけ返す."""
     import http.cookiejar
+
+    import browser_cookie3
     full = browser_cookie3.chrome()
     out = http.cookiejar.CookieJar()
     for c in full:
@@ -127,7 +314,8 @@ def parse_monthly_html(html, user_id):
 
 
 def fetch_publishers(session):
-    r = session.get(f"{BASE}/publishers?max_display=1000", timeout=20)
+    r = _get_with_retry(session, f"{BASE}/publishers?max_display=1000",
+                        timeout=20, label="publishers")
     r.raise_for_status()
     # tbody tr 内の td を抽出。IDが先頭列
     livers = []
@@ -147,7 +335,7 @@ def fetch_monthly(session, user_id, month=None):
     if month:
         # 過去月: ページャの prev_year/prev_month クエリは未確認のため未対応
         url += f"&month={month}"
-    r = session.get(url, timeout=20)
+    r = _get_with_retry(session, url, timeout=20, label=f"monthly:{user_id}")
     r.raise_for_status()
     return parse_monthly_html(r.text, user_id)
 
@@ -166,56 +354,96 @@ def upsert(conn, rec):
     return True
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--month", help="YYYY-MM 過去月指定（既定: 今月）")
-    ap.add_argument("--no-dashboard", action="store_true")
-    args = ap.parse_args()
-
-    print("Chrome Cookieを読み込み中...")
+def sync(args):
+    """同期本体。成功件数を返す。到達不能/認証切れは例外で上に投げる。"""
+    _log("Chrome Cookieを読み込み中...")
     jar = chrome_cookies()
     session = requests.Session()
     session.cookies = jar
     session.headers.update({
-        "User-Agent": (
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-            "(KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
-        ),
+        "User-Agent": UA,
         "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     })
 
-    print("ライバー一覧取得中...")
+    _log("ライバー一覧取得中...")
     livers = fetch_publishers(session)
     if not livers:
-        raise SystemExit("ライバーが取れなかった。Cookie切れ or ログアウトの可能性")
-    print(f"  {len(livers)}名")
+        raise AuthExpired("ライバーが取れなかった。Cookie切れ or ログアウトの可能性")
+    _log(f"  {len(livers)}名")
 
     conn = connect()
     n_ok, n_fail = 0, 0
-    for lv in livers:
-        try:
-            rec = fetch_monthly(session, lv["id"], args.month)
-            if upsert(conn, rec):
-                print(f"  ✅ {lv['name']} ({lv['id']}) {rec.get('month')}: "
-                      f"月間ダイヤ {rec.get('total_dia')}")
-                n_ok += 1
-            else:
-                print(f"  ⚠️  {lv['name']} ({lv['id']}): month/user_id 取得失敗")
+    try:
+        for lv in livers:
+            try:
+                rec = fetch_monthly(session, lv["id"], args.month)
+                if upsert(conn, rec):
+                    _log(f"  ✅ {lv['name']} ({lv['id']}) {rec.get('month')}: "
+                         f"月間ダイヤ {rec.get('total_dia')}")
+                    n_ok += 1
+                else:
+                    _log(f"  ⚠️  {lv['name']} ({lv['id']}): month/user_id 取得失敗")
+                    n_fail += 1
+            except (NetworkUnavailable, AuthExpired):
+                # 途中でネットが切れた/Cookieが切れた → 残りを回しても無駄。
+                # ここまでの成功分は commit してから上に投げる。
+                raise
+            except Exception as e:
+                _log(f"  ❌ {lv['name']} ({lv['id']}): {e}")
                 n_fail += 1
-        except Exception as e:
-            print(f"  ❌ {lv['name']} ({lv['id']}): {e}")
-            n_fail += 1
-    conn.commit()
-    conn.close()
+    finally:
+        conn.commit()
+        conn.close()
 
-    print(f"\n完了: 成功{n_ok} 失敗{n_fail}")
+    _log(f"\n完了: 成功{n_ok} 失敗{n_fail}")
+    if n_ok == 0:
+        raise RuntimeError(f"1件も取得できなかった（失敗{n_fail}件）")
 
     if not args.no_dashboard:
-        print("\nダッシュボード再生成...")
+        _log("\nダッシュボード再生成...")
         subprocess.run([sys.executable, "dashboard.py"],
                        cwd=os.path.dirname(__file__), check=False)
+    return n_ok
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--month", help="YYYY-MM 過去月指定（既定: 今月）")
+    ap.add_argument("--no-dashboard", action="store_true")
+    ap.add_argument("--no-notify", action="store_true",
+                    help="失敗してもGitHub Issueを立てない（手動実行用）")
+    args = ap.parse_args()
+
+    _log(f"=== pococha-sync {datetime.now(JST).strftime('%Y-%m-%d %H:%M:%S')} ===")
+
+    def fail(reason, extra=""):
+        _log(f"\n❌ {reason}")
+        if not args.no_notify:
+            notify_failure(reason, extra)
+        return 1
+
+    if not wait_for_network():
+        return fail(
+            f"{DOMAIN} に到達できず同期を実行できませんでした"
+            f"（{NET_WAIT_ROUNDS}回 × {NET_WAIT_SLEEP}秒の再確認後も未到達。"
+            "Mac がスリープ/オフラインの可能性）")
+
+    try:
+        n_ok = sync(args)
+    except NetworkUnavailable as e:
+        return fail(f"同期中にネットワークが切れて中断: {e}")
+    except AuthExpired as e:
+        return fail(f"Cookie切れで同期できません: {e}",
+                    extra="Chrome で organizer-ope.pococha.com にログインし直してください。")
+    except Exception as e:
+        return fail(f"同期に失敗: {type(e).__name__}: {e}")
+
+    _save_state(last_success_date=_today(),
+                last_success_at=datetime.now(JST).isoformat(),
+                last_success_count=n_ok)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
