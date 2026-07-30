@@ -216,7 +216,8 @@ def collect(conn):
             "AND status LIKE '%参加中%'", (uid,),
         ).fetchall()
         dia = conn.execute(
-            "SELECT diamonds FROM dia_balance WHERE user_id=? ORDER BY captured_on DESC LIMIT 1", (uid,),
+            "SELECT diamonds, captured_on FROM dia_balance WHERE user_id=? "
+            "ORDER BY captured_on DESC LIMIT 1", (uid,),
         ).fetchone()
         off_month = conn.execute(
             "SELECT count(*) c FROM off_days WHERE user_id=? AND off_date LIKE ?",
@@ -237,6 +238,10 @@ def collect(conn):
         last_stream = stream_daily[-1]["d"] if stream_daily else None
         cur_rank = rank_hist[-1]["after_rank"] if rank_hist else (
             f"{snap['rank']} ({snap['rank_meter']})" if snap else "-")
+        snap_on = snap["captured_on"] if snap else None
+        snap_days = _days_since(snap_on)
+        dia_on = dia["captured_on"] if dia else None
+        dia_days = _days_since(dia_on)
 
         liver_data = load_liver(conn, uid)
         alerts = build_alerts(liver_data)
@@ -257,6 +262,8 @@ def collect(conn):
             "kpi": {
                 "rank": cur_rank, "move": move,
                 "week_dia": snap["diamonds_week"] if snap else None,
+                "snap_on": snap_on, "snap_days": snap_days,
+                "dia_on": dia_on, "dia_days": dia_days,
                 "month_dia": month_total_dia,
                 "month_time_dia": month_time_dia,
                 "month_hype_dia": month_hype_dia,
@@ -347,6 +354,8 @@ function render(i){
   const d=DATA[i],k=d.kpi,app=document.getElementById('app');
   const mv=k.move?`<span class="${k.move.dir==='up'?'up':k.move.dir==='down'?'down':''}">${k.move.dir==='up'?'⤴ ':k.move.dir==='down'?'⤵ ':''}${k.move.text}</span>`:'';
   const gapCls=k.gap!=null&&k.gap>=3?'down':'';
+  const snapStale=k.snap_days!=null&&k.snap_days>=7;
+  const diaStale=k.dia_days!=null&&k.dia_days>=7;
   app.innerHTML=`
   <div class="kpis">
     ${kpi('今のランク',k.rank,k.move?k.move.text:'')}
@@ -356,12 +365,14 @@ function render(i){
       k.month_missing?'warn':'')}
     ${kpi('今月の配信',k.month_missing?'未取得':(k.month_stream_days??'-')+'日',
       k.month_missing?'今月分はまだ取れていません':hm(k.month_stream_min),k.month_missing?'warn':'')}
-    ${kpi('今週のダイヤ',k.week_dia?.toLocaleString(),'時間 '+hm(k.dia_week_min))}
+    ${kpi('今週のダイヤ',k.week_dia?.toLocaleString(),
+      (snapStale?k.snap_on+'時点 ・ ':'')+'時間 '+hm(k.dia_week_min),snapStale?'warn':'')}
     ${kpi('マンスリー順位',k.monthly_rank?.toLocaleString())}
     ${kpi('フォロワー',k.followers?.toLocaleString(),'Lv'+(k.level??'-')+' ・ '+(k.region||'-'))}
     ${kpi('今月のお休み',k.off_month!=null?k.off_month+'日':'-')}
     ${kpi('最終配信',k.gap!=null?(k.gap===0?'今日':k.gap+'日前'):'-',k.last_stream||'',gapCls)}
-    ${kpi('ダイヤ残高',k.balance?.toLocaleString(),'事務所歴 '+(k.tenure!=null?k.tenure+'日':'-'))}
+    ${kpi('ダイヤ残高',k.balance?.toLocaleString(),
+      (diaStale?k.dia_on+'時点 ・ ':'')+'事務所歴 '+(k.tenure!=null?k.tenure+'日':'-'),diaStale?'warn':'')}
   </div>
   ${d.alerts.length?`<div class="panel"><h2>気にすること・声かけ</h2>${
     d.alerts.map(a=>`<div class="alert ${a.sev}"><div><b>${a.cat}</b>：${a.why}</div><div class="act">→ ${a.action}</div></div>`).join('')}</div>`
