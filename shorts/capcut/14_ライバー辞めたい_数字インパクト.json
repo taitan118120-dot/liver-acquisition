@@ -79,7 +79,7 @@
       "is_end_card": false
     },
     {
-      "text": "実際にTAITAN PRO（150人以上のライバーが所属）のデータでも",
+      "text": "実際にTAITAN PRO（200名のライバーが所属）のデータでも",
       "start": 14.0,
       "end": 16.8,
       "font_size": 82,
@@ -88,7 +88,7 @@
       "speaker": "metan",
       "side": "right",
       "emphasis": [
-        "150人"
+        "200名"
       ],
       "bg_preset": "navy",
       "is_end_card": false
