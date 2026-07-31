@@ -1247,7 +1247,13 @@ PUBLISHED_KEYS = {
 
 
 def get_published_article_nums():
-    """投稿済み記事番号をPUBLISHED_KEYSとログから収集"""
+    """投稿済み記事番号をPUBLISHED_KEYS・ログ・key台帳から収集。
+
+    key台帳(note_key_map.json)は「公開中の記事」からしか引けない（fetch_published_title_key_map
+    参照）ので、載っている番号は公開済みとみなしてよい。これを見ないと、
+    公開済みなのにローカルmdが後から復元された記事（2026-07-30の #133/#134）が
+    永久に未投稿キューに残り、カバー画像なしスキップ→exit 3 で毎日CIが赤くなる。
+    """
     published = set(PUBLISHED_KEYS.keys())
     if os.path.exists(LOG_FILE):
         with open(LOG_FILE, "r", encoding="utf-8") as f:
@@ -1258,6 +1264,9 @@ def get_published_article_nums():
                         published.add(int(row["article_num"]))
                     except (ValueError, KeyError):
                         pass
+    for num, info in load_key_map_file().items():
+        if (info or {}).get("key"):
+            published.add(num)
     return published
 
 
