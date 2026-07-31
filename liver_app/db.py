@@ -12,7 +12,7 @@ DB_PATH = os.environ.get(
 
 _DEFAULT_BEGINNER_TEMPLATE = (
     "✨スマホ1台で月20万円以上のライバー育成中✨\n"
-    "TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n💪所属ライバー実績💪\n月収100万円超のライバー多数在籍✨\n最高月収600万円以上(Pococha S6帯)✨\n総勢150名所属\n\n"
+    "TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n💪所属ライバー実績💪\n月収100万円超のライバー多数在籍✨\n最高月収600万円以上(Pococha S6帯)✨\n総勢200名所属\n\n"
     "投稿拝見してご連絡しました🙏\n"
     "未経験〜経験者まで幅広くサポートしているライバー事務所です。\n\n"
     "🎁所属メリット🎁\n"
@@ -31,7 +31,7 @@ _DEFAULT_BEGINNER_TEMPLATE = (
 
 _DEFAULT_BEGINNER_TEMPLATE_OSHIKATSU = (
     "✨推し活してる方へ🎁ライバーデビューのご案内✨\n"
-    "TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n💪所属ライバー実績💪\n月収100万円超のライバー多数在籍✨\n最高月収600万円以上(Pococha S6帯)✨\n総勢150名所属\n\n"
+    "TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n💪所属ライバー実績💪\n月収100万円超のライバー多数在籍✨\n最高月収600万円以上(Pococha S6帯)✨\n総勢200名所属\n\n"
     "投稿拝見してご連絡しました🙏\n"
     "推しを応援してきた方ほど、実はライバー側になると伸びやすいです。\n"
     "リスナー目線が分かるから、初配信から濃いファンが付きます🌸\n\n"
@@ -52,7 +52,7 @@ _DEFAULT_BEGINNER_TEMPLATE_OSHIKATSU = (
 
 _DEFAULT_AGENCY_TEMPLATE_SHOP = (
     "✨経営者さま向け：ライバー事業のご紹介✨\n"
-    "TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n💪所属ライバー実績💪\n月収100万円超のライバー多数在籍✨\n最高月収600万円以上(Pococha S6帯)✨\n総勢150名所属／提携代理店11社あり\n\n"
+    "TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n💪所属ライバー実績💪\n月収100万円超のライバー多数在籍✨\n最高月収600万円以上(Pococha S6帯)✨\n総勢200名所属／提携代理店11社あり\n\n"
     "ご自身でも経営されてるとのこと、頑張られてて尊敬です🙏\n"
     "ネイルサロン/美容室/カフェ等を運営される方の追加収益として\n"
     "ライバースカウト事業をご紹介してます。\n\n"
@@ -67,7 +67,7 @@ _DEFAULT_AGENCY_TEMPLATE_SHOP = (
 
 _DEFAULT_AGENCY_TEMPLATE_SNS = (
     "✨SNS運用されてる方へ：ライバースカウト事業ご紹介✨\n"
-    "TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n💪所属ライバー実績💪\n月収100万円超のライバー多数在籍✨\n最高月収600万円以上(Pococha S6帯)✨\n総勢150名所属／提携代理店11社あり\n\n"
+    "TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n💪所属ライバー実績💪\n月収100万円超のライバー多数在籍✨\n最高月収600万円以上(Pococha S6帯)✨\n総勢200名所属／提携代理店11社あり\n\n"
     "SNS運用/コンテンツ販売されてるのを拝見しました🙏\n"
     "SNSスキル活かして、ライバースカウト事業始めませんか？\n\n"
     "🎯1人スカウト→月20万以上の継続収益（既存事業と相性◎）\n"
@@ -81,7 +81,7 @@ _DEFAULT_AGENCY_TEMPLATE_SNS = (
 
 _DEFAULT_AGENCY_TEMPLATE_CAST = (
     "✨夜のお仕事の方へ：ライバー事業のご案内✨\n"
-    "TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n💪所属ライバー実績💪\n月収100万円超のライバー多数在籍✨\n最高月収600万円以上(Pococha S6帯)✨\n総勢150名所属／提携代理店11社あり\n\n"
+    "TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n💪所属ライバー実績💪\n月収100万円超のライバー多数在籍✨\n最高月収600万円以上(Pococha S6帯)✨\n総勢200名所属／提携代理店11社あり\n\n"
     "お仕事拝見してご連絡しました🙏\n"
     "夜のお仕事と並行で／or 卒業後のキャリアとして\n"
     "ライバースカウト事業のご案内です。\n\n"
@@ -96,7 +96,7 @@ _DEFAULT_AGENCY_TEMPLATE_CAST = (
 
 _DEFAULT_AGENCY_TEMPLATE_LIVER_FAN = (
     "✨ライバー興味ある方へ：別ルートのご紹介✨\n"
-    "TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n💪所属ライバー実績💪\n月収100万円超のライバー多数在籍✨\n最高月収600万円以上(Pococha S6帯)✨\n総勢150名所属／提携代理店11社あり\n\n"
+    "TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n💪所属ライバー実績💪\n月収100万円超のライバー多数在籍✨\n最高月収600万円以上(Pococha S6帯)✨\n総勢200名所属／提携代理店11社あり\n\n"
     "ライバー興味あるとのこと、ご連絡しました🙏\n"
     "実は「ライバーをスカウトする側」も参入しやすい副業で\n\n"
     "🎯顔出しせず月20万以上の継続収益\n"
@@ -110,7 +110,7 @@ _DEFAULT_AGENCY_TEMPLATE_LIVER_FAN = (
 
 _DEFAULT_EXISTING_LIVER_TEMPLATE = (
     "✨他事務所からの移籍/個人勢の所属サポート✨\n"
-    "TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n💪所属ライバー実績💪\n月収100万円超のライバー多数在籍✨\n最高月収600万円以上(Pococha S6帯)✨\n総勢150名所属\n\n"
+    "TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n💪所属ライバー実績💪\n月収100万円超のライバー多数在籍✨\n最高月収600万円以上(Pococha S6帯)✨\n総勢200名所属\n\n"
     "投稿を拝見してご連絡しました🙏\n"
     "未経験〜経験者まで幅広くサポートしているライバー事務所です。\n\n"
     "🎁所属メリット🎁\n"
@@ -129,7 +129,7 @@ _DEFAULT_EXISTING_LIVER_TEMPLATE = (
 
 _DEFAULT_EXISTING_LIVER_TEMPLATE_2 = (
     "✨ポコチャ以外のライバーさん向け 特別キャンペーンのご案内✨\n"
-    "ライバー事務所TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n💪所属ライバー実績💪\n月収100万円超のライバー多数在籍✨\n最高月収600万円以上(Pococha S6帯)✨\n総勢150名所属\n\n"
+    "ライバー事務所TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n💪所属ライバー実績💪\n月収100万円超のライバー多数在籍✨\n最高月収600万円以上(Pococha S6帯)✨\n総勢200名所属\n\n"
     "投稿を拝見してご連絡しました🙏\n"
     "現在ご活動中のライバーさん向けに、収益アップをサポートする\n"
     "【特別マネジメントプラン】をご案内しています。\n\n"
@@ -537,6 +537,52 @@ def init_db():
             if old_tpl_row:
                 old_tpl = json.loads(old_tpl_row["value"])
                 new_tpl, did = _patch(old_tpl)
+                if did:
+                    conn.execute(
+                        "UPDATE settings SET value=? WHERE key='template'",
+                        (json.dumps(new_tpl, ensure_ascii=False),),
+                    )
+        except Exception:
+            pass
+
+        # 所属ライバー数マイグレーション (2026-07-31)
+        # テンプレは INSERT OR IGNORE で初回のみ投入されるため、DEFAULT_* を直しても
+        # 既存DB（本番 Fly.io /data/data.sqlite 含む）には旧表記が残り続ける。
+        # 確定ファクトは「200名（Pococha・TikTok合わせて）」。冪等なので毎回走らせてよい。
+        try:
+            HEADCOUNT_RULES = [("総勢150名所属", "総勢200名所属")]
+
+            def _patch_headcount(text):
+                if not isinstance(text, str):
+                    return text, False
+                changed = False
+                for old, new in HEADCOUNT_RULES:
+                    if old in text:
+                        text = text.replace(old, new)
+                        changed = True
+                return text, changed
+
+            tpl_row = conn.execute("SELECT value FROM settings WHERE key='templates'").fetchone()
+            if tpl_row:
+                templates = json.loads(tpl_row["value"])
+                changed = False
+                if isinstance(templates, dict):
+                    for k, v in templates.items():
+                        if isinstance(v, list):
+                            for i, tpl in enumerate(v):
+                                new_tpl, did = _patch_headcount(tpl)
+                                if did:
+                                    v[i] = new_tpl
+                                    changed = True
+                if changed:
+                    conn.execute(
+                        "UPDATE settings SET value=? WHERE key='templates'",
+                        (json.dumps(templates, ensure_ascii=False),),
+                    )
+
+            old_tpl_row = conn.execute("SELECT value FROM settings WHERE key='template'").fetchone()
+            if old_tpl_row:
+                new_tpl, did = _patch_headcount(json.loads(old_tpl_row["value"]))
                 if did:
                     conn.execute(
                         "UPDATE settings SET value=? WHERE key='template'",

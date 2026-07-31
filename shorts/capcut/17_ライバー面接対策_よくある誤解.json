@@ -61,7 +61,7 @@
       "is_end_card": false
     },
     {
-      "text": "TAITAN PROに所属する150人以上のライバーのうち",
+      "text": "TAITAN PROに所属する200名のライバーのうち",
       "start": 11.2,
       "end": 14.0,
       "font_size": 82,
@@ -70,7 +70,7 @@
       "speaker": "metan",
       "side": "right",
       "emphasis": [
-        "150人"
+        "200名"
       ],
       "bg_preset": "navy",
       "is_end_card": false
