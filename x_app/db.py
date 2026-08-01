@@ -1,6 +1,7 @@
 """SQLite DB管理 (X版): leadsテーブルとsettingsテーブル"""
 import json
 import os
+import re
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime
@@ -97,7 +98,7 @@ _DEFAULT_EXISTING_LIVER_TEMPLATE_2 = (
     "現在ご活動中のライバーさん向けに、収益アップをサポートする\n"
     "【特別マネジメントプラン】をご案内しています。\n\n"
     "🎁プランの内容🎁\n"
-    "✨ 達成条件に応じて時給上乗せ報酬（最大5,000円/h）\n"
+    "✨ 達成条件に応じて時給上乗せ報酬あり\n"
     "✨ 短期間で大きく収入を伸ばしたライバーも在籍\n"
     "✨ いま活動中のアプリと並行配信OK\n"
     "✨ 案件・コラボ配信の優先紹介\n\n"
@@ -340,6 +341,24 @@ def init_db():
                     "顔出しせず月3〜10万の継続収益",
                     "顔出しせず月20万以上の継続収益",
                 ),
+                # 2026-08-01 追加: 時給上乗せキャンペーンの上限額（最大5,000円/h）を定性表現へ。
+                # ユーザー確認の結果このキャンペーン条件の裏が取れず、かつ確定ファクト表は
+                # 「時給の具体数字を断定的に書かない」と定めている。この数字（×最長90日＝120万円）が
+                # 上の偽実績「90日で月収100万円超」の元ネタでもある。liver_app/db.py にも同じルールあり。
+                (
+                    "✨ 達成条件に応じて時給上乗せ報酬（最大5,000円/h）",
+                    "✨ 達成条件に応じて時給上乗せ報酬あり",
+                ),
+            ]
+
+            # literal ルールは既知の形だけを潰す。設定UIからの手編集で別の数字が
+            # 入っている可能性があるので、金額をワイルドカードにした掃き出しも掛ける
+            # （旧値でなくフィールドで当てる）。liver_app/db.py と同じパターン。
+            HOURLY_CAP_PATTERNS = [
+                (re.compile(r"[（(]\s*時給上乗せ\s*最大\s*[0-9,]+\s*円\s*/\s*[hH]\s*[）)]"),
+                 "（達成条件に応じた時給上乗せ報酬あり）"),
+                (re.compile(r"時給上乗せ報酬\s*[（(]\s*最大\s*[0-9,]+\s*円\s*/\s*[hH]\s*[）)]"),
+                 "時給上乗せ報酬あり"),
             ]
 
             def _patch_text(text):
@@ -349,6 +368,10 @@ def init_db():
                 for old, new in TEXT_RULES:
                     if old in text:
                         text = text.replace(old, new)
+                        changed = True
+                for pat, repl in HOURLY_CAP_PATTERNS:
+                    text, n = pat.subn(repl, text)
+                    if n:
                         changed = True
                 return text, changed
 

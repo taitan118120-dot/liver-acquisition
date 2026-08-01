@@ -15,8 +15,22 @@ from datetime import datetime
 import config
 
 
+# 退役したテンプレート。未指定時の beginner フォールバックに黙って吸われると
+# 意図と違うDMが送られるので、明示的にエラーにする。
+# - model_scout: 「京都コレクション」はユーザー確認の結果、実在しないと判明（2026-08-01）。
+#   告知先 collection.c.ccarveout.jp も404で、ドメイン名も使用禁止ブランド「カーブアウト」。
+_RETIRED_TEMPLATES = {
+    "model_scout": "京都コレクションが実在しないため 2026-08-01 に退役（templates/retired/ に退避）",
+}
+
+
 def load_template(target_type):
     """ターゲットタイプに応じたDMテンプレートを読み込む"""
+    if target_type in _RETIRED_TEMPLATES:
+        raise ValueError(
+            f"テンプレ '{target_type}' は使用停止です: {_RETIRED_TEMPLATES[target_type]}"
+        )
+
     template_map = {
         "beginner": "templates/dm_beginner.txt",
         "existing": "templates/dm_existing.txt",
@@ -26,7 +40,6 @@ def load_template(target_type):
         "agency_prospect_hot": "templates/dm_agency_prospect.txt",
         # Instagram 半自動DM用（ig_dm_assist.py）
         "hourly_5k": "templates/dm_hourly_5k.txt",
-        "model_scout": "templates/dm_model_scout.txt",
     }
     path = template_map.get(target_type, template_map["beginner"])
 

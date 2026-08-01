@@ -31,7 +31,6 @@ Claude が claude-in-chrome MCP 経由で IG の DM画面までを自動準備�
   # === 送信フェーズ（精査通過済みのみ対象）===
   python3 instagram/ig_dm_assist.py next
   python3 instagram/ig_dm_assist.py next --template hourly_5k
-  python3 instagram/ig_dm_assist.py next --template model_scout
 
   python3 instagram/ig_dm_assist.py mark-sent <lead_id>
 
@@ -520,7 +519,7 @@ def main():
     p_q.set_defaults(func=cmd_qualify)
 
     p_next = sub.add_parser("next", help="次に送る（精査通過）リードを出力")
-    p_next.add_argument("--template", help="テンプレ名（hourly_5k | model_scout | beginner...）")
+    p_next.add_argument("--template", help="テンプレ名（hourly_5k | beginner...）")
     p_next.add_argument("--target-type", help="target_type でフィルタ")
     p_next.set_defaults(func=cmd_next)
 
@@ -536,7 +535,7 @@ def main():
 
     p_qmd = sub.add_parser("queue-md", help="精査通過・未送信リードをmdファイルに出力（スマホ貼付用）")
     p_qmd.add_argument("--limit", type=int, help="最大件数（省略時は本日残り送信可能数）")
-    p_qmd.add_argument("--template", help="テンプレ名（beginner | hourly_5k | model_scout ...）")
+    p_qmd.add_argument("--template", help="テンプレ名（beginner | hourly_5k ...）")
     p_qmd.add_argument("--target-type", help="target_type でフィルタ")
     p_qmd.set_defaults(func=cmd_queue_md)
 
