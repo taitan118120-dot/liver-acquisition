@@ -61,7 +61,21 @@ CONTENT_GLOBS = [
     "threads/threads_content.py",
     "cloud_post.py",
     "instagram/ig_viral_generator.py",
+    # DMテンプレ（見込み客に直接送られる＝最も目に触れるコンテンツ）
+    # 2026-08-01: templates/dm_model_scout.txt が404の告知先を長期間載せていたが
+    # 走査対象外だったため一度も検知できなかった。その再発防止。
+    "templates/*.txt",          # dm_sender.py がファイル直読みする本番テンプレ
+    "liver_app/db.py",          # _DEFAULT_*_TEMPLATE にLPのURLが埋まっている
+    "x_app/db.py",              # 同上（X版）
+    # 求人原稿（応募者が踏むリンク。生成済み原稿とテンプレの両方を見る）
+    "job_posts/templates/*.txt",
+    "job_posts/*/*.md",
 ]
+
+# 走査から外すパス（相対パスに含まれていたらスキップ）
+# templates/retired/ は退役テンプレ置き場。死んだURLが「記録として」残っているので
+# 検知対象にすると恒久的に赤くなる（経緯は templates/retired/README.md）。
+EXCLUDE_PATH_PARTS = ("templates/retired/",)
 
 # botを全面ブロックしていて実チェックが誤検知になるドメイン
 SKIP_DOMAINS = (
@@ -95,6 +109,8 @@ def extract_repo_urls():
             except (UnicodeDecodeError, IsADirectoryError):
                 continue
             rel = os.path.relpath(fp, BASE_DIR)
+            if any(part in rel for part in EXCLUDE_PATH_PARTS):
+                continue
             for m in URL_RE.findall(text):
                 url = _clean(m)
                 # f-string分割等で途切れた断片は除外（実URLはランタイム構築側で取得）

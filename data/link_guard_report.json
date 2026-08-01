@@ -1,13 +1,5 @@
 {
- "checked": 21,
+ "checked": 37,
  "dead": [],
- "warn": [
-  {
-   "url": "https://taitan-pro-lp.netlify.app「ライバーやりたいけど",
-   "reason": "接続エラー: InvalidURL",
-   "sources": [
-    "note:n9197ae57ed8a"
-   ]
-  }
- ]
+ "warn": []
 }
