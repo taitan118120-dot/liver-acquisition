@@ -142,10 +142,16 @@ _DEFAULT_KEYWORDS_AGENCY = [
     "ライバーになりたい", "配信 憧れ",
 ]
 
+# _pick_template() の最終フォールバック（target_type別のテンプレリストが空のとき）。
+# 以前は settings の単数形 "template" キーを使っていたが、設定UIから編集されないまま
+# 放置され、文言修正のたびにマイグレーションで拾い漏らすと旧文言のDMが飛ぶ状態だった
+# （2026-08-01 に x_app 本番で「月10万円超」の旧文言が残っていた）。
+# コード側の定数を直接使えばDBの残骸に引きずられない。
+FALLBACK_TEMPLATE = _DEFAULT_BEGINNER_TEMPLATE
+
 DEFAULT_SETTINGS = {
     # 旧key（互換維持・実体は templates / keywords_by_type）
     "keywords": _DEFAULT_KEYWORDS_BEGINNER,
-    "template": _DEFAULT_BEGINNER_TEMPLATE,
     "templates": {
         "beginner": [_DEFAULT_BEGINNER_TEMPLATE],
         "agency": [
@@ -301,16 +307,6 @@ def init_db():
                         "UPDATE settings SET value=? WHERE key='templates'",
                         (json.dumps(templates, ensure_ascii=False),),
                     )
-
-            old_tpl_row = conn.execute("SELECT value FROM settings WHERE key='template'").fetchone()
-            if old_tpl_row:
-                old_tpl = json.loads(old_tpl_row["value"])
-                new_tpl, did = _patch(old_tpl)
-                if did:
-                    conn.execute(
-                        "UPDATE settings SET value=? WHERE key='template'",
-                        (json.dumps(new_tpl, ensure_ascii=False),),
-                    )
         except Exception:
             pass  # マイグレーションは best-effort
 
@@ -399,14 +395,6 @@ def init_db():
                         (json.dumps(templates, ensure_ascii=False),),
                     )
 
-            old_tpl_row = conn.execute("SELECT value FROM settings WHERE key='template'").fetchone()
-            if old_tpl_row:
-                new_tpl, did = _patch_text(json.loads(old_tpl_row["value"]))
-                if did:
-                    conn.execute(
-                        "UPDATE settings SET value=? WHERE key='template'",
-                        (json.dumps(new_tpl, ensure_ascii=False),),
-                    )
         except Exception:
             pass  # マイグレーションは best-effort
 
@@ -486,15 +474,6 @@ def init_db():
                         (json.dumps(templates, ensure_ascii=False),),
                     )
 
-            old_tpl_row = conn.execute("SELECT value FROM settings WHERE key='template'").fetchone()
-            if old_tpl_row:
-                # 旧 template キーは beginner 相当なので代理店サフィックスは付けない
-                new_tpl, did = _patch_credentials(json.loads(old_tpl_row["value"]), False)
-                if did:
-                    conn.execute(
-                        "UPDATE settings SET value=? WHERE key='template'",
-                        (json.dumps(new_tpl, ensure_ascii=False),),
-                    )
         except Exception:
             pass  # マイグレーションは best-effort
 
@@ -528,23 +507,12 @@ def init_db():
                         (json.dumps(templates, ensure_ascii=False),),
                     )
 
-            old_tpl_row = conn.execute("SELECT value FROM settings WHERE key='template'").fetchone()
-            if old_tpl_row:
-                old_tpl = json.loads(old_tpl_row["value"])
-                if isinstance(old_tpl, str) and any(m in old_tpl for m in RETIRED_MARKERS):
-                    # 単一テンプレ側は消すと送信不能になるので、デフォルトへ戻す
-                    conn.execute(
-                        "UPDATE settings SET value=? WHERE key='template'",
-                        (json.dumps(_DEFAULT_BEGINNER_TEMPLATE, ensure_ascii=False),),
-                    )
         except Exception:
             pass
 
-        # 旧 template キーの収入表記マイグレーション (2026-08-01)
-        # 単数形 template は _pick_template() の fallback（target_type別リストが空のとき
-        # だけ使われる）。実際には使われていないが、リストを空にすると旧文言の
-        # 「月10万円超」DMが飛ぶ状態だった。少額表記は全媒体で使わない方針なので、
-        # 現行デフォルト（月20万円超）へ揃える。念のため templates 側にも同じ置換を掛ける。
+        # 収入表記マイグレーション (2026-08-01)
+        # 「月10万円超」等の少額表記は全媒体で使わない方針なので現行デフォルト
+        # （月20万円超）へ揃える。設定UIからの手編集で入っていても拾える。冪等。
         try:
             INCOME_RULES = [
                 (
@@ -581,21 +549,14 @@ def init_db():
                         (json.dumps(templates, ensure_ascii=False),),
                     )
 
-            old_tpl_row = conn.execute("SELECT value FROM settings WHERE key='template'").fetchone()
-            if old_tpl_row:
-                new_tpl, did = _patch_income(json.loads(old_tpl_row["value"]))
-                if did:
-                    conn.execute(
-                        "UPDATE settings SET value=? WHERE key='template'",
-                        (json.dumps(new_tpl, ensure_ascii=False),),
-                    )
         except Exception:
             pass  # マイグレーションは best-effort
 
         # 一人称の自己紹介を撤去 (2026-08-01)
         # 上流の代表紹介マイグレーションは OLD_INTRO を完全一致で潰していたため、
         # 「TAITAN PROっていうライバー事務所のたいたんと申します。」のような別の言い回しが
-        # すり抜ける。liver_app 本番の settings.template で実際にすり抜けが起きていた。
+        # すり抜ける。liver_app 本番の旧 settings.template で実際にすり抜けが起きていた
+        # （そのキー自体は下の 2026-08-02 マイグレーションで廃止済み）。
         # x_app 本番は現時点で該当なしだが、設定UIからの手編集で同じことが起きるので予防的に置く。
         # DMは所属ライバー(worker)も送るので一人称の「たいたんと申します」は使えない。
         # たいたんは「代表」として紹介するだけ。liver_app/db.py にも同じルールがある。冪等。
@@ -634,14 +595,18 @@ def init_db():
                         (json.dumps(templates, ensure_ascii=False),),
                     )
 
-            old_tpl_row = conn.execute("SELECT value FROM settings WHERE key='template'").fetchone()
-            if old_tpl_row:
-                new_tpl, did = _patch_self_intro(json.loads(old_tpl_row["value"]))
-                if did:
-                    conn.execute(
-                        "UPDATE settings SET value=? WHERE key='template'",
-                        (json.dumps(new_tpl, ensure_ascii=False),),
-                    )
+        except Exception:
+            pass  # マイグレーションは best-effort
+
+        # 単数形 template キーの廃止 (2026-08-02)
+        # このキーは _pick_template() の fallback 専用だったが、設定UIから編集されない
+        # ため旧文言が残り続け、文言修正のたびに templates（複数形）と両方をパッチする
+        # 必要があった（実際 2026-08-01 に単数形だけ旧文言が残っていた）。
+        # fallback はコード側の FALLBACK_TEMPLATE を直接使うようにしたので、DB上の行は
+        # もう誰も読まない。残しておくと all_settings() 経由で設定UIに載って復活するので
+        # 削除する。DEFAULT_SETTINGS からも外してあるため再投入もされない。
+        try:
+            conn.execute("DELETE FROM settings WHERE key='template'")
         except Exception:
             pass
 
