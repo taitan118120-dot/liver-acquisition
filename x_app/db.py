@@ -18,9 +18,9 @@ DB_PATH = os.environ.get(
 # ============================================================
 _DEFAULT_BEGINNER_TEMPLATE = (
     "✨スマホ1台で月20万円超のライバー育成中✨\n"
-    "TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n"
+    "TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n💪所属ライバー実績💪\nS帯（最上位帯）で活躍するライバーが在籍✨\n専属マネージャーが収入アップまで伴走✨\n総勢200名所属\n\n"
     "投稿拝見してご連絡しました🙏\n"
-    "未経験〜経験者まで、Pococha・TikTok合わせて総勢200名が所属するライバー事務所です。\n\n"
+    "未経験〜経験者まで幅広くサポートしているライバー事務所です。\n\n"
     "🎁所属メリット🎁\n"
     "・専属マネージャーが1on1で配信戦略コンサル\n"
     "・未経験でも稼げる「初動加速プログラム」完備\n"
@@ -28,6 +28,7 @@ _DEFAULT_BEGINNER_TEMPLATE = (
     "・案件・コラボ配信の優先紹介\n\n"
     "📱スマホ1台でOK／全国どこでも所属可能\n"
     "📝所属費用は一切かかりません\n\n"
+    "🎙ラジオライバー可能\n\n"
     "「ちょっと気になるかも…」と思っていただけたら、\n"
     "『興味あり』とだけご返信ください♪\n"
     "詳細を即お送りします！\n\n"
@@ -36,48 +37,51 @@ _DEFAULT_BEGINNER_TEMPLATE = (
 
 _DEFAULT_AGENCY_TEMPLATE_SIDEJOB = (
     "✨副業/独立志向の方へ：ライバースカウト事業のご紹介✨\n"
-    "TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n"
+    "TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n💪所属ライバー実績💪\nS帯（最上位帯）で活躍するライバーが在籍✨\n専属マネージャーが収入アップまで伴走✨\n総勢200名所属／提携代理店11社あり\n\n"
     "副業・独立に興味あるとのこと、ご連絡しました🙏\n"
     "SNSで集客できる方なら相性◎の事業をご紹介しています。\n\n"
     "🎯1人スカウトで月20万以上の継続収益（既存スキルそのまま活かせる）\n"
     "🎯完全在宅・スマホ完結\n"
     "🎯弊社が育成サポート全部代行（手間ゼロ）\n"
     "🎯初期費用なし／低リスクで始められる\n\n"
+    "🎙ラジオライバー可能\n\n"
     "「興味あり」とご返信いただければ詳細お送りします💌\n\n"
     "→ https://taitan-pro-lp.netlify.app/#apply"
 )
 
 _DEFAULT_AGENCY_TEMPLATE_OWNER = (
     "✨経営者さま向け：追加収益のご紹介✨\n"
-    "TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n"
+    "TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n💪所属ライバー実績💪\nS帯（最上位帯）で活躍するライバーが在籍✨\n専属マネージャーが収入アップまで伴走✨\n総勢200名所属／提携代理店11社あり\n\n"
     "ご自身でも事業されてるとのこと、頑張られてて尊敬です🙏\n"
     "既存事業の追加収益として、ライバースカウト事業のご紹介です。\n\n"
     "🎯既存スタッフ・お客様をライバー化→月20万以上の副収入\n"
     "🎯店舗/事業の集客にもなる（SNS流入）\n"
     "🎯弊社が育成・配信ノウハウ全部代行（手間ゼロ）\n"
     "🎯既存事業との相性◎・初期費用なし\n\n"
+    "🎙ラジオライバー可能\n\n"
     "「興味あり」とご返信いただければ詳細お送りします💌\n\n"
     "→ https://taitan-pro-lp.netlify.app/#apply"
 )
 
 _DEFAULT_AGENCY_TEMPLATE_LIVER_FAN = (
     "✨ライバー興味ある方へ：別ルートのご紹介✨\n"
-    "TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n"
+    "TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n💪所属ライバー実績💪\nS帯（最上位帯）で活躍するライバーが在籍✨\n専属マネージャーが収入アップまで伴走✨\n総勢200名所属／提携代理店11社あり\n\n"
     "ライバー興味あるとのこと、ご連絡しました🙏\n"
     "実は「ライバーをスカウトする側」も参入しやすい副業で\n\n"
     "🎯顔出しせず月20万以上の継続収益\n"
     "🎯既にライバーやってる方の中継役として\n"
     "🎯弊社サポートで未経験でも初月から成果\n"
     "🎯ご自身がライバーになるルートもサポート可能\n\n"
+    "🎙ラジオライバー可能\n\n"
     "「興味あり」とご返信いただければ詳細お送りします💌\n\n"
     "→ https://taitan-pro-lp.netlify.app/#apply"
 )
 
 _DEFAULT_EXISTING_LIVER_TEMPLATE = (
     "✨他事務所からの移籍/個人勢の所属サポート✨\n"
-    "TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n"
+    "TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n💪所属ライバー実績💪\nS帯（最上位帯）で活躍するライバーが在籍✨\n専属マネージャーが収入アップまで伴走✨\n総勢200名所属\n\n"
     "配信されているのを拝見してご連絡しました🙏\n"
-    "未経験〜経験者まで幅広くサポートしている、Pococha・TikTok合わせて総勢200名所属のライバー事務所です。\n\n"
+    "未経験〜経験者まで幅広くサポートしているライバー事務所です。\n\n"
     "🎁所属メリット🎁\n"
     "・イベント時のリスナーブースト・集客支援\n"
     "・専属マネージャーによる配信戦略コンサル\n"
@@ -85,6 +89,7 @@ _DEFAULT_EXISTING_LIVER_TEMPLATE = (
     "・他事務所の縛りや待遇でお悩みの方の相談もOK\n\n"
     "📱現プラットフォーム継続OK\n"
     "📝所属費用は一切かかりません\n\n"
+    "🎙ラジオライバー可能\n\n"
     "「ちょっと話聞いてみたい」と思っていただけたら、\n"
     "『興味あり』とだけご返信ください♪\n"
     "具体的な所属条件をすぐにお送りします！\n\n"
@@ -93,7 +98,7 @@ _DEFAULT_EXISTING_LIVER_TEMPLATE = (
 
 _DEFAULT_EXISTING_LIVER_TEMPLATE_2 = (
     "✨ポコチャ以外のライバーさん向け 特別キャンペーンのご案内✨\n"
-    "ライバー事務所TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n"
+    "ライバー事務所TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n💪所属ライバー実績💪\nS帯（最上位帯）で活躍するライバーが在籍✨\n専属マネージャーが収入アップまで伴走✨\n総勢200名所属\n\n"
     "配信されているのを拝見してご連絡しました🙏\n"
     "現在ご活動中のライバーさん向けに、収益アップをサポートする\n"
     "【特別マネジメントプラン】をご案内しています。\n\n"
@@ -104,6 +109,7 @@ _DEFAULT_EXISTING_LIVER_TEMPLATE_2 = (
     "✨ 案件・コラボ配信の優先紹介\n\n"
     "📱現プラットフォーム継続OK／全国どこでも所属可能\n"
     "📝所属費用は一切かかりません\n\n"
+    "🎙ラジオライバー可能\n\n"
     "少しでも「気になる」「話だけ聞いてみたい」でも大歓迎です！\n"
     "『興味あり』とだけご返信ください🙏\n"
     "詳細をすぐにお送りします。\n\n"
@@ -404,11 +410,100 @@ def init_db():
         except Exception:
             pass  # マイグレーションは best-effort
 
+        # 実績ブロック・ラジオライバー表記マイグレーション (2026-08-01)
+        # liver_app の全テンプレには代表プロフィール直後に「💪所属ライバー実績💪」
+        # ブロックが入っているが、x_app 側は1本も入っていなかった（同じ事務所・同じ訴求
+        # なのに X 版だけ信頼材料が欠落）。「🎙ラジオライバー可能」も同様。
+        # ・代理店（スカウトする側）向けだけ「／提携代理店11社あり」を付ける（liver_app と同じ）
+        # ・所属数は実績ブロックに集約するので、本文側の重複した「総勢200名」表記は落とす
+        # 冪等（挿入済みなら何もしない）なので毎回走らせてよい。
+        try:
+            PROFILE_ANCHOR = "実績ある事務所です。\n\n"
+            CREDENTIALS_BLOCK = (
+                "💪所属ライバー実績💪\n"
+                "S帯（最上位帯）で活躍するライバーが在籍✨\n"
+                "専属マネージャーが収入アップまで伴走✨\n"
+                "総勢200名所属"
+            )
+            AGENCY_SUFFIX = "／提携代理店11社あり"
+            RADIO_LINE = "🎙ラジオライバー可能\n\n"
+            # ラジオ表記はCTA直前に入れる。テンプレ種別ごとにCTAの文言が違う
+            CTA_ANCHORS = (
+                "「興味あり」とご返信いただければ詳細お送りします💌",
+                "「ちょっと気になるかも…」と思っていただけたら、",
+                "「ちょっと話聞いてみたい」と思っていただけたら、",
+                "少しでも「気になる」「話だけ聞いてみたい」でも大歓迎です！",
+            )
+            # 実績ブロックに所属数を書くので本文側の重複表記は削る
+            HEADCOUNT_DEDUPE = [
+                (
+                    "未経験〜経験者まで、Pococha・TikTok合わせて総勢200名が所属するライバー事務所です。",
+                    "未経験〜経験者まで幅広くサポートしているライバー事務所です。",
+                ),
+                (
+                    "未経験〜経験者まで幅広くサポートしている、Pococha・TikTok合わせて総勢200名所属のライバー事務所です。",
+                    "未経験〜経験者まで幅広くサポートしているライバー事務所です。",
+                ),
+            ]
+
+            def _patch_credentials(text, is_agency):
+                if not isinstance(text, str):
+                    return text, False
+                changed = False
+                if "💪所属ライバー実績💪" not in text and PROFILE_ANCHOR in text:
+                    block = CREDENTIALS_BLOCK + (AGENCY_SUFFIX if is_agency else "")
+                    text = text.replace(
+                        PROFILE_ANCHOR, PROFILE_ANCHOR + block + "\n\n", 1
+                    )
+                    changed = True
+                if "🎙ラジオライバー可能" not in text:
+                    for anchor in CTA_ANCHORS:
+                        if anchor in text:
+                            text = text.replace(anchor, RADIO_LINE + anchor, 1)
+                            changed = True
+                            break
+                for old, new in HEADCOUNT_DEDUPE:
+                    if old in text:
+                        text = text.replace(old, new)
+                        changed = True
+                return text, changed
+
+            tpl_row = conn.execute("SELECT value FROM settings WHERE key='templates'").fetchone()
+            if tpl_row:
+                templates = json.loads(tpl_row["value"])
+                changed = False
+                if isinstance(templates, dict):
+                    for k, v in templates.items():
+                        if isinstance(v, list):
+                            for i, tpl in enumerate(v):
+                                new_tpl, did = _patch_credentials(tpl, k == "agency")
+                                if did:
+                                    v[i] = new_tpl
+                                    changed = True
+                if changed:
+                    conn.execute(
+                        "UPDATE settings SET value=? WHERE key='templates'",
+                        (json.dumps(templates, ensure_ascii=False),),
+                    )
+
+            old_tpl_row = conn.execute("SELECT value FROM settings WHERE key='template'").fetchone()
+            if old_tpl_row:
+                # 旧 template キーは beginner 相当なので代理店サフィックスは付けない
+                new_tpl, did = _patch_credentials(json.loads(old_tpl_row["value"]), False)
+                if did:
+                    conn.execute(
+                        "UPDATE settings SET value=? WHERE key='template'",
+                        (json.dumps(new_tpl, ensure_ascii=False),),
+                    )
+        except Exception:
+            pass  # マイグレーションは best-effort
+
         # 実在しないイベントのテンプレを丸ごと退役 (2026-08-01)
         # 「京都コレクション」はユーザー確認の結果、実在しないと判明。告知先の
         # collection.c.ccarveout.jp も404で、ドメイン名も使用禁止ブランド「カーブアウト」。
         # x_app 本番DBには現時点で存在しないが、liver_app 本番には設定UIからの手編集で
         # 入り込んでいた（beginner[1]）。同じ手編集がこちらで起きても拾えるよう予防的に置く。
+        # 直前の実績ブロック注入より後に置く（注入済みのテンプレも確実に落とすため）。
         # テンプレ添字を永続化している箇所は無いので、要素を抜いても参照は壊れない。冪等。
         try:
             RETIRED_MARKERS = ("京都コレクション", "collection.c.ccarveout.jp")

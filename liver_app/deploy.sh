@@ -14,6 +14,17 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
+# --- デプロイガード読み込み（2026-08-01 の巻き戻し事故対策） ---
+GUARD="$(git rev-parse --show-toplevel 2>/dev/null)/scripts/fly_deploy_guard.sh"
+if [[ -f "$GUARD" ]]; then
+  # shellcheck source=../scripts/fly_deploy_guard.sh
+  source "$GUARD"
+else
+  echo "⚠️  scripts/fly_deploy_guard.sh が見つかりません。ガードなしで続行します。" >&2
+  fly_guard_precheck() { :; }
+  fly_guard_verify()   { :; }
+fi
+
 APP_NAME="${FLY_APP:-taitan-pro-dm}"
 REGION="${FLY_REGION:-nrt}"
 VOLUME_NAME="liver_data"
@@ -26,6 +37,9 @@ command -v "$FLY" >/dev/null 2>&1 || FLY=flyctl
 say() { printf "\033[1;36m==>\033[0m %s\n" "$*"; }
 ok()  { printf "\033[1;32m✓\033[0m %s\n" "$*"; }
 err() { printf "\033[1;31m✗\033[0m %s\n" "$*" >&2; }
+
+# 0. 事前チェック: HEAD と main の分岐（並行 worktree による巻き戻しを防ぐ）
+fly_guard_precheck
 
 say "flyctl: $($FLY version)"
 
@@ -71,6 +85,13 @@ $FLY secrets set APP_PASSWORD="$APP_PASSWORD" -a "$APP_NAME" --stage >/dev/null
 # 6. デプロイ
 say "デプロイ実行"
 $FLY deploy -a "$APP_NAME" --ha=false
+
+# 6b. 本番検証: 本番 /app/*.py がいま deploy したソースと一致するか
+#     （並行セッションが別コミットからデプロイしていると不一致になる）
+if ! fly_guard_verify "$APP_NAME" "$FLY"; then
+  err "デプロイ後の検証に失敗しました。本番は意図した内容になっていません。"
+  exit 1
+fi
 
 # 7. 既存 DB 転送（初回のみ）
 # Fly の sftp put は既存ファイルを上書きしないので、
