@@ -540,6 +540,58 @@ def init_db():
         except Exception:
             pass
 
+        # 旧 template キーの収入表記マイグレーション (2026-08-01)
+        # 単数形 template は _pick_template() の fallback（target_type別リストが空のとき
+        # だけ使われる）。実際には使われていないが、リストを空にすると旧文言の
+        # 「月10万円超」DMが飛ぶ状態だった。少額表記は全媒体で使わない方針なので、
+        # 現行デフォルト（月20万円超）へ揃える。念のため templates 側にも同じ置換を掛ける。
+        try:
+            INCOME_RULES = [
+                (
+                    "✨スマホ1台で月10万円超のライバー育成中✨",
+                    "✨スマホ1台で月20万円超のライバー育成中✨",
+                ),
+            ]
+
+            def _patch_income(text):
+                if not isinstance(text, str):
+                    return text, False
+                changed = False
+                for old, new in INCOME_RULES:
+                    if old in text:
+                        text = text.replace(old, new)
+                        changed = True
+                return text, changed
+
+            tpl_row = conn.execute("SELECT value FROM settings WHERE key='templates'").fetchone()
+            if tpl_row:
+                templates = json.loads(tpl_row["value"])
+                changed = False
+                if isinstance(templates, dict):
+                    for k, v in templates.items():
+                        if isinstance(v, list):
+                            for i, tpl in enumerate(v):
+                                new_tpl, did = _patch_income(tpl)
+                                if did:
+                                    v[i] = new_tpl
+                                    changed = True
+                if changed:
+                    conn.execute(
+                        "UPDATE settings SET value=? WHERE key='templates'",
+                        (json.dumps(templates, ensure_ascii=False),),
+                    )
+
+            old_tpl_row = conn.execute("SELECT value FROM settings WHERE key='template'").fetchone()
+            if old_tpl_row:
+                new_tpl, did = _patch_income(json.loads(old_tpl_row["value"]))
+                if did:
+                    conn.execute(
+                        "UPDATE settings SET value=? WHERE key='template'",
+                        (json.dumps(new_tpl, ensure_ascii=False),),
+                    )
+        except Exception:
+            pass  # マイグレーションは best-effort
+
         conn.commit()
 
 
