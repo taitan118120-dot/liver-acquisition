@@ -19,7 +19,7 @@ _DEFAULT_BEGINNER_TEMPLATE = (
     "✨スマホ1台で月20万円超のライバー育成中✨\n"
     "TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n"
     "投稿拝見してご連絡しました🙏\n"
-    "未経験〜経験者まで、毎月20〜30名のライバーを育成しているライバー事務所です。\n\n"
+    "未経験〜経験者まで、Pococha・TikTok合わせて総勢200名が所属するライバー事務所です。\n\n"
     "🎁所属メリット🎁\n"
     "・専属マネージャーが1on1で配信戦略コンサル\n"
     "・未経験でも稼げる「初動加速プログラム」完備\n"
@@ -76,7 +76,7 @@ _DEFAULT_EXISTING_LIVER_TEMPLATE = (
     "✨他事務所からの移籍/個人勢の所属サポート✨\n"
     "TAITAN PROからのご連絡です！\n代表は元S帯ライバーのたいたん(@taitanblog)で、ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。\n\n"
     "配信されているのを拝見してご連絡しました🙏\n"
-    "未経験〜経験者まで幅広くサポートしている、毎月20〜30名所属のライバー事務所です。\n\n"
+    "未経験〜経験者まで幅広くサポートしている、Pococha・TikTok合わせて総勢200名所属のライバー事務所です。\n\n"
     "🎁所属メリット🎁\n"
     "・イベント時のリスナーブースト・集客支援\n"
     "・専属マネージャーによる配信戦略コンサル\n"
@@ -98,7 +98,7 @@ _DEFAULT_EXISTING_LIVER_TEMPLATE_2 = (
     "【特別マネジメントプラン】をご案内しています。\n\n"
     "🎁プランの内容🎁\n"
     "✨ 達成条件に応じて時給上乗せ報酬（最大5,000円/h）\n"
-    "✨ 過去には90日で月収100万円超を達成したライバーも在籍\n"
+    "✨ 短期間で大きく収入を伸ばしたライバーも在籍\n"
     "✨ いま活動中のアプリと並行配信OK\n"
     "✨ 案件・コラボ配信の優先紹介\n\n"
     "📱現プラットフォーム継続OK／全国どこでも所属可能\n"
@@ -299,6 +299,66 @@ def init_db():
             if old_tpl_row:
                 old_tpl = json.loads(old_tpl_row["value"])
                 new_tpl, did = _patch(old_tpl)
+                if did:
+                    conn.execute(
+                        "UPDATE settings SET value=? WHERE key='template'",
+                        (json.dumps(new_tpl, ensure_ascii=False),),
+                    )
+        except Exception:
+            pass  # マイグレーションは best-effort
+
+        # 所属数・収入表現マイグレーション (2026-08-01)
+        # テンプレは INSERT OR IGNORE で初回のみ投入されるため、_DEFAULT_* を直しても
+        # 既存DB（本番 Fly.io /data/data.sqlite 含む）には旧文言が残り続ける。
+        # ・所属数の確定ファクトは「Pococha・TikTok合わせて200名」。「毎月20〜30名」は未確認。
+        # ・S帯月収の具体数字は確定ファクト表で全面禁止のため定性表現へ。
+        try:
+            TEXT_RULES = [
+                (
+                    "未経験〜経験者まで、毎月20〜30名のライバーを育成しているライバー事務所です。",
+                    "未経験〜経験者まで、Pococha・TikTok合わせて総勢200名が所属するライバー事務所です。",
+                ),
+                (
+                    "未経験〜経験者まで幅広くサポートしている、毎月20〜30名所属のライバー事務所です。",
+                    "未経験〜経験者まで幅広くサポートしている、Pococha・TikTok合わせて総勢200名所属のライバー事務所です。",
+                ),
+                (
+                    "✨ 過去には90日で月収100万円超を達成したライバーも在籍",
+                    "✨ 短期間で大きく収入を伸ばしたライバーも在籍",
+                ),
+            ]
+
+            def _patch_text(text):
+                if not isinstance(text, str):
+                    return text, False
+                changed = False
+                for old, new in TEXT_RULES:
+                    if old in text:
+                        text = text.replace(old, new)
+                        changed = True
+                return text, changed
+
+            tpl_row = conn.execute("SELECT value FROM settings WHERE key='templates'").fetchone()
+            if tpl_row:
+                templates = json.loads(tpl_row["value"])
+                changed = False
+                if isinstance(templates, dict):
+                    for k, v in templates.items():
+                        if isinstance(v, list):
+                            for i, tpl in enumerate(v):
+                                new_tpl, did = _patch_text(tpl)
+                                if did:
+                                    v[i] = new_tpl
+                                    changed = True
+                if changed:
+                    conn.execute(
+                        "UPDATE settings SET value=? WHERE key='templates'",
+                        (json.dumps(templates, ensure_ascii=False),),
+                    )
+
+            old_tpl_row = conn.execute("SELECT value FROM settings WHERE key='template'").fetchone()
+            if old_tpl_row:
+                new_tpl, did = _patch_text(json.loads(old_tpl_row["value"]))
                 if did:
                     conn.execute(
                         "UPDATE settings SET value=? WHERE key='template'",
