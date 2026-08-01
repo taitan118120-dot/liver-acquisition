@@ -78,11 +78,11 @@ TikTok LIVEはPococha以上に人の出入りが激しいアプリです。入�
 | 項目 | TAITAN PRO |
 |---|---|
 | 還元率 | **100%+α** |
-| 対応 | Pococha・TikTok LIVE |
+| 対応 | Pococha・TikTok LIVE・17LIVE |
 | ノルマ | なし |
 | 対象 | 未経験OK・副業OK・顔出しなしOK |
 | サポート | 専属マネージャーがマンツーマン |
-| 所属ライバー数 | 200名 |
+| 所属ライバー数 | 200名（Pococha・TikTok合わせて） |
 
 ---
 

@@ -6,7 +6,8 @@
 応募導線：公式LINE `https://lin.ee/xchCfdn`（または beginner LP → LINE）
 受け皿LP：https://taitan-pro-lp.netlify.app/beginner/
 
-> ⚠️ 使ってよい数字は確定ファクトのみ（還元率100%+α／所属200名／Pococha・TikTok中心）。
+> ⚠️ 使ってよい数字は確定ファクトのみ（還元率100%+α／所属200名（Pococha・TikTok合わせて）／対応は Pococha・TikTok LIVE・17LIVE）。
+> ※17LIVEは取り扱い対象だが確定ファクトが無いので、17LIVEの所属数・実績・還元率の数字は書かない。
 > 「必ず月◯万」「絶対稼げる」等の断定・誇大は求人媒体規約でもNG。出来高（ギフト報酬）であることを正直に書く。
 
 ---
