@@ -592,6 +592,59 @@ def init_db():
         except Exception:
             pass  # マイグレーションは best-effort
 
+        # 一人称の自己紹介を撤去 (2026-08-01)
+        # 上流の代表紹介マイグレーションは OLD_INTRO を完全一致で潰していたため、
+        # 「TAITAN PROっていうライバー事務所のたいたんと申します。」のような別の言い回しが
+        # すり抜ける。liver_app 本番の settings.template で実際にすり抜けが起きていた。
+        # x_app 本番は現時点で該当なしだが、設定UIからの手編集で同じことが起きるので予防的に置く。
+        # DMは所属ライバー(worker)も送るので一人称の「たいたんと申します」は使えない。
+        # たいたんは「代表」として紹介するだけ。liver_app/db.py にも同じルールがある。冪等。
+        try:
+            SELF_INTRO_PATTERN = re.compile(
+                r"(?:(?:ライバー)?事務所)?TAITAN\s*PRO(?:っていう|という)?"
+                r"(?:(?:ライバー)?事務所)?の?たいたんと申します[！!。．\.]?"
+            )
+            NEW_INTRO = (
+                "TAITAN PROからのご連絡です！\n"
+                "代表は元S帯ライバーのたいたん(@taitanblog)で、"
+                "ミスターコン日本一・CM出演・駅広告・有名雑誌掲載など実績ある事務所です。"
+            )
+
+            def _patch_self_intro(text):
+                if not isinstance(text, str):
+                    return text, False
+                new_text, n = SELF_INTRO_PATTERN.subn(NEW_INTRO, text)
+                return new_text, bool(n)
+
+            tpl_row = conn.execute("SELECT value FROM settings WHERE key='templates'").fetchone()
+            if tpl_row:
+                templates = json.loads(tpl_row["value"])
+                changed = False
+                if isinstance(templates, dict):
+                    for k, v in templates.items():
+                        if isinstance(v, list):
+                            for i, tpl in enumerate(v):
+                                new_tpl, did = _patch_self_intro(tpl)
+                                if did:
+                                    v[i] = new_tpl
+                                    changed = True
+                if changed:
+                    conn.execute(
+                        "UPDATE settings SET value=? WHERE key='templates'",
+                        (json.dumps(templates, ensure_ascii=False),),
+                    )
+
+            old_tpl_row = conn.execute("SELECT value FROM settings WHERE key='template'").fetchone()
+            if old_tpl_row:
+                new_tpl, did = _patch_self_intro(json.loads(old_tpl_row["value"]))
+                if did:
+                    conn.execute(
+                        "UPDATE settings SET value=? WHERE key='template'",
+                        (json.dumps(new_tpl, ensure_ascii=False),),
+                    )
+        except Exception:
+            pass
+
         conn.commit()
 
 
