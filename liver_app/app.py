@@ -181,10 +181,12 @@ def api_status():
     })
 
 
-def _pick_template(templates_for_type, lead_id: str, fallback: str) -> tuple[str, int]:
+def _pick_template(templates_for_type, lead_id: str) -> tuple[str, int]:
     """templates_for_type は str / list[str] / 空 のいずれか。
     lead_id を seed にして deterministic に選択（同じリードは常に同じバリエーション）。
-    Pythonの組み込み hash() はプロセスごとに seed が変わるため md5 を使う。"""
+    Pythonの組み込み hash() はプロセスごとに seed が変わるため md5 を使う。
+    空のときは DB ではなくコード側の現行デフォルト文言にフォールバックする
+    （DBの単数形 template キーは 2026-08-02 に廃止）"""
     if isinstance(templates_for_type, list) and templates_for_type:
         import hashlib
         h = int(hashlib.md5(lead_id.encode("utf-8")).hexdigest()[:8], 16)
@@ -192,13 +194,12 @@ def _pick_template(templates_for_type, lead_id: str, fallback: str) -> tuple[str
         return templates_for_type[idx], idx
     if isinstance(templates_for_type, str) and templates_for_type:
         return templates_for_type, 0
-    return fallback, 0
+    return db.FALLBACK_TEMPLATE, 0
 
 
 @app.get("/api/queue")
 def api_queue():
     templates = db.get_setting("templates", {}) or {}
-    fallback_template = db.get_setting("template", "") or ""
     leads = db.get_queue()
     # スキップ学習: 理由ごとに学習されたブロック語にヒットする候補を除外
     blocklist = db.get_skip_blocklist()
@@ -217,7 +218,7 @@ def api_queue():
     for lead in leads:
         name = lead.get("name") or lead["username"]
         ttype = lead.get("target_type") or "beginner"
-        tpl, var_idx = _pick_template(templates.get(ttype), lead["id"], fallback_template)
+        tpl, var_idx = _pick_template(templates.get(ttype), lead["id"])
         lead["message"] = personalize(tpl, name, lead["username"])
         lead["template_variation"] = var_idx
         # 全バリエーションを personalize して返す（UIで切替）

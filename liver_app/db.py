@@ -241,10 +241,16 @@ _LEGACY_HASHTAGS_AGENCY = [
     "ライバー育成", "ライバー募集",
 ]
 
+# _pick_template() の最終フォールバック（target_type別のテンプレリストが空のとき）。
+# 以前は settings の単数形 "template" キーを使っていたが、設定UIから編集されないまま
+# 放置され、文言修正のたびにマイグレーションで拾い漏らすと旧文言のDMが飛ぶ状態だった
+# （2026-08-01 に x_app 本番で「月10万円超」の旧文言が残っていた）。
+# コード側の定数を直接使えばDBの残骸に引きずられない。
+FALLBACK_TEMPLATE = _DEFAULT_BEGINNER_TEMPLATE
+
 DEFAULT_SETTINGS = {
     # 旧key（互換のため残す。実体は templates / hashtags_by_type を見る）
     "hashtags": _DEFAULT_HASHTAGS_BEGINNER,
-    "template": _DEFAULT_BEGINNER_TEMPLATE,
     # 新key（B案: バリエーション複数化。リスト構造で各タイプ複数テンプレ持てる）
     "templates": {
         "beginner": [_DEFAULT_BEGINNER_TEMPLATE, _DEFAULT_BEGINNER_TEMPLATE_OSHIKATSU],
@@ -594,15 +600,6 @@ def init_db():
                         (json.dumps(templates, ensure_ascii=False),),
                     )
 
-            old_tpl_row = conn.execute("SELECT value FROM settings WHERE key='template'").fetchone()
-            if old_tpl_row:
-                old_tpl = json.loads(old_tpl_row["value"])
-                new_tpl, did = _patch(old_tpl)
-                if did:
-                    conn.execute(
-                        "UPDATE settings SET value=? WHERE key='template'",
-                        (json.dumps(new_tpl, ensure_ascii=False),),
-                    )
         except Exception:
             pass
 
@@ -691,14 +688,6 @@ def init_db():
                         (json.dumps(templates, ensure_ascii=False),),
                     )
 
-            old_tpl_row = conn.execute("SELECT value FROM settings WHERE key='template'").fetchone()
-            if old_tpl_row:
-                new_tpl, did = _patch_headcount(json.loads(old_tpl_row["value"]))
-                if did:
-                    conn.execute(
-                        "UPDATE settings SET value=? WHERE key='template'",
-                        (json.dumps(new_tpl, ensure_ascii=False),),
-                    )
         except Exception:
             pass
 
@@ -732,15 +721,6 @@ def init_db():
                         (json.dumps(templates, ensure_ascii=False),),
                     )
 
-            old_tpl_row = conn.execute("SELECT value FROM settings WHERE key='template'").fetchone()
-            if old_tpl_row:
-                old_tpl = json.loads(old_tpl_row["value"])
-                if isinstance(old_tpl, str) and any(m in old_tpl for m in RETIRED_MARKERS):
-                    # 単一テンプレ側は消すと送信不能になるので、デフォルトへ戻す
-                    conn.execute(
-                        "UPDATE settings SET value=? WHERE key='template'",
-                        (json.dumps(_DEFAULT_BEGINNER_TEMPLATE, ensure_ascii=False),),
-                    )
         except Exception:
             pass
 
@@ -779,7 +759,8 @@ def init_db():
         # 一人称の自己紹介を撤去 (2026-08-01)
         # 2026-04-29 の代表紹介マイグレーションは OLD_INTRO を完全一致で潰していたため、
         # 「TAITAN PROっていうライバー事務所のたいたんと申します。」のような別の言い回しが
-        # すり抜けて本番 settings.template（レガシーfallback）に残っていた。
+        # すり抜けて本番 settings.template（レガシーfallback）に残っていた
+        # （そのキー自体は下の 2026-08-02 マイグレーションで廃止済み）。
         # DMは所属ライバー(worker)も送るので一人称の「たいたんと申します」は使えない。
         # たいたんは「代表」として紹介するだけ。x_app/db.py にも同じルールがある。
         # このファイルの教訓どおり、旧値の完成形ではなく「フィールド」で当てる。冪等。
@@ -818,16 +799,21 @@ def init_db():
                         (json.dumps(templates, ensure_ascii=False),),
                     )
 
-            old_tpl_row = conn.execute("SELECT value FROM settings WHERE key='template'").fetchone()
-            if old_tpl_row:
-                new_tpl, did = _patch_self_intro(json.loads(old_tpl_row["value"]))
-                if did:
-                    conn.execute(
-                        "UPDATE settings SET value=? WHERE key='template'",
-                        (json.dumps(new_tpl, ensure_ascii=False),),
-                    )
         except Exception:
             pass
+
+        # 単数形 template キーの廃止 (2026-08-02)
+        # このキーは _pick_template() の fallback 専用だったが、設定UIから編集されない
+        # ため旧文言が残り続け、文言修正のたびに templates（複数形）と両方をパッチする
+        # 必要があった（実際 2026-08-01 に x_app 本番で単数形だけ旧文言が残っていた）。
+        # fallback はコード側の FALLBACK_TEMPLATE を直接使うようにしたので、DB上の行は
+        # もう誰も読まない。残しておくと all_settings() 経由で設定UIに載って復活するので
+        # 削除する。DEFAULT_SETTINGS からも外してあるため再投入もされない。
+        try:
+            conn.execute("DELETE FROM settings WHERE key='template'")
+        except Exception:
+            pass
+
         conn.commit()
 
 
