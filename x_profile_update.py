@@ -25,7 +25,7 @@ import tweepy
 NAME = "たいたん｜元Pococha S帯／ライバー事務所代表"
 
 DESCRIPTION = """元Pococha S帯｜石川発・ライバー事務所「TAITAN PRO」代表
-Pococha・TikTokで200名が所属／11の配信代理店と提携／還元率100%
+Pococha・TikTokで200名が所属／11の配信代理店と提携／還元率100%+α
 甘い言葉は言えません。配信4年で見てきた現実だけを毎日。
 始め方・悩み相談はLINEへ→"""
 
