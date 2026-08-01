@@ -135,7 +135,7 @@ _DEFAULT_EXISTING_LIVER_TEMPLATE_2 = (
     "【特別マネジメントプラン】をご案内しています。\n\n"
     "🎁プランの内容🎁\n"
     "✨ 達成条件に応じて時給上乗せ報酬（最大5,000円/h）\n"
-    "✨ 過去には90日で月収100万円超を達成したライバーも在籍\n"
+    "✨ 短期間で大きく収入を伸ばしたライバーも在籍\n"
     "✨ いま活動中のアプリと並行配信OK\n"
     "✨ 案件・コラボ配信の優先紹介\n\n"
     "📱現プラットフォーム継続OK／全国どこでも所属可能\n"
@@ -273,6 +273,50 @@ DEFAULT_SETTINGS = {
 }
 
 
+# ---------- マイグレーション台帳 (2026-08-01) ----------
+# 「デフォルトテンプレが無ければ追加」系のマイグレーションは _DEFAULT_* との
+# 完全一致で適用済みかを判定していたため、既定文言を変更するたびに DB 内の
+# 旧文言テンプレが“別物”と判定され、新文言版が毎回追記されていた。
+# 適用済みIDを settings に記録し、追記系は一度きりに固定する。
+MIGRATIONS_KEY = "migrations_applied"
+
+MIG_EXISTING_LIVER_TEMPLATE_2 = "existing_liver_template_2"
+MIG_BEGINNER_TEMPLATE_OSHIKATSU = "beginner_template_oshikatsu_2026_05_06"
+
+# 追記系（= 一度きりに固定すべき）マイグレーションID一覧。
+# 台帳の初回導入時にはここの全IDを「適用済み」として記録する:
+#   - 新規DB: DEFAULT_SETTINGS に全デフォルトテンプレが入っているので追記不要
+#   - 既存DB: 各マイグレーションは導入時から init_db 起動のたびに走っており適用済み
+# 今後、新しい追記系マイグレーションを足すときは、ここに追記せず
+# _APPEND_ONCE_MIGRATIONS はそのままにして個別に ID ガードを書くこと
+# （ここに足すと既存DBで一度も実行されないまま適用済み扱いになる）。
+_APPEND_ONCE_MIGRATIONS = (
+    MIG_EXISTING_LIVER_TEMPLATE_2,
+    MIG_BEGINNER_TEMPLATE_OSHIKATSU,
+)
+
+
+def _load_applied_migrations(conn):
+    """適用済みマイグレーションIDの集合。台帳未導入なら None。"""
+    row = conn.execute(
+        "SELECT value FROM settings WHERE key=?", (MIGRATIONS_KEY,)
+    ).fetchone()
+    if row is None:
+        return None
+    try:
+        value = json.loads(row["value"])
+    except (ValueError, TypeError):
+        return set()
+    return set(value) if isinstance(value, list) else set()
+
+
+def _save_applied_migrations(conn, applied):
+    conn.execute(
+        "INSERT OR REPLACE INTO settings(key, value) VALUES (?, ?)",
+        (MIGRATIONS_KEY, json.dumps(sorted(applied), ensure_ascii=False)),
+    )
+
+
 def init_db():
     with get_conn() as conn:
         conn.executescript(
@@ -344,6 +388,12 @@ def init_db():
                 "INSERT OR IGNORE INTO settings(key, value) VALUES (?, ?)",
                 (k, json.dumps(v, ensure_ascii=False)),
             )
+        # マイグレーション台帳。未導入なら既知の追記系を全て適用済みとして記録する
+        # （理由は _APPEND_ONCE_MIGRATIONS のコメント参照）。
+        applied = _load_applied_migrations(conn)
+        if applied is None:
+            applied = set(_APPEND_ONCE_MIGRATIONS)
+            _save_applied_migrations(conn, applied)
         # 旧スキーマからの移行（dict-of-str → dict-of-list に正規化のみ）
         try:
             tpl_row = conn.execute("SELECT value FROM settings WHERE key='templates'").fetchone()
@@ -359,21 +409,31 @@ def init_db():
                         elif not isinstance(v, list):
                             templates[k] = []
                             changed = True
-                    # existing_liver に2つ目のデフォルトが無ければ追加（初回マイグレーションのみ）
-                    el = templates.get("existing_liver") or []
-                    if isinstance(el, list) and _DEFAULT_EXISTING_LIVER_TEMPLATE_2 not in el and len(el) < 2:
-                        templates["existing_liver"] = el + [_DEFAULT_EXISTING_LIVER_TEMPLATE_2]
-                        changed = True
-                    # beginner に推し活向けテンプレが無ければ追加 (2026-05-06)
-                    bg = templates.get("beginner") or []
-                    if isinstance(bg, list) and _DEFAULT_BEGINNER_TEMPLATE_OSHIKATSU not in bg:
-                        templates["beginner"] = bg + [_DEFAULT_BEGINNER_TEMPLATE_OSHIKATSU]
-                        changed = True
+                    # --- 追記系マイグレーション（台帳IDで一度きり） ---
+                    newly_applied = []
+                    # existing_liver に2つ目のデフォルトを追加
+                    if MIG_EXISTING_LIVER_TEMPLATE_2 not in applied:
+                        el = templates.get("existing_liver") or []
+                        if isinstance(el, list) and _DEFAULT_EXISTING_LIVER_TEMPLATE_2 not in el and len(el) < 2:
+                            templates["existing_liver"] = el + [_DEFAULT_EXISTING_LIVER_TEMPLATE_2]
+                            changed = True
+                        newly_applied.append(MIG_EXISTING_LIVER_TEMPLATE_2)
+                    # beginner に推し活向けテンプレを追加 (2026-05-06)
+                    if MIG_BEGINNER_TEMPLATE_OSHIKATSU not in applied:
+                        bg = templates.get("beginner") or []
+                        if isinstance(bg, list) and _DEFAULT_BEGINNER_TEMPLATE_OSHIKATSU not in bg:
+                            templates["beginner"] = bg + [_DEFAULT_BEGINNER_TEMPLATE_OSHIKATSU]
+                            changed = True
+                        newly_applied.append(MIG_BEGINNER_TEMPLATE_OSHIKATSU)
                     if changed:
                         conn.execute(
                             "UPDATE settings SET value=? WHERE key='templates'",
                             (json.dumps(templates, ensure_ascii=False),),
                         )
+                    # 書き込みが通ってから適用済みにする（例外は下で握り潰されるため）
+                    if newly_applied:
+                        applied.update(newly_applied)
+                        _save_applied_migrations(conn, applied)
             # hashtags_by_type も同様: 旧 hashtags のカスタマイズを beginner に移行
             hbt_row = conn.execute("SELECT value FROM settings WHERE key='hashtags_by_type'").fetchone()
             old_hash_row = conn.execute("SELECT value FROM settings WHERE key='hashtags'").fetchone()
@@ -558,6 +618,20 @@ def init_db():
                     "月収100万円超のライバー多数在籍✨\n最高月収600万円以上(Pococha S6帯)✨",
                     "S帯（最上位帯）で活躍するライバーが在籍✨\n専属マネージャーが収入アップまで伴走✨",
                 ),
+                # 2026-08-01 追加: 「90日で月収100万円超」はユーザー確認の結果、実在しない実績と判明。
+                # 時給上乗せキャンペーンの理論上限（最大5,000円/h × 最長90日）を実績主張に
+                # 書き換えたものだったため定性表現へ。x_app/db.py にも同じルールがある。
+                (
+                    "✨ 過去には90日で月収100万円超を達成したライバーも在籍",
+                    "✨ 短期間で大きく収入を伸ばしたライバーも在籍",
+                ),
+                # 2026-08-01 追加: 推し活テンプレの「最高時給5500円」行を削除。
+                # 5,500円はS6帯の通常時給で、Sランク最大時給は16,500円。「最高時給」表記は
+                # 事実として誤りな上、確定ファクト表は時給の具体数字を断定的に書くこと自体を
+                # 禁じている。この行はリポジトリに一度も存在せず設定UIからの手編集で入ったもの。
+                # 行ごと消すと本番 beginner[2] が現行デフォルト(=beginner[3])とバイト一致するので、
+                # 直後のテンプレ重複除去マイグレーションが2本を1本に畳む。
+                ("\n・最高時給5500円➕投げ銭分", ""),
             ]
 
             def _patch_headcount(text):
