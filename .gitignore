@@ -23,6 +23,9 @@ note_cookies.json
 # ログ類（デプロイ・リサーチ・同期の実行ログ。認証URL等を含みうる）
 *.log
 liver_app/fly_login.log
+# launchd の標準出力/標準エラー（実行のたびに書き換わり git status を汚す）
+*.err
+*.out
 
 # 第三者の個人情報を含む収集データ（IGスカウト対象・リード・DM履歴）。公開厳禁
 data/leads.csv
