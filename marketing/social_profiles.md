@@ -9,7 +9,7 @@
 ### 反映状況（2026-08-01時点）
 | 媒体 | 現状 | 設計版の反映 |
 |---|---|---|
-| X | 別セッションが同日に改訂（`x_profile_update.py` と同期） | そちらの手順に従う。**未解消**：X節のbioだけ「還元率100%」のままで確定ファクト（100%+α）と不一致 |
+| X | 設計版を反映済み（`x_profile_update.py` と同期） | **反映済み**（2026-08-01）。bioの「還元率100%」→「100%+α」を修正し再push |
 | Threads @taitanblog | 旧・個人ライバー版（lit.link／DM導線） | **未反映** |
 | Instagram @taitan_pro | IRIAM記載あり／LP直リンク | **未反映** |
 | Instagram @taitanblog | 旧・個人版（lit.link） | **未反映** |
@@ -70,7 +70,7 @@ https://lin.ee/xchCfdn
 ### bio（160字制限内）
 ```
 元Pococha S帯｜石川発・ライバー事務所「TAITAN PRO」代表
-Pococha・TikTokで200名が所属／11の配信代理店と提携／還元率100%
+Pococha・TikTokで200名が所属／11の配信代理店と提携／還元率100%+α
 甘い言葉は言えません。配信4年で見てきた現実だけを毎日。
 始め方・悩み相談はLINEへ→
 ```
