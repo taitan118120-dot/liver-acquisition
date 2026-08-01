@@ -404,6 +404,47 @@ def init_db():
         except Exception:
             pass  # マイグレーションは best-effort
 
+        # 実在しないイベントのテンプレを丸ごと退役 (2026-08-01)
+        # 「京都コレクション」はユーザー確認の結果、実在しないと判明。告知先の
+        # collection.c.ccarveout.jp も404で、ドメイン名も使用禁止ブランド「カーブアウト」。
+        # x_app 本番DBには現時点で存在しないが、liver_app 本番には設定UIからの手編集で
+        # 入り込んでいた（beginner[1]）。同じ手編集がこちらで起きても拾えるよう予防的に置く。
+        # テンプレ添字を永続化している箇所は無いので、要素を抜いても参照は壊れない。冪等。
+        try:
+            RETIRED_MARKERS = ("京都コレクション", "collection.c.ccarveout.jp")
+            tpl_row = conn.execute("SELECT value FROM settings WHERE key='templates'").fetchone()
+            if tpl_row:
+                templates = json.loads(tpl_row["value"])
+                changed = False
+                if isinstance(templates, dict):
+                    for k, v in templates.items():
+                        if not isinstance(v, list):
+                            continue
+                        kept = [
+                            t for t in v
+                            if not (isinstance(t, str) and any(m in t for m in RETIRED_MARKERS))
+                        ]
+                        if len(kept) != len(v):
+                            templates[k] = kept
+                            changed = True
+                if changed:
+                    conn.execute(
+                        "UPDATE settings SET value=? WHERE key='templates'",
+                        (json.dumps(templates, ensure_ascii=False),),
+                    )
+
+            old_tpl_row = conn.execute("SELECT value FROM settings WHERE key='template'").fetchone()
+            if old_tpl_row:
+                old_tpl = json.loads(old_tpl_row["value"])
+                if isinstance(old_tpl, str) and any(m in old_tpl for m in RETIRED_MARKERS):
+                    # 単一テンプレ側は消すと送信不能になるので、デフォルトへ戻す
+                    conn.execute(
+                        "UPDATE settings SET value=? WHERE key='template'",
+                        (json.dumps(_DEFAULT_BEGINNER_TEMPLATE, ensure_ascii=False),),
+                    )
+        except Exception:
+            pass
+
         conn.commit()
 
 
