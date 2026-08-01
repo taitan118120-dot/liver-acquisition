@@ -62,11 +62,20 @@ fly_guard_precheck() {
   head=$(git rev-parse --short HEAD 2>/dev/null || echo "?")
   _dg_say "デプロイ元: ブランチ $branch @ $head"
 
-  # 1. このアプリのディレクトリに未コミットの変更がないか
+  # 1. 本番に載るファイルに未コミットの変更がないか
   #    （コミットされていない変更は、他セッションが main からデプロイした瞬間に消える）
-  if ! git diff --quiet -- . 2>/dev/null || ! git diff --cached --quiet -- . 2>/dev/null; then
-    problems+=("このアプリ配下に未コミットの変更がある（他セッションが main からデプロイすると即座に巻き戻る）")
-    git status --short -- . | sed 's/^/      /'
+  #    ログ等は対象外にしたいので、アプリ配下丸ごとではなく実際に COPY される
+  #    ファイルだけを見る。
+  local shipped=(Dockerfile requirements.txt static)
+  local sf
+  while IFS= read -r sf; do
+    if [[ -n "$sf" ]]; then shipped+=("$sf"); fi
+  done < <(_dg_target_files Dockerfile)
+
+  if ! git diff --quiet -- "${shipped[@]}" 2>/dev/null \
+     || ! git diff --cached --quiet -- "${shipped[@]}" 2>/dev/null; then
+    problems+=("本番に載るファイルに未コミットの変更がある（他セッションが main からデプロイすると即座に巻き戻る）")
+    git status --short -- "${shipped[@]}" | sed 's/^/      /'
   fi
 
   # 2. 比較対象の main を決める（origin/main 優先、無ければローカル main）
