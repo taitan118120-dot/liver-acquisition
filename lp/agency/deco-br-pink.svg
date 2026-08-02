@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="420" viewBox="0 0 480 420" fill="none">
+<circle cx="420" cy="340" r="130" fill="#E08A93" opacity="0.08"/>
+<circle cx="180" cy="380" r="70" stroke="#E08A93" stroke-width="2.5" opacity="0.3" stroke-dasharray="1 11" stroke-linecap="round"/>
+<circle cx="330" cy="190" r="7" fill="#E08A93" opacity="0.3"/><circle cx="295" cy="165" r="6" fill="#E08A93" opacity="0.3"/><circle cx="255" cy="148" r="5" fill="#E08A93" opacity="0.3"/><circle cx="212" cy="140" r="4.5" fill="#E08A93" opacity="0.3"/><circle cx="170" cy="142" r="4" fill="#E08A93" opacity="0.3"/>
+<path d="M480 100 C 400 140, 320 70, 230 105 S 60 120, 0 90" stroke="#E08A93" stroke-width="2.5" opacity="0.28" fill="none" stroke-linecap="round"/>
+<path d="M80 268 L87.04 282.96 L102 290 L87.04 297.04 L80 312 L72.96 297.04 L58 290 L72.96 282.96 Z" fill="#F0B9BE" opacity="0.75"/>
+<path d="M370 216 L374.48 225.52 L384 230 L374.48 234.48 L370 244 L365.52 234.48 L356 230 L365.52 225.52 Z" fill="#F0B9BE" opacity="0.6375"/>
+<path d="M140 192 L143.2 198.8 L150 202 L143.2 205.2 L140 212 L136.8 205.2 L130 202 L136.8 198.8 Z" fill="#F0B9BE" opacity="0.5249999999999999"/>
+</svg>
