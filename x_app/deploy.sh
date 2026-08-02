@@ -122,6 +122,7 @@ fi
 #     5) 上記すべて無し                  … 正真正銘の初回だけ新規生成
 #   4) と 5) を区別できないとき（API エラー等）は生成せず中止する。
 PW_KEEP_EXISTING=0
+PW_NEWLY_GENERATED=0
 PW_SOURCE=""
 MAIN_PW_FILE=""
 
@@ -149,6 +150,7 @@ elif [[ "$APP_EXISTS" == "1" ]]; then
     1)
       APP_PASSWORD=$(gen_password)
       save_password "$APP_PASSWORD"
+      PW_NEWLY_GENERATED=1
       PW_SOURCE="新規生成 → $PW_FILE（Fly secrets 未登録のため）"
       ;;
     *)
@@ -162,6 +164,7 @@ elif [[ "$APP_EXISTS" == "1" ]]; then
 else
   APP_PASSWORD=$(gen_password)
   save_password "$APP_PASSWORD"
+  PW_NEWLY_GENERATED=1
   PW_SOURCE="新規生成 → $PW_FILE（初回デプロイ）"
 fi
 ok "パスワード: $PW_SOURCE"
@@ -213,10 +216,15 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo " ✅ デプロイ完了"
 echo
 echo "    URL:  https://$APP_NAME.fly.dev"
-if [[ "$PW_KEEP_EXISTING" == "1" ]]; then
+# PW は本番の owner 認証トークン（X-Auth-Token）そのもの。
+# 端末のスクロールバック・CI ログ・`./deploy.sh > deploy.log` に残るため、
+# 新規生成した回（＝ユーザーがまだ値を知らない回）だけ実値を表示する。
+if [[ "$PW_NEWLY_GENERATED" == "1" ]]; then
+  echo "    PW:   $APP_PASSWORD"
+elif [[ "$PW_KEEP_EXISTING" == "1" ]]; then
   echo "    PW:   （既存のパスワードを継続。$PW_FILE が無いため表示できません）"
 else
-  echo "    PW:   $APP_PASSWORD"
+  echo "    PW:   （既存のパスワードを継続。$PW_SOURCE を参照）"
 fi
 echo
 echo " iPhone Safari で開く → ログイン → ホーム画面に追加"

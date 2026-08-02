@@ -121,6 +121,33 @@ CUTS = {
         "during a friendly online video call at home, relaxed consultation mood",
         733,
     ),
+    # ---- agency LP（代理店パートナー募集）専用カット ----
+    "agency-hero": (
+        "pretty young japanese woman in her late twenties, natural makeup, "
+        "dark brown medium-long hair, smart-casual beige blazer over a modest high-neck white top, "
+        "fully buttoned professional outfit, no jewelry, "
+        "sitting at a bright tidy home desk, one hand resting on an open laptop "
+        "showing a simple upward-trending line graph on the screen (no text, no letters), "
+        "holding a smartphone in the other hand, confident satisfied gentle smile, "
+        "looking at the camera, warm morning light, working from home as a business partner",
+        915,
+    ),
+    "agency-mechanism": (
+        "close-up over-the-shoulder view of a young japanese woman's hands typing on a "
+        "laptop keyboard, a smartphone propped beside the laptop showing a simple chat "
+        "bubble screen (no legible text), cozy home desk, warm soft window light, "
+        "focus on the hands and devices, face not visible, dark brown hair visible at edge of frame",
+        920,
+    ),
+    "agency-setup": (
+        "pretty young japanese woman in her late twenties, natural makeup, "
+        "dark brown medium-long hair, cream knit sweater, "
+        "sitting at a minimal tidy home desk with just a laptop and a smartphone on it, "
+        "resting one hand on the laptop and holding the smartphone in the other, "
+        "calm confident expression looking at the camera, small notebook and coffee cup nearby, "
+        "warm cozy morning light",
+        930,
+    ),
     # 働き方の実例：主婦ライバーのイメージカット（case-avatar 用・正方形バストアップ）
     "liver-housewife": (
         "pretty japanese woman in her early thirties, natural makeup, "
