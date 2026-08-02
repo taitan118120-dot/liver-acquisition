@@ -123,14 +123,16 @@ CUTS = {
     ),
     # ---- agency LP（代理店パートナー募集）専用カット ----
     "agency-hero": (
-        "pretty young japanese woman in her late twenties, natural makeup, warm friendly big smile "
-        "showing teeth, bright cheerful sparkling eyes looking straight at the camera, "
+        "pretty young japanese woman in her late twenties, natural makeup, "
+        "soft relaxed natural eyes gently narrowed from smiling (not wide open, not staring), "
+        "warm genuine closed-mouth smile with crinkled smiling eyes, head tilted slightly, "
+        "looking toward the camera in a soft relaxed casual way, "
         "dark brown medium-long hair, cozy cream knit sweater with a soft beige cardigan, "
         "sitting at a bright cozy home desk, resting her chin lightly on one hand, "
         "a smartphone and an open notebook on the desk in front of her, "
-        "relaxed approachable happy expression, warm morning light, cute cozy japanese room, "
-        "welcoming and friendly, not stiff or formal",
-        926,
+        "calm relaxed approachable expression, warm morning light, cute cozy japanese room, "
+        "gentle and natural, not staring, not wide-eyed, not stiff or formal",
+        941,
     ),
     "agency-mechanism": (
         "close-up over-the-shoulder view of a young japanese woman's hands typing on a "
