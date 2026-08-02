@@ -99,6 +99,15 @@ CUTS = {
         "on a slim stand glows at the side. A small potted plant and a mug are on the desk. "
         "She smiles gently toward the phone with her hands resting naturally on the desk."
     ),
+    "agency-hero": (
+        "A pretty Japanese woman in her late twenties with natural makeup and dark brown "
+        "medium-long hair, wearing a cozy cream knit sweater with a soft beige cardigan, "
+        "sits at a bright tidy home desk with an open notebook and a smartphone in front of her. "
+        "She looks toward the camera with a warm, natural, gentle smile and relaxed friendly eyes "
+        "that are softly narrowed from smiling, not wide open, not staring, not an intense gaze. "
+        "Her head is tilted slightly, calm approachable everyday expression, like a genuine "
+        "candid photo of a friendly person, not a posed studio portrait. Warm morning light."
+    ),
 }
 
 
