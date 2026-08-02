@@ -99,6 +99,21 @@ CUTS = {
         "on a slim stand glows at the side. A small potted plant and a mug are on the desk. "
         "She smiles gently toward the phone with her hands resting naturally on the desk."
     ),
+    "agency-mechanism": (
+        "An over-the-shoulder view of a pretty Japanese woman in her twenties with a "
+        "black shoulder-length bob, sitting side-on at a wooden desk by a bright window "
+        "with a small potted plant, typing on an open laptop. "
+        "Both hands rest naturally on the laptop keyboard with all fingers correctly "
+        "formed, calm focused gentle expression, soft natural daylight, cozy home office."
+    ),
+    "agency-setup": (
+        "A pretty Japanese woman in her late twenties with dark brown medium-long hair "
+        "and a cream knit sweater sits at a minimal tidy home desk with only a laptop "
+        "on it, resting one hand on the laptop and the other hand relaxed on the desk. "
+        "She looks toward the camera with a calm, natural, gentle closed-mouth smile and "
+        "relaxed friendly eyes, not wide open, not staring. A small potted plant is "
+        "beside her. Warm cozy morning light, candid everyday photo, not a posed portrait."
+    ),
     "agency-hero": (
         "A pretty Japanese woman in her late twenties with natural makeup and dark brown "
         "medium-long hair, wearing a cozy cream knit sweater with a soft beige cardigan, "
