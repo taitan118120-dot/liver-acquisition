@@ -26,9 +26,13 @@ LM_HTML = (
     "最初の30日でやることを全部まとめた非売品PDFを、LINE登録した方全員に無料でお渡ししています。</p>"
 )
 
+# publish_one の既定マーカー。呼び出し側が別の施策（内部リンク・冒頭CTA）で使うときは
+# expect_marker で自分の追加物を指定する。
+LM_MARK = "スタートダッシュガイド"
+
 
 def transform(key, html):
-    if "スタートダッシュガイド" in html:
+    if LM_MARK in html:
         return None  # 済み
     pos = html.rfind("lin.ee/xchCfdn")
     if pos == -1:
@@ -39,16 +43,21 @@ def transform(key, html):
     return html[:p_start] + LM_HTML + html[p_start:]
 
 
-def verify(key):
+def verify(key, marker=LM_MARK):
     s = req_session()
     d = get_note(s, key)
     body = d["body"]
     print(f"  status={d['status']}  eyecatch={'OK' if d.get('eyecatch') else 'MISSING!'}  "
-          f"body_len={len(body)}  lm={'スタートダッシュガイド' in body}")
+          f"body_len={len(body)}  {marker[:12]}={marker in body}")
     return d
 
 
-def publish_one(key, transform_fn=None):
+def publish_one(key, transform_fn=None, expect_marker=LM_MARK):
+    """記事本文を transform_fn で書き換えて再公開する。
+
+    expect_marker: 反映確認に使う文字列。transform_fn を差し替える呼び出し側は
+        自分が挿入したマーカーを渡すこと（None で本文チェックを省略）。
+    """
     from playwright.sync_api import sync_playwright
     s = req_session()
     d = get_note(s, key, draft=False)
@@ -144,16 +153,30 @@ def publish_one(key, transform_fn=None):
 
     time.sleep(2)
     print("  --- verify ---")
-    dv = verify(key)
-    if not dv.get("eyecatch"):
-        print("  !!! WARNING: eyecatch が消えた可能性。要復元")
-    if "スタートダッシュガイド" not in dv["body"]:
-        raise RuntimeError("verify失敗: 特典段落が本文に反映されていない")
+    # 本文検証はここで例外を投げない。この時点で記事は既に「タグ0の公開状態」であり、
+    # 先に中断すると下のタグ復元が走らず、タグ0のまま公開され続けてしまう（実測 before:0）。
+    body_err = None
+    try:
+        dv = verify(key)  # note_facts_publish が差し替えるので引数は1つのまま
+        if not dv.get("eyecatch"):
+            print("  !!! WARNING: eyecatch が消えた可能性。要復元")
+        if expect_marker:
+            hit = expect_marker in dv["body"]
+            print(f"  marker『{expect_marker[:16]}』= {hit}")
+            if not hit:
+                body_err = f"verify失敗: 『{expect_marker}』が本文に反映されていない"
+    except Exception as e:
+        body_err = f"verify失敗: {type(e).__name__}: {e}"
+    if body_err:
+        print(f"  !! {body_err} → タグ復元まで終えてから中断する")
 
-    # 公開PUTはhashtagsを無視してタグ0にする既知問題があるため、UI経由で復元する
+    # 公開PUTはhashtagsを無視してタグ0にする既知問題があるため、UI経由で復元する。
+    # 検証結果によらず必ず通す（上のtry/exceptはそのためにある）。
     from note_tag_guard import ensure_tags
     tg = ensure_tags(key, hashtags=tags, title=title)
     print(f"  tag_guard: {tg}")
+    if body_err:
+        raise RuntimeError(body_err)
     if not tg.get("ok"):
         raise RuntimeError(f"タグ復元失敗: {tg}")
     return "ok"
@@ -164,16 +187,17 @@ def publish_one(key, transform_fn=None):
 # #48/#60/#94はLINE CTA自体が無かった。
 DEAD_LINK = "lin.ee/816qtxyj"
 
+# 末尾CTAの文言は既存記事に合わせる（公開117本が「👉 公式LINEで無料相談：」で統一されている）
 CTA_TAIL_HTML = (
     LM_HTML +
-    '<p><strong><a href="https://lin.ee/xchCfdn" target="_blank" rel="noopener nofollow">'
-    "LINEで特典を受け取る →</a></strong></p>"
+    '<p>👉 公式LINEで無料相談：<a href="https://lin.ee/xchCfdn" target="_blank" '
+    'rel="nofollow noopener">https://lin.ee/xchCfdn</a></p>'
 )
 
 
 def transform_fix_dead_link(key, html):
     """死にリンクを正リンクへ置換してから特典段落を挿入"""
-    if DEAD_LINK not in html and "スタートダッシュガイド" in html:
+    if DEAD_LINK not in html and LM_MARK in html:
         return None
     html = html.replace(DEAD_LINK, "lin.ee/xchCfdn")
     out = transform(key, html)
@@ -182,7 +206,7 @@ def transform_fix_dead_link(key, html):
 
 def transform_append_cta(key, html):
     """LINE CTAが無い記事の末尾に特典段落＋LINEリンクを追加"""
-    if "スタートダッシュガイド" in html:
+    if LM_MARK in html:
         return None
     return html + CTA_TAIL_HTML
 

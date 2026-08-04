@@ -233,7 +233,10 @@ def main():
             continue
         print(f"\n[{i}/{len(targets)}] {key} {catalog[key]['title'][:30]}")
         try:
-            r = publish_one(key, make_transform(plans[key], catalog))
+            # 反映確認はこの施策が入れたマーカーで行う（既定の特典段落は
+            # この施策の対象外の記事にも存在しないことがあるため）
+            r = publish_one(key, make_transform(plans[key], catalog),
+                            expect_marker=RELATED_MARK)
             log[key] = r
             ok += 1 if r == "ok" else 0
             skip += 1 if r == "skip" else 0

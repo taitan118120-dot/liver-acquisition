@@ -14,7 +14,7 @@
 import re
 import sys
 
-from note_leadmagnet_publish import publish_one, verify
+from note_leadmagnet_publish import publish_one
 
 EARLY_MARK = "先に特典だけ受け取る"
 EARLY_HTML = (
@@ -44,12 +44,9 @@ def main():
     for key in keys:
         print(f"[early-cta {key}]")
         try:
-            r = publish_one(key, transform_fn=transform_early)
-            if r == "ok":
-                dv = verify(key)
-                if EARLY_MARK not in dv["body"]:
-                    raise RuntimeError("冒頭CTAが本文に反映されていない")
-            results[key] = r
+            # 反映確認は publish_one 側が EARLY_MARK で行う（タグ復元の後に判定される）
+            results[key] = publish_one(key, transform_fn=transform_early,
+                                       expect_marker=EARLY_MARK)
         except Exception as e:
             print(f"  !!! ERROR: {e}")
             results[key] = f"error: {e}"

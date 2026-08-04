@@ -106,12 +106,12 @@ def publish_one(key, transform_fn):
             r"(所属[^。]{0,10}150\s*[人名]|150\s*[人名]以上|還元率(?:は|が)?100[%％](?!\s*\+\s*α|＋α))", text)]
         if bad:
             raise RuntimeError(f"verify失敗: 旧表記が残存 {bad[:3]}")
-        d["body"] = d["body"] + "スタートダッシュガイド"  # 上流の検証を通すためのダミー
         return d
 
     _lm.verify = _verify
     try:
-        return _lm.publish_one(key, transform_fn)
+        # 検証はこの _verify が全部やるので、上流のマーカー照合は無効化する
+        return _lm.publish_one(key, transform_fn, expect_marker=None)
     finally:
         _lm.verify = orig_verify
 
