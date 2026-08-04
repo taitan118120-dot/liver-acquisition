@@ -48,11 +48,15 @@ CLUSTERS = [
     ("platform", ["17LIVE", "Pococha", "比較", "掛け持ち", "アプリ"]),
 ]
 
-# クラスタが1つも当たらない記事のフォールバック先（PV上位から選ぶ）
-FALLBACK_MIN = 2
+# 筆者の肩書き（本文の話題ではない）。クラスタ判定の前に落とす。
+# 「〜を現役マネージャーが解説」で顔出しなし記事が b2b 判定され、
+# BtoB記事の関連リンクにライバー向け記事が混ざっていた。
+_BYLINE = ["現役マネージャー", "ライバー事務所代表", "現役代表"]
 
 
 def clusters_of(title):
+    for b in _BYLINE:
+        title = title.replace(b, "")
     out = []
     for name, kws in CLUSTERS:
         if any(k in title for k in kws):
@@ -60,13 +64,28 @@ def clusters_of(title):
     return out
 
 
-_TOKEN_RE = re.compile(r"[ぁ-んァ-ヶ一-龥A-Za-z0-9]{2,}")
-_STOP = {"2026", "年版", "最新", "完全", "ガイド", "方法", "ライバー", "ライブ", "配信",
-         "元Sランク", "解説", "公開", "全公開", "保存版", "徹底", "理由", "現役", "note"}
+_WORD_RE = re.compile(r"[ぁ-んァ-ヶー一-龥A-Za-z0-9]+")
+# 日本語のタイトルは語の区切りが無いので、単語ではなく文字bigramで重なりを測る。
+# 定型句はbigram化の「前」に落とす（全記事に付く「2026年最新」「完全ガイド」が
+# 無関係な記事同士を高スコアで結びつけてしまうため）。
+_BOILER = ["2026年完全版", "2026年最新", "2026年公式データ", "2026年版", "2026",
+           "元ミクチャNo.1", "元Sランク", "完全ガイド", "完全攻略", "完全比較", "完全解説",
+           "完全図解", "完全版", "保存版", "全公開", "徹底解説", "実データ", "最新", "完全",
+           "ガイド", "方法", "ライバー", "ライブ", "配信", "解説", "公開", "徹底", "理由",
+           "現役", "note"]
 
 
 def tokens_of(title):
-    return {t for t in _TOKEN_RE.findall(title) if t not in _STOP and len(t) >= 2}
+    """タイトルの文字bigram集合。定型句を除いてから作る。"""
+    for b in _BOILER:
+        title = title.replace(b, "\n")
+    out = set()
+    for run in _WORD_RE.findall(title):
+        if len(run) == 1:
+            out.add(run)
+        for i in range(len(run) - 1):
+            out.add(run[i:i + 2])
+    return out
 
 
 def fetch_pv(session, filt="monthly"):
@@ -113,7 +132,7 @@ def build_catalog(session):
 
 
 def pick_related(key, catalog, n=3):
-    """同クラスタ優先＋タイトル語の重なりで加点し、同点はPVの高い順。"""
+    """同クラスタ優先＋タイトルbigramの近さで加点し、同点はPVの高い順。"""
     me = catalog[key]
     my_cl = set(me["clusters"])
     my_tok = tokens_of(me["title"])
@@ -122,19 +141,12 @@ def pick_related(key, catalog, n=3):
     for k, m in catalog.items():
         if k == key or k in already:
             continue
+        tok = tokens_of(m["title"])
+        jaccard = len(my_tok & tok) / max(1, len(my_tok | tok))
         overlap = len(my_cl & set(m["clusters"]))
-        shared = len(my_tok & tokens_of(m["title"]))
-        score = overlap * 10 + shared * 3
-        scored.append((score, m["pv_all"], k))
+        scored.append((overlap * 10 + round(jaccard * 40), m["pv_all"], k))
     scored.sort(reverse=True)
-    picked = [k for sc, _, k in scored[:n] if sc > 0]
-    if len(picked) < n:  # クラスタも語も当たらない記事はPV上位で埋める
-        for _, _, k in sorted(scored, key=lambda t: -t[1]):
-            if k not in picked:
-                picked.append(k)
-            if len(picked) >= n:
-                break
-    return picked[:n]
+    return [k for _, _, k in scored[:n]]
 
 
 def related_html(keys, catalog):
