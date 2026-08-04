@@ -145,6 +145,16 @@ def publish_one(key):
     dv = verify(key)
     if not dv.get("eyecatch"):
         print("  !!! WARNING: eyecatch が消えた可能性。要復元")
+
+    # 公開PUTはhashtagsを無視してタグ0にする既知問題があるため、UI経由で復元する。
+    # ensure_tags は冪等（MIN_TAGS以上なら即return）なので、呼び出し元
+    # （note_finish_all）がバックアップから別途復元しても二重更新にはならない。
+    from note_tag_guard import ensure_tags
+    tg = ensure_tags(key, hashtags=tags, title=title)
+    print(f"  tag_guard: {tg}")
+    if not tg.get("ok"):
+        # 例外にすると note_finish_all のバックアップ復元まで巻き添えで止まるため警告に留める
+        print(f"  !!! WARNING: タグ復元失敗 {tg}")
     return dv
 
 
