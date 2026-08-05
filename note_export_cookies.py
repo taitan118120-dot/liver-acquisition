@@ -3,8 +3,8 @@
 Note.com Cookieエクスポータ（ログイン検知強化版）
 ===================================================
 Chromium を開き、ユーザが手動でログインするのを待つ。
-`/api/v2/current_user` が 200 を返したら認証済みと判定し、
-XSRF-TOKEN 発行のため複数ページを訪問してから Cookie を書き出す。
+`/api/v2/current_user` が 200 を返したら認証済みと判定し、note.com ドメインの
+Cookie をそのまま書き出す。必須なのはセッション Cookie `_note_session_v5` だけ。
 
 使い方:
   python3 note_export_cookies.py
@@ -76,20 +76,11 @@ def main():
             browser.close()
             sys.exit(1)
 
-        # XSRF-TOKEN 発行のため複数ページ訪問
-        log("XSRF-TOKEN 発行のため各ページ訪問中...")
-        for url in [
-            "https://note.com/",
-            "https://note.com/settings/account",
-            "https://editor.note.com/new",
-            "https://note.com/notes",
-        ]:
-            try:
-                page.goto(url, wait_until="domcontentloaded", timeout=30000)
-                time.sleep(2)
-            except Exception as e:
-                log(f"  [WARN] {url}: {e}")
-
+        # ここには「XSRF-TOKEN 発行のため」トップ/設定/editor/notes を巡回する
+        # ループがあったが、note.com は XSRF-TOKEN をどのページでも発行しないため
+        # 完全に無駄だった（2026-08-05 実測。トップ・editor.note.com/new・既存記事の
+        # 編集画面 /notes/{key}/edit のいずれを開いても Cookie に現れない）。
+        # ログイン時点で必要な Cookie は揃っているのでそのまま書き出す。
         all_cookies = ctx.cookies()
         browser.close()
 
@@ -101,8 +92,14 @@ def main():
         log("[ERROR] セッションCookie無し（ログインが完了していない可能性）")
         sys.exit(1)
 
+    # XSRF-TOKEN が無いのは正常。note.com はこの Cookie をもう発行しておらず、
+    # 書き込み系API（POST /api/v1/text_notes、draft_save、PUT /api/v1/text_notes/{id}
+    # の status=published）は `X-Requested-With: XMLHttpRequest` さえ付いていれば
+    # 2xx を返す（このヘッダが無いと PUT が 422 Unprocessable Entity）。
+    # GitHub Secret `NOTE_COOKIES_JSON` にも一度も入っていないが投稿は通っている。
     if "XSRF-TOKEN" not in names:
-        log("[WARN] XSRF-TOKEN は含まれていません（CI側の HTTP→Playwright フォールバックで対処）")
+        log("[INFO] XSRF-TOKEN はありません（note.comが発行しない仕様。書込APIは "
+            "X-Requested-With: XMLHttpRequest で通るので不要）")
 
     payload = json.dumps(filtered, ensure_ascii=False)
     OUTPUT_FILE.write_text(payload, encoding="utf-8")

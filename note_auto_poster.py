@@ -315,20 +315,27 @@ def _clear_csrf_state(session):
 
 
 def _acquire_csrf_token(session, verbose=True):
-    """CSRFトークンをヘッダーに設定する。
-    (1) Cookie内の XSRF-TOKEN
-    (2) HTMLページの <meta name="csrf-token"> パース
-    (3) HTML取得による XSRF-TOKEN cookie 発行
-    のいずれかで取得を試みる。Railsアプリのため POST系APIに必須。
+    """CSRFトークンが取れれば設定する（取れなくても投稿は通る。名残の関数）。
+
+    (1) Cookie内の XSRF-TOKEN → (2) HTMLページの <meta name="csrf-token">
+    の順に探すが、note.com は 2026-08-05 時点でどちらも配っていない。
+    トップ・editor.note.com/new・既存記事の編集画面のどれを開いても XSRF-TOKEN Cookie は
+    セットされず、書き込み系API（POST /api/v1/text_notes、draft_save、
+    PUT /api/v1/text_notes/{id} の status=published）は CSRF トークン無しで 2xx を返す。
+    通す条件は `X-Requested-With: XMLHttpRequest` ヘッダで（_session_from_cookies が
+    常に付けている）、これが無いと PUT が 422 Unprocessable Entity になる。
+
+    したがって本関数は「取れたら付ける」以上の意味を持たない。呼ばれるのは Playwright
+    UIログイン経路（ローカル専用のフォールバック）と、未使用の旧 api_create_draft だけ。
+    note が将来 CSRF を復活させたときのために残してあるが、失敗しても異常ではない。
     """
     if setup_xsrf_token(session):
         if verbose:
             print("  CSRF: Cookie由来のXSRF-TOKENを使用")
         return True
 
-    # HTML系ページを順に訪問してCSRF取得を試みる
-    # - Accept: text/html を明示してJSONでなくHTMLを受け取る
-    # - editor.note.com は editor subdomain 用のCSRFが発行されることがある
+    # HTML系ページを順に訪問してCSRF取得を試みる（現状の note では全部空振りする。
+    # Accept: text/html を明示してJSONでなくHTMLを受け取る）
     html_pages = [
         "https://note.com/",
         "https://editor.note.com/new",
@@ -372,7 +379,8 @@ def _acquire_csrf_token(session, verbose=True):
 
     if verbose:
         cookie_names = sorted({c.name for c in session.cookies})
-        print(f"  ⚠ CSRFトークンを取得できませんでした。現Cookie: {cookie_names}")
+        print(f"  CSRFトークンなし（noteが発行しない仕様。X-Requested-With で通るため問題なし）"
+              f" 現Cookie: {cookie_names}")
     return False
 
 
@@ -1034,7 +1042,13 @@ def _http_full_post(session, title, body_html, hashtags, publish=True):
 
 
 def api_create_draft(session, title, body_html, hashtags, max_retries=2):
-    """下書きを作成（リトライ・検証付き）。HTTPが 422で失敗した場合は Playwright 経由で再試行。"""
+    """下書きを作成（リトライ・検証付き）。HTTPが 422で失敗した場合は Playwright 経由で再試行。
+
+    ※現在の投稿経路（post_article → _http_full_post / _playwright_full_post）からは
+    呼ばれない旧API経路。以下の「422はCSRF系」というリトライ前提も 2026-08-05 時点では
+    成立しない（noteはXSRF-TOKENを発行せず、422の実際の原因は
+    X-Requested-With 欠落かパラメータ不正）。デバッグ時にここを信用しないこと。
+    """
     last_error = None
     saw_422 = False
 
