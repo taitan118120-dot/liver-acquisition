@@ -1920,9 +1920,14 @@ def main():
             print("❌ 未投稿の記事がありません（全て投稿済み）"
                   " → blog/articles_note/ に新しい記事を追加してください")
             sys.exit(3)
-        if len(queue) <= 3:
-            print(f"⚠️ 記事の残りが少なくなっています（あと{len(queue)}本: {queue}）。"
-                  f"1日1本ペースなのであと{len(queue)}日分です")
+        # 在庫警告は「カバー画像があって実際に投稿できる本数」で数える。
+        # 生のqueueで数えるとカバー欠落記事が本数を水増しし、実質あと2本まで
+        # 減っても警告が出なかった（2026-08-05: queue 11本中、投稿可能は2本だけ）。
+        postable = [n for n in queue if args.dry_run or _resolve_cover_image(n)]
+        if len(postable) <= 3:
+            print(f"⚠️ 投稿できる記事の残りが少なくなっています"
+                  f"（あと{len(postable)}本: {postable}）。"
+                  f"1日1本ペースなのであと{len(postable)}日分です")
         # カバー画像のある記事を優先して投稿（無い記事は飛ばしてキューを止めない）
         article_num = None
         for num in queue:
