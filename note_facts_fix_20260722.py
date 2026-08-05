@@ -207,22 +207,31 @@ def publish_one(key, dry_run=False):
                 pass
             time.sleep(1)
         time.sleep(2)
+        # verifications のURLは https://note.com/api を絶対指定する。このページは
+        # editor.note.com 配信で、そのCloudFrontは /api/* をoriginに流さず403(HTMLのエラー
+        # ページ)を返すため、相対 '/api/...' だと100%失敗する（2026-08-05に実測で確定）。
         try:
-            rc = page.evaluate("""async (sitekey) => {
+            rc = page.evaluate("""async ({sitekey, url}) => {
                 const g=(window.grecaptcha&&window.grecaptcha.enterprise)||window.grecaptcha;
                 if(!g||typeof g.execute!=='function') return {error:'no grecaptcha'};
                 try{
                     const t=await g.execute(sitekey,{action:'note_post'});
-                    const r=await fetch('/api/v3/challenges/verifications',{method:'POST',
+                    const r=await fetch(url,{method:'POST',
                       headers:{'Content-Type':'application/json','Accept':'application/json','X-Requested-With':'XMLHttpRequest'},
                       credentials:'include',
                       body:JSON.stringify({g_recaptcha_token_v3:t,g_recaptcha_action_v3:'note_post',via:'note_post'})});
                     return {status:r.status, body:(await r.text()).slice(0,200)};
                 }catch(e){return {error:String(e)}}
-            }""", RECAPTCHA_SITEKEY)
+            }""", {"sitekey": RECAPTCHA_SITEKEY,
+                   "url": f"{NOTE_API}/v3/challenges/verifications"})
         except Exception as e:
             rc = {"error": str(e)}
-        print(f"  recaptcha verifications: {rc}")
+        # 失敗しても中断しない（note公式のpublishも .catch(()=>{}) で捨ててPUTへ進む）。
+        # note が検証必須に切り替えたらPUTが4xxで落ちるので、予兆としてWARNだけ残す。
+        if rc.get("status") != 200:
+            print(f"  [WARN] recaptcha verifications 異常（PUTは続行）: {rc}")
+        else:
+            print(f"  recaptcha verifications: {rc}")
 
         pr = page.evaluate(js_fetch, {
             "url": f"{NOTE_API}/v1/text_notes/{note_id}", "method": "PUT",

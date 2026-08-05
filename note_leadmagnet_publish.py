@@ -115,22 +115,34 @@ def publish_one(key, transform_fn=None, expect_marker=LM_MARK):
                 pass
             time.sleep(1)
         time.sleep(2)
+        # verifications のURLは https://note.com/api を絶対指定する。このページは
+        # editor.note.com 配信で、そのCloudFrontは /api/* をoriginに流さず403(HTMLのエラー
+        # ページ)を返すため、相対 '/api/...' だと100%失敗する（2026-08-05に実測で確定）。
+        # note公式のeditorも axios baseURL="https://note.com/api" で叩いている。
         try:
-            rc = page.evaluate("""async (sitekey) => {
+            rc = page.evaluate("""async ({sitekey, url}) => {
                 const g=(window.grecaptcha&&window.grecaptcha.enterprise)||window.grecaptcha;
                 if(!g||typeof g.execute!=='function') return {error:'no grecaptcha'};
                 try{
                     const t=await g.execute(sitekey,{action:'note_post'});
-                    const r=await fetch('/api/v3/challenges/verifications',{method:'POST',
+                    const r=await fetch(url,{method:'POST',
                       headers:{'Content-Type':'application/json','Accept':'application/json','X-Requested-With':'XMLHttpRequest'},
                       credentials:'include',
                       body:JSON.stringify({g_recaptcha_token_v3:t,g_recaptcha_action_v3:'note_post',via:'note_post'})});
                     return {status:r.status, body:(await r.text()).slice(0,200)};
                 }catch(e){return {error:String(e)}}
-            }""", RECAPTCHA_SITEKEY)
+            }""", {"sitekey": RECAPTCHA_SITEKEY,
+                   "url": f"{NOTE_API}/v3/challenges/verifications"})
         except Exception as e:
             rc = {"error": str(e)}
-        print(f"  recaptcha verifications: {rc}")
+        # ここは失敗しても中断しない（意図的に握りつぶす）。note公式のpublish処理も
+        # この呼び出しを .catch(()=>{}) で捨て、レスポンス本体も読まずにPUTへ進む実装。
+        # よって検証が通らなくても後続PUTは成功する。ただし note が検証必須に切り替えたら
+        # PUTが4xxで落ちることになるので、その予兆を拾えるようWARNは必ず出す。
+        if rc.get("status") != 200:
+            print(f"  [WARN] recaptcha verifications 異常（PUTは続行）: {rc}")
+        else:
+            print(f"  recaptcha verifications: {rc}")
 
         put_payload = {
             "status": "published", "name": title,
