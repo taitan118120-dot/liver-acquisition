@@ -24,6 +24,15 @@ NOTE_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
 
 EDITOR_BASE = "https://editor.note.com"
 
+# PUT /v1/text_notes/{id} は「公開する」ためのエンドポイントで、status に draft は取れない。
+# draft を渡すと params 検証で必ず 422
+#   {"error":{"code":"invalid","message":"不正なパラメータが渡されました。…"}}
+# になる。2026-08-05に HTTP(requests) 経路・ブラウザ fetch 経路の両方で実測して確定した。
+# status を丸ごと省いても、でたらめな値を入れても同じ 422 なので、エラーメッセージから
+# 「CSRF/XSRF-TOKEN が無いせい」に見えるが無関係（XSRF無しでも published なら 200 が返る）。
+# 下書き保存は draft_save だけで完結するので、draft のときは PUT を打たないのが正しい。
+PUBLISH_STATUSES = ("published", "limited")
+
 
 class NotePublishError(RuntimeError):
     """draft_save / PUT が 2xx を返さなかった。"""
@@ -145,7 +154,9 @@ def put_publish(page, note_id, title, body, tags=(), *, api_base=NOTE_API_BASE,
                 status="published", send_notifications=False, disable_comment=False,
                 limited=False):
     """PUT /v1/text_notes/{id}。note側は hashtags を無視してタグを0にする既知問題があるので、
-    タグ復元は呼び出し側が note_tag_guard.ensure_tags で行うこと。eyecatch は触らない。"""
+    タグ復元は呼び出し側が note_tag_guard.ensure_tags で行うこと。eyecatch は触らない。
+
+    status は "published" / "limited" のみ。"draft" は受け付けられない（PUBLISH_STATUSES 参照）。"""
     payload = {
         "status": status, "name": title,
         "free_body": body, "pay_body": "", "body_length": len(body),
@@ -167,12 +178,16 @@ def publish_via_editor(page, note_id, key, title, body, tags=(), *,
     page:        cookie注入済みの playwright page（editor_browser か呼び出し側が用意する）
     goto_edit:   False なら既に編集画面にいる前提でナビゲーションを省く
                  （note_auto_poster の新規投稿は自分でUI経由の下書き作成を済ませている）
-    recaptcha:   下書き保存だけしたいとき（status="draft"）は False
+    status:      "published" / "limited" で公開。"draft" なら draft_save だけ実行して
+                 reCAPTCHA と PUT は打たない（PUBLISH_STATUSES のコメント参照）
+    recaptcha:   公開時の reCAPTCHA v3 検証を回すか
     raise_on_put_error: False なら PUT の非2xx を戻り値で返すだけにして呼び出し側に委ねる
 
-    戻り値: {"draft_save": {...}, "recaptcha": {...} or None, "put": {...}}
+    戻り値: {"draft_save": {...}, "recaptcha": {...} or None, "put": {...} or None}
             各要素は {"status": int, "body": str, "xsrf": bool}。body は切り詰めない
             （呼び出し側が JSON として読むことがあるため）。
+            status="draft" のときだけ put が None になる。呼び出し側は
+            「put is None＝下書き保存で正常終了」「put が非2xx＝公開失敗」を区別すること。
     draft_save 失敗時は常に NotePublishError。
     """
     if goto_edit:
@@ -182,6 +197,11 @@ def publish_via_editor(page, note_id, key, title, body, tags=(), *,
     print(f"{log_prefix}draft_save: {ds['status']}")
     if ds["status"] not in (200, 201):
         raise NotePublishError(f"draft_save失敗: status={ds['status']} body={ds['body'][:300]}")
+
+    if status not in PUBLISH_STATUSES:
+        # 下書きのままにしたいケース。PUTを打つと必ず422になるだけなので打たない。
+        print(f"{log_prefix}status={status} のため PUT はスキップ（draft_save で保存済み）")
+        return {"draft_save": ds, "recaptcha": None, "put": None}
 
     rc = None
     if recaptcha:

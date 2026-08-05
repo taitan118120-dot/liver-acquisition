@@ -815,8 +815,12 @@ def _playwright_full_post(title, body_html, hashtags, publish=True):
     1. /new にアクセス → 自動で空下書き作成 → /notes/{key}/edit へ自動リダイレクト
     2. editor ページ内で XSRF-TOKEN が issue されるのを待つ
     3. page.evaluate で fetch() を叩いて draft_save
-    4. publish API を試行（失敗しても下書きは保存済み）
-    戻り値: {"key": ..., "id": ..., "url": article_url_or_draft_url, "draft_only": bool}
+    4. PUT で公開（publish=True のとき）。非2xxなら NotePublishError。
+    戻り値: {"key": ..., "id": ..., "url": ..., "draft_only": bool}
+    draft_only は publish=False を指定したときだけ True になる。
+    publish=True で公開できなかった場合は例外を投げる（下書きURLを success として
+    返さない）。返してしまうと呼び出し側が投稿済みとして台帳に記録し、記事が
+    非公開のまま永久にキューから消える。
     """
     from playwright.sync_api import sync_playwright
 
@@ -906,8 +910,10 @@ def _playwright_full_post(title, body_html, hashtags, publish=True):
             raise Exception(f"note_id取得失敗 key={note_key}")
 
         # Step2〜4: draft_save → reCAPTCHA verifications → PUT。
-        # 既に自前で編集画面まで来ているので goto_edit=False。PUT が非2xxでも下書き扱いで
-        # URLを返したいので、例外にせず戻り値で受け取る。
+        # 既に自前で編集画面まで来ているので goto_edit=False。
+        # publish=True で PUT が非2xxなら「公開できていない」ので必ず例外にする。
+        # 以前はここで draft_only=True にして編集画面URLを返すだけだったため、
+        # 呼び出し側が success として記録し、記事が非公開のまま投稿済み扱いになっていた。
         target_status = "published" if publish else "draft"
         print(f"  [PW] draft_save → publish (status={target_status})...")
         try:
@@ -919,34 +925,36 @@ def _playwright_full_post(title, body_html, hashtags, publish=True):
             browser.close()
             raise
         put_result = steps["put"]
-        print(f"  [PW] xsrf={put_result['xsrf']}")
 
         article_url = None
         draft_only = False
-        if put_result["status"] in (200, 201):
+        if put_result is None:
+            # publish=False。draft_save だけで下書きは保存済み（PUTは打たない）。
+            draft_only = True
+            article_url = f"https://note.com/notes/{note_key}/edit"
+        elif put_result["status"] in (200, 201):
+            print(f"  [PW] xsrf={put_result['xsrf']}")
             try:
                 pdata = json.loads(put_result["body"]).get("data", {})
                 urlname = pdata.get("user", {}).get("urlname", "") if isinstance(pdata.get("user"), dict) else ""
                 key_ret = pdata.get("key", note_key)
-                if target_status == "published":
-                    if urlname:
-                        article_url = f"https://note.com/{urlname}/n/{key_ret}"
-                    else:
-                        article_url = f"https://note.com/n/{key_ret}"
-                else:
-                    article_url = f"https://note.com/notes/{key_ret}/edit"
-                    draft_only = True
+                article_url = (f"https://note.com/{urlname}/n/{key_ret}" if urlname
+                               else f"https://note.com/n/{key_ret}")
             except Exception:
                 article_url = f"https://note.com/n/{note_key}"
         else:
-            # 公開失敗時は下書き扱いにして URL を返す
-            print(f"  [PW] PUT失敗 body={put_result['body'][:300]}")
-            draft_only = True
-            article_url = f"https://note.com/notes/{note_key}/edit"
+            # 公開失敗。下書きは note 上に残るので、key を添えて例外にする
+            # （黙って success 扱いにすると記事が永久に未公開のまま台帳から消える）。
+            browser.close()
+            raise NotePublishError(
+                f"PUT公開失敗 HTTP {put_result['status']}: {put_result['body'][:300]} "
+                f"（下書きは残っています: https://note.com/notes/{note_key}/edit / "
+                f"id={note_id}。公開するか削除してください）")
 
         browser.close()
 
     return {
+        "id": note_id,
         "key": note_key,
         "url": article_url,
         "draft_only": draft_only,
@@ -961,6 +969,7 @@ def _http_full_post(session, title, body_html, hashtags, publish=True):
       - PUT の前に draft_save を通す（無いと PUT が 422 invalid params）
     いずれかが非2xxなら _HttpCsrfFailed を投げ、Playwright経路へフォールバックさせる。
     戻り値: {"id","key","url","draft_only"}
+    draft_only は publish=False のときだけ True。publish=True なら公開できたときしか返らない。
     """
     # 1) 空下書き作成
     r = session.post(f"{NOTE_API_BASE}/v1/text_notes", json={"note": {"status": "draft"}}, timeout=30)
@@ -982,8 +991,15 @@ def _http_full_post(session, title, body_html, hashtags, publish=True):
         raise _HttpCsrfFailed(f"draft_save失敗 HTTP {r.status_code}: {r.text[:200]}")
     print(f"  [HTTP] draft_save: {r.status_code}")
 
-    # 3) PUT で公開（または下書き保存）
-    target_status = "published" if publish else "draft"
+    # 3) PUT で公開。publish=False のときは draft_save で既に下書きが確定しているので
+    #    PUT は打たない（status="draft" の PUT は必ず422。note_publish_core の
+    #    PUBLISH_STATUSES 参照）。
+    if not publish:
+        print(f"  [HTTP] 下書き保存のみ（PUTスキップ）")
+        return {"id": note_id, "key": note_key,
+                "url": f"https://note.com/notes/{note_key}/edit", "draft_only": True}
+
+    target_status = "published"
     put_payload = {
         "status": target_status,
         "name": title,
@@ -1013,14 +1029,8 @@ def _http_full_post(session, title, body_html, hashtags, publish=True):
         except Exception:
             pass
 
-    if target_status == "published":
-        url = f"https://note.com/{urlname}/n/{note_key}" if urlname else f"https://note.com/n/{note_key}"
-        draft_only = False
-    else:
-        url = f"https://note.com/notes/{note_key}/edit"
-        draft_only = True
-
-    return {"id": note_id, "key": note_key, "url": url, "draft_only": draft_only}
+    url = f"https://note.com/{urlname}/n/{note_key}" if urlname else f"https://note.com/n/{note_key}"
+    return {"id": note_id, "key": note_key, "url": url, "draft_only": False}
 
 
 def api_create_draft(session, title, body_html, hashtags, max_retries=2):
@@ -1641,34 +1651,33 @@ def post_article(article_num, dry_run=False):
 
         # 本命: 純HTTP経路（create→draft_save→PUT公開）。
         # 失敗時のみ _HttpCsrfFailed を捕まえて Playwright 経路へフォールバック。
+        #
+        # ⚠ どちらの経路でも「下書きになっただけ」を success として記録してはいけない。
+        #    log_result(success=True, url=...) と mark_as_published() は
+        #    get_published_article_nums() / tracker の両方で恒久的に投稿済み扱いになるため、
+        #    非公開のまま記事がキューから永久に消える（CIは緑のまま）。公開できなければ
+        #    例外にしてキューに残し、CIを赤くする。
         try:
-            http_result = _http_full_post(session, title, body_html, hashtags, publish=True)
-            if http_result["url"] and not http_result["draft_only"]:
-                log_result(article_num, title, http_result["url"], True)
-                mark_as_published(article_num)
-                tags_ok = _guard_tags_after_publish(http_result["url"], article_num, title)
-                eyecatch_ok = _ensure_eyecatch_after_publish(http_result["url"], article_num)
-                return {"success": True, "url": http_result["url"],
-                        "tags_ok": tags_ok, "eyecatch_ok": eyecatch_ok}
-            # publish=True を渡しているので通常ここには来ないが、保険
-            log_result(article_num, title, http_result["url"], True, "HTTP経由で下書き保存（手動公開が必要）")
-            mark_as_published(article_num)
-            return {"success": True, "url": http_result["url"], "draft_only": True}
+            result = _http_full_post(session, title, body_html, hashtags, publish=True)
+            via = "HTTP経由で公開"
         except _HttpCsrfFailed as http_e:
             print(f"\n  HTTP経路失敗 → Playwright経路に切替: {http_e}")
-            pw_result = _playwright_full_post(title, body_html, hashtags, publish=True)
-            if pw_result["url"] and not pw_result["draft_only"]:
-                log_result(article_num, title, pw_result["url"], True, "Playwright経由で公開")
-                mark_as_published(article_num)
-                tags_ok = _guard_tags_after_publish(pw_result["url"], article_num, title)
-                eyecatch_ok = _ensure_eyecatch_after_publish(pw_result["url"], article_num)
-                return {"success": True, "url": pw_result["url"],
-                        "tags_ok": tags_ok, "eyecatch_ok": eyecatch_ok}
-            if pw_result["url"] and pw_result["draft_only"]:
-                log_result(article_num, title, pw_result["url"], True, "Playwright経由で下書き保存（手動公開が必要）")
-                mark_as_published(article_num)
-                return {"success": True, "url": pw_result["url"], "draft_only": True}
-            raise Exception("Playwrightフォールバックで公開URL取得失敗")
+            result = _playwright_full_post(title, body_html, hashtags, publish=True)
+            via = "Playwright経由で公開"
+
+        if not result.get("url") or result.get("draft_only"):
+            # publish=True では到達しないはずの防衛線（到達＝どちらかの経路の退行）
+            raise Exception(
+                f"公開されず下書きのまま終了しました（{via}）。"
+                f"下書き: https://note.com/notes/{result.get('key')}/edit "
+                f"id={result.get('id')}。公開するか削除してください")
+
+        log_result(article_num, title, result["url"], True, via)
+        mark_as_published(article_num)
+        tags_ok = _guard_tags_after_publish(result["url"], article_num, title)
+        eyecatch_ok = _ensure_eyecatch_after_publish(result["url"], article_num)
+        return {"success": True, "url": result["url"],
+                "tags_ok": tags_ok, "eyecatch_ok": eyecatch_ok}
 
     except Exception as e:
         error_msg = str(e)
@@ -1771,16 +1780,18 @@ def main():
     result = post_article(article_num, dry_run=args.dry_run)
     if result.get("success"):
         if result.get("draft_only"):
-            print("\n下書き保存完了（公開APIが利用不可のため手動公開が必要です）")
-        else:
-            print("\n投稿完了!")
-        if (not args.dry_run and not result.get("draft_only")
-                and not result.get("eyecatch_ok")):
+            # post_article は publish=True なので本来ここには来ない。来たら
+            # 「公開されていない」＝失敗なので必ず赤くする。exit 0 で緑のまま
+            # 終わらせると、非公開の記事を投稿済みとして見落とす。
+            print("\n❌ 下書きのまま終了しました（公開されていません）。"
+                  f"note上の下書きを確認してください: {result.get('url')}")
+            sys.exit(7)
+        print("\n投稿完了!")
+        if not args.dry_run and not result.get("eyecatch_ok"):
             print("⚠️ カバー画像の自動設定に失敗（記事は公開済み）。"
                   "python3 note_set_eyecatch.py <番号> <note_key> でリカバリしてください。")
             sys.exit(4)
-        if (not args.dry_run and not result.get("draft_only")
-                and not result.get("tags_ok", True)):
+        if (not args.dry_run and not result.get("tags_ok", True)):
             # 記事は公開済み。auto_retryの再実行が重複ガード経由でタグを再付与する
             print("⚠️ タグ自動付与に失敗（記事は公開済み）。再実行で修復されます。")
             sys.exit(5)
