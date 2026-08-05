@@ -89,14 +89,30 @@ jobs:
           set +e
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git pull --rebase origin main
-          git add threads/threads_posts.json data/threads_post_log.csv
-          if ! git diff --staged --quiet; then
-            git commit -m "Threads投稿ログ更新"
-            for attempt in 1 2 3; do
-              if git push origin main; then break; fi
-              git pull --rebase origin main
-              sleep 3
-            done
+          # 先にcommitしてからpullする。ポスターが書き換えた threads/threads_posts.json や
+          # data/threads_post_log.csv が未commitのまま pull --rebase すると
+          # "cannot pull with rebase: You have unstaged changes" で必ず失敗し、
+          # 古いbase上でcommit→push rejected という詰み方をする（2026-08-05にnote側で実際に事故）
+          git add threads/threads_posts.json data/threads_post_log.csv 2>/dev/null || true
+          if git diff --staged --quiet; then
+            echo "ログに変更なし"
+            exit 0
           fi
-          exit 0
+          git commit -m "Threads投稿ログ更新 $(TZ=Asia/Tokyo date +'%Y-%m-%d %H:%M')"
+          # pushの失敗を握り潰すと「投稿済み」記録が消えて次回の重複投稿要因になるためリトライする
+          PUSHED=0
+          for i in 1 2 3; do
+            if git push origin main; then PUSHED=1; break; fi
+            echo "push失敗 (試行$i) → rebaseして再試行"
+            sleep 5
+            # data/threads_post_log.csv の末尾衝突は .gitattributes の merge=union が自動解決する。
+            # threads/threads_posts.json はJSONなので union は付けられない（壊れる）。
+            # 解決できない衝突が残ったら rebase を必ず畳む。放置すると detached HEAD になり、
+            # 以降のpull/pushが全部死んでログcommitごと消える
+            git pull --rebase origin main || { git rebase --abort || true; git checkout main || true; }
+          done
+          if [ "$PUSHED" != "1" ]; then
+            echo "::error::Threads投稿ログをpushできませんでした。Threads上は投稿済みでもログ未記録の可能性があります"
+            echo "## ❌ 投稿ログのpush失敗（Threads側は投稿済みの可能性あり）" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
