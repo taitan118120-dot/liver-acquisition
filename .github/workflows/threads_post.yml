@@ -24,7 +24,6 @@ jobs:
   threads-post:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v5
         with:

@@ -15,6 +15,8 @@ import sys
 import time
 from urllib.parse import unquote
 
+import note_keys_registry
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -179,6 +181,8 @@ def delete_one(note_key, headless=True):
                 if last_status in (200, 204):
                     print(f"  [PW] ✅ 削除成功")
                     browser.close()
+                    # 削除できたら公開キー台帳からも外す（一括処理が死にキーを踏まないように）
+                    note_keys_registry.remove(note_key, reason="delete")
                     return {"ok": True, "status": last_status,
                             "note_id": note_id, "endpoint": f"{method} {url}"}
             except Exception as e:
