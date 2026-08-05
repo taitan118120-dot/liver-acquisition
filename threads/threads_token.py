@@ -29,16 +29,28 @@ GRAPH_BASE = "https://graph.threads.net"
 TOKEN_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "threads_token_info.json")
 
 
-def _save_info(token, expires_in):
+def _save_info(token, expires_in, secret_updated=None):
     info = {
         "updated_at": datetime.now().isoformat(timespec="seconds"),
         "expires_at": (datetime.now() + timedelta(seconds=int(expires_in))).isoformat(timespec="seconds"),
         "remaining_days": int(expires_in) // 86400,
         "token_prefix": token[:10] + "...",
     }
+    if secret_updated is not None:
+        # ここがFalseのまま残っている = Secretは古いトークンのまま。要手動対応。
+        info["secret_updated"] = bool(secret_updated)
     with open(TOKEN_FILE, "w", encoding="utf-8") as f:
         json.dump(info, f, ensure_ascii=False, indent=2)
     print(f"[INFO] {TOKEN_FILE} 更新: 残り{info['remaining_days']}日 (期限 {info['expires_at']})")
+
+
+def _on_actions():
+    return os.environ.get("GITHUB_ACTIONS", "").lower() == "true"
+
+
+def _mask(token):
+    """ログに残しても安全な形（先頭数文字＋長さ）に丸める。"""
+    return f"{token[:8]}...(長さ{len(token)})"
 
 
 def exchange():
@@ -91,24 +103,50 @@ def refresh():
         # 失効が近いと失敗する場合あり。手動再認証が必要なケース。
         sys.exit(1)
     expires_in = data.get("expires_in", 5184000)
-    _save_info(new_token, expires_in)
 
-    # GitHub Secretを更新（gh CLI / GH_TOKEN 経由）
-    if os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN"):
+    on_actions = _on_actions()
+    if on_actions:
+        # 以降どこかでトークンが出力されても伏せ字になるよう登録しておく
+        print(f"::add-mask::{new_token}")
+
+    # GitHub Secretを更新（gh CLI / GH_TOKEN 経由）。
+    # ここが失敗すると Secret は古いトークンのまま = 60日で Threads 投稿が全停止する。
+    # 緑のまま見逃すのが一番まずいので、失敗したら必ず非ゼロで落とす。
+    has_gh_token = bool(os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN"))
+    if has_gh_token:
         try:
             subprocess.run(
                 ["gh", "secret", "set", "THREADS_ACCESS_TOKEN"],
                 input=new_token.encode(),
                 check=True,
             )
-            print("[OK] GitHub Secret THREADS_ACCESS_TOKEN を更新しました。")
         except Exception as e:
-            print(f"[WARN] gh secret set 失敗: {e}")
-            print("新トークン（手動でSecret更新してください）:")
-            print(new_token)
-    else:
-        print("新トークン（手動でSecret更新してください）:")
-        print(new_token)
+            _save_info(new_token, expires_in, secret_updated=False)
+            print(f"[ERROR] gh secret set 失敗: {e}")
+            print("[ERROR] Secret THREADS_ACCESS_TOKEN は未更新のままです。手動対応が必要。")
+            print(f"        Metaの再延長自体は成功（新トークン {_mask(new_token)}）")
+            if on_actions:
+                print("::error::Threads: gh secret set 失敗。Secret THREADS_ACCESS_TOKEN が未更新（GH_PATの期限切れ/権限不足を確認）")
+            else:
+                print("新トークン（手動でSecret更新してください）:")
+                print(new_token)
+            sys.exit(1)
+        _save_info(new_token, expires_in, secret_updated=True)
+        print("[OK] GitHub Secret THREADS_ACCESS_TOKEN を更新しました。")
+        return new_token
+
+    # GH_TOKEN/GITHUB_TOKEN なし
+    _save_info(new_token, expires_in, secret_updated=False)
+    if on_actions:
+        # Actions上でSecretを書けない = 自動更新が機能していない。緑で終わらせない。
+        print("[ERROR] GH_TOKEN/GITHUB_TOKEN が未設定のため Secret を更新できません。")
+        print("[ERROR] Secret THREADS_ACCESS_TOKEN は未更新のままです。手動対応が必要。")
+        print(f"        Metaの再延長自体は成功（新トークン {_mask(new_token)}）")
+        print("::error::Threads: GH_TOKEN未設定でSecret THREADS_ACCESS_TOKEN を更新できず（workflowのGH_PATを確認）")
+        sys.exit(1)
+    # ローカル手動実行: 従来どおり成功扱いで、コピペ用に全文を出す
+    print("新トークン（手動でSecret更新してください）:")
+    print(new_token)
     return new_token
 
 
@@ -130,7 +168,10 @@ def check():
         print(f"[NG] トークン無効/期限切れ: {data}")
     if os.path.exists(TOKEN_FILE):
         with open(TOKEN_FILE, encoding="utf-8") as f:
-            print(json.dumps(json.load(f), ensure_ascii=False, indent=2))
+            info = json.load(f)
+        print(json.dumps(info, ensure_ascii=False, indent=2))
+        if info.get("secret_updated") is False:
+            print("[WARN] 前回の更新で Secret THREADS_ACCESS_TOKEN を書き換えられていません。手動更新が必要です。")
 
 
 def main():
