@@ -943,8 +943,11 @@ def _playwright_full_post(title, body_html, hashtags, publish=True):
                 time.sleep(2)
 
                 # reCAPTCHA v3 token 取得 → verifications 送信
+                # URLは https://note.com/api を絶対指定する。このページは editor.note.com
+                # 配信で、そのCloudFrontは /api/* をoriginに流さず403(HTMLのエラーページ)を
+                # 返すため、相対 '/api/...' だと100%失敗する（2026-08-05に実測で確定）。
                 rc_result = page.evaluate(
-                    """async () => {
+                    """async (url) => {
                         if (typeof grecaptcha === 'undefined') return {error: 'no grecaptcha'};
                         return new Promise((resolve) => {
                             grecaptcha.ready(async () => {
@@ -953,7 +956,7 @@ def _playwright_full_post(title, body_html, hashtags, publish=True):
                                         '6LefXTAsAAAAADYVISEItAl0IX1rgSGQ-asNy56w',
                                         {action: 'note_post'}
                                     );
-                                    const resp = await fetch('/api/v3/challenges/verifications', {
+                                    const resp = await fetch(url, {
                                         method: 'POST',
                                         headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'},
                                         credentials: 'include',
@@ -969,9 +972,15 @@ def _playwright_full_post(title, body_html, hashtags, publish=True):
                                 }
                             });
                         });
-                    }"""
+                    }""",
+                    f"{NOTE_API_BASE}/v3/challenges/verifications",
                 )
-                print(f"  [PW] reCAPTCHA verifications: {rc_result}")
+                # 失敗しても中断しない（note公式のpublishも .catch(()=>{}) で捨ててPUTへ進む）。
+                # note が検証必須に切り替えたらPUTが4xxで落ちるので、予兆としてWARNだけ残す。
+                if rc_result.get("status") != 200:
+                    print(f"  [PW][WARN] reCAPTCHA verifications 異常（続行）: {rc_result}")
+                else:
+                    print(f"  [PW] reCAPTCHA verifications: {rc_result}")
             except Exception as e:
                 print(f"  [PW] reCAPTCHA/verifications 失敗（継続）: {e}")
 
@@ -1493,23 +1502,32 @@ def _inplace_update_note(key, note_id, title, body_html):
                 pass
             time.sleep(1)
         time.sleep(2)
+        # verifications のURLは https://note.com/api を絶対指定する。このページは
+        # editor.note.com 配信で、そのCloudFrontは /api/* をoriginに流さず403(HTMLのエラー
+        # ページ)を返すため、相対 '/api/...' だと100%失敗する（2026-08-05に実測で確定）。
         try:
             rc = page.evaluate(
-                """async (sitekey) => {
+                """async ({sitekey, url}) => {
                     const g=(window.grecaptcha&&window.grecaptcha.enterprise)||window.grecaptcha;
                     if(!g||typeof g.execute!=='function') return {error:'no grecaptcha'};
                     try{
                         const t=await g.execute(sitekey,{action:'note_post'});
-                        const r=await fetch('/api/v3/challenges/verifications',{method:'POST',
+                        const r=await fetch(url,{method:'POST',
                           headers:{'Content-Type':'application/json','Accept':'application/json','X-Requested-With':'XMLHttpRequest'},
                           credentials:'include',
                           body:JSON.stringify({g_recaptcha_token_v3:t,g_recaptcha_action_v3:'note_post',via:'note_post'})});
                         return {status:r.status, body:(await r.text()).slice(0,200)};
                     }catch(e){return {error:String(e)}}
-                }""", RECAPTCHA_SITEKEY)
+                }""", {"sitekey": RECAPTCHA_SITEKEY,
+                       "url": f"{NOTE_API_BASE}/v3/challenges/verifications"})
         except Exception as e:
             rc = {"error": str(e)}
-        print(f"  [PW] recaptcha verifications: {rc}")
+        # 失敗しても中断しない（note公式のpublishも .catch(()=>{}) で捨ててPUTへ進む）。
+        # note が検証必須に切り替えたらPUTが4xxで落ちるので、予兆としてWARNだけ残す。
+        if rc.get("status") != 200:
+            print(f"  [PW][WARN] recaptcha verifications 異常（PUTは続行）: {rc}")
+        else:
+            print(f"  [PW] recaptcha verifications: {rc}")
 
         # PUT で再公開。hashtags は note.com に無視されるため（タグ復元は ensure_tags が担う）
         # ここでは既存タグを渡しつつ、確実な復元は後段に委ねる。eyecatch は触らない。
