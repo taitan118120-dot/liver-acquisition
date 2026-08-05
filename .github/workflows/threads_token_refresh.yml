@@ -13,7 +13,6 @@ jobs:
   refresh:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v5
         with:
@@ -32,9 +31,21 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_PAT }}
         shell: bash
         run: |
+          # ここは握り潰さない。更新に失敗したまま緑になると、60日で
+          # THREADS_ACCESS_TOKEN が失効して Threads 投稿が全停止する。
+          # 実行は月2回だけなので、赤くなる = 手動再認証が必要というシグナル。
           set +e
           python threads/threads_token.py --refresh
-          exit 0
+          EXIT=$?
+          if [ $EXIT -ne 0 ]; then
+            echo "::error::Threadsトークンの更新に失敗 exit=$EXIT"
+            {
+              echo "## ❌ Threadsトークン更新失敗 (exit=$EXIT)"
+              echo "放置すると60日以内に THREADS_ACCESS_TOKEN が失効し、Threads自動投稿が全停止します。"
+              echo "手動で長期トークンを取り直して Secret THREADS_ACCESS_TOKEN を更新してください。"
+            } >> $GITHUB_STEP_SUMMARY
+          fi
+          exit $EXIT
 
       - name: token_info保存
         if: always()
@@ -46,6 +57,8 @@ jobs:
           git add threads/threads_token_info.json
           if ! git diff --staged --quiet; then
             git commit -m "Threadsトークン情報更新"
-            git push origin main || true
+            # threads_token_info.json は残り日数の記録用（--check で表示するだけ）で、
+            # トークン本体は既にSecretへ書き込み済み。push失敗は赤にせず警告に留める。
+            git push origin main || echo "::warning::token_info のpushに失敗（記録のみ・トークン自体は更新済み）"
           fi
           exit 0

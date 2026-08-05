@@ -15,16 +15,21 @@ jobs:
   x:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
-    continue-on-error: true   # Bearer Token 未設定時は失敗するが他は止めない
+    # Secret 未設定は「スキップ」であって失敗ではないので、下で exit 0 して緑のまま抜ける。
+    # （run ステップに neutral exit は無く、exit 78 は普通に失敗扱いになる）
+    # job レベルの continue-on-error は付けない。付けると x_app のログイン失敗＝
+    # 保険ルートが死んでいる状態まで緑になり、気づけなくなる。
     steps:
       - name: ログイン (x_app)
+        id: login
         env:
           PW: ${{ secrets.XDM_APP_PASSWORD }}
           BEARER: ${{ secrets.XDM_BEARER_TOKEN }}
         run: |
           if [ -z "$PW" ] || [ -z "$BEARER" ]; then
             echo "XDM_APP_PASSWORD or XDM_BEARER_TOKEN 未設定。スキップ（Mac launchd が一次ルート）"
-            exit 78   # neutral exit
+            echo "skipped=true" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
           curl -sS -X POST https://taitan-pro-x-dm.fly.dev/login \
             -H "Content-Type: application/json" \
@@ -34,10 +39,10 @@ jobs:
           grep -q '"ok": *true' /tmp/x_login.json
 
       - name: リサーチ実行（Bearer Token 経路）
+        if: steps.login.outputs.skipped != 'true'
         env:
           BEARER: ${{ secrets.XDM_BEARER_TOKEN }}
         run: |
-          [ -z "$BEARER" ] && exit 78
           curl -sS -X POST https://taitan-pro-x-dm.fly.dev/api/research \
             -H "Content-Type: application/json" \
             -b /tmp/x_cookies.txt \

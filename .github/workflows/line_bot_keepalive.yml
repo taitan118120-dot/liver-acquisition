@@ -14,7 +14,9 @@ jobs:
   ping:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    continue-on-error: true
+    # job レベルの continue-on-error は付けない。ping失敗は下のステップ側で
+    # exit 0 にして握り潰しているので不要（10分おきに走るため単発失敗で赤くしない）。
+    # job レベルまで付けるとタイムアウトや runner 障害まで緑になってしまう。
     steps:
       - name: Renderのbotを起こす
         shell: bash

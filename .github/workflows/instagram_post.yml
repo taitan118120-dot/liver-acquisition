@@ -36,9 +36,9 @@ jobs:
   instagram-post:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
-    # 最終セーフティ: 個別ステップが失敗してもjob全体は成功扱い
-    # (各ステップ内でも set +e を使うが、job レベルで二重に保護)
-    continue-on-error: true
+    # job レベルの continue-on-error は付けない。全ステップが個別に set +e + exit 0 で
+    # マスク済みなので二重保護は不要な上、checkout/setup-python の失敗まで緑にしてしまい
+    # 「実は一度も走っていない」状態に気づけなくなる。
     steps:
       - uses: actions/checkout@v5
         with:
@@ -124,25 +124,34 @@ jobs:
         if: always()
         shell: bash
         run: |
-          set +e  # git操作失敗でも絶対に赤くしない
+          set +e
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git pull --rebase origin main
-          git add data/ instagram/ig_posts.json instagram/images/
-          # staged に変更があれば commit、無ければスキップ
-          if ! git diff --staged --quiet; then
-            git commit -m "Instagram投稿ログ更新"
-            # push失敗時は pull --rebase で再試行
-            for attempt in 1 2 3; do
-              if git push origin main; then
-                echo "[GIT] push成功 (attempt=$attempt)"
-                break
-              fi
-              echo "[WARN] git push失敗 attempt=$attempt - rebase してリトライ"
-              git pull --rebase origin main
-              sleep 3
-            done
-          else
+          # 先にcommitしてからpullする。ig_scheduler が書き換えた instagram/ig_posts.json 等が
+          # 未commitのまま pull --rebase すると "cannot pull with rebase: You have unstaged
+          # changes" で必ず失敗する（2026-08-05にnote側で実際に事故った手順）
+          git add data/ instagram/ig_posts.json instagram/images/ 2>/dev/null || true
+          if git diff --staged --quiet; then
             echo "[GIT] staged変更なし、skip"
+            exit 0
           fi
-          exit 0
+          git commit -m "Instagram投稿ログ更新"
+          # pushの失敗を握り潰すと「投稿済み」記録が消えて次回の重複投稿要因になるためリトライする
+          PUSHED=0
+          for attempt in 1 2 3; do
+            if git push origin main; then
+              echo "[GIT] push成功 (attempt=$attempt)"
+              PUSHED=1
+              break
+            fi
+            echo "[WARN] git push失敗 attempt=$attempt - rebase してリトライ"
+            sleep 3
+            # 解決できない衝突が残ったら rebase を必ず畳む。放置すると detached HEAD になり
+            # 以降のpull/pushが全部死んでログcommitごと消える
+            git pull --rebase origin main || { git rebase --abort || true; git checkout main || true; }
+          done
+          if [ "$PUSHED" != "1" ]; then
+            echo "::error::Instagram投稿ログをpushできませんでした。IG上は投稿済みでもログ未記録のため、次回同じ内容を再投稿する恐れがあります"
+            echo "## ❌ 投稿ログのpush失敗（次回重複投稿の恐れあり）" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
