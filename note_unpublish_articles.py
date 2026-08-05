@@ -18,6 +18,7 @@ import os
 import sys
 import time
 
+import note_keys_registry
 from note_cta_publish import NOTE_API, UA, chrome_cookies, get_note, req_session
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -63,6 +64,9 @@ def unpublish_one(key, dry_run=False):
 
     if d["status"] != "published":
         print("  already not published — skip")
+        # 既に下書きなのに公開キー台帳に残っているケースを取りこぼさない
+        if not dry_run:
+            note_keys_registry.remove(key, reason="already draft")
         return d
     if dry_run:
         print("  [dry-run] change_status は実行しない")
@@ -123,7 +127,11 @@ def unpublish_one(key, dry_run=False):
 
     time.sleep(2)
     print("  --- verify ---")
-    return verify(key)
+    d = verify(key)
+    # 公開から下ろせたら公開キー台帳からも外す（一括処理が死にキーを踏まないように）
+    if d["status"] != "published":
+        note_keys_registry.remove(key, reason="unpublish")
+    return d
 
 
 if __name__ == "__main__":
