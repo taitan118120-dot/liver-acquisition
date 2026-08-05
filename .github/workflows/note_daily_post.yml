@@ -65,14 +65,25 @@ jobs:
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           # 診断ファイル(data/login_diag/)は.gitignoreで除外済み。Artifactで回収する。
-          git pull --rebase || true
+          # 先にcommitしてからpullする。ポスターが書き換えたdata/*が未commitのまま
+          # pull --rebaseすると "cannot pull with rebase: You have unstaged changes" で
+          # 必ず失敗し、古いbase上でcommit→push rejected という詰み方をする（2026-08-05）
           git add data/note_auto_post_log.csv data/note_keyword_tracker.json 2>/dev/null || true
           git diff --staged --quiet || git commit -m "Note自動投稿ログ $(TZ=Asia/Tokyo date +'%Y-%m-%d %H:%M')"
           # pushの失敗を握り潰すと「投稿済み」記録が消えて次回の重複投稿要因になるためリトライする
           # （それでも失敗した場合はposter側のタイトル重複ガードが最後の砦）
+          PUSHED=0
           for i in 1 2 3; do
-            git push && break
+            if git push; then PUSHED=1; break; fi
             echo "push失敗 (試行$i) → rebaseして再試行"
             sleep 5
-            git pull --rebase || true
-          done || true
+            # ログCSVの末尾衝突は .gitattributes の merge=union が自動解決する。
+            # それでも解決できない衝突が残ったら rebase を必ず畳む。放置すると
+            # detached HEAD になり、以降のpull/pushが全部死んでcommitごと消える
+            git pull --rebase || { git rebase --abort || true; git checkout main || true; }
+          done
+          if [ "$PUSHED" != "1" ] && ! git diff --quiet HEAD origin/main -- data/note_auto_post_log.csv; then
+            echo "::error::投稿ログをpushできませんでした。note.com上は投稿済みでもログ未記録の可能性があります"
+            echo "## ❌ 投稿ログのpush失敗（note側は投稿済みの可能性あり）" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi

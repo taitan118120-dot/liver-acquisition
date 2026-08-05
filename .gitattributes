@@ -1,0 +1,11 @@
+# 追記専用ログCSVは union マージで自動解決する。
+#
+# 背景: 2026-08-05、note_daily_post が「1回目失敗 → auto_retry で2回目成功」
+# となった際、2回とも末尾に #125 の行を追記したため rebase が末尾で衝突。
+# rebaseが止まって detached HEAD になり、投稿成功のログcommitごと消えた。
+# → 「note.comには公開済みなのにログ上は未投稿」になり、翌日の投稿枠が
+#    重複ガードで潰れる。
+#
+# union は両方の行を残すだけなので、投稿済み判定（set化して参照）には無害。
+data/note_auto_post_log.csv merge=union
+data/threads_post_log.csv merge=union
