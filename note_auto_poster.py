@@ -35,6 +35,11 @@ import requests
 from urllib.parse import unquote
 from datetime import datetime
 
+# 公開の3段（draft_save → reCAPTCHA verifications → PUT）は全スクリプト共通。
+# note_publish_core は browser_cookie3 に依存しないので GitHub Actions でも import できる。
+from note_publish_core import (NOTE_API_BASE, NOTE_UA, RECAPTCHA_SITEKEY,
+                               NotePublishError, editor_browser, publish_via_editor)
+
 # ─── パス設定 ─────────────────────────────────────────
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ARTICLES_DIR = os.path.join(BASE_DIR, "blog", "articles_note")
@@ -42,11 +47,8 @@ DATA_DIR = os.path.join(BASE_DIR, "data")
 TRACKER_FILE = os.path.join(DATA_DIR, "note_keyword_tracker.json")
 LOG_FILE = os.path.join(DATA_DIR, "note_auto_post_log.csv")
 
-NOTE_API_BASE = "https://note.com/api"
 NOTE_CREATOR = "taitan_118"
-NOTE_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-           "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
-RECAPTCHA_SITEKEY = "6LefXTAsAAAAADYVISEItAl0IX1rgSGQ-asNy56w"
+# NOTE_API_BASE / NOTE_UA / RECAPTCHA_SITEKEY は note_publish_core が正本（上で import 済み）
 
 # ─── ユーティリティ ───────────────────────────────────
 
@@ -903,124 +905,21 @@ def _playwright_full_post(title, body_html, hashtags, publish=True):
             browser.close()
             raise Exception(f"note_id取得失敗 key={note_key}")
 
-        # Step2: まず draft_save で本文を確実に保存（editor の定期保存と同じ）
-        draft_save_url = f"{NOTE_API_BASE}/v1/text_notes/draft_save?id={note_id}"
-        draft_save_payload = {"body": body_html, "body_length": len(body_html), "name": title}
-        print(f"  [PW] draft_save...")
-        ds_result = page.evaluate(
-            """async ({url, payload}) => {
-                const m = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
-                const xsrf = m ? decodeURIComponent(m[1]) : null;
-                const headers = {"Content-Type": "application/json", "Accept": "application/json", "X-Requested-With": "XMLHttpRequest"};
-                if (xsrf) headers["X-XSRF-TOKEN"] = xsrf;
-                const resp = await fetch(url, {method: "POST", headers, credentials: "include", body: JSON.stringify(payload)});
-                return {status: resp.status, body: await resp.text()};
-            }""",
-            {"url": draft_save_url, "payload": draft_save_payload}
-        )
-        print(f"  [PW] draft_save: status={ds_result['status']}")
-        if ds_result["status"] not in (200, 201):
-            browser.close()
-            raise Exception(f"draft_save失敗: status={ds_result['status']} body={ds_result['body'][:300]}")
-
-        # Step3: publish ページへ遷移して grecaptcha (reCAPTCHA v3) をロード
-        # 実際の editor は publish ボタン押下前に /v3/challenges/verifications を叩く必要がある
+        # Step2〜4: draft_save → reCAPTCHA verifications → PUT。
+        # 既に自前で編集画面まで来ているので goto_edit=False。PUT が非2xxでも下書き扱いで
+        # URLを返したいので、例外にせず戻り値で受け取る。
         target_status = "published" if publish else "draft"
-        if publish:
-            try:
-                publish_page_url = f"https://editor.note.com/notes/{note_key}/publish"
-                print(f"  [PW] publish page へ遷移: {publish_page_url}")
-                page.goto(publish_page_url, wait_until="domcontentloaded", timeout=30000)
-                # grecaptcha が window に入るのを待つ
-                try:
-                    page.wait_for_function(
-                        "typeof window.grecaptcha !== 'undefined' && typeof window.grecaptcha.execute === 'function'",
-                        timeout=20000,
-                    )
-                    print(f"  [PW] grecaptcha ロード済み")
-                except Exception as e:
-                    print(f"  [PW] grecaptcha待機タイムアウト: {e}")
-                time.sleep(2)
-
-                # reCAPTCHA v3 token 取得 → verifications 送信
-                # URLは https://note.com/api を絶対指定する。このページは editor.note.com
-                # 配信で、そのCloudFrontは /api/* をoriginに流さず403(HTMLのエラーページ)を
-                # 返すため、相対 '/api/...' だと100%失敗する（2026-08-05に実測で確定）。
-                rc_result = page.evaluate(
-                    """async (url) => {
-                        if (typeof grecaptcha === 'undefined') return {error: 'no grecaptcha'};
-                        return new Promise((resolve) => {
-                            grecaptcha.ready(async () => {
-                                try {
-                                    const token = await grecaptcha.execute(
-                                        '6LefXTAsAAAAADYVISEItAl0IX1rgSGQ-asNy56w',
-                                        {action: 'note_post'}
-                                    );
-                                    const resp = await fetch(url, {
-                                        method: 'POST',
-                                        headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'},
-                                        credentials: 'include',
-                                        body: JSON.stringify({
-                                            g_recaptcha_token_v3: token,
-                                            g_recaptcha_action_v3: 'note_post',
-                                            via: 'note_post',
-                                        }),
-                                    });
-                                    resolve({status: resp.status, body: await resp.text(), token: 'ok'});
-                                } catch (e) {
-                                    resolve({error: e.message || String(e)});
-                                }
-                            });
-                        });
-                    }""",
-                    f"{NOTE_API_BASE}/v3/challenges/verifications",
-                )
-                # 失敗しても中断しない（note公式のpublishも .catch(()=>{}) で捨ててPUTへ進む）。
-                # note が検証必須に切り替えたらPUTが4xxで落ちるので、予兆としてWARNだけ残す。
-                if rc_result.get("status") != 200:
-                    print(f"  [PW][WARN] reCAPTCHA verifications 異常（続行）: {rc_result}")
-                else:
-                    print(f"  [PW] reCAPTCHA verifications: {rc_result}")
-            except Exception as e:
-                print(f"  [PW] reCAPTCHA/verifications 失敗（継続）: {e}")
-
-        # Step4: PUT /v1/text_notes/{id} で公開
-        put_payload = {
-            "status": target_status,
-            "name": title,
-            "free_body": body_html,
-            "pay_body": "",
-            "body_length": len(body_html),
-            "price": 0,
-            "hashtags": hashtags[:10],
-            "disable_comment": False,
-            "send_notifications_flag": True,
-            "limited": False,
-        }
-        put_url = f"{NOTE_API_BASE}/v1/text_notes/{note_id}"
-        print(f"  [PW] PUT /v1/text_notes/{note_id} (status={target_status})...")
-        put_result = page.evaluate(
-            """async ({url, payload}) => {
-                const m = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
-                const xsrf = m ? decodeURIComponent(m[1]) : null;
-                const headers = {
-                    "Content-Type": "application/json",
-                    "Accept": "application/json",
-                    "X-Requested-With": "XMLHttpRequest",
-                };
-                if (xsrf) headers["X-XSRF-TOKEN"] = xsrf;
-                const resp = await fetch(url, {
-                    method: "PUT",
-                    headers: headers,
-                    credentials: "include",
-                    body: JSON.stringify(payload),
-                });
-                const body = await resp.text();
-                return {status: resp.status, body: body, xsrf: !!xsrf};
-            }""",
-            {"url": put_url, "payload": put_payload}
-        )
-        print(f"  [PW] PUT: status={put_result['status']}, xsrf={put_result['xsrf']}")
+        print(f"  [PW] draft_save → publish (status={target_status})...")
+        try:
+            steps = publish_via_editor(
+                page, note_id, note_key, title, body_html, hashtags,
+                status=target_status, recaptcha=publish, send_notifications=True,
+                goto_edit=False, raise_on_put_error=False, log_prefix="  [PW] ")
+        except NotePublishError:
+            browser.close()
+            raise
+        put_result = steps["put"]
+        print(f"  [PW] xsrf={put_result['xsrf']}")
 
         article_url = None
         draft_only = False
@@ -1448,109 +1347,15 @@ def _inplace_update_note(key, note_id, title, body_html):
     editor.note.com を開き draft_save → reCAPTCHA v3 → PUT status=published。
     フォロワーへの更新通知はOFF。タグ復元とeyecatchは呼び出し元が担当する。
     参考: note_leadmagnet_publish.publish_one / project_note_remote_update。"""
-    from playwright.sync_api import sync_playwright
     import note_tag_guard
 
     note_tag_guard.refresh_cookies()          # CIではno-op、ローカルではChrome cookieを最新化
     pw_cookies = note_tag_guard._load_pw_cookies()
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=True,
-            args=["--no-sandbox", "--disable-blink-features=AutomationControlled"])
-        ctx = browser.new_context(user_agent=NOTE_UA, locale="ja-JP",
-                                  viewport={"width": 1400, "height": 900},
-                                  bypass_csp=True)
-        ctx.add_cookies(pw_cookies)
-        page = ctx.new_page()
-        page.goto(f"https://editor.note.com/notes/{key}/edit",
-                  wait_until="domcontentloaded", timeout=60000)
-        try:
-            page.wait_for_load_state("networkidle", timeout=20000)
-        except Exception:
-            pass
-        time.sleep(3)
-
-        # draft_save（既存idへ本文を保存）
-        ds = page.evaluate(
-            """async ({url, payload}) => {
-                const m = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
-                const h = {"Content-Type":"application/json","Accept":"application/json","X-Requested-With":"XMLHttpRequest"};
-                if (m) h["X-XSRF-TOKEN"] = decodeURIComponent(m[1]);
-                const r = await fetch(url, {method:"POST", headers:h, credentials:"include", body:JSON.stringify(payload)});
-                return {status:r.status, body:(await r.text()).slice(0,300)};
-            }""",
-            {"url": f"{NOTE_API_BASE}/v1/text_notes/draft_save?id={note_id}",
-             "payload": {"body": body_html, "body_length": len(body_html), "name": title}})
-        print(f"  [PW] draft_save: {ds['status']}")
-        if ds["status"] not in (200, 201):
-            browser.close()
-            raise Exception(f"draft_save失敗: {ds}")
-
-        # publish ページで reCAPTCHA v3。CSPで wait_for_function(eval) が使えないため
-        # evaluate でポーリングする。grecaptcha は enterprise 版に移行している可能性があり両対応。
-        page.goto(f"https://editor.note.com/notes/{key}/publish",
-                  wait_until="domcontentloaded", timeout=40000)
-        for _ in range(20):
-            try:
-                ready = page.evaluate(
-                    "()=>{const g=(window.grecaptcha&&window.grecaptcha.enterprise)||window.grecaptcha;"
-                    "return !!(g&&typeof g.execute==='function');}")
-                if ready:
-                    break
-            except Exception:
-                pass
-            time.sleep(1)
-        time.sleep(2)
-        # verifications のURLは https://note.com/api を絶対指定する。このページは
-        # editor.note.com 配信で、そのCloudFrontは /api/* をoriginに流さず403(HTMLのエラー
-        # ページ)を返すため、相対 '/api/...' だと100%失敗する（2026-08-05に実測で確定）。
-        try:
-            rc = page.evaluate(
-                """async ({sitekey, url}) => {
-                    const g=(window.grecaptcha&&window.grecaptcha.enterprise)||window.grecaptcha;
-                    if(!g||typeof g.execute!=='function') return {error:'no grecaptcha'};
-                    try{
-                        const t=await g.execute(sitekey,{action:'note_post'});
-                        const r=await fetch(url,{method:'POST',
-                          headers:{'Content-Type':'application/json','Accept':'application/json','X-Requested-With':'XMLHttpRequest'},
-                          credentials:'include',
-                          body:JSON.stringify({g_recaptcha_token_v3:t,g_recaptcha_action_v3:'note_post',via:'note_post'})});
-                        return {status:r.status, body:(await r.text()).slice(0,200)};
-                    }catch(e){return {error:String(e)}}
-                }""", {"sitekey": RECAPTCHA_SITEKEY,
-                       "url": f"{NOTE_API_BASE}/v3/challenges/verifications"})
-        except Exception as e:
-            rc = {"error": str(e)}
-        # 失敗しても中断しない（note公式のpublishも .catch(()=>{}) で捨ててPUTへ進む）。
-        # note が検証必須に切り替えたらPUTが4xxで落ちるので、予兆としてWARNだけ残す。
-        if rc.get("status") != 200:
-            print(f"  [PW][WARN] recaptcha verifications 異常（PUTは続行）: {rc}")
-        else:
-            print(f"  [PW] recaptcha verifications: {rc}")
-
-        # PUT で再公開。hashtags は note.com に無視されるため（タグ復元は ensure_tags が担う）
-        # ここでは既存タグを渡しつつ、確実な復元は後段に委ねる。eyecatch は触らない。
-        put_payload = {
-            "status": "published", "name": title,
-            "free_body": body_html, "pay_body": "", "body_length": len(body_html),
-            "price": 0, "hashtags": [],
-            "disable_comment": False,
-            "send_notifications_flag": False, "limited": False,
-        }
-        pr = page.evaluate(
-            """async ({url, payload}) => {
-                const m = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
-                const h = {"Content-Type":"application/json","Accept":"application/json","X-Requested-With":"XMLHttpRequest"};
-                if (m) h["X-XSRF-TOKEN"] = decodeURIComponent(m[1]);
-                const r = await fetch(url, {method:"PUT", headers:h, credentials:"include", body:JSON.stringify(payload)});
-                return {status:r.status, body:(await r.text()).slice(0,400)};
-            }""",
-            {"url": f"{NOTE_API_BASE}/v1/text_notes/{note_id}", "payload": put_payload})
-        print(f"  [PW] PUT: {pr['status']}")
-        browser.close()
-        if pr["status"] not in (200, 201):
-            raise Exception(f"PUT失敗: {pr}")
+    # PUT の hashtags は note.com に無視されるため空で渡す（タグ復元は ensure_tags が担う）。
+    # eyecatch は触らない。
+    with editor_browser(pw_cookies, user_agent=NOTE_UA, bypass_csp=True) as page:
+        publish_via_editor(page, note_id, key, title, body_html, log_prefix="  [PW] ")
     return True
 
 

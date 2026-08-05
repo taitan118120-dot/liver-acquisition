@@ -35,7 +35,8 @@ def main():
             pr("  -> body update")
             try:
                 P.publish_one(key)
-            except SystemExit as e:
+            # publish_one は NotePublishError（RuntimeError）で落ちる。旧実装の SystemExit も残す
+            except (SystemExit, Exception) as e:
                 pr("  !! body update FAILED:", e); continue
             time.sleep(4)
             st = cur_state(s, key)

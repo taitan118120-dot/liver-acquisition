@@ -3,7 +3,7 @@
 
 - 挿入位置: 本文末尾側の lin.ee リンクを含む <p> ブロックの直前
 - 冪等: 本文に「スタートダッシュガイド」が既にあればスキップ
-- 機構は note_cta_publish.py と同じ（Chrome cookie + Playwright + reCAPTCHA + PUT）
+- 公開の3段は note_publish_core.publish_via_editor が正本（cookieはChromeから取る）
 
 使い方:
   python3 note_leadmagnet_publish.py <key> [<key> ...]   # 指定記事のみ
@@ -15,7 +15,8 @@ import os
 import sys
 import time
 
-from note_cta_publish import NOTE_API, RECAPTCHA_SITEKEY, UA, chrome_cookies, get_note, req_session
+from note_cta_publish import chrome_cookies, get_note, req_session
+from note_publish_core import editor_browser, publish_via_editor
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 KEYS_FILE = os.path.join(BASE_DIR, "data", "published_note_keys.json")
@@ -58,7 +59,6 @@ def publish_one(key, transform_fn=None, expect_marker=LM_MARK):
     expect_marker: 反映確認に使う文字列。transform_fn を差し替える呼び出し側は
         自分が挿入したマーカーを渡すこと（None で本文チェックを省略）。
     """
-    from playwright.sync_api import sync_playwright
     s = req_session()
     d = get_note(s, key, draft=False)
     note_id = d["id"]
@@ -72,96 +72,10 @@ def publish_one(key, transform_fn=None, expect_marker=LM_MARK):
     print(f"  id={note_id} title={title[:24]}")
     print(f"  body {len(old_body)} -> {len(new_body)}  tags={len(tags)}")
 
-    pw_cookies = chrome_cookies()
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True,
-            args=["--no-sandbox", "--disable-blink-features=AutomationControlled"])
-        ctx = browser.new_context(user_agent=UA, locale="ja-JP",
-                                  viewport={"width": 1400, "height": 900})
-        ctx.add_cookies(pw_cookies)
-        page = ctx.new_page()
-        page.goto(f"https://editor.note.com/notes/{key}/edit",
-                  wait_until="domcontentloaded", timeout=60000)
-        try:
-            page.wait_for_load_state("networkidle", timeout=20000)
-        except Exception:
-            pass
-        time.sleep(3)
-
-        ds = page.evaluate("""async ({url, payload}) => {
-            const m=document.cookie.match(/XSRF-TOKEN=([^;]+)/);
-            const h={"Content-Type":"application/json","Accept":"application/json","X-Requested-With":"XMLHttpRequest"};
-            if(m)h["X-XSRF-TOKEN"]=decodeURIComponent(m[1]);
-            const r=await fetch(url,{method:"POST",headers:h,credentials:"include",body:JSON.stringify(payload)});
-            return {status:r.status, body:(await r.text()).slice(0,300)};
-        }""", {"url": f"{NOTE_API}/v1/text_notes/draft_save?id={note_id}",
-               "payload": {"body": new_body, "body_length": len(new_body), "name": title}})
-        print(f"  draft_save: {ds['status']}")
-        if ds["status"] not in (200, 201):
-            browser.close(); raise RuntimeError(f"draft_save失敗: {ds}")
-
-        page.goto(f"https://editor.note.com/notes/{key}/publish",
-                  wait_until="domcontentloaded", timeout=40000)
-        # CSPでwait_for_function(eval)が使えないため、evaluateでポーリングする。
-        # grecaptchaはenterprise版に移行している可能性があるので両対応。
-        for _ in range(20):
-            try:
-                ready = page.evaluate(
-                    "()=>{const g=(window.grecaptcha&&window.grecaptcha.enterprise)||window.grecaptcha;"
-                    "return !!(g&&typeof g.execute==='function');}")
-                if ready:
-                    break
-            except Exception:
-                pass
-            time.sleep(1)
-        time.sleep(2)
-        # verifications のURLは https://note.com/api を絶対指定する。このページは
-        # editor.note.com 配信で、そのCloudFrontは /api/* をoriginに流さず403(HTMLのエラー
-        # ページ)を返すため、相対 '/api/...' だと100%失敗する（2026-08-05に実測で確定）。
-        # note公式のeditorも axios baseURL="https://note.com/api" で叩いている。
-        try:
-            rc = page.evaluate("""async ({sitekey, url}) => {
-                const g=(window.grecaptcha&&window.grecaptcha.enterprise)||window.grecaptcha;
-                if(!g||typeof g.execute!=='function') return {error:'no grecaptcha'};
-                try{
-                    const t=await g.execute(sitekey,{action:'note_post'});
-                    const r=await fetch(url,{method:'POST',
-                      headers:{'Content-Type':'application/json','Accept':'application/json','X-Requested-With':'XMLHttpRequest'},
-                      credentials:'include',
-                      body:JSON.stringify({g_recaptcha_token_v3:t,g_recaptcha_action_v3:'note_post',via:'note_post'})});
-                    return {status:r.status, body:(await r.text()).slice(0,200)};
-                }catch(e){return {error:String(e)}}
-            }""", {"sitekey": RECAPTCHA_SITEKEY,
-                   "url": f"{NOTE_API}/v3/challenges/verifications"})
-        except Exception as e:
-            rc = {"error": str(e)}
-        # ここは失敗しても中断しない（意図的に握りつぶす）。note公式のpublish処理も
-        # この呼び出しを .catch(()=>{}) で捨て、レスポンス本体も読まずにPUTへ進む実装。
-        # よって検証が通らなくても後続PUTは成功する。ただし note が検証必須に切り替えたら
-        # PUTが4xxで落ちることになるので、その予兆を拾えるようWARNは必ず出す。
-        if rc.get("status") != 200:
-            print(f"  [WARN] recaptcha verifications 異常（PUTは続行）: {rc}")
-        else:
-            print(f"  recaptcha verifications: {rc}")
-
-        put_payload = {
-            "status": "published", "name": title,
-            "free_body": new_body, "pay_body": "", "body_length": len(new_body),
-            "price": 0, "hashtags": tags,
-            "disable_comment": bool(d.get("disable_comment", False)),
-            "send_notifications_flag": False, "limited": bool(d.get("is_limited", False)),
-        }
-        pr = page.evaluate("""async ({url, payload}) => {
-            const m=document.cookie.match(/XSRF-TOKEN=([^;]+)/);
-            const h={"Content-Type":"application/json","Accept":"application/json","X-Requested-With":"XMLHttpRequest"};
-            if(m)h["X-XSRF-TOKEN"]=decodeURIComponent(m[1]);
-            const r=await fetch(url,{method:"PUT",headers:h,credentials:"include",body:JSON.stringify(payload)});
-            return {status:r.status, body:(await r.text()).slice(0,400)};
-        }""", {"url": f"{NOTE_API}/v1/text_notes/{note_id}", "payload": put_payload})
-        print(f"  PUT: {pr['status']}")
-        browser.close()
-        if pr["status"] not in (200, 201):
-            raise RuntimeError(f"PUT失敗: {pr}")
+    with editor_browser(chrome_cookies()) as page:
+        publish_via_editor(page, note_id, key, title, new_body, tags,
+                           disable_comment=d.get("disable_comment", False),
+                           limited=d.get("is_limited", False))
 
     time.sleep(2)
     print("  --- verify ---")
