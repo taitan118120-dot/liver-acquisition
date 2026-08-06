@@ -1,0 +1,122 @@
+name: 公開キー台帳 巻き戻し番犬
+
+# 公開キー台帳 data/published_note_keys.json の「静かな巻き戻し」を push/PR で検知する。
+#
+# 背景: 2026-08-05、台帳98件の古いブランチ claude/adoring-greider-7df689 を
+# そのままマージすると main の108件が13件巻き戻る状態だった
+# （data/branch_close_adoring-greider-7df689_2026-08-05.md）。
+# 並行 worktree が10本以上あるので、同じ事故は今後も起こりうる。
+#
+# 週1の note_keys_guard.yml は公開APIを全件叩くので毎push回せない。
+# こちらは git diff だけで判定する軽量版（note に一切アクセスしない・数秒）。
+#   台帳からキーが消えた
+#     → 消したコミットを1件ずつ特定
+#     → 取り下げ作業（note_unpublish_articles.py / note_delete_articles.py 由来）
+#        でないもの、特にマージコミットが落としたものは赤にして Issue 通知
+# → 巻き戻しが「マージした瞬間」に赤くなる。
+
+on:
+  push:
+    paths:
+      - 'data/published_note_keys.json'
+  pull_request:
+    paths:
+      - 'data/published_note_keys.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  shrink-guard:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # 消えた経緯を辿るので全履歴が要る
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 比較範囲を決める
+        id: range
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "base=${{ github.event.pull_request.base.sha }}" >> "$GITHUB_OUTPUT"
+            echo "head=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            echo "base=${{ github.event.before }}" >> "$GITHUB_OUTPUT"
+            echo "head=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "base=HEAD~1" >> "$GITHUB_OUTPUT"
+            echo "head=HEAD" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 台帳の減少を検査
+        id: guard
+        run: |
+          python3 note_keys_shrink_guard.py \
+            --base "${{ steps.range.outputs.base }}" \
+            --head "${{ steps.range.outputs.head }}" --json
+
+      - name: 巻き戻し検知 → Issue通知
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const title = '公開キー台帳の巻き戻し検知（巻き戻し番犬）';
+            let report = {before: 0, after: 0, unexplained: [], culprits: []};
+            try {
+              report = JSON.parse(fs.readFileSync('data/note_keys_shrink_report.json', 'utf8'));
+            } catch (e) {}
+            const culprits = (report.culprits || []).filter(c => !c.explained).map(c =>
+              `- ${c.is_merge ? '**マージ**' : 'コミット'} \`${c.commit}\` が ${c.keys.length}件を落としています\n` +
+              `  - ${c.subject}\n  - ${c.keys.map(k => '`' + k + '`').join(', ')}`
+            ).join('\n');
+            const keys = (report.unexplained || []).map(k => '`' + k + '`').join(', ');
+            const body = [
+              '## 公開キー台帳 巻き戻し番犬 検知',
+              '',
+              `台帳 \`data/published_note_keys.json\` が **${report.before}件 → ${report.after}件** に減りましたが、`,
+              'この減少は取り下げ作業（`note_unpublish_articles.py` / `note_delete_articles.py`）に紐づいていません。',
+              '**古いブランチのマージなどで台帳だけが巻き戻った可能性があります。**',
+              '',
+              '## 説明のつかない減少',
+              culprits || `- ${keys || '(レポート読込失敗。ランのログを確認)'}`,
+              '',
+              '## 対処',
+              '1. 消えたキーが note 上で本当に非公開/削除されているか確認',
+              '   （`python3 note_keys_registry.py --check` で全件突合できる）',
+              '2. まだ公開中なら巻き戻し。台帳を戻して `--check` が緑になることを確認',
+              '3. 正当な取り下げだった場合は、コミットメッセージに「非公開」「削除」など',
+              '   作業内容を書けばこの番犬は通る（台帳を手で削るのは想定していない）',
+              '',
+              '---',
+              '_このIssueは `.github/workflows/note_keys_shrink_guard.yml` により自動生成されました。_',
+            ].join('\n');
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const match = existing.find(i => i.title === title);
+            if (match) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: match.number,
+                body: `再検知: ${new Date().toISOString()}\n\n${culprits || keys}`,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+              });
+            }

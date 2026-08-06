@@ -1,0 +1,106 @@
+name: 公開キー台帳 番犬
+
+# 公開キー台帳 data/published_note_keys.json と note の実状態のズレを週1で検知する番犬。
+#
+# 背景: 2026-08-05、台帳98件の古いブランチ claude/adoring-greider-7df689 を
+# そのままマージすると main の108件が巻き戻る状態だった
+# （data/branch_close_adoring-greider-7df689_2026-08-05.md）。
+# 並行 worktree が10本以上あるので、台帳の巻き戻し・取りこぼしは再発しうる。
+# ズレたままだと note_leadmagnet_publish.py --all などの一括処理が
+# 死にキーを踏んで無駄な失敗を出し続ける。
+#
+# 動作: 週1回 note_keys_registry.py --check --json を実行し、
+#   - 台帳にあるが note で404（非公開/削除済み） → dead
+#   - note_key_map.json にあり公開中だが台帳に無い → missing
+#   のどちらかがあればランを赤にし、Issueを作成/更新して通知する。
+#
+# 台帳の正本は note_keys_registry.py。このワークフローは検知だけで、
+# --fix による自動書き換えはしない（人が中身を見て反映する）。
+# 全件を1.2秒間隔で叩くので108件で3分弱。API負荷を考えて毎日は回さない。
+
+on:
+  schedule:
+    - cron: '50 0 * * 1'   # 毎週月曜 JST 9:50
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  keys-guard:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 台帳と note の実状態を突合
+        id: guard
+        run: python3 note_keys_registry.py --check --json
+
+      - name: ズレ検知 → Issue通知
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const title = '公開キー台帳のズレ検知（台帳番犬）';
+            let report = {total: 0, dead: [], missing: [], errors: []};
+            try {
+              report = JSON.parse(fs.readFileSync('data/note_keys_guard_report.json', 'utf8'));
+            } catch (e) {}
+            const dead = (report.dead || []).map(d =>
+              `- \`${d.key}\` (http=${d.status}) ← 台帳にあるが公開されていない`
+            ).join('\n');
+            const missing = (report.missing || []).map(k =>
+              `- \`${k}\` ← 公開中だが台帳に無い`
+            ).join('\n');
+            const errors = (report.errors || []).map(e =>
+              `- \`${e.key}\` ${e.status}`
+            ).join('\n');
+            const lines = [dead, missing].filter(Boolean).join('\n')
+              || '(ズレ無し。照会失敗のみ)';
+            const body = [
+              '## 公開キー台帳 番犬 検知',
+              '',
+              `台帳 \`data/published_note_keys.json\`（${report.total}件）と note の実状態がズレています。`,
+              '**放置すると `note_leadmagnet_publish.py --all` などの一括処理が死にキーを踏み続けます。**',
+              '',
+              '## ズレ',
+              lines,
+              '',
+              errors ? ['## 照会できなかったキー（判定不能・触っていない）', errors, ''].join('\n') : '',
+              '## 対処',
+              '1. まず巻き戻しでないか疑う（古いブランチのマージで台帳だけ戻っていないか）',
+              '2. 内容を確認したうえで `python3 note_keys_registry.py --fix` で台帳に反映',
+              '3. `python3 note_keys_registry.py --check` が緑になることを確認してコミット',
+              '',
+              '---',
+              '_このIssueは `.github/workflows/note_keys_guard.yml` により自動生成されました。_',
+            ].join('\n');
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const match = existing.find(i => i.title === title);
+            if (match) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: match.number,
+                body: `再検知: ${new Date().toISOString()}\n\n${lines}`,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+              });
+            }

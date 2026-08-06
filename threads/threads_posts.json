@@ -1403,8 +1403,10 @@
     ],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
-    "created_at": "2026-08-04T00:03:14"
+    "posted": true,
+    "created_at": "2026-08-04T00:03:14",
+    "posted_at": "2026-08-05T23:54:39",
+    "media_id": "17948315817036182"
   },
   {
     "text": "先月うちに来た27歳の男性、前職は普通の会社員。今は…",
@@ -1414,8 +1416,10 @@
     ],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
-    "created_at": "2026-08-04T00:03:14"
+    "posted": true,
+    "created_at": "2026-08-04T00:03:14",
+    "posted_at": "2026-08-06T13:00:15",
+    "media_id": "17916515649223082"
   },
   {
     "text": "正直に言うと、配信が伸び悩んでる原因はあなただけじゃないかも。\n\n🎁 新人期30日でやることを全部まとめた非売品PDF『ライバー新人期スタートダッシュガイド』を、下のリンクの友だち追加で無料配布中",
