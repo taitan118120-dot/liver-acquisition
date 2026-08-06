@@ -37,7 +37,7 @@ from datetime import datetime
 
 # 公開の3段（draft_save → reCAPTCHA verifications → PUT）は全スクリプト共通。
 # note_publish_core は browser_cookie3 に依存しないので GitHub Actions でも import できる。
-from note_publish_core import (NOTE_API_BASE, NOTE_UA, RECAPTCHA_SITEKEY,
+from note_publish_core import (NOTE_API_BASE, NOTE_UA,
                                NotePublishError, editor_browser, publish_via_editor)
 
 # ─── パス設定 ─────────────────────────────────────────
@@ -48,7 +48,7 @@ TRACKER_FILE = os.path.join(DATA_DIR, "note_keyword_tracker.json")
 LOG_FILE = os.path.join(DATA_DIR, "note_auto_post_log.csv")
 
 NOTE_CREATOR = "taitan_118"
-# NOTE_API_BASE / NOTE_UA / RECAPTCHA_SITEKEY は note_publish_core が正本（上で import 済み）
+# NOTE_API_BASE / NOTE_UA は note_publish_core が正本（上で import 済み）
 
 # ─── ユーティリティ ───────────────────────────────────
 
@@ -299,19 +299,6 @@ def setup_xsrf_token(session):
             print(f"  X-XSRF-TOKEN設定済み")
             return True
     return False
-
-
-def _clear_csrf_state(session):
-    """CSRFヘッダーと XSRF-TOKEN cookie を全て削除する。422後の再取得前に使用。"""
-    for h in ("X-XSRF-TOKEN", "X-CSRF-Token"):
-        session.headers.pop(h, None)
-    # domain/path が未知でも対応できるよう iterate して name 一致で削除
-    for cookie in list(session.cookies):
-        if cookie.name == "XSRF-TOKEN":
-            try:
-                session.cookies.clear(cookie.domain, cookie.path, cookie.name)
-            except (KeyError, ValueError):
-                pass
 
 
 def _acquire_csrf_token(session, verbose=True):
