@@ -2,9 +2,12 @@ name: Threads自動投稿
 
 on:
   schedule:
-    # Pull戦略・安全運用: 1日2回まで（JST 8:00 / 20:00 = UTC 23:00 / 11:00）
-    - cron: '0 23 * * *'
-    - cron: '0 11 * * *'
+    # Pull戦略・安全運用: 1日2回まで（JST 9:00 / 22:00 = UTC 0:00 / 13:00）
+    # 時刻別の実測(data/threads_insights.csv)で、8時台の中央値11viewsに対し
+    # 9時台45.5・22時台46。GitHub Actionsの遅延で実投稿は+0〜1時間ずれるので、
+    # 遅延しても好調な帯（9〜10時 / 22〜23時）に収まる時刻を選んだ。
+    - cron: '0 0 * * *'
+    - cron: '0 13 * * *'
   workflow_dispatch:
     inputs:
       dry_run:
