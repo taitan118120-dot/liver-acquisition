@@ -10,6 +10,11 @@ name: 死にリンク番犬
 #   - リポジトリ内コンテンツ＋公開Note全記事からURLを抽出して実チェック
 #   - 許可リスト外の lin.ee URL（typo・旧リンク混入）も検知
 #   - 死にリンクがあればランを赤にし、Issueを作成/更新して通知
+#   - 直ってdead=0に戻ったら、そのIssueを自動クローズする
+#
+# 【2026-08-07 追加】自動クローズがなかったため、Issue #5（LP画像の404）は
+# 直後に修正済みだったのに18日間オープンのまま放置され、通知が形骸化していた。
+# 番犬は「鳴く」だけでなく「鳴きやむ」ところまでが仕組み。
 
 on:
   schedule:
@@ -62,8 +67,11 @@ jobs:
               '',
               '## 対処',
               '1. 正しいURLに置換（公式LINEの正リンクは `https://lin.ee/xchCfdn` のみ）',
-              '2. 公開済みNote記事は `note_leadmagnet_publish.py` の機構（fetch-PUT＋タグ復元）で修正',
+              '2. 公開済みNote記事は `note_publish_core.publish_via_editor` の機構で修正',
+              '   （fetch-PUTはタグが消えるので使わない）',
               '3. 修正後 `python3 link_guard.py` がローカルで緑になることを確認',
+              '',
+              '直すと次回のランがこのIssueを自動クローズします。',
               '',
               '---',
               '_このIssueは `.github/workflows/link_guard.yml` により自動生成されました。_',
@@ -90,3 +98,32 @@ jobs:
                 body,
               });
             }
+
+      - name: 全リンク生存 → Issueを自動クローズ
+        # guard が通った（dead=0）ときだけ走る。失敗時は success() が false になるので
+        # 上の通知ステップとは排他になる。
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = '死にリンク検知（リンク番犬）';
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const match = existing.find(i => i.title === title);
+            if (!match) return;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: match.number,
+              body: `復旧を確認: ${new Date().toISOString()} のランで全リンクが生存していました（dead=0）。自動クローズします。`,
+            });
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: match.number,
+              state: 'closed',
+            });
