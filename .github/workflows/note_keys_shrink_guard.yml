@@ -195,11 +195,16 @@ jobs:
               return;
             }
 
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: match.number,
-              body: `復旧を確認: ${new Date().toISOString()} のランで、巻き戻していた ${wanted.size} 件のキーが台帳 \`data/published_note_keys.json\`（現在 ${ledger.length} 件）にすべて戻っていました。自動クローズします。`,
+              body: [
+                `復旧を確認: ${new Date().toISOString()} のランで、巻き戻していた ${wanted.size} 件のキーが台帳 \`data/published_note_keys.json\`（現在 ${ledger.length} 件）にすべて戻っていました。自動クローズします。`,
+                '',
+                `- ラン: ${runUrl}`,
+              ].join('\n'),
             });
             await github.rest.issues.update({
               owner: context.repo.owner,

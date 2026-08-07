@@ -123,11 +123,16 @@ jobs:
             });
             const match = existing.find(i => i.title === title);
             if (!match) return;
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: match.number,
-              body: `復旧を確認: ${new Date().toISOString()} のランで直近36時間に \`post_rc=0\` の投稿ログコミットが ${count} 件ありました。自動クローズします。`,
+              body: [
+                `復旧を確認: ${new Date().toISOString()} のランで直近36時間に \`post_rc=0\` の投稿ログコミットが ${count} 件ありました。自動クローズします。`,
+                '',
+                `- ラン: ${runUrl}`,
+              ].join('\n'),
             });
             await github.rest.issues.update({
               owner: context.repo.owner,

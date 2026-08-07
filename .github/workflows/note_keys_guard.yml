@@ -121,6 +121,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const fs = require('fs');
             const title = '公開キー台帳のズレ検知（台帳番犬）';
             const { data: existing } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
@@ -130,11 +131,25 @@ jobs:
             });
             const match = existing.find(i => i.title === title);
             if (!match) return;
+            // 突合件数はレポートから拾う。読めなくてもクローズ判断は
+            // ステップの成否だけで決まるので、文面から件数を落とすだけにする。
+            let total = null;
+            try {
+              total = JSON.parse(
+                fs.readFileSync('data/note_keys_guard_report.json', 'utf8')
+              ).total;
+            } catch (e) {}
+            const scope = total === null ? '台帳と note の全件突合' : `台帳${total}件と note の突合`;
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: match.number,
-              body: `復旧を確認: ${new Date().toISOString()} のランで台帳と note の全件突合が一致しました（dead=0 / missing=0）。自動クローズします。`,
+              body: [
+                `復旧を確認: ${new Date().toISOString()} のランで ${scope} が一致しました（dead=0 / missing=0）。自動クローズします。`,
+                '',
+                `- ラン: ${runUrl}`,
+              ].join('\n'),
             });
             await github.rest.issues.update({
               owner: context.repo.owner,
