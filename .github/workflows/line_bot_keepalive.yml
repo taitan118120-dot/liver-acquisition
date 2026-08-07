@@ -1,35 +1,129 @@
 name: LINE Bot keepalive
 
-# Render無料枠は約15分アクセスがないとスリープし、次アクセスの起動に約50秒かかる。
-# その間に来るLINEのfollow/messageイベントは再送されず消える（＝友だち追加の取りこぼし）。
-# 定期的にpingして常時起動させることで、イベントを取りこぼさない。
-# ※万一このpingが遅延しても、app.py側の「follow取りこぼし回収」で二重に保護している。
+# 役割: LINE Bot(Render)の「外部からの生存確認」＋「万一眠っていた場合の起こし役」。
+#
+# スリープ防止の主役はここではなく app.py の自己ping(8分おき)。
+# 理由: GitHubのscheduleは公開リポでは大幅に遅延し、`*/10` と書いても実際は
+#       1〜3時間おきにしか走らない（2026-08の実績で確認）。15分のスリープ閾値には
+#       まったく間に合わないので、cronをスリープ防止の主役にしてはいけない。
+#
+# さらに follow イベントの取りこぼしは app.py 側の「follow取りこぼし回収」でも保護済み。
+# よってこのワークフローは三重目の保険であり、単発で落ちても実害はない。
+#
+# 【2026-08-07 修正】GitHubのホストランナー確保失敗
+# (The job was not acquired by Runner of type hosted / Internal server error)
+# で15分待たされた末に赤くなる事故が2件発生した。これはGitHub側のインフラ障害で
+# こちらのコードでは防げず、リトライもできない。そこで方針を変えた:
+#   - ジョブの赤/緑では通知しない（continue-on-error でインフラ障害を無視）
+#   - 「Botが本当に落ちている」場合だけ Issue で通知する
+# これでインフラ障害の誤報はゼロ、本物の障害は確実に届く。
 
 on:
   schedule:
-    - cron: '*/10 * * * *'   # 10分おき
+    - cron: '23 * * * *'   # 毎時23分。自己pingが主役なので高頻度にする意味はない
   workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
 
 jobs:
   ping:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    # job レベルの continue-on-error は付けない。ping失敗は下のステップ側で
-    # exit 0 にして握り潰しているので不要（10分おきに走るため単発失敗で赤くしない）。
-    # job レベルまで付けるとタイムアウトや runner 障害まで緑になってしまう。
+    timeout-minutes: 10
+    # GitHub側のランナー確保失敗・内部エラーでランを赤くしないためのもの。
+    # 本物の障害通知は下の Issue ステップが担うので、赤/緑に頼る必要はない。
+    continue-on-error: true
     steps:
-      - name: Renderのbotを起こす
+      - name: Renderのbotを叩いて生存確認
+        id: ping
         shell: bash
         run: |
           set +e
           URL="https://liver-acquisition.onrender.com/"
-          for i in 1 2 3; do
-            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 "$URL")
+          # スリープからの復帰は50秒ほどかかるので --max-time は長めに。
+          for i in 1 2 3 4 5; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 "$URL")
             echo "ping #$i -> HTTP $code"
             if [ "$code" = "200" ]; then
+              echo "down=false" >> "$GITHUB_OUTPUT"
               exit 0
             fi
-            sleep 15
+            sleep 20
           done
-          echo "keepalive: 200が返らなかった（次サイクルで再試行）"
+          echo "::warning::5回試して200が返らなかった。Botがダウンしている可能性が高い"
+          echo "down=true" >> "$GITHUB_OUTPUT"
           exit 0
+
+      - name: ダウン検知 → Issue通知
+        if: steps.ping.outputs.down == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'LINE Botが応答しない（keepalive番犬）';
+            const body = [
+              '## LINE Bot ダウン検知',
+              '',
+              '`https://liver-acquisition.onrender.com/` が5回連続で HTTP 200 を返しませんでした。',
+              '**この状態では友だち追加しても特典PDFが届きません。**',
+              '',
+              '## 確認手順',
+              '1. Renderダッシュボードでサービスのステータスとログを確認',
+              '2. 直近の `LINE Bot auto deploy` ランが成功しているか確認',
+              '3. 復旧しない場合は Render 上で Manual Deploy',
+              '',
+              '復旧すると次回のkeepaliveランがこのIssueを自動クローズします。',
+              '',
+              '---',
+              '_このIssueは `.github/workflows/line_bot_keepalive.yml` により自動生成されました。_',
+            ].join('\n');
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const match = existing.find(i => i.title === title);
+            if (match) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: match.number,
+                body: `再検知: ${new Date().toISOString()}`,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+              });
+            }
+
+      - name: 復旧していたらIssueを自動クローズ
+        if: steps.ping.outputs.down == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'LINE Botが応答しない（keepalive番犬）';
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const match = existing.find(i => i.title === title);
+            if (match) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: match.number,
+                body: `復旧を確認: ${new Date().toISOString()} に HTTP 200 を返しました。自動クローズします。`,
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: match.number,
+                state: 'closed',
+              });
+            }
