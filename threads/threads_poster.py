@@ -124,8 +124,10 @@ def _log(text_hash, status, media_id, note=""):
         w.writerow([datetime.now().isoformat(timespec="seconds"), text_hash, status, media_id, note])
 
 
-def post_text(token, user_id, text, link=None, reply_control="everyone", dry_run=False):
+def post_text(token, user_id, text, link=None, reply_control="everyone", dry_run=False,
+              reply_to_id=None):
     """テキスト投稿（任意でlink_attachmentのリンクプレビュー付き）。
+    reply_to_id を渡すとその投稿への返信として出す。
     成功時 media_id を返す。失敗時 None。
     """
     text = (text or "").strip()
@@ -142,6 +144,8 @@ def post_text(token, user_id, text, link=None, reply_control="everyone", dry_run
         print(text)
         if link:
             print(f"[link] {link}")
+        if reply_to_id:
+            print(f"[reply_to] {reply_to_id}")
         print(f"[reply_control] {reply_control}  [hash] {th}  [len] {len(text)}")
         return "dry-run"
 
@@ -154,6 +158,8 @@ def post_text(token, user_id, text, link=None, reply_control="everyone", dry_run
     }
     if link:
         params["link_attachment"] = link
+    if reply_to_id:
+        params["reply_to_id"] = reply_to_id
     try:
         r = requests.post(f"{GRAPH_BASE}/{user_id}/threads", data=params, timeout=60)
         cdata = r.json()
@@ -234,8 +240,34 @@ def cmd_next(dry_run=False):
         target["posted_at"] = datetime.now().isoformat(timespec="seconds")
         target["media_id"] = media_id
         _save_posts(posts)
+        _post_link_reply(token, user_id, target, media_id)
+        _save_posts(posts)
         return 0
     return 0 if dry_run else 1
+
+
+def _post_link_reply(token, user_id, target, media_id):
+    """CTAリンクを本文ではなく自分への1件目の返信として出す。
+
+    本文にlink_attachmentを付けた投稿はリーチが半分以下になる（data/threads_insights.csv
+    の実測: リンクあり中央値10views / なし25.5）。リンクを返信に逃がせば
+    本投稿のリーチを落とさずに導線を残せる。
+    """
+    reply_text = (target.get("reply_text") or "").strip()
+    reply_link = (target.get("reply_link") or "").strip()
+    if not reply_link or not reply_text:
+        return
+    print("  → CTAを返信として投稿")
+    time.sleep(5)
+    rid = post_text(
+        token, user_id, reply_text, link=reply_link,
+        reply_control=target.get("reply_control", "everyone"),
+        reply_to_id=media_id,
+    )
+    if rid:
+        target["reply_media_id"] = rid
+    else:
+        print("  [WARN] CTA返信の投稿に失敗（本投稿は成功済み）")
 
 
 def main():

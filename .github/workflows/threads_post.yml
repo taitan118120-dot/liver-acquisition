@@ -57,9 +57,12 @@ jobs:
           UNPOSTED=$(python -c "import json;d=json.load(open('threads/threads_posts.json'));print(sum(1 for p in d if not p.get('posted')))" 2>/dev/null || echo 0)
           echo "未投稿キュー: $UNPOSTED"
           if [ "$UNPOSTED" -lt 4 ]; then
+            # 生成後に機械検品で落とす分があるので、必要数より多めに要求する
             echo "キュー残りわずか → 生成"
-            python threads/threads_content.py --gen 8
+            python threads/threads_content.py --gen 14
           fi
+          echo "--- キュー検品 ---"
+          python threads/threads_content.py --audit | tail -1
           exit 0
 
       - name: Threads投稿
