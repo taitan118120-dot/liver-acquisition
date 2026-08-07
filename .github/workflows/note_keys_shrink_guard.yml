@@ -14,6 +14,14 @@ name: 公開キー台帳 巻き戻し番犬
 #     → 取り下げ作業（note_unpublish_articles.py / note_delete_articles.py 由来）
 #        でないもの、特にマージコミットが落としたものは赤にして Issue 通知
 # → 巻き戻しが「マージした瞬間」に赤くなる。
+#
+# 【2026-08-07 追加】自動クローズがなかったため、link_guard の Issue #5 は
+# 直後に修正済みだったのに18日間オープンのまま放置され、通知が形骸化していた。
+# 番犬は「鳴く」だけでなく「鳴きやむ」ところまでが仕組み。
+# ただしこの番犬の検査は base..head の「差分」であって全状態ではない。
+# 単に緑になっただけで閉じると、巻き戻しが直っていないのに次の無関係な
+# 台帳変更（1件追加など）で閉じてしまう。そこで Issue 本文に消えたキーを
+# 機械可読マーカーで埋め込み、それが台帳に戻ったことを確認してから閉じる。
 
 on:
   push:
@@ -77,7 +85,11 @@ jobs:
               `- ${c.is_merge ? '**マージ**' : 'コミット'} \`${c.commit}\` が ${c.keys.length}件を落としています\n` +
               `  - ${c.subject}\n  - ${c.keys.map(k => '`' + k + '`').join(', ')}`
             ).join('\n');
-            const keys = (report.unexplained || []).map(k => '`' + k + '`').join(', ');
+            const missing = report.unexplained || [];
+            const keys = missing.map(k => '`' + k + '`').join(', ');
+            // 復旧判定に使う機械可読マーカー。閉じる側はこれを読んで
+            // 「消えたキーが台帳に戻ったか」を確認する（本文とコメント両方から拾う）。
+            const marker = `<!-- shrink-guard-keys: ${missing.join(',')} -->`;
             const body = [
               '## 公開キー台帳 巻き戻し番犬 検知',
               '',
@@ -95,8 +107,12 @@ jobs:
               '3. 正当な取り下げだった場合は、コミットメッセージに「非公開」「削除」など',
               '   作業内容を書けばこの番犬は通る（台帳を手で削るのは想定していない）',
               '',
+              '直すと次回のランがこのIssueを自動クローズします',
+              '（上記のキーが台帳に戻ったことを確認してから閉じます）。',
+              '',
               '---',
               '_このIssueは `.github/workflows/note_keys_shrink_guard.yml` により自動生成されました。_',
+              marker,
             ].join('\n');
             const { data: existing } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
@@ -110,7 +126,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: match.number,
-                body: `再検知: ${new Date().toISOString()}\n\n${culprits || keys}`,
+                body: `再検知: ${new Date().toISOString()}\n\n${culprits || keys}\n\n${marker}`,
               });
             } else {
               await github.rest.issues.create({
@@ -120,3 +136,74 @@ jobs:
                 body,
               });
             }
+
+      - name: 巻き戻し復旧 → Issueを自動クローズ
+        # この番犬が見るのは base..head の差分だけなので、「緑だった」＝「巻き戻しが直った」
+        # ではない（巻き戻しを放置したまま台帳に1件足しただけでも緑になる）。
+        # そこで Issue に埋めた shrink-guard-keys マーカーを読み、消えたキーが
+        # 実際に台帳へ戻っていることを確認できたときだけ閉じる。
+        # pull_request のランはまだ main に入っていないので対象外。
+        if: success() && github.event_name != 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const title = '公開キー台帳の巻き戻し検知（巻き戻し番犬）';
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const match = existing.find(i => i.title === title);
+            if (!match) return;
+
+            // 本文と全コメントからマーカーを集める（再検知でキーが増えることがある）。
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: match.number,
+              per_page: 100,
+            });
+            const texts = [match.body || '', ...comments.map(c => c.body || '')];
+            const re = /<!-- shrink-guard-keys: ([^>]*) -->/g;
+            const wanted = new Set();
+            for (const t of texts) {
+              for (const m of t.matchAll(re)) {
+                for (const k of m[1].split(',').map(s => s.trim()).filter(Boolean)) {
+                  wanted.add(k);
+                }
+              }
+            }
+            if (wanted.size === 0) {
+              // マーカーの無い（手動作成・旧形式の）Issueは機械判定できないので触らない。
+              core.info('復旧判定用のマーカーが無いIssueなので自動クローズしません。');
+              return;
+            }
+
+            let ledger = [];
+            try {
+              ledger = JSON.parse(fs.readFileSync('data/published_note_keys.json', 'utf8'));
+            } catch (e) {
+              core.info(`台帳を読めませんでした（${e.message}）。自動クローズしません。`);
+              return;
+            }
+            const have = new Set(ledger);
+            const still = [...wanted].filter(k => !have.has(k));
+            if (still.length) {
+              core.info(`未復旧のキーが ${still.length} 件あるので閉じません: ${still.join(', ')}`);
+              return;
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: match.number,
+              body: `復旧を確認: ${new Date().toISOString()} のランで、巻き戻していた ${wanted.size} 件のキーが台帳 \`data/published_note_keys.json\`（現在 ${ledger.length} 件）にすべて戻っていました。自動クローズします。`,
+            });
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: match.number,
+              state: 'closed',
+            });

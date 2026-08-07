@@ -14,6 +14,12 @@ name: 公開キー台帳 番犬
 #   - note_key_map.json にあり公開中だが台帳に無い → missing
 #   のどちらかがあればランを赤にし、Issueを作成/更新して通知する。
 #
+# ズレが直って緑に戻ったら、そのIssueを自動クローズする。
+#
+# 【2026-08-07 追加】自動クローズがなかったため、link_guard の Issue #5 は
+# 直後に修正済みだったのに18日間オープンのまま放置され、通知が形骸化していた。
+# 番犬は「鳴く」だけでなく「鳴きやむ」ところまでが仕組み。
+#
 # 台帳の正本は note_keys_registry.py。このワークフローは検知だけで、
 # --fix による自動書き換えはしない（人が中身を見て反映する）。
 # 全件を1.2秒間隔で叩くので108件で3分弱。API負荷を考えて毎日は回さない。
@@ -79,6 +85,8 @@ jobs:
               '2. 内容を確認したうえで `python3 note_keys_registry.py --fix` で台帳に反映',
               '3. `python3 note_keys_registry.py --check` が緑になることを確認してコミット',
               '',
+              '直すと次回のランがこのIssueを自動クローズします。',
+              '',
               '---',
               '_このIssueは `.github/workflows/note_keys_guard.yml` により自動生成されました。_',
             ].join('\n');
@@ -104,3 +112,33 @@ jobs:
                 body,
               });
             }
+
+      - name: ズレ解消 → Issueを自動クローズ
+        # --check は台帳と note を全件突合する「現在の全状態」の検査なので、
+        # 緑＝ズレゼロが確定する。失敗時は success() が false になるので
+        # 上の通知ステップとは排他になる。
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = '公開キー台帳のズレ検知（台帳番犬）';
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const match = existing.find(i => i.title === title);
+            if (!match) return;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: match.number,
+              body: `復旧を確認: ${new Date().toISOString()} のランで台帳と note の全件突合が一致しました（dead=0 / missing=0）。自動クローズします。`,
+            });
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: match.number,
+              state: 'closed',
+            });

@@ -10,6 +10,11 @@ name: X投稿ウォッチドッグ
 # 動作: 直近36時間に post_rc=0 の投稿ログコミットが1件もなければ
 #   1. 自動投稿ワークフローを即時トリガー（自己回復の試み）
 #   2. Issueを作成/更新して通知
+# 投稿が再開して post_rc=0 が戻ったら、そのIssueを自動クローズする。
+#
+# 【2026-08-07 追加】自動クローズがなかったため、link_guard の Issue #5 は
+# 直後に修正済みだったのに18日間オープンのまま放置され、通知が形骸化していた。
+# 番犬は「鳴く」だけでなく「鳴きやむ」ところまでが仕組み。
 #
 # 注意: 投稿ログのコミットメッセージ「投稿ログ更新 (post_rc=」の形式を
 # auto_post.yml 側で変える場合は、ここの grep も必ず合わせて変更すること。
@@ -77,6 +82,8 @@ jobs:
               'gh run view <RUN_ID> --log | grep -E "jitter|WARN|ERROR|投稿"',
               '```',
               '',
+              '直すと次回のランがこのIssueを自動クローズします。',
+              '',
               '---',
               '_このIssueは `.github/workflows/x_post_watchdog.yml` により自動生成されました。_',
             ].join('\n');
@@ -95,3 +102,36 @@ jobs:
                 body,
               });
             }
+
+      - name: 投稿再開を確認 → Issueを自動クローズ
+        # このワークフローは検知しても赤くならない（outputs で判定する型）ので
+        # success() だけでは排他にならない。上の通知ステップが ok_count == '0' の
+        # ときに走るのに対し、こちらは ok_count が 0 以外のときだけ走らせる。
+        # 空文字を弾いているのは、check ステップ自体がコケて outputs が
+        # 埋まらなかったランで「検知できていない」を「復旧した」と誤読しないため。
+        if: success() && steps.check.outputs.ok_count != '' && steps.check.outputs.ok_count != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'X自動投稿が36時間以上成功していません（ウォッチドッグ検知）';
+            const count = '${{ steps.check.outputs.ok_count }}';
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const match = existing.find(i => i.title === title);
+            if (!match) return;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: match.number,
+              body: `復旧を確認: ${new Date().toISOString()} のランで直近36時間に \`post_rc=0\` の投稿ログコミットが ${count} 件ありました。自動クローズします。`,
+            });
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: match.number,
+              state: 'closed',
+            });
