@@ -40,8 +40,11 @@ def load():
 
 
 def save(keys):
+    # 1キー1行で書く。全部1行にすると git diff が常に -1行 +1行にしかならず、
+    # 何件増えて何件減ったのかレビューで追えない（2026-08-05の巻き戻し未遂の一因）。
     with open(KEYS_FILE, "w", encoding="utf-8") as f:
-        json.dump(keys, f, ensure_ascii=False)
+        json.dump(keys, f, ensure_ascii=False, indent=1)
+        f.write("\n")
 
 
 def remove(keys, reason=""):
