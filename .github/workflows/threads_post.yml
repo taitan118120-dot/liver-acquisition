@@ -14,6 +14,10 @@ on:
         description: 'テスト実行（投稿しない）'
         type: boolean
         default: false
+      require_reply_link:
+        description: 'reply_link付きの投稿だけを対象にする（CTA返信の動作確認用）'
+        type: boolean
+        default: false
 
 # 重複投稿・git競合を防ぐ
 concurrency:
@@ -75,11 +79,15 @@ jobs:
         shell: bash
         run: |
           set +e
-          if [ "${{ inputs.dry_run }}" = "true" ]; then
-            python threads/threads_poster.py --next --dry-run
-          else
-            python threads/threads_poster.py --next
+          ARGS="--next"
+          if [ "${{ inputs.require_reply_link }}" = "true" ]; then
+            ARGS="$ARGS --require-reply-link"
           fi
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          echo "python threads/threads_poster.py $ARGS"
+          python threads/threads_poster.py $ARGS
           EXIT=$?
           if [ $EXIT -ne 0 ]; then
             echo "::warning::Threads投稿が非ゼロ終了 exit=$EXIT"

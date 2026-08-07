@@ -199,8 +199,12 @@ def post_text(token, user_id, text, link=None, reply_control="everyone", dry_run
     return media_id
 
 
-def cmd_next(dry_run=False):
-    """キュー(threads_posts.json)から未投稿の先頭を1本投稿する。"""
+def cmd_next(dry_run=False, require_reply_link=False):
+    """キュー(threads_posts.json)から未投稿の先頭を1本投稿する。
+
+    require_reply_link=True のときは reply_link を持つ投稿だけを対象にする。
+    CTA返信(reply_to_id)の動作確認を、通常の順番待ちをせずに1本試すための入口。
+    """
     token = _token()
     user_id = _user_id(token)
     posts = _load_posts()
@@ -219,11 +223,16 @@ def cmd_next(dry_run=False):
         if _text_hash(text) in done:
             p["posted"] = True  # ログ上は投稿済み、フラグを同期
             continue
+        if require_reply_link and not (p.get("reply_link") or "").strip():
+            continue
         target = p
         break
 
     if target is None:
-        print("[INFO] 未投稿のキューがありません。")
+        if require_reply_link:
+            print("[INFO] reply_link付きの未投稿キューがありません。")
+        else:
+            print("[INFO] 未投稿のキューがありません。")
         _save_posts(posts)
         return 0
 
@@ -235,7 +244,10 @@ def cmd_next(dry_run=False):
         reply_control=target.get("reply_control", "everyone"),
         dry_run=dry_run,
     )
-    if media_id and not dry_run:
+    if dry_run:
+        _post_link_reply(token, user_id, target, media_id, dry_run=True)
+        return 0
+    if media_id:
         target["posted"] = True
         target["posted_at"] = datetime.now().isoformat(timespec="seconds")
         target["media_id"] = media_id
@@ -243,10 +255,10 @@ def cmd_next(dry_run=False):
         _post_link_reply(token, user_id, target, media_id)
         _save_posts(posts)
         return 0
-    return 0 if dry_run else 1
+    return 1
 
 
-def _post_link_reply(token, user_id, target, media_id):
+def _post_link_reply(token, user_id, target, media_id, dry_run=False):
     """CTAリンクを本文ではなく自分への1件目の返信として出す。
 
     本文にlink_attachmentを付けた投稿はリーチが半分以下になる（data/threads_insights.csv
@@ -256,18 +268,26 @@ def _post_link_reply(token, user_id, target, media_id):
     reply_text = (target.get("reply_text") or "").strip()
     reply_link = (target.get("reply_link") or "").strip()
     if not reply_link or not reply_text:
+        if not dry_run:
+            return
+        print("  [INFO] reply_link/reply_text なし → CTA返信は出ません")
         return
     print("  → CTAを返信として投稿")
-    time.sleep(5)
+    if not dry_run:
+        time.sleep(5)
     rid = post_text(
         token, user_id, reply_text, link=reply_link,
         reply_control=target.get("reply_control", "everyone"),
         reply_to_id=media_id,
+        dry_run=dry_run,
     )
     if rid:
         target["reply_media_id"] = rid
+        print(f"  [OK] CTA返信 reply_media_id={rid}")
     else:
-        print("  [WARN] CTA返信の投稿に失敗（本投稿は成功済み）")
+        # 本投稿は成功しているのでジョブ自体は失敗させないが、原因のAPI応答は
+        # 直前の post_text が [ERROR] 行にJSONごと出しているのでログを見ること
+        print("  [REPLY-FAILED] CTA返信の投稿に失敗（本投稿は成功済み）")
 
 
 def main():
@@ -277,6 +297,8 @@ def main():
     ap.add_argument("--link", help="--text と併用するリンクプレビューURL")
     ap.add_argument("--whoami", action="store_true", help="トークンのアカウント確認")
     ap.add_argument("--dry-run", action="store_true", help="投稿せず内容のみ表示")
+    ap.add_argument("--require-reply-link", action="store_true",
+                    help="--next と併用。reply_link を持つ投稿だけを対象にする（CTA返信の動作確認用）")
     args = ap.parse_args()
 
     if args.whoami:
@@ -291,7 +313,7 @@ def main():
         sys.exit(0 if rc else 1)
 
     if args.next:
-        sys.exit(cmd_next(dry_run=args.dry_run))
+        sys.exit(cmd_next(dry_run=args.dry_run, require_reply_link=args.require_reply_link))
 
     ap.print_help()
 
