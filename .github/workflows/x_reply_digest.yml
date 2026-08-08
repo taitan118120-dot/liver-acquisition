@@ -1,0 +1,76 @@
+name: Xリプ候補ダイジェスト
+
+on:
+  schedule:
+    - cron: '0 22 * * *'   # JST 7:00（朝いちで手元に届く）
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  digest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - run: pip install tweepy
+
+      - name: リプ候補を抽出
+        id: gen
+        env:
+          TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
+          TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
+          TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
+          TWITTER_ACCESS_TOKEN_SECRET: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
+          TWITTER_BEARER_TOKEN: ${{ secrets.TWITTER_BEARER_TOKEN }}
+        run: python x_reply_digest.py
+
+      - name: 前日分のダイジェストIssueを閉じる
+        # 溜まると開く気が失せるので、常に「今日の1件」だけが開いている状態にする
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue list --label x-reply-digest --state open --json number \
+            --jq '.[].number' | while read -r n; do
+            gh issue close "$n" --comment "新しいダイジェストを発行したのでクローズします。"
+          done
+
+      - name: Issueを作成
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          title="【今日のXリプ候補】$(TZ=Asia/Tokyo date +%m/%d)"
+          gh issue create \
+            --title "$title" \
+            --body-file data/x_reply_digest.md \
+            --label x-reply-digest
+
+      - name: 既読リストを保存
+        if: always()
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add data/x_reply_seen.json data/x_reply_digest.md || true
+          if git diff --staged --quiet; then
+            echo "差分なし"
+            exit 0
+          fi
+          git commit -m "Xリプ候補ダイジェスト更新"
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push && exit 0
+            echo "push失敗 (試行 $i/3) → リトライ"
+            sleep 5
+          done
+          echo "::warning::既読リストのpushに3回失敗（次回は重複候補が出る可能性あり）"

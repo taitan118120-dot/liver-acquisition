@@ -36,7 +36,9 @@ def main() -> int:
         access_token_secret=os.environ["TWITTER_ACCESS_TOKEN_SECRET"],
     )
 
-    me = client.get_me(user_fields=["public_metrics", "description", "url", "created_at"])
+    me = client.get_me(
+        user_fields=["public_metrics", "description", "url", "created_at", "pinned_tweet_id"]
+    )
     if not me or not me.data:
         print("[ERROR] ユーザー情報を取得できませんでした")
         return 1
@@ -53,6 +55,10 @@ def main() -> int:
     print(f"リスト登録数 : {pm.get('listed_count', 0)}")
     print(f"アカウント作成: {getattr(u, 'created_at', None)}")
     print(f"URL欄        : {getattr(u, 'url', None) or '(未設定)'}")
+    # 固定ポストはプロフィール訪問者の転換率を決める最重要要素だが、
+    # X API には固定操作が無いのでアプリから手動で設定するしかない。有無だけ監視する。
+    pinned = getattr(u, "pinned_tweet_id", None)
+    print(f"固定ポスト   : {pinned or '(未設定) ← プロフ訪問者を取りこぼしています'}")
     print()
 
     tweets = client.get_users_tweets(
