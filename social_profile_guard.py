@@ -215,6 +215,10 @@ def fetch_x():
     d = r.json()
     u = d.get("data") or {}
     pinned = (d.get("includes", {}).get("tweets") or [{}])[0]
+    if not pinned.get("text"):
+        # 固定ポストはこの番犬の主目的。取れないなら黙って素通りさせず必ず可視化する
+        print(f"  ⚠️ X: 固定ポストが取得できませんでした "
+              f"（user.fields={sorted(u)} / includes={sorted(d.get('includes', {}))}）")
     # url は t.co なので entities から実URLを取る
     link = u.get("url", "")
     for e in (u.get("entities", {}).get("url", {}).get("urls") or []):
@@ -320,6 +324,11 @@ def main():
                 "hit": f"期待 @{want_user} / 実際 @{got_user}"})
 
         for f in scan_fields:
+            if f == "pinned" and not live.get("pinned"):
+                # 取得できていないだけなのを「違反なし」と誤読しないための死角検知
+                skipped.append({"media": label,
+                                "reason": "固定ポスト本文を取得できなかった（番犬の主目的なので要調査）"})
+                continue
             violations += scan(live.get(f, ""), f"{label} / {f}")
         # 過去投稿のキャプションはAPIで編集できない（＝直せない）。
         # 赤にすると番犬が永久に鳴きやまなくなるので warn 扱いにする。
