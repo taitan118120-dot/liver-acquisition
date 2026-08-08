@@ -9,7 +9,7 @@
 
   真因は走査対象の設計:
     - 一括ファクト更新は **記事本文** を対象にしていて、プロフィール文は対象外だった
-      （2026-07-31 に is正済み）
+      （2026-07-31 に是正済み）
     - さらに **固定ポストは、そのプロフィール是正のときも対象外** だった
     - link_guard.py は「リンクが生きているか」しか見ず、文面の中身は見ない
   → 「一度書いたら二度と読み返さない場所」＝プロフィール・固定ポストを
@@ -37,7 +37,7 @@
 必要な環境変数（GitHub Secrets から注入）:
   TWITTER_BEARER_TOKEN                        X
   THREADS_ACCESS_TOKEN                        Threads
-  INSTAGRAM_ACCESS_TOKEN / INSTAGRAM_BUSINESS_ID   Instagram @taitan_pro
+  INSTAGRAM_ACCESS_TOKEN / INSTAGRAM_BUSINESS_ID   Instagram @taitan_pro7
 
 レポートは data/social_profile_guard_report.json に保存される。
 """
@@ -143,8 +143,10 @@ def scan(text, where):
 MEDIA_HEADS = [
     (re.compile(r"^##\s*Threads（@taitanblog）"), "threads"),
     (re.compile(r"^##\s*X（Twitter）"), "x"),
-    (re.compile(r"^###\s*①\s*@taitan_pro"), "ig_taitan_pro"),
-    (re.compile(r"^###\s*②\s*@taitanblog"), "ig_taitanblog"),
+    # 見出し番号ではなくハンドルで引き当てる（節の並び替えで壊れないように）
+    (re.compile(r"^###\s*[①②③]?\s*@taitan_pro7"), "ig_taitan_pro7"),
+    (re.compile(r"^###\s*[①②③]?\s*@taitan_pro(?!7)"), "ig_taitan_pro_unused"),
+    (re.compile(r"^###\s*[①②③]?\s*@taitanblog"), "ig_taitanblog"),
 ]
 FIELD_HEADS = [
     (re.compile(r"^#{3,4}\s*(表示名|名前欄)"), "name"),
@@ -296,7 +298,9 @@ def main():
          ["name", "bio", "link"], ["bio", "pinned"]),
         ("Threads @taitanblog", "threads", fetch_threads, "taitanblog",
          ["name", "bio"], ["bio"]),
-        ("IG @taitan_pro", "ig_taitan_pro", fetch_ig, "taitan_pro",
+        # 事務所公式は @taitan_pro7（2026-08-08 ユーザー確定）。
+        # @taitan_pro は投稿が一度も流れていない別アカウントで、運用しない
+        ("IG @taitan_pro7", "ig_taitan_pro7", fetch_ig, "taitan_pro7",
          ["name", "bio", "link"], ["bio"]),
     ]
 

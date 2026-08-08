@@ -53,7 +53,7 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 OFFICE_NAME = "TAITAN PRO"
 OFFICE_URL = "https://taitan-pro-lp.netlify.app/#apply"
 OFFICE_TWITTER = "@taitan_LIVER"
-OFFICE_INSTAGRAM = "@taitan_pro"
+OFFICE_INSTAGRAM = "@taitan_pro7"   # 事務所公式（2026-08-08確定）。@taitan_pro は未運用の別アカウント
 CONTACT_LINE = "https://lin.ee/xchCfdn"
 
 # ============================================================
