@@ -215,10 +215,19 @@ def fetch_x():
     d = r.json()
     u = d.get("data") or {}
     pinned = (d.get("includes", {}).get("tweets") or [{}])[0]
+    # ⚠️ pinned_tweet_id が data に入っていても includes が空で返ることがある（実測）。
+    #    expansions を当てにせず、id で単体取得にフォールバックする。
+    pinned_id = u.get("pinned_tweet_id") or ""
+    if not pinned.get("text") and pinned_id:
+        t = requests.get(f"https://api.x.com/2/tweets/{pinned_id}",
+                         params={"tweet.fields": "text,created_at"},
+                         headers={"Authorization": f"Bearer {token}"}, timeout=30)
+        if t.status_code == 200:
+            pinned = t.json().get("data") or {}
     if not pinned.get("text"):
         # 固定ポストはこの番犬の主目的。取れないなら黙って素通りさせず必ず可視化する
         print(f"  ⚠️ X: 固定ポストが取得できませんでした "
-              f"（user.fields={sorted(u)} / includes={sorted(d.get('includes', {}))}）")
+              f"（pinned_tweet_id={pinned_id!r} / includes={sorted(d.get('includes', {}))}）")
     # url は t.co なので entities から実URLを取る
     link = u.get("url", "")
     for e in (u.get("entities", {}).get("url", {}).get("urls") or []):
