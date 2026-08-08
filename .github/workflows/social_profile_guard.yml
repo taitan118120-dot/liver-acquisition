@@ -1,0 +1,142 @@
+name: プロフィール番犬
+
+# プロフィール文・固定ポストの確定ファクト違反を毎日検知する番犬。
+#
+# 背景（2026-08-08）: X @taitan_LIVER の固定ポスト（2026-03-28の初投稿）に
+# 「累計150名」「傘下11代理店を統括」「DMでご相談を」「私は現役プレイヤー」が
+# 4ヶ月以上そのまま公開され続けていた。プロフィール本体は2026-07-31〜08-01に
+# 是正済みだったのに、固定ポストだけ取り残されていた。
+#
+# 真因は走査対象の設計:
+#   - 一括ファクト更新は「記事本文」が対象で、プロフィール文は対象外だった
+#   - そのプロフィール是正のときも、固定ポストは対象外だった
+#   - link_guard.py はリンクの生死しか見ず、文面の中身を見ない
+# → 「一度書いたら二度と読み返さない場所」を毎日読み直す番犬が必要。
+#
+# 動作: 毎日1回 social_profile_guard.py を実行し、
+#   - 実物のプロフィール・固定ポスト・IG投稿キャプションを取得
+#   - 確定ファクトの禁止パターンで走査
+#   - marketing/social_profiles.md（正本）と1文字単位で突合
+#   - 違反/乖離があればランを赤にし、Issueを作成/更新して通知
+#   - 直って0件に戻ったら、そのIssueを自動クローズする（link_guard と同じ型）
+
+on:
+  schedule:
+    - cron: '40 0 * * *'   # 毎日 JST 9:40（link_guard の20分後）
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  profile-guard:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 依存パッケージインストール
+        run: pip install requests
+
+      - name: プロフィール・固定ポスト走査
+        id: guard
+        env:
+          TWITTER_BEARER_TOKEN: ${{ secrets.TWITTER_BEARER_TOKEN }}
+          THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          INSTAGRAM_BUSINESS_ID: ${{ secrets.INSTAGRAM_BUSINESS_ID }}
+        run: python3 social_profile_guard.py
+
+      - name: 検知 → Issue通知
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const title = 'プロフィール／固定ポストに確定ファクト違反（プロフィール番犬）';
+            let report = {violations: [], diffs: [], skipped: [], manual: []};
+            try {
+              report = JSON.parse(fs.readFileSync('data/social_profile_guard_report.json', 'utf8'));
+            } catch (e) {}
+            const vLines = report.violations.map(v =>
+              `- **${v.where}** — ${v.reason}\n  - 該当: \`${v.hit}\``).join('\n');
+            const dLines = report.diffs.map(d =>
+              `- **${d.where}** が正本と不一致\n` +
+              '  - 正本:\n\n```\n' + d.canonical + '\n```\n' +
+              '  - 実物:\n\n```\n' + d.live + '\n```').join('\n');
+            const sLines = report.skipped.map(s => `- ${s.media}: ${s.reason}`).join('\n');
+            const mLines = (report.manual || []).map(m => `- [ ] ${m}`).join('\n');
+            const body = [
+              '## プロフィール番犬 検知',
+              '',
+              'プロフィール文・固定ポストは**一度書くと二度と読み返さない場所**です。',
+              '記事本文の一括ファクト更新はここを対象にしていないため、放置すると旧表記が残り続けます。',
+              '',
+              '## 禁止パターン検出',
+              vLines || '(なし)',
+              '',
+              '## 正本との乖離',
+              dLines || '(なし)',
+              '',
+              '## 取得できなかった媒体',
+              sLines || '(なし)',
+              '',
+              '## 自動判定できない項目（毎回目視）',
+              mLines || '(なし)',
+              '',
+              '## 対処',
+              '1. 正本は `marketing/social_profiles.md`。**実物と正本の両方**を正しい状態に揃える',
+              '2. X の bio/表示名/URL欄は `gh workflow run x_profile_update.yml`（`x_profile_update.py` の文面も同時に直す）',
+              '3. X / Threads の固定ポスト本文は `gh workflow run social_pinned_publish.yml`',
+              '   （**固定/固定解除のAPIは存在しない**ので、固定操作だけはアプリで手動）',
+              '4. Instagram の bio・表示名・リンクは **Graph API が読み取り専用**なのでアプリから手動',
+              '',
+              '直すと次回のランがこのIssueを自動クローズします。',
+              '',
+              '---',
+              '_このIssueは `.github/workflows/social_profile_guard.yml` により自動生成されました。_',
+            ].join('\n');
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open', per_page: 100,
+            });
+            const match = existing.find(i => i.title === title);
+            if (match) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: match.number,
+                body: `再検知: ${new Date().toISOString()}\n\n${vLines}\n\n${dLines}`,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo, title, body,
+              });
+            }
+
+      - name: 違反0件 → Issueを自動クローズ
+        # 番犬は「鳴く」だけでなく「鳴きやむ」ところまでが仕組み（link_guard の教訓）
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'プロフィール／固定ポストに確定ファクト違反（プロフィール番犬）';
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open', per_page: 100,
+            });
+            const match = existing.find(i => i.title === title);
+            if (!match) return;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: match.number,
+              body: `復旧を確認: ${new Date().toISOString()} のランで違反0件・正本との乖離0件でした。自動クローズします。`,
+            });
+            await github.rest.issues.update({
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: match.number, state: 'closed',
+            });

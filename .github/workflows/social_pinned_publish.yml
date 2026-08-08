@@ -1,0 +1,79 @@
+name: 固定ポスト差し替え（X / Threads）
+
+# 固定ポストの本文を確定ファクト準拠版に差し替える。手動dispatch専用。
+#
+# 背景（2026-08-08）: X @taitan_LIVER の固定ポスト（2026-03-28の初投稿）に
+# 「累計150名」「傘下11代理店を統括」「DMでご相談を」「私は現役プレイヤー」が残存。
+# プロフィール本体は是正済みだったが、固定ポストは一括更新の対象外だった。
+#
+# ⚠️ 固定/固定解除の公開APIは X にも Threads にも存在しない。
+#    このワークフローは **投稿と削除まで**。固定操作はアプリ側で手動。
+#
+# 想定手順:
+#   1. action=post-x     → 新しい固定用ポストを投稿
+#   2. Xアプリで新ポストを「プロフィールに固定」
+#   3. action=delete-x   + tweet_id=2037849449498837271 → 旧固定ポストを削除
+#   4. action=post-threads → Threads の固定用投稿を投稿 → アプリで固定
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: '実行する操作'
+        type: choice
+        required: true
+        options:
+          - post-x
+          - post-threads
+          - delete-x
+      tweet_id:
+        description: 'delete-x のとき削除するツイートID（旧固定ポストは 2037849449498837271）'
+        type: string
+        default: ''
+      dry_run:
+        description: '送信せず内容と文字数だけ確認する'
+        type: boolean
+        default: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - run: pip install tweepy requests
+
+      - name: 実行
+        env:
+          TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
+          TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
+          TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
+          TWITTER_ACCESS_TOKEN_SECRET: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
+          THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
+          THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
+        run: |
+          set -eu
+          DRY=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then DRY="--dry-run"; fi
+          case "${{ inputs.action }}" in
+            post-x)       python3 social_pinned_publish.py --post-x $DRY ;;
+            post-threads) python3 social_pinned_publish.py --post-threads $DRY ;;
+            delete-x)
+              if [ -z "${{ inputs.tweet_id }}" ]; then
+                echo "[ERROR] delete-x には tweet_id が必要です"; exit 1
+              fi
+              python3 social_pinned_publish.py --delete-x "${{ inputs.tweet_id }}" $DRY ;;
+          esac
+
+      - name: 反映を検証（X）
+        if: ${{ !inputs.dry_run && inputs.action != 'post-threads' }}
+        run: |
+          sleep 5
+          curl -s -H 'Cache-Control: no-cache' https://api.fxtwitter.com/taitan_LIVER \
+            | python3 -c "import json,sys; u=json.load(sys.stdin)['user']; print('tweets:',u['tweets'])"
+          echo '※固定の差し替えはアプリで手動。差し替え後に social_profile_guard.yml を回して検証すること。'
