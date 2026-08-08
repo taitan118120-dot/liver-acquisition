@@ -23,6 +23,7 @@ import json
 import os
 import random
 import sys
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 
 import tweepy
@@ -185,14 +186,23 @@ def hours_ago(created_at):
 
 
 def collect(client, queries, seen, my_id, keep, mode):
-    """mode='empathy' or 'reach' で採点基準を変えて候補を集める"""
+    """mode='empathy' or 'reach' で採点基準を変えて候補を集める。
+
+    候補が0件になったときに「検索が取れていない」のか「フィルタが厳しすぎる」のか
+    分からないと調整できないので、落とした理由を数えて最後に出す。
+    """
     cands = []
     picked_authors = set()
+    rej = Counter()
     for q in queries:
-        for t, u in search(client, q):
+        found = search(client, q)
+        rej[f"検索ヒット({q[:24]})"] += len(found)
+        for t, u in found:
             if str(t.id) in seen or u.id == my_id:
+                rej["既出/自分"] += 1
                 continue
             if is_ng(u.description, tweet_text=t.text):
+                rej["NG(業者・勧誘)"] += 1
                 continue
 
             fol = (u.public_metrics or {}).get("followers_count", 0)
@@ -202,8 +212,13 @@ def collect(client, queries, seen, my_id, keep, mode):
 
             both = f"{t.text}\n{bio}"
             if hits(both, OFF_TOPIC_WORDS):
+                rej["界隈違い"] += 1
                 continue
-            if hits(t.text, AUTO_SHARE_WORDS) or hits(both, AD_WORDS):
+            if hits(t.text, AUTO_SHARE_WORDS):
+                rej["配信開始の自動通知"] += 1
+                continue
+            if hits(both, AD_WORDS):
+                rej["広告文"] += 1
                 continue
 
             # ターゲットのプラットフォーム名が出ていれば重く見る
@@ -213,40 +228,51 @@ def collect(client, queries, seen, my_id, keep, mode):
                 + (hits(both, DOMAIN_SIDEJOB) if mode == "empathy" else 0)
             )
             if domain == 0:
+                rej["ドメイン語なし"] += 1
                 continue
             listener = hits(t.text, LISTENER_WORDS)
 
             if mode == "empathy":
                 if hits(t.text, VIEWER_SHARE_WORDS):
+                    rej["視聴者のシェア"] += 1
                     continue
                 # 小〜中規模の生身の人。大きすぎる＝業者/インフルで反応が返らない
                 if not (30 <= fol <= 5000):
+                    rej["フォロワー数が範囲外"] += 1
                     continue
                 if age > 24:  # 古い投稿にリプしても本人が見ない
+                    rej["古い"] += 1
                     continue
                 intent = hits(t.text, INTENT_WORDS)
                 # 検索結果はほぼ全部「数分前」なので鮮度では差が付かない。
                 # 「本人が悩みを書いているか」で並べる。リスナーの労い投稿は落とす。
                 if intent == 0 or listener >= 2:
+                    rej["悩み・意思の語が無い/リスナー投稿"] += 1
                     continue
                 score = intent * 10 + domain * 5 - listener * 20 - pm.get("reply_count", 0) * 3
                 if score <= 0:
+                    rej["スコア不足"] += 1
                     continue
             else:
                 # 人が集まっている投稿。ただし投稿直後でないとリプが埋もれる
                 if fol < 500:
+                    rej["フォロワー500未満"] += 1
                     continue
                 if age > 12:
+                    rej["古い"] += 1
                     continue
                 # リプ欄に入る価値があるのは、こちらが一次情報で語れる話題のときだけ。
                 # プロフに配信ドメイン語がある＝その人のフォロワーもこの界隈、を重視する。
                 if hits(bio, DOMAIN_LIVER) == 0:
+                    rej["プロフが配信界隈でない"] += 1
                     continue
                 # 中身のある投稿だけ。短文＝配信告知で、リプ欄に会話が起きない。
                 if len(t.text) < 60:
+                    rej["本文が短い(告知)"] += 1
                     continue
                 # 誰も反応していない投稿のリプ欄には人が来ない
                 if pm.get("like_count", 0) + pm.get("reply_count", 0) * 2 < 2:
+                    rej["反応が付いていない"] += 1
                     continue
                 score = (
                     pm.get("like_count", 0) * 2
@@ -269,6 +295,11 @@ def collect(client, queries, seen, my_id, keep, mode):
                 "query": q,
                 "score": round(score, 1),
             })
+
+    print(f"[{mode}] 絞り込みの内訳")
+    for k, v in rej.most_common():
+        print(f"    {k}: {v}")
+    print(f"    → 通過: {len(cands)}")
 
     cands.sort(key=lambda c: -c["score"])
     # 同じ人に何件もリプしない
