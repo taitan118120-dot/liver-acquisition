@@ -171,7 +171,7 @@ def save_seen(seen):
         json.dump(seen[-SEEN_KEEP:], f)
 
 
-def search(client, query, max_results=30):
+def search(client, query, max_results=100):  # recent search の上限。母数を稼ぐ
     """検索して (tweet, user) のリストを返す。失敗しても止めない。"""
     try:
         resp = client.search_recent_tweets(
