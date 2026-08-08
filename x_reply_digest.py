@@ -36,27 +36,57 @@ OUT_FILE = "data/x_reply_digest.md"
 SEEN_KEEP = 3000  # 肥大化防止
 
 # ─── A. 共感リプ用（ターゲット層本人を探す）───
-# 「今まさに始めた／悩んでる」人。こちらが一言かけると刺さる瞬間の投稿を狙う。
+# 「今まさに始めた／悩んでる」本人。こちらが一言かけると刺さる瞬間の投稿を狙う。
+# OR で束ねて1リクエストに詰める（検索のレート制限を節約するため）。
 EMPATHY_QUERIES = [
-    "初配信 緊張",
-    "配信 誰も来ない",
-    "リスナー 増えない",
-    "Pococha 始めた",
-    "ライバー 始めたい",
-    "配信 続かない",
-    "副業 始めたい 在宅",
-    "配信 楽しかった",
+    '("ライバー 始めたい" OR "ライバー やってみたい" OR "配信 始めたい" OR "Pococha 始め" OR "初配信")',
+    '("リスナー 増えない" OR "配信 誰も来ない" OR "配信 伸びない" OR "配信 続かない")',
+    '("ライバー事務所" OR "ライバー 事務所") (迷 OR 不安 OR どこ OR おすすめ OR 怪しい)',
+    '("副業 始めたい" OR "在宅ワーク 探し" OR "副業 何がいい") (スマホ OR 在宅 OR 夜)',
 ]
 
 # ─── B. 露出リプ用（人が集まっている場所を探す）───
 # ニッチの中で反応が付いている投稿。リプ欄に第三者の目がある。
 REACH_QUERIES = [
-    "ライブ配信 ライバー",
-    "Pococha ランク",
-    "ライバー 事務所",
-    "TikTok LIVE 配信",
-    "配信者 悩み",
+    '(ライバー OR ライブ配信) (稼 OR 収入 OR 現実 OR 事務所)',
+    '(Pococha OR ぽこちゃ) (ランク OR ダイヤ OR イベント OR 応援)',
+    '(配信者 OR ライバー) (悩み OR しんどい OR メンタル OR 辞め)',
+    '(副業 OR 在宅ワーク) (現実 OR 稼げ OR 始め方)',
 ]
+
+# ─── ドメイン判定 ───
+# これが本文にもプロフにも無い投稿は、こちらの土俵の外（怪談・バンド・ゲーム実況等）。
+# 4年分の一次情報で語れないところにリプしても会話にならないので落とす。
+DOMAIN_WORDS = [
+    "ライバー", "ライブ配信", "pococha", "ぽこちゃ", "ポコチャ",
+    "17live", "イチナナ", "tiktok live", "tiktoklive", "ティックトックライブ",
+    "iriam", "イリアム", "ふわっち", "showroom", "ミクチャ",
+    "配信者", "配信アプリ", "投げ銭", "副業", "在宅ワーク", "スマホ副業",
+]
+
+# 「これから／始めたて／伸び悩み」の一人称サイン。共感リプはここが本体。
+INTENT_WORDS = [
+    "始めたい", "はじめたい", "やってみたい", "気になってる", "興味ある",
+    "始めた", "はじめた", "デビュー", "初配信", "初めて",
+    "不安", "緊張", "こわい", "怖い",
+    "伸びない", "増えない", "来ない", "続かない", "わからない", "分からない",
+    "迷って", "悩んで", "どうすれば", "教えて", "アドバイス",
+]
+
+# リスナー側の投稿を落とすためのサイン。
+# 「配信 楽しかった」等はリスナーが配信者へ送る言葉で、拾ってもこちらの客にならない。
+LISTENER_WORDS = [
+    "お疲れ様でした", "おつかれさまでした", "おつかれさま", "おつかれ", "おつ！",
+    "ありがとうございました", "ありがとうございます", "楽しかったです", "楽しかったよ",
+    "楽しみにしてる", "楽しみにしています", "応援してる", "応援します", "おめでとう",
+    "来てくれて", "参加ありがとう", "見に来て", "遊びに来て", "推し",
+    "記念配信", "凸待ち", "アーカイブ",
+]
+
+
+def hits(text, words):
+    low = (text or "").lower()
+    return sum(1 for w in words if w.lower() in low)
 
 # リプの書き出しヒント（そのままコピペせず、必ず1文は自分の言葉に直すこと）
 # 同じ文面を繰り返すとスパム判定される。あくまで「書き出しの型」。
@@ -132,6 +162,13 @@ def collect(client, queries, seen, my_id, keep, mode):
             fol = (u.public_metrics or {}).get("followers_count", 0)
             pm = t.public_metrics or {}
             age = hours_ago(t.created_at)
+            bio = u.description or ""
+
+            # 本文にもプロフにもドメイン語が無ければ土俵の外
+            domain = hits(t.text, DOMAIN_WORDS) + hits(bio, DOMAIN_WORDS)
+            if domain == 0:
+                continue
+            listener = hits(t.text, LISTENER_WORDS)
 
             if mode == "empathy":
                 # 小〜中規模の生身の人。大きすぎる＝業者/インフルで反応が返らない
@@ -139,19 +176,30 @@ def collect(client, queries, seen, my_id, keep, mode):
                     continue
                 if age > 18:  # 古い投稿にリプしても本人が見ない
                     continue
-                # 新しくて、まだリプが少ない＝自分のリプが埋もれない
-                score = 100 - age * 3 - pm.get("reply_count", 0) * 5
+                intent = hits(t.text, INTENT_WORDS)
+                # 検索結果はほぼ全部「数分前」なので鮮度では差が付かない。
+                # 「本人が悩みを書いているか」で並べる。リスナーの労い投稿は落とす。
+                if intent == 0 or listener >= 2:
+                    continue
+                score = intent * 10 + domain * 5 - listener * 20 - pm.get("reply_count", 0) * 3
+                if score <= 0:
+                    continue
             else:
                 # 人が集まっている投稿。ただし投稿直後でないとリプが埋もれる
                 if fol < 1000:
                     continue
                 if age > 6:
                     continue
+                # リプ欄に入る価値があるのは、こちらが一次情報で語れる話題のときだけ。
+                # プロフにドメイン語がある＝その人のフォロワーもこの界隈、を重視する。
+                if hits(bio, DOMAIN_WORDS) == 0:
+                    continue
                 score = (
                     pm.get("like_count", 0) * 2
                     + pm.get("reply_count", 0)
                     + fol / 500
                     - age * 8
+                    - listener * 10
                 )
 
             cands.append({
@@ -255,13 +303,15 @@ def main() -> int:
     seen = load_seen()
     seen_set = set(seen)
 
-    # レート制限を避けるため各モード3クエリまで
-    empathy = collect(client, random.sample(EMPATHY_QUERIES, 3), seen_set, my_id, 5, "empathy")
-    reach = collect(client, random.sample(REACH_QUERIES, 3), seen_set, my_id, 5, "reach")
+    # 1日1回の実行なので全クエリ回して構わない（8リクエスト）
+    empathy = collect(client, EMPATHY_QUERIES, seen_set, my_id, 5, "empathy")
+    reach = collect(client, REACH_QUERIES, seen_set, my_id, 5, "reach")
 
     if not empathy and not reach:
-        print("[ERROR] 候補が0件。検索が全滅した可能性が高い（レート制限/権限）")
-        return 1
+        # 空のIssueを毎朝送ると開かなくなるので、その日は黙って見送る。
+        # 失敗(1)ではなく2を返し、ワークフロー側でIssue作成だけスキップする。
+        print("[INFO] 条件を満たす候補が0件でした。今日はIssueを作りません。")
+        return 2
 
     body = render(empathy, reach)
     os.makedirs("data", exist_ok=True)
