@@ -86,10 +86,17 @@ VIEWER_SHARE_WORDS = [
     "視聴中", "の配信を", "みんなで見よう", "見てます", "観てます", "配信見に",
 ]
 
+# アプリが自動生成する配信開始通知。中身が無いのでリプしても会話にならない。
+AUTO_SHARE_WORDS = [
+    "がライブ配信中", "今すぐ遊びにいこう", "ライブ配信中！", "配信中！",
+    "配信スタート", "枠あけました", "枠開けました", "配信はじめました",
+]
+
 # 「これから／始めたて／伸び悩み」の一人称サイン。共感リプはここが本体。
 INTENT_WORDS = [
     "始めたい", "はじめたい", "やってみたい", "気になってる", "興味ある",
-    "始めた", "はじめた", "デビュー", "初配信", "初めて",
+    "始めた", "はじめた", "始めます", "なりたい", "デビュー", "初配信", "初めて",
+    "準備中", "新人", "駆け出し", "初心者",
     "不安", "緊張", "こわい", "怖い",
     "伸びない", "増えない", "来ない", "続かない", "わからない", "分からない",
     "迷って", "悩んで", "どうすれば", "教えて", "アドバイス",
@@ -189,6 +196,8 @@ def collect(client, queries, seen, my_id, keep, mode):
             both = f"{t.text}\n{bio}"
             if hits(both, OFF_TOPIC_WORDS):
                 continue
+            if hits(t.text, AUTO_SHARE_WORDS):
+                continue
 
             # ターゲットのプラットフォーム名が出ていれば重く見る
             domain = (
@@ -204,9 +213,9 @@ def collect(client, queries, seen, my_id, keep, mode):
                 if hits(t.text, VIEWER_SHARE_WORDS):
                     continue
                 # 小〜中規模の生身の人。大きすぎる＝業者/インフルで反応が返らない
-                if not (20 <= fol <= 3000):
+                if not (10 <= fol <= 5000):
                     continue
-                if age > 18:  # 古い投稿にリプしても本人が見ない
+                if age > 24:  # 古い投稿にリプしても本人が見ない
                     continue
                 intent = hits(t.text, INTENT_WORDS)
                 # 検索結果はほぼ全部「数分前」なので鮮度では差が付かない。
@@ -225,6 +234,12 @@ def collect(client, queries, seen, my_id, keep, mode):
                 # リプ欄に入る価値があるのは、こちらが一次情報で語れる話題のときだけ。
                 # プロフに配信ドメイン語がある＝その人のフォロワーもこの界隈、を重視する。
                 if hits(bio, DOMAIN_LIVER) == 0:
+                    continue
+                # 中身のある投稿だけ。短文＝配信告知で、リプ欄に会話が起きない。
+                if len(t.text) < 60:
+                    continue
+                # 誰も反応していない投稿のリプ欄には人が来ない
+                if pm.get("like_count", 0) + pm.get("reply_count", 0) * 2 < 3:
                     continue
                 score = (
                     pm.get("like_count", 0) * 2
