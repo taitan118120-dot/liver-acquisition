@@ -51,17 +51,39 @@ REACH_QUERIES = [
     '(ライバー OR ライブ配信) (稼 OR 収入 OR 現実 OR 事務所)',
     '(Pococha OR ぽこちゃ) (ランク OR ダイヤ OR イベント OR 応援)',
     '(配信者 OR ライバー) (悩み OR しんどい OR メンタル OR 辞め)',
-    '(副業 OR 在宅ワーク) (現実 OR 稼げ OR 始め方)',
+    '("TikTok LIVE" OR 17LIVE OR イチナナ) (配信 OR ライバー)',
 ]
 
 # ─── ドメイン判定 ───
-# これが本文にもプロフにも無い投稿は、こちらの土俵の外（怪談・バンド・ゲーム実況等）。
+# これが本文にもプロフにも無い投稿は、こちらの土俵の外（怪談・バンド・パチンコ等）。
 # 4年分の一次情報で語れないところにリプしても会話にならないので落とす。
-DOMAIN_WORDS = [
-    "ライバー", "ライブ配信", "pococha", "ぽこちゃ", "ポコチャ",
-    "17live", "イチナナ", "tiktok live", "tiktoklive", "ティックトックライブ",
-    "iriam", "イリアム", "ふわっち", "showroom", "ミクチャ",
-    "配信者", "配信アプリ", "投げ銭", "副業", "在宅ワーク", "スマホ副業",
+
+# 獲得ターゲットのプラットフォーム（メモリ feedback_note_target_platforms）。重み高め。
+PRIMARY_PLATFORMS = [
+    "pococha", "ぽこちゃ", "ポコチャ", "ポコチャ",
+    "tiktok live", "tiktoklive", "ティックトックライブ", "tiktokライブ",
+    "17live", "イチナナ", "17ライブ",
+]
+# 隣接プラットフォーム・一般語。ターゲットではないが会話は成立する。
+DOMAIN_LIVER = PRIMARY_PLATFORMS + [
+    "ライバー", "ライブ配信", "配信者", "配信アプリ", "投げ銭",
+    "iriam", "イリアム", "ふわっち", "showroom", "ミクチャ", "ツイキャス",
+]
+# 副業層。共感リプでは拾うが、露出リプでは使わない
+# （副業タグの大型アカウントは情報商材・AI副業・物販ばかりでリプ欄に居るのが客層違い）。
+DOMAIN_SIDEJOB = ["副業", "在宅ワーク", "スマホ副業", "おうちワーク"]
+
+# 界隈が違うので落とす。B枠が稼ぐ系・ギャンブル系に流れるのを防ぐ。
+OFF_TOPIC_WORDS = [
+    "パチンコ", "パチスロ", "スロット", "競馬", "ボートレース", "競艇", "遊技",
+    "uber", "ウーバー", "出前館", "配達員",
+    "fx", "バイナリー", "仮想通貨", "ビットコイン", "投資",
+    "ai副業", "コンテンツ販売", "物販", "せどり", "転売", "アフィリ", "brain",
+]
+
+# 「〇〇の配信を #IRIAM で視聴中！」等の自動シェア。投稿者はリスナーなので拾わない。
+VIEWER_SHARE_WORDS = [
+    "視聴中", "の配信を", "みんなで見よう", "見てます", "観てます", "配信見に",
 ]
 
 # 「これから／始めたて／伸び悩み」の一人称サイン。共感リプはここが本体。
@@ -164,13 +186,23 @@ def collect(client, queries, seen, my_id, keep, mode):
             age = hours_ago(t.created_at)
             bio = u.description or ""
 
-            # 本文にもプロフにもドメイン語が無ければ土俵の外
-            domain = hits(t.text, DOMAIN_WORDS) + hits(bio, DOMAIN_WORDS)
+            both = f"{t.text}\n{bio}"
+            if hits(both, OFF_TOPIC_WORDS):
+                continue
+
+            # ターゲットのプラットフォーム名が出ていれば重く見る
+            domain = (
+                hits(both, DOMAIN_LIVER)
+                + hits(both, PRIMARY_PLATFORMS) * 2
+                + (hits(both, DOMAIN_SIDEJOB) if mode == "empathy" else 0)
+            )
             if domain == 0:
                 continue
             listener = hits(t.text, LISTENER_WORDS)
 
             if mode == "empathy":
+                if hits(t.text, VIEWER_SHARE_WORDS):
+                    continue
                 # 小〜中規模の生身の人。大きすぎる＝業者/インフルで反応が返らない
                 if not (20 <= fol <= 3000):
                     continue
@@ -191,8 +223,8 @@ def collect(client, queries, seen, my_id, keep, mode):
                 if age > 6:
                     continue
                 # リプ欄に入る価値があるのは、こちらが一次情報で語れる話題のときだけ。
-                # プロフにドメイン語がある＝その人のフォロワーもこの界隈、を重視する。
-                if hits(bio, DOMAIN_WORDS) == 0:
+                # プロフに配信ドメイン語がある＝その人のフォロワーもこの界隈、を重視する。
+                if hits(bio, DOMAIN_LIVER) == 0:
                     continue
                 score = (
                     pm.get("like_count", 0) * 2
