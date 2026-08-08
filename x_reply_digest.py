@@ -121,6 +121,16 @@ LISTENER_WORDS = [
 ]
 
 
+# 露出枠で使う最小限のNG。cloud_engage.is_ng は「DMを送るリード」を選ぶ基準なので
+# 「公式」「代表」「稼げる」等でライバー本人や事務所アカウントまで落としてしまう
+# （実測: 露出枠のヒット119件中47件が is_ng で消えていた）。リプする相手には厳しすぎる。
+SCAM_WORDS = [
+    "情報商材", "不労所得", "権利収入", "自動収益", "コンサル生", "億り人",
+    "ネットワークビジネス", "オンラインサロン", "мlm", "mlm",
+    "月収100万", "月収1000万", "脱サラ成功", "誰でも簡単", "コピペで",
+]
+
+
 def hits(text, words):
     low = (text or "").lower()
     return sum(1 for w in words if w.lower() in low)
@@ -201,8 +211,13 @@ def collect(client, queries, seen, my_id, keep, mode):
             if str(t.id) in seen or u.id == my_id:
                 rej["既出/自分"] += 1
                 continue
-            if is_ng(u.description, tweet_text=t.text):
+            # 共感枠は本人に直接届くので厳しめ（勧誘垢を拾うと痛い）。
+            # 露出枠は相手のリプ欄に混ざるだけなので、商材臭だけ見れば足りる。
+            if mode == "empathy" and is_ng(u.description, tweet_text=t.text):
                 rej["NG(業者・勧誘)"] += 1
+                continue
+            if hits(f"{t.text}\n{u.description or ''}", SCAM_WORDS):
+                rej["商材臭"] += 1
                 continue
 
             fol = (u.public_metrics or {}).get("followers_count", 0)
@@ -237,10 +252,10 @@ def collect(client, queries, seen, my_id, keep, mode):
                     rej["視聴者のシェア"] += 1
                     continue
                 # 小〜中規模の生身の人。大きすぎる＝業者/インフルで反応が返らない
-                if not (30 <= fol <= 5000):
+                if not (10 <= fol <= 5000):
                     rej["フォロワー数が範囲外"] += 1
                     continue
-                if age > 24:  # 古い投稿にリプしても本人が見ない
+                if age > 48:  # 古すぎる投稿にリプしても本人が見ない
                     rej["古い"] += 1
                     continue
                 intent = hits(t.text, INTENT_WORDS)
