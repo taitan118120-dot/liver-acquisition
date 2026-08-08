@@ -16,6 +16,7 @@ evo_102
 evo_103
 evo_104
 evo_105
+evo_106
 evo_107
 evo_108
 evo_109
