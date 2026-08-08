@@ -81,6 +81,13 @@ OFF_TOPIC_WORDS = [
     "ai副業", "コンテンツ販売", "物販", "せどり", "転売", "アフィリ", "brain",
 ]
 
+# 広告・情報商材の投稿を落とす。cloud_engage の NG_TWEET_WORDS の取りこぼし分。
+AD_WORDS = [
+    "リプ欄へ", "詳細はリプ", "詳細はこちら", "詳細はプロフ", "プロフから",
+    "養成コース", "受講", "スクール", "講座受付", "案件獲得", "無料相談",
+    "モニター募集", "限定公開", "先着", "枠残り", "参加費",
+]
+
 # 「〇〇の配信を #IRIAM で視聴中！」等の自動シェア。投稿者はリスナーなので拾わない。
 VIEWER_SHARE_WORDS = [
     "視聴中", "の配信を", "みんなで見よう", "見てます", "観てます", "配信見に",
@@ -196,7 +203,7 @@ def collect(client, queries, seen, my_id, keep, mode):
             both = f"{t.text}\n{bio}"
             if hits(both, OFF_TOPIC_WORDS):
                 continue
-            if hits(t.text, AUTO_SHARE_WORDS):
+            if hits(t.text, AUTO_SHARE_WORDS) or hits(both, AD_WORDS):
                 continue
 
             # ターゲットのプラットフォーム名が出ていれば重く見る
@@ -213,7 +220,7 @@ def collect(client, queries, seen, my_id, keep, mode):
                 if hits(t.text, VIEWER_SHARE_WORDS):
                     continue
                 # 小〜中規模の生身の人。大きすぎる＝業者/インフルで反応が返らない
-                if not (10 <= fol <= 5000):
+                if not (30 <= fol <= 5000):
                     continue
                 if age > 24:  # 古い投稿にリプしても本人が見ない
                     continue
@@ -227,9 +234,9 @@ def collect(client, queries, seen, my_id, keep, mode):
                     continue
             else:
                 # 人が集まっている投稿。ただし投稿直後でないとリプが埋もれる
-                if fol < 1000:
+                if fol < 500:
                     continue
-                if age > 6:
+                if age > 12:
                     continue
                 # リプ欄に入る価値があるのは、こちらが一次情報で語れる話題のときだけ。
                 # プロフに配信ドメイン語がある＝その人のフォロワーもこの界隈、を重視する。
@@ -239,7 +246,7 @@ def collect(client, queries, seen, my_id, keep, mode):
                 if len(t.text) < 60:
                     continue
                 # 誰も反応していない投稿のリプ欄には人が来ない
-                if pm.get("like_count", 0) + pm.get("reply_count", 0) * 2 < 3:
+                if pm.get("like_count", 0) + pm.get("reply_count", 0) * 2 < 2:
                     continue
                 score = (
                     pm.get("like_count", 0) * 2
