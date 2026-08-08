@@ -22,7 +22,10 @@
      パースして、実物と1文字単位で一致するか見る。乖離＝どちらかが古い
 
 判定ポリシー:
-  - NG   = 禁止パターン検出、または正本との乖離 → exit 1（Actionsが赤くなる）
+  - NG   = プロフィール／固定ポストの禁止パターン検出、正本との乖離、
+           トークンが別アカウントを指している → exit 1（Actionsが赤くなる）
+  - WARN = 過去投稿のキャプションの違反 → 報告のみ。**Graph API でキャプションは編集できない**ので
+           赤にすると番犬が永久に鳴きやまなくなる（[[feedback_watchdog_autoclose]]）
   - SKIP = 取得に必要なトークンが無い媒体（ローカル実行時など）→ 報告のみ
   - 手動 = IG @taitanblog は個人アカウントで Graph API が使えない。
            自動取得できないので毎回チェック項目として出力するだけ（赤にはしない）
@@ -198,7 +201,7 @@ def fetch_x():
     r = requests.get(
         f"https://api.x.com/2/users/by/username/{X_USERNAME}",
         params={
-            "user.fields": "name,description,url,entities,pinned_tweet_id",
+            "user.fields": "username,name,description,url,entities,pinned_tweet_id",
             "expansions": "pinned_tweet_id",
             "tweet.fields": "text,created_at",
         },
@@ -216,6 +219,7 @@ def fetch_x():
         if e.get("expanded_url"):
             link = e["expanded_url"]
     return {
+        "username": u.get("username", ""),
         "name": u.get("name", ""),
         "bio": u.get("description", ""),
         "link": link,
@@ -237,7 +241,8 @@ def fetch_threads():
         return None, f"Threads API {r.status_code}: {r.text[:200]}"
     d = r.json()
     # Threads API はプロフィールリンク・固定投稿を返さない（読み取り不可）
-    return {"name": d.get("name", ""), "bio": d.get("threads_biography", "")}, None
+    return {"username": d.get("username", ""), "name": d.get("name", ""),
+            "bio": d.get("threads_biography", "")}, None
 
 
 def fetch_ig():
@@ -251,8 +256,8 @@ def fetch_ig():
     if r.status_code != 200:
         return None, f"IG API {r.status_code}: {r.text[:200]}"
     d = r.json()
-    out = {"name": d.get("name", ""), "bio": d.get("biography", ""),
-           "link": d.get("website", ""), "captions": []}
+    out = {"username": d.get("username", ""), "name": d.get("name", ""),
+           "bio": d.get("biography", ""), "link": d.get("website", ""), "captions": []}
     m = requests.get(f"{IG_GRAPH}/{biz}/media",
                      params={"fields": "caption,permalink,timestamp", "limit": 25,
                              "access_token": token}, timeout=30)
@@ -283,28 +288,44 @@ def main():
         return 0
 
     canon = parse_canonical()
-    violations, diffs, skipped = [], [], []
+    violations, warns, diffs, skipped = [], [], [], []
 
+    # (表示名, 正本キー, 取得関数, 期待username, 突合フィールド, 走査フィールド)
     sources = [
-        ("X @taitan_LIVER", "x", fetch_x, ["name", "bio", "link"], ["bio", "pinned"]),
-        ("Threads @taitanblog", "threads", fetch_threads, ["name", "bio"], ["bio"]),
-        ("IG @taitan_pro", "ig_taitan_pro", fetch_ig, ["name", "bio", "link"], ["bio"]),
+        ("X @taitan_LIVER", "x", fetch_x, "taitan_LIVER",
+         ["name", "bio", "link"], ["bio", "pinned"]),
+        ("Threads @taitanblog", "threads", fetch_threads, "taitanblog",
+         ["name", "bio"], ["bio"]),
+        ("IG @taitan_pro", "ig_taitan_pro", fetch_ig, "taitan_pro",
+         ["name", "bio", "link"], ["bio"]),
     ]
 
-    for label, key, fetch, cmp_fields, scan_fields in sources:
+    for label, key, fetch, want_user, cmp_fields, scan_fields in sources:
         live, err = fetch()
         if err:
             skipped.append({"media": label, "reason": err})
             print(f"  ⏭  {label}: {err}")
             continue
+
+        # トークンが別アカウントを指していたら、以降の検査は全部無意味になる
+        got_user = (live.get("username") or "").lstrip("@")
+        if got_user and got_user.lower() != want_user.lower():
+            violations.append({
+                "where": f"{label} / username",
+                "reason": f"トークンが別アカウント（@{got_user}）を指している",
+                "hit": f"期待 @{want_user} / 実際 @{got_user}"})
+
         for f in scan_fields:
             violations += scan(live.get(f, ""), f"{label} / {f}")
+        # 過去投稿のキャプションはAPIで編集できない（＝直せない）。
+        # 赤にすると番犬が永久に鳴きやまなくなるので warn 扱いにする。
         for c in live.get("captions", []):
-            violations += scan(c["caption"], f"{label} / 投稿 {c['permalink']}")
+            warns += scan(c["caption"], f"{label} / 投稿 {c['permalink']}")
         diffs += compare(label, live, canon.get(key, {}), cmp_fields)
-        print(f"  ✅ {label}: 取得OK"
-              + (f"（固定ポスト {len(live.get('pinned', ''))}字）" if live.get("pinned") else ""))
-        for f in cmp_fields + scan_fields:
+
+        print(f"  ✅ {label}: 取得OK（@{got_user or '?'}）"
+              + (f" 固定ポスト {len(live.get('pinned', ''))}字" if live.get("pinned") else ""))
+        for f in dict.fromkeys(cmp_fields + scan_fields):
             if live.get(f):
                 print(f"     [{f}] {live[f][:70].replace(chr(10), ' / ')}")
 
@@ -316,13 +337,15 @@ def main():
 
     os.makedirs(os.path.dirname(REPORT_FILE), exist_ok=True)
     with open(REPORT_FILE, "w", encoding="utf-8") as f:
-        json.dump({"violations": violations, "diffs": diffs,
+        json.dump({"violations": violations, "warn": warns, "diffs": diffs,
                    "skipped": skipped, "manual": manual}, f, ensure_ascii=False, indent=1)
 
     print(f"\n[結果] 禁止パターン={len(violations)} 正本との乖離={len(diffs)} "
-          f"取得スキップ={len(skipped)} → {REPORT_FILE}")
+          f"警告(過去投稿)={len(warns)} 取得スキップ={len(skipped)} → {REPORT_FILE}")
     for v in violations:
         print(f"  ❌ {v['where']}: {v['reason']}\n     → {v['hit']}")
+    for w in warns:
+        print(f"  ⚠️ (過去投稿・API編集不可) {w['where']}: {w['reason']}\n     → {w['hit']}")
     for d in diffs:
         print(f"  ⚠️ {d['where']} が正本と不一致")
         print(f"     正本: {d['canonical'][:80]!r}")
