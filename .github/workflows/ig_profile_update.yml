@@ -1,0 +1,36 @@
+name: IGプロフィール更新
+
+# Instagram @taitan_pro7 の名前欄・bio・リンクを正本（marketing/social_profiles.md）へ寄せる。
+# 過去メモは「Graph API はプロフィールが読み取り専用」としているが、実際に書き込みを
+# 試した記録が無かった（ドキュメントを読んだだけの結論）。
+# 「トークンが無いから無理」が誤りだった x_profile_update.py の前例があるので、
+# 実際に POST を投げて結果を残す。
+#
+# 自動実行はしない（プロフィールは頻繁に変えるものではない）。手動dispatch専用。
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '書き込まず、正本と実物の差分だけ確認する'
+        type: boolean
+        default: true
+
+jobs:
+  update:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - run: pip install requests
+
+      - name: プロフィール更新を試行
+        env:
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          INSTAGRAM_BUSINESS_ID: ${{ secrets.INSTAGRAM_BUSINESS_ID }}
+        run: |
+          python3 ig_profile_update.py ${{ inputs.dry_run && '--dry-run' || '' }}
