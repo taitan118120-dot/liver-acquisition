@@ -21,7 +21,9 @@ jobs:
         with:
           python-version: '3.11'
 
-      - run: pip install tweepy
+      # requests は social_profile_guard（正本パーサ）の依存。x_profile_update.py は
+      # 文面を marketing/social_profiles.md から読むので、こちらも必要になる
+      - run: pip install tweepy requests
 
       - name: プロフィール更新
         env:

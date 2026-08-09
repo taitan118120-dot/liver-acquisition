@@ -7,8 +7,13 @@
   GitHub Secrets にだけ登録されている（cloud_post.py と同じ4本）。
   → ワークフロー x_profile_update.yml から workflow_dispatch で回す。
 
-正本は marketing/social_profiles.md の「X（Twitter）」節。
-文面を変えるときは **必ず両方**を直すこと（片方だけだと次回の一括更新で戻る）。
+文面の出所（2026-08-09 変更）:
+  **正本 marketing/social_profiles.md の ```canonical:x.* フェンスから直接読む。**
+  以前はここに同じ文字列を手書きでコピーしていて、担保は docstring の
+  「必ず両方を直すこと」だけだった。機械的な照合が無いので、片方だけ直しても
+  CI は緑のまま＝黙ってズレる。直すのは正本1箇所でよくなった
+  （ig_profile_update.py と同じ形）。
+  埋め込みに戻すと social_profile_guard.py の audit_consumers() が赤くする。
 
 使い方:
   python x_profile_update.py            # 反映
@@ -19,17 +24,16 @@ import argparse
 import os
 import sys
 
-import tweepy
+from social_profile_guard import parse_canonical
 
-# marketing/social_profiles.md の X 節と一致させること（2026-08-01 ユーザー承認済み）
-NAME = "たいたん｜元Pococha S帯／ライバー事務所代表"
+CANON_KEY = "x"
 
-DESCRIPTION = """元Pococha S帯｜石川発・ライバー事務所「TAITAN PRO」代表
-Pococha・TikTokで200名が所属／11の配信代理店と提携／還元率100%+α
-甘い言葉は言えません。配信4年で見てきた現実だけを毎日。
-始め方・悩み相談はLINEへ→"""
-
-URL = "https://lin.ee/xchCfdn"
+# 正本 marketing/social_profiles.md の X 節（2026-08-01 ユーザー承認済みの文面）。
+# ここに文字列リテラルを書き戻さないこと（番犬が弾く）。
+_CANON = parse_canonical().get(CANON_KEY, {})
+NAME = _CANON.get("name")
+DESCRIPTION = _CANON.get("bio")
+URL = _CANON.get("link")
 
 # X の上限
 NAME_LIMIT = 50
@@ -40,6 +44,13 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true", help="送信せず内容だけ表示")
     args = parser.parse_args()
+
+    missing = [k for k, v in (("name", NAME), ("bio", DESCRIPTION), ("link", URL)) if not v]
+    if missing:
+        print(f"[ERROR] 正本 marketing/social_profiles.md から {missing} を読めませんでした")
+        print("        ```canonical:x.<項目> の印が付いているか確認してください")
+        print("        （python3 social_profile_guard.py --local で全項目を確認できます）")
+        return 1
 
     print(f"[name] {len(NAME)}/{NAME_LIMIT}字\n{NAME}\n")
     print(f"[description] {len(DESCRIPTION)}/{DESCRIPTION_LIMIT}字\n{DESCRIPTION}\n")
@@ -52,6 +63,10 @@ def main() -> int:
     if args.dry_run:
         print("[dry-run] 送信しませんでした")
         return 0
+
+    # tweepy は送信時にしか要らない。番犬（social_profile_guard.audit_consumers）は
+    # この定数を読むためにモジュールを import するので、トップレベルに置かない
+    import tweepy
 
     try:
         auth = tweepy.OAuth1UserHandler(

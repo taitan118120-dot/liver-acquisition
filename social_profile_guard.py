@@ -15,7 +15,7 @@
   → 「一度書いたら二度と読み返さない場所」＝プロフィール・固定ポストを
      毎日読み直す番犬がどこにも居なかった。
 
-このスクリプトが見る3軸:
+このスクリプトが見る4軸:
   1. 禁止パターン走査 — 確定ファクト（[[project_taitan_pro_note_facts]]）の
      常設grepパターンを、実物のプロフィール文・固定ポスト・IG投稿キャプションに当てる
   2. 正本との突合 — marketing/social_profiles.md（表示名・bio・リンクの正本）を
@@ -24,9 +24,15 @@
      全部読めているかの取りこぼし検知と (b) 禁止パターン走査を当てる。
      従来は NG_PATTERNS を実物にしか当てていなかったので、正本自体が違反を含んでいても
      それを実物へ反映するまで誰も気づかなかった。
+  4. 反映スクリプトの検査（2026-08-09 追加）— 実物へ書き込む側
+     （x_profile_update.py / social_pinned_publish.py）が、文面を正本から読んでいるか。
+     以前は正本と同じ文字列をスクリプトにも手書きでコピーしていて、
+     docstring の「必ず両方を直すこと」だけが担保だった＝片方だけ直しても誰も気づかない。
+     → 埋め込みを撤去して正本読み込みに一本化し、**戻したら赤くなる**ようにした（audit_consumers）。
 
 判定ポリシー:
   - NG   = プロフィール／固定ポストの禁止パターン検出、正本との乖離、正本自体の問題、
+           反映スクリプトが正本から読んでいない、
            トークンが別アカウントを指している → exit 1（Actionsが赤くなる）
   - WARN = 過去投稿のキャプションの違反 → 報告のみ。**Graph API でキャプションは編集できない**ので
            赤にすると番犬が永久に鳴きやまなくなる（[[feedback_watchdog_autoclose]]）
@@ -36,7 +42,7 @@
 
 使い方:
   python3 social_profile_guard.py          # 全媒体
-  python3 social_profile_guard.py --local  # 正本パースの自己テストのみ（ネット不要／問題があれば exit 1）
+  python3 social_profile_guard.py --local  # 正本＋反映スクリプトの自己テストのみ（ネット不要／問題があれば exit 1）
   python3 social_profile_guard.py --local --json  # 上に加えてパース結果を生JSONで出す
 
 正本の書き方（重要）:
@@ -54,6 +60,8 @@
 レポートは data/social_profile_guard_report.json に保存される。
 """
 
+import ast
+import importlib
 import json
 import os
 import re
@@ -238,6 +246,126 @@ def audit_canonical(canon):
     return out
 
 
+# ── 反映スクリプト（正本の値を実物へ書き込む側）の検査 ─────────────
+# 2026-08-09 以前、x_profile_update.py と social_pinned_publish.py は
+# 正本と同じ文字列を **スクリプト内にも手書きでコピー** していた。
+# 担保は docstring の「変更時は必ず両方を直すこと」だけで、機械的な照合が無く、
+# 片方だけ直しても CI は緑のままだった（＝一括ファクト更新が固定ポストを
+# 取りこぼした 2026-08-08 の事故と同じ構造の死角）。
+#
+# → 埋め込みを撤去して parse_canonical() 読み込みに一本化した（ig_profile_update.py と同じ形）。
+#   ここでは「またコピーに戻していないか」を3重に見る:
+#     (a) ast — 対象の定数に文字列リテラルを代入していないか（今日たまたま一致していても
+#         リテラルなら明日必ずズレる。値比較だけでは捕まらないのでこちらが本命）
+#     (b) ast — ファイルのどこかに正本の値と同一の文字列リテラルが無いか
+#         （定数名を変えて別の場所へ逃がしたコピーを拾う。名前に依存しないので
+#           ig_profile_update.py のように定数を持たないスクリプトも守れる）
+#     (c) import — 実際に読める値が正本と **1文字単位で** 一致するか
+#         norm() は使わない。空白の差も「片方だけ直した」の兆候なので潰さない
+CONSUMERS = [
+    ("x_profile_update.py", "x_profile_update",
+     [("NAME", "x", "name"), ("DESCRIPTION", "x", "bio"), ("URL", "x", "link")]),
+    ("social_pinned_publish.py", "social_pinned_publish",
+     [("X_PINNED_TEXT", "x", "pinned"), ("THREADS_PINNED_TEXT", "threads", "pinned")]),
+    # 元から正本読み込み型。定数は持たないので (b) だけが効く
+    ("ig_profile_update.py", "ig_profile_update", []),
+]
+
+
+def _parse_module(path):
+    try:
+        return ast.parse(open(path, encoding="utf-8").read(), filename=path)
+    except (OSError, SyntaxError):
+        return None
+
+
+def _literal_assigned_names(tree):
+    """モジュール直下で「文字列リテラルを代入されている」名前の集合を返す。"""
+    out = set()
+    for node in tree.body:
+        targets = ([node.target] if isinstance(node, ast.AnnAssign)
+                   else node.targets if isinstance(node, ast.Assign) else [])
+        if not isinstance(getattr(node, "value", None), (ast.Constant, ast.JoinedStr)):
+            continue
+        if isinstance(node.value, ast.Constant) and not isinstance(node.value.value, str):
+            continue
+        for t in targets:
+            if isinstance(t, ast.Name):
+                out.add(t.id)
+    return out
+
+
+def _string_literals(tree):
+    """ファイル中の全ての文字列リテラル（docstring含む）を返す。"""
+    return [n.value for n in ast.walk(tree)
+            if isinstance(n, ast.Constant) and isinstance(n.value, str)]
+
+
+def audit_consumers(canon):
+    out = []
+    if BASE_DIR not in sys.path:
+        sys.path.insert(0, BASE_DIR)
+
+    for fname, modname, mapping in CONSUMERS:
+        path = os.path.join(BASE_DIR, fname)
+        where_file = f"反映スクリプト {fname}"
+        if not os.path.exists(path):
+            out.append({"where": where_file, "reason": "ファイルが見つからない（リネーム／削除された？）",
+                        "hit": ""})
+            continue
+
+        tree = _parse_module(path)
+        if tree is None:
+            out.append({"where": where_file, "reason": "Pythonとして解析できない（構文エラー？）", "hit": ""})
+        else:
+            names = _literal_assigned_names(tree)
+            for const, media, field in mapping:
+                if const in names:
+                    out.append({
+                        "where": f"{where_file} / {const}",
+                        "reason": f"正本ではなく文字列リテラルを埋め込んでいる"
+                                  f"（正本 {media}.{field} から読むこと）",
+                        "hit": const})
+
+            # 定数名を変えて逃がしたコピーも拾う。**正本の値と完全一致する
+            # 文字列リテラル**はコピー以外にあり得ないので誤検知しない
+            # 同じ値が複数の媒体に出る（リンクなど）ので、キーは全部並べる
+            canon_values = {}
+            for m, fs in canon.items():
+                for f, v in fs.items():
+                    canon_values.setdefault(v, []).append(f"{m}.{f}")
+            for lit in _string_literals(tree):
+                if lit in canon_values:
+                    out.append({
+                        "where": where_file,
+                        "reason": f"正本 {' / '.join(canon_values[lit])} と同じ文字列がリテラルで書かれている"
+                                  f"（コピーを持たず parse_canonical() で読むこと）",
+                        "hit": lit[:60]})
+
+        try:
+            mod = importlib.import_module(modname)
+        except Exception as e:
+            # 読み込めない＝正本と一致しているか確認できない。黙って素通りさせない
+            out.append({"where": where_file, "reason": "import できず正本との突合ができなかった",
+                        "hit": f"{type(e).__name__}: {e}"[:120]})
+            continue
+
+        for const, media, field in mapping:
+            want = canon.get(media, {}).get(field)
+            if want is None:
+                continue  # 正本側の欠落は audit_canonical() が既に報告している
+            got = getattr(mod, const, None)
+            if got is None:
+                out.append({"where": f"{where_file} / {const}",
+                            "reason": f"定数が無い（リネーム？ 正本 {media}.{field} の反映先）",
+                            "hit": ""})
+            elif got != want:  # ← norm() を通さない。空白1つの差も検知する
+                out.append({"where": f"{where_file} / {const}",
+                            "reason": f"正本 {media}.{field} と1文字単位で一致しない",
+                            "hit": f"正本 {want[:60]!r} / スクリプト {str(got)[:60]!r}"})
+    return out
+
+
 def norm(s):
     return re.sub(r"\s+", "", s or "")
 
@@ -344,10 +472,11 @@ def compare(media_label, live, canon, fields):
 
 
 def load_canon():
-    """正本を読み、同時に正本自体の問題も集める。"""
+    """正本を読み、同時に正本自体・反映スクリプト側の問題も集める。"""
     problems = []
     canon = parse_canonical(problems=problems)
     problems += audit_canonical(canon)
+    problems += audit_consumers(canon)
     return canon, problems
 
 
@@ -363,7 +492,7 @@ def print_canon(canon, problems):
                 continue
             body = v.replace("\n", "\n        ")
             print(f"  [{f}] {len(v)}字\n        {body}")
-    print(f"\n[正本の検査] 問題 {len(problems)} 件")
+    print(f"\n[正本＋反映スクリプトの検査] 問題 {len(problems)} 件")
     for p in problems:
         print(f"  ❌ {p['where']}: {p['reason']}" + (f"\n     → {p['hit']}" if p["hit"] else ""))
 
@@ -438,7 +567,7 @@ def main():
                   f, ensure_ascii=False, indent=1)
 
     print(f"\n[結果] 禁止パターン={len(violations)} 正本との乖離={len(diffs)} "
-          f"正本自体の問題={len(canon_problems)} "
+          f"正本・反映スクリプトの問題={len(canon_problems)} "
           f"警告(過去投稿)={len(warns)} 取得スキップ={len(skipped)} → {REPORT_FILE}")
     for p in canon_problems:
         print(f"  ❌ {p['where']}: {p['reason']}" + (f"\n     → {p['hit']}" if p["hit"] else ""))

@@ -61,8 +61,20 @@ HTTP 400 GraphMethodException code=100 error_subcode=33
 なお `x_profile_update.py` は「トークンが無いから無理」が誤りだった前例なので、
 **同種の「できない」は必ず一度実際に叩いてから結論する**こと。
 
-`ig_profile_update.py` は文面を**この正本から直接パースする**（`x_profile_update.py` のように
-スクリプト内へ二重に埋め込んでいないので、直すのはこのファイル1箇所だけでよい）。
+### ✅ 文面の埋め込みは全スクリプトから撤去済み（2026-08-09）
+
+`ig_profile_update.py` / `x_profile_update.py` / `social_pinned_publish.py` は
+**文面をこの正本から直接パースする**。**直すのはこのファイル1箇所だけでよい。**
+
+以前は x_profile_update.py と social_pinned_publish.py が同じ文字列をスクリプト内にも
+手書きでコピーしていて、担保は docstring の「必ず両方を直すこと」だけだった。
+機械的な照合が無いので**片方だけ直しても CI は緑のまま**＝黙ってズレる。
+（2026-08-09 時点では4本とも一致していたが、それは運が良かっただけ。）
+
+埋め込みに戻すと `social_profile_guard.py` の `audit_consumers()` が赤くする。見るのは2点:
+- スクリプトの定数に**文字列リテラルを代入していないか**（ast。今日たまたま値が合っていても
+  リテラルなら明日必ずズレるので、値比較より先にこちらで弾く）
+- 実際に読める値が正本と**1文字単位で一致するか**（`norm()` を通さない。空白1つの差も検知する）
 
 ### ⚠️ 固定ポストは「プロフィール」とは別に走査すること（2026-08-08 の死角）
 
@@ -156,10 +168,11 @@ Pococha・TikTokで200名が所属／11の配信代理店と提携／還元率10
 https://lin.ee/xchCfdn
 ```
 
-**反映手順**：この文面は `x_profile_update.py` にも同じものが埋め込まれている（bio更新には
-OAuth1.0aユーザーコンテキストが必要で、トークンはGitHub Secretsにしか無いため）。
-変更時は**両方を直してから** `gh workflow run x_profile_update.yml` を実行し、
+**反映手順**：`x_profile_update.py` は上の3つのフェンスを読むだけ（スクリプト側に文面は無い）。
+**このファイルを直したら** `gh workflow run x_profile_update.yml` を実行し、
 `https://api.fxtwitter.com/taitan_LIVER` で実反映を検証すること。
+（bio更新には OAuth1.0aユーザーコンテキストが必要で、トークンはGitHub Secretsにしか無いため
+ローカルからは反映できない。dry-run だけは `python3 x_profile_update.py --dry-run` で確認できる。）
 
 ### 固定ツイート（重み付き277/280字＝**残り3しか無い**。1文字でも足すと投稿できない）
 
@@ -173,10 +186,10 @@ OAuth1.0aユーザーコンテキストが必要で、トークンはGitHub Secr
 3. 固定が入れ替わったのを確認してから旧ポストを削除：
    `gh workflow run social_pinned_publish.yml -f action=delete-x -f tweet_id=2037849449498837271 -f dry_run=false`
 
-**反映手順（文面を変えるとき）**：この文面は `social_pinned_publish.py` にも同じものが埋め込まれている（投稿には
-OAuth1.0aユーザーコンテキストが必要で、トークンはGitHub Secretsにしか無いため）。
-変更時は**両方を直してから** `gh workflow run social_pinned_publish.yml -f action=post-x -f dry_run=false` を実行し、
+**反映手順（文面を変えるとき）**：`social_pinned_publish.py` は下のフェンスを読むだけ（スクリプト側に文面は無い）。
+**このファイルを直したら** `gh workflow run social_pinned_publish.yml -f action=post-x -f dry_run=false` を実行し、
 **Xアプリで固定を新ポストに差し替えてから**旧ポストを `action=delete-x` で削除する。
+（投稿には OAuth1.0aユーザーコンテキストが必要で、トークンはGitHub Secretsにしか無い。）
 
 ```canonical:x.pinned
 4年前、0人の枠で2時間ひとり喋ってた僕が、いま200名のライバー事務所の代表をやってます。

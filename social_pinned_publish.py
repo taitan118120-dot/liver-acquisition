@@ -26,42 +26,26 @@
   python social_pinned_publish.py --post-threads  --dry-run
   python social_pinned_publish.py --delete-x 2037849449498837271 --dry-run
 
-正本は marketing/social_profiles.md。文面を変えるときは **必ず両方**を直すこと。
+文面の出所（2026-08-09 変更）:
+  **正本 marketing/social_profiles.md の ```canonical:x.pinned / canonical:threads.pinned
+  フェンスから直接読む。** 以前はここに同じ文字列を手書きでコピーしていて、担保は
+  docstring の「必ず両方を直すこと」だけだった。機械的な照合が無いので、片方だけ直しても
+  CI は緑のまま＝黙ってズレる。直すのは正本1箇所でよくなった。
+  埋め込みに戻すと social_profile_guard.py の audit_consumers() が赤くする。
 """
 
 import argparse
 import os
 import sys
 
-# ── 文面（marketing/social_profiles.md と一致させること）──────────────
+from social_profile_guard import parse_canonical
 
-# X「固定ツイート」節（2026-08-01 設計・2026-08-08 ユーザー承認）
-X_PINNED_TEXT = """4年前、0人の枠で2時間ひとり喋ってた僕が、いま200名のライバー事務所の代表をやってます。
-
-元Pococha S帯。最初は誰より震えてた。
-
-「始めたいけど自分なんて」って人の背中を押したくて、配信の本音をここに書きます。
-
-還元率100%+α・初配信から僕が伴走。新人ガイドはプロフのLINEで配布中。"""
-
-# Threads「固定投稿」節（2026-08-01 設計・2026-08-08 ユーザー承認）
-THREADS_PINNED_TEXT = """はじめまして、たいたんです☕️
-
-元Pococha S帯。ミクチャでは8,000人の中からミスターコン1位をとりました。Pocochaを4年見続けて、いまはライバー事務所「TAITAN PRO」をやっています。Pococha・TikTok LIVE・17LIVEで200名が一緒に配信中です。
-
-最初に正直に言うと——配信は「始め方」さえ間違えなければ、未経験でも十分に伸ばせます。逆に、そこを独学でつまずいて静かに消えていく人を、何百人も見てきました。
-
-このアカウントでは、
-・Pococha / TikTok LIVEで伸びる人の共通点
-・未経験がつまずく「最初の30日」の落とし穴
-・元S帯が実際にやっていた運用
-
-を、毎日リアルに発信していきます。
-
-TAITAN PROは還元率100%+α。初配信から代表の僕が直接伴走します。
-
-その「最初の30日」でやることをまとめた『ライバー新人期スタートダッシュガイド』を、公式LINEの友だち追加で無料で配っています。配信の悩みも、始め方の相談も、そのまま送ってください👇
-https://lin.ee/xchCfdn"""
+# ── 文面（正本 marketing/social_profiles.md から読む）────────────────
+# 2026-08-01 設計・2026-08-08 ユーザー承認。
+# ここに文字列リテラルを書き戻さないこと（番犬が弾く）。
+_CANON = parse_canonical()
+X_PINNED_TEXT = _CANON.get("x", {}).get("pinned")
+THREADS_PINNED_TEXT = _CANON.get("threads", {}).get("pinned")
 
 # 差し替え対象の旧固定ポスト（削除は --delete-x で明示指定したときだけ実行する）
 X_OLD_PINNED_ID = "2037849449498837271"
@@ -86,6 +70,16 @@ def x_weighted_len(text):
     return weight
 
 
+def _missing(text, key):
+    """正本から文面を読めていなければ理由を出して True を返す。"""
+    if text:
+        return False
+    print(f"[ERROR] 正本 marketing/social_profiles.md から {key} を読めませんでした")
+    print(f"        ```canonical:{key} の印が付いているか確認してください")
+    print("        （python3 social_profile_guard.py --local で全項目を確認できます）")
+    return True
+
+
 def _x_client():
     import tweepy
     try:
@@ -101,6 +95,8 @@ def _x_client():
 
 
 def post_x(dry_run):
+    if _missing(X_PINNED_TEXT, "x.pinned"):
+        return 1
     weighted = x_weighted_len(X_PINNED_TEXT)
     print(f"[X 固定用ポスト] {len(X_PINNED_TEXT)}字 / 重み付き {weighted}/{X_WEIGHTED_LIMIT}")
     print("-" * 60)
@@ -137,6 +133,8 @@ def delete_x(tweet_id, dry_run):
 
 
 def post_threads(dry_run):
+    if _missing(THREADS_PINNED_TEXT, "threads.pinned"):
+        return 1
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "threads"))
     import threads_poster
 
