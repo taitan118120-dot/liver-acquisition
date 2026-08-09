@@ -18,6 +18,8 @@ import time
 
 import tweepy
 
+from x_post_guard import post_body, violations
+
 
 # ハッシュタグプール（ニッチタグ重視 — 小規模アカウントでも上位表示を狙う）
 HASHTAG_POOL = {
@@ -329,6 +331,26 @@ def main():
     if not growth_posts:
         print("[ERROR] growth投稿が0件です")
         sys.exit(1)
+
+    # 確定ファクトの機械検品（2026-08-09 追加）。
+    # 生成側(cloud_evolve.py)にも同じゲートを入れたが、それだけでは
+    # **すでにキューに入っている分**が素通りする。実際 585本中に
+    # 「9割の副業ライバーはフリーで十分」等の割合統計が47本残っていて、
+    # うち何本かは公開まで到達していた。投稿直前が最後の砦なのでここでも弾く。
+    # 除外は「候補から消す」で行う。skipにするとローテーションのリセット判定が
+    # 永久に成立しなくなる（違反投稿が recent_ids に入らないため）。
+    blocked = [(p, violations(post_body(p))) for p in growth_posts]
+    clean_posts = [p for p, v in blocked if not v]
+    ng_count = len(growth_posts) - len(clean_posts)
+    if ng_count:
+        print(f"[GUARD] 確定ファクト違反 {ng_count}本を候補から除外"
+              f"（残り {len(clean_posts)}本）")
+        for p, v in [b for b in blocked if b[1]][:5]:
+            print(f"  - {p.get('id')}: {', '.join(v)}")
+    if not clean_posts:
+        print("[ERROR] 検品を通過するgrowth投稿が0件です（キューの作り直しが必要）")
+        sys.exit(1)
+    growth_posts = clean_posts
 
     # 直近の投稿IDを確認（重複防止）
     recent_ids = set()
