@@ -76,28 +76,13 @@ jobs:
               '---',
               '_このIssueは `.github/workflows/link_guard.yml` により自動生成されました。_',
             ].join('\n');
-            const { data: existing } = await github.rest.issues.listForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-              per_page: 100,
+            // 同じ死にリンクが直るまでは毎ラン赤になる。そのたびに同内容のコメントを積むと
+            // メール通知だけが毎日増えるので、内容が変わったときだけ鳴く（赤は維持）。
+            const guard = require('./.github/scripts/guard_comment.js');
+            await guard.notify({
+              github, context, title, body,
+              recomment: `再検知: ${new Date().toISOString()}\n\n${deadLines}`,
             });
-            const match = existing.find(i => i.title === title);
-            if (match) {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: match.number,
-                body: `再検知: ${new Date().toISOString()}\n\n${deadLines}`,
-              });
-            } else {
-              await github.rest.issues.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                title,
-                body,
-              });
-            }
 
       - name: 全リンク生存 → Issueを自動クローズ
         # guard が通った（dead=0）ときだけ走る。失敗時は success() が false になるので
