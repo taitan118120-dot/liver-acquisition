@@ -7,7 +7,7 @@
 別々に回すと同じ記事へPUTが2回飛ぶ。1本あたり約1分かかるうえ、note側の
 連投検知にも近づくので、この2施策は**1回のPUTにまとめる**のがこのスクリプト。
 
-- 冒頭CTA: 最初の <h1-4> の直前（note_early_cta_publish.transform_early と同一）
+- 冒頭CTA: 最初の <h1-4> の直前。見出しが無い/末尾寄りの記事は導入直後（early_or_fallback）
 - 関連記事: 「TAITAN PROについて」見出し or 特典段落の直前（note_internal_links_publish と同一）
 - 冪等: 既に入っているものは入れない。両方入っていればそのままskip
 - 進捗は data/note_boost_log.json。既存の
@@ -20,13 +20,14 @@
 """
 import json
 import os
+import re
 import sys
 import time
 
-from note_early_cta_publish import EARLY_MARK, transform_early
+from note_early_cta_publish import EARLY_HTML, EARLY_MARK
 from note_internal_links_publish import (RELATED_MARK, build_catalog,
-                                         find_insert_pos, make_transform,
-                                         pick_related)
+                                         find_insert_pos, pick_related,
+                                         related_html)
 from note_cta_publish import req_session
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -47,25 +48,104 @@ def _load(path):
     return {}
 
 
+# 冒頭CTAは本文のこの割合より前に入っていないと「冒頭」とは言えない
+EARLY_MAX_PCT = 40
+
+# 関連記事ブロックの検出は「見出しとしての あわせて読みたい」で見る。
+# ① 素の「あわせて読みたい」だけで判定すると、本文中に「> 📖 あわせて読みたい：…」と
+#    地の文で書いている記事を「もう入っている」と誤判定し、内部リンクを1本も入れずに
+#    終わる（実測2本: n16405bbbfdff / n27ea6809b1ed）。
+# ② かわりに "<h3>あわせて読みたい" のような固定文字列で見るのも駄目。note は保存時に
+#    見出しへ name/id 属性を振り直すので、次に読むと <h3 name="…" id="…"> になって
+#    マッチせず、同じブロックを二重に挿入してしまう。
+# → 属性を許す正規表現で見るのが唯一正しい。
+REL_BLOCK_RE = re.compile(r"<h[1-6][^>]*>\s*" + re.escape(RELATED_MARK) + r"\s*</h[1-6]>")
+
+
+def has_related_block(html):
+    return bool(REL_BLOCK_RE.search(html))
+
+
+def _early_pct(html):
+    """冒頭CTAが本文の何%地点にあるか。無ければ None。"""
+    p = html.find(EARLY_MARK)
+    return None if p < 0 else p / max(1, len(html)) * 100
+
+
 def needs(body):
     """(冒頭CTAが要るか, 関連記事が要るか)"""
-    need_early = EARLY_MARK not in body
-    need_rel = RELATED_MARK not in body and find_insert_pos(body) is not None
+    pct = _early_pct(body)
+    need_early = pct is None or pct > EARLY_MAX_PCT
+    need_rel = not has_related_block(body) and find_insert_pos(body) is not None
     return need_early, need_rel
+
+
+def _strip_early(html):
+    """末尾寄りに入ってしまった冒頭CTAの <p> を丸ごと取り除く。"""
+    i = html.find(EARLY_MARK)
+    s = html.rfind("<p", 0, i)
+    e = html.find("</p>", i)
+    if s == -1 or e == -1:
+        return html
+    return html[:s] + html[e + 4:]
+
+
+def early_or_fallback(key, html):
+    """冒頭CTAを本文の冒頭に入れる（既に末尾寄りに入っていれば入れ直す）。
+
+    note_early_cta_publish.transform_early は「最初の <h1-4> の直前」に入れるが、
+    これは2通りに外れる。どちらも実測で踏んだ:
+      ① 公開HTMLから復元した記事（#16 / #134）は見出しが1つも無く、None が
+         返って黙ってスキップされる
+      ② ①の記事に関連記事ブロックを先に入れると、その <h3> が「最初の見出し」に
+         なり、CTAが本文の74〜83%地点＝ほぼ末尾に入る
+    そこで、見出しが無い/末尾寄りのときは導入の直後（3つめの <p> の直前）に入れる。
+    """
+    pct = _early_pct(html)
+    if pct is not None:
+        if pct <= EARLY_MAX_PCT:
+            return None  # 済み
+        html = _strip_early(html)  # 位置が悪いので入れ直す
+
+    m = re.search(r"<h[1-4][\s>]", html)
+    pos = m.start() if m else None
+    if pos is not None and pos / max(1, len(html)) * 100 > EARLY_MAX_PCT:
+        pos = None  # 最初の見出しが末尾寄り（関連記事ブロックが唯一の見出し等）
+    if pos is None:
+        starts = [m2.start() for m2 in re.finditer(r"<p[\s>]", html)]
+        if not starts:
+            print(f"  skip（見出しも <p> も無い key={key}）")
+            return None
+        pos = starts[2] if len(starts) > 2 else starts[-1]
+    return html[:pos] + EARLY_HTML + html[pos:]
+
+
+def insert_related(rel_keys, catalog, key, html):
+    """関連記事ブロックを挿入する。冪等判定は has_related_block で行う。
+
+    note_internal_links_publish.make_transform は素の「あわせて読みたい」で
+    冪等判定するため、地の文でその語を使っている記事をskipしてしまう。
+    """
+    if has_related_block(html):
+        return None
+    pos = find_insert_pos(html)
+    if pos is None:
+        print(f"  skip（関連記事の挿入位置が見つからない key={key}）")
+        return None
+    return html[:pos] + related_html(rel_keys, catalog) + html[pos:]
 
 
 def make_combined(need_early, rel_keys, catalog):
     """冒頭CTAと関連記事を1回の書き換えで両方入れる transform。"""
-    rel_t = make_transform(rel_keys, catalog) if rel_keys else None
 
     def _t(key, html):
         out = html
         if need_early:
-            r = transform_early(key, out)
+            r = early_or_fallback(key, out)
             if r is not None:
                 out = r
-        if rel_t is not None:
-            r = rel_t(key, out)
+        if rel_keys:
+            r = insert_related(rel_keys, catalog, key, out)
             if r is not None:
                 out = r
         return None if out == html else out
@@ -125,7 +205,10 @@ def main():
     ok = skip = fail = 0
     for i, (key, need_early, need_rel) in enumerate(todo, 1):
         print(f"\n[{i}/{len(todo)}] {key} {catalog[key]['title'][:30]}", flush=True)
-        marker = RELATED_MARK if need_rel else EARLY_MARK
+        # 検証は壊れやすい方（冒頭CTA）を優先して見る。関連記事の挿入位置は
+        # needs() の find_insert_pos で先に存在を確認しているので確実に入るが、
+        # 冒頭CTAは本文構造に依存する（見出しが無い記事があった）。
+        marker = EARLY_MARK if need_early else RELATED_MARK
         try:
             r = publish_one(key, make_combined(need_early, plans[key], catalog),
                             expect_marker=marker)
