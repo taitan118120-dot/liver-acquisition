@@ -1,7 +1,7 @@
 {
  "scanned": 800,
  "reasons": "ratio",
- "deleted": false,
+ "deleted": true,
  "targets": [
   {
    "id": "2086053619049320839",
