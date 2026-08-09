@@ -15,14 +15,18 @@
   → 「一度書いたら二度と読み返さない場所」＝プロフィール・固定ポストを
      毎日読み直す番犬がどこにも居なかった。
 
-このスクリプトが見る2軸:
+このスクリプトが見る3軸:
   1. 禁止パターン走査 — 確定ファクト（[[project_taitan_pro_note_facts]]）の
      常設grepパターンを、実物のプロフィール文・固定ポスト・IG投稿キャプションに当てる
   2. 正本との突合 — marketing/social_profiles.md（表示名・bio・リンクの正本）を
      パースして、実物と1文字単位で一致するか見る。乖離＝どちらかが古い
+  3. 正本そのものの検査（2026-08-09 追加）— パース結果に (a) 期待する媒体・項目が
+     全部読めているかの取りこぼし検知と (b) 禁止パターン走査を当てる。
+     従来は NG_PATTERNS を実物にしか当てていなかったので、正本自体が違反を含んでいても
+     それを実物へ反映するまで誰も気づかなかった。
 
 判定ポリシー:
-  - NG   = プロフィール／固定ポストの禁止パターン検出、正本との乖離、
+  - NG   = プロフィール／固定ポストの禁止パターン検出、正本との乖離、正本自体の問題、
            トークンが別アカウントを指している → exit 1（Actionsが赤くなる）
   - WARN = 過去投稿のキャプションの違反 → 報告のみ。**Graph API でキャプションは編集できない**ので
            赤にすると番犬が永久に鳴きやまなくなる（[[feedback_watchdog_autoclose]]）
@@ -32,7 +36,15 @@
 
 使い方:
   python3 social_profile_guard.py          # 全媒体
-  python3 social_profile_guard.py --local  # 正本パースの自己テストのみ（ネット不要）
+  python3 social_profile_guard.py --local  # 正本パースの自己テストのみ（ネット不要／問題があれば exit 1）
+  python3 social_profile_guard.py --local --json  # 上に加えてパース結果を生JSONで出す
+
+正本の書き方（重要）:
+  値は ```canonical:<媒体>.<項目> と印を付けたフェンスにだけ書く。
+  例:  ```canonical:x.pinned … ```    媒体= threads / x / ig_taitan_pro7 / ig_taitanblog
+                                      項目= name / bio / link / pinned
+  印の無い ``` ブロックは**すべて単なる例示**として無視されるので、
+  手順例・旧文面・エラーログを正本のどこに置いても値には影響しない。
 
 必要な環境変数（GitHub Secrets から注入）:
   TWITTER_BEARER_TOKEN                        X
@@ -113,57 +125,117 @@ def scan(text, where):
 
 
 # ── 正本（marketing/social_profiles.md）のパース ───────────────────
-# 媒体見出し（##/###）→ 項目見出し（###/####）→ 直後のフェンス済みブロック、
-# および「リンク欄：`URL`」「URL欄：`URL`」を拾う。
-MEDIA_HEADS = [
-    (re.compile(r"^##\s*Threads（@taitanblog）"), "threads"),
-    (re.compile(r"^##\s*X（Twitter）"), "x"),
-    # 見出し番号ではなくハンドルで引き当てる（節の並び替えで壊れないように）
-    (re.compile(r"^###\s*[①②③]?\s*@taitan_pro7"), "ig_taitan_pro7"),
-    (re.compile(r"^###\s*[①②③]?\s*@taitan_pro(?!7)"), "ig_taitan_pro_unused"),
-    (re.compile(r"^###\s*[①②③]?\s*@taitanblog"), "ig_taitanblog"),
-]
-FIELD_HEADS = [
-    (re.compile(r"^#{3,4}\s*(表示名|名前欄)"), "name"),
-    (re.compile(r"^#{3,4}\s*(bio|自己紹介)"), "bio"),
-    (re.compile(r"^#{3,4}\s*固定(ツイート|投稿)"), "pinned"),
-]
-LINK_LINE = re.compile(r"^(?:リンク欄|URL欄)[：:]\s*`([^`]+)`")
+# 【重要】正本の値は **``` canonical:<媒体>.<項目> と印を付けたフェンスからしか読まない**。
+#
+# 旧実装は「項目見出しの直後に現れた最初のフェンス」を本文として採っていた。
+# つまり正本の“見た目の並び”に依存していて、説明用・手順例のコードブロックを
+# 設計版フェンスより上に書くと、それが正本の値として読まれてしまった
+# （2026-08-09: X「### 固定ツイート」節に固定手順の ``` を足したら
+#   canon['x']['pinned'] が手順テキストに化けた）。
+# しかも pinned は compare() の突合対象に入っていないため **番犬は何も鳴かなかった**。
+# 同じことを bio / name でやれば、正本乖離の誤検知か、実物の違反の隠蔽になる。
+#
+# → フェンス自身に媒体と項目を書かせることで、見出しの文言・節の並び・
+#   説明ブロックの位置から完全に切り離した。印の無いフェンスは全て「ただの例示」。
+CANON_FENCE = re.compile(
+    r"^`{3,}\s*canonical:\s*([A-Za-z0-9_]+)\s*\.\s*([A-Za-z0-9_]+)\s*$")
+FENCE_END = re.compile(r"^`{3,}\s*$")
+
+# 媒体ごとに「正本へ必ず書かれているべき項目」。ここに無い媒体／項目を
+# canonical: で書くとタイポとして弾く（黙って無視されるのを防ぐ）。
+EXPECTED_FIELDS = {
+    "threads": ("name", "bio", "link", "pinned"),
+    "x": ("name", "bio", "link", "pinned"),
+    # IG は固定投稿という概念を運用していないので pinned は設計対象外
+    "ig_taitan_pro7": ("name", "bio", "link"),
+    "ig_taitanblog": ("name", "bio", "link"),
+}
+KNOWN_FIELDS = {f for fs in EXPECTED_FIELDS.values() for f in fs}
+# 複数行になっていたら「別のブロックを掴んでいる」ことがほぼ確定する項目
+SINGLE_LINE_FIELDS = ("name", "link")
 
 
-def parse_canonical(path=CANON_FILE):
+def parse_canonical(path=CANON_FILE, problems=None):
+    """正本を読んで {媒体: {項目: 本文}} を返す。
+
+    problems にリストを渡すと、正本そのものの構造的な壊れ（未知キー・重複・
+    閉じ忘れ・空・改行混入）を {where, reason, hit} 形式で追記する。
+    """
+    def bad(where, reason, hit=""):
+        if problems is not None:
+            problems.append({"where": where, "reason": reason, "hit": hit})
+
     lines = open(path, encoding="utf-8").read().split("\n")
-    canon, media, field, buf, in_fence = {}, None, None, None, False
+    canon, i = {}, 0
+    while i < len(lines):
+        m = CANON_FENCE.match(lines[i])
+        if not m:
+            i += 1
+            continue
+        media, field = m.group(1), m.group(2)
+        where = f"正本 {media}.{field}"
+        buf, closed, i = [], False, i + 1
+        while i < len(lines):
+            if FENCE_END.match(lines[i]):
+                closed, i = True, i + 1
+                break
+            buf.append(lines[i])
+            i += 1
+        value = "\n".join(buf).strip()
 
-    for line in lines:
-        if in_fence:
-            if line.startswith("```"):
-                canon.setdefault(media, {})[field] = "\n".join(buf).strip()
-                in_fence, field, buf = False, None, None
-            else:
-                buf.append(line)
+        if not closed:
+            bad(where, "```canonical フェンスが閉じられていない（以降を全部飲み込んだ）")
+        if media not in EXPECTED_FIELDS:
+            bad(where, "未知の媒体キー（EXPECTED_FIELDS に無い）", media)
             continue
-
-        hit = next((k for pat, k in MEDIA_HEADS if pat.match(line)), None)
-        if hit:
-            media, field = hit, None
+        if field not in KNOWN_FIELDS:
+            bad(where, "未知の項目名（name/bio/link/pinned のいずれかにする）", field)
             continue
-        if media is None:
+        if field not in EXPECTED_FIELDS[media]:
+            bad(where, f"{media} では設計対象外の項目", field)
             continue
-
-        m = LINK_LINE.match(line)
-        if m:
-            canon.setdefault(media, {})["link"] = m.group(1)
+        if field in canon.get(media, {}):
+            bad(where, "同じキーの canonical フェンスが2つ以上ある（どちらが正本か決まらない）",
+                value[:40])
             continue
-
-        hit = next((k for pat, k in FIELD_HEADS if pat.match(line)), None)
-        if hit:
-            field = hit
+        if not value:
+            bad(where, "中身が空")
             continue
-        # 項目見出しの直後に来る最初のフェンスだけを本文として採る
-        if field and line.startswith("```"):
-            in_fence, buf = True, []
+        if field in SINGLE_LINE_FIELDS and "\n" in value:
+            bad(where, "1行のはずが複数行（別のブロックを掴んでいる可能性）", value[:40])
+        if field == "link" and not re.match(r"^https?://\S+$", value):
+            bad(where, "リンクがURLの形をしていない", value[:60])
+        canon.setdefault(media, {})[field] = value
     return canon
+
+
+def audit_canonical(canon):
+    """正本そのものを検査する。
+
+    (1) 取りこぼし検知 — 期待している媒体・項目が実際に読めているか。
+        「読めてはいるが中身が別物」は canonical: タグ側で防ぐ設計なので、
+        ここは純粋に欠落（節ごと消えた／フェンスの印を付け忘れた）を見る。
+    (2) 自己スキャン — NG_PATTERNS を **正本にも** 当てる。
+        従来は実物にしか当てていなかったので、正本自体が確定ファクト違反を
+        含んでいても、それを実物へ反映するまで誰も気づかなかった。
+    """
+    out = []
+    for media, fields in EXPECTED_FIELDS.items():
+        got = canon.get(media)
+        if not got:
+            out.append({"where": f"正本 {media}",
+                        "reason": "媒体の節ごと読めていない（見出し変更 or canonical タグ消失）",
+                        "hit": ""})
+            continue
+        for f in fields:
+            if not got.get(f):
+                out.append({"where": f"正本 {media}.{f}",
+                            "reason": "正本から読み取れていない（```canonical: の印が無い？）",
+                            "hit": ""})
+    for media in sorted(canon):
+        for f in sorted(canon[media]):
+            out += scan(canon[media][f], f"正本 {media}.{f}")
+    return out
 
 
 def norm(s):
@@ -271,13 +343,40 @@ def compare(media_label, live, canon, fields):
     return diffs
 
 
+def load_canon():
+    """正本を読み、同時に正本自体の問題も集める。"""
+    problems = []
+    canon = parse_canonical(problems=problems)
+    problems += audit_canonical(canon)
+    return canon, problems
+
+
+def print_canon(canon, problems):
+    for media, fields in EXPECTED_FIELDS.items():
+        print(f"\n== {media} ==")
+        for f in ("name", "bio", "link", "pinned"):
+            v = canon.get(media, {}).get(f)
+            if v is None:
+                mark = "—（この媒体では設計対象外）" if f not in EXPECTED_FIELDS[media] \
+                    else "❌ 正本から読めていない"
+                print(f"  [{f}] {mark}")
+                continue
+            body = v.replace("\n", "\n        ")
+            print(f"  [{f}] {len(v)}字\n        {body}")
+    print(f"\n[正本の検査] 問題 {len(problems)} 件")
+    for p in problems:
+        print(f"  ❌ {p['where']}: {p['reason']}" + (f"\n     → {p['hit']}" if p["hit"] else ""))
+
+
 def main():
     if "--local" in sys.argv:
-        canon = parse_canonical()
-        print(json.dumps(canon, ensure_ascii=False, indent=1))
-        return 0
+        canon, problems = load_canon()
+        print_canon(canon, problems)
+        if "--json" in sys.argv:
+            print(json.dumps(canon, ensure_ascii=False, indent=1))
+        return 1 if problems else 0
 
-    canon = parse_canonical()
+    canon, canon_problems = load_canon()
     violations, warns, diffs, skipped = [], [], [], []
 
     # (表示名, 正本キー, 取得関数, 期待username, 突合フィールド, 走査フィールド)
@@ -335,10 +434,14 @@ def main():
     os.makedirs(os.path.dirname(REPORT_FILE), exist_ok=True)
     with open(REPORT_FILE, "w", encoding="utf-8") as f:
         json.dump({"violations": violations, "warn": warns, "diffs": diffs,
-                   "skipped": skipped, "manual": manual}, f, ensure_ascii=False, indent=1)
+                   "canon": canon_problems, "skipped": skipped, "manual": manual},
+                  f, ensure_ascii=False, indent=1)
 
     print(f"\n[結果] 禁止パターン={len(violations)} 正本との乖離={len(diffs)} "
+          f"正本自体の問題={len(canon_problems)} "
           f"警告(過去投稿)={len(warns)} 取得スキップ={len(skipped)} → {REPORT_FILE}")
+    for p in canon_problems:
+        print(f"  ❌ {p['where']}: {p['reason']}" + (f"\n     → {p['hit']}" if p["hit"] else ""))
     for v in violations:
         print(f"  ❌ {v['where']}: {v['reason']}\n     → {v['hit']}")
     for w in warns:
@@ -351,7 +454,7 @@ def main():
     for m in manual:
         print(f"  - {m}")
 
-    if violations or diffs:
+    if violations or diffs or canon_problems:
         sys.exit(1)
     print("\nプロフィール・固定ポストに違反なし ✅")
     return 0

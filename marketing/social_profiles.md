@@ -6,6 +6,32 @@
 ※取扱プラットフォームは **Pococha・TikTok LIVE・17LIVE** で統一（IRIAM・SHOWROOM等は書かない）。
 ※導線は **特典PDF『ライバー新人期スタートダッシュガイド』→ 公式LINE登録** に統一。リンクは `https://lin.ee/xchCfdn` のみ（lit.link・LP直リンクは使わない）。「オンライン無料相談」は使わない。
 
+### 📌 このファイルの書き方（`social_profile_guard.py` が機械で読む）
+
+**正本の値は、印を付けたフェンスにだけ書く。**
+
+    ```canonical:<媒体>.<項目>
+    ここが正本の値
+    ```
+
+| | 使える値 |
+|---|---|
+| 媒体 | `threads` / `x` / `ig_taitan_pro7` / `ig_taitanblog` |
+| 項目 | `name`（表示名・名前欄） / `bio` / `link` / `pinned`（固定ポスト本文。IGは対象外） |
+
+- **印の無い ``` ブロックは全部ただの例示**。手順例・旧文面・エラーログを
+  どこに置いても正本の値には一切影響しない。安心して好きな位置に書いてよい。
+- 逆に、値を足したのに印を付け忘れると `social_profile_guard.py` が
+  「正本から読み取れていない」で**赤くなる**（黙って消えない）。
+- 媒体名・項目名のタイポ、同じキーの二重定義も番犬が弾く。
+- 番犬は正本の値そのものにも確定ファクトの禁止パターンを当てる（正本の自己スキャン）。
+  つまり **ここに違反を書いた時点で赤くなる**。実物へ反映するまで待たない。
+
+> 旧仕様は「項目見出しの直後の最初のフェンス」を値として採っていたため、
+> 説明ブロックを設計版フェンスより上に置くと**それが正本の値として読まれた**
+> （2026-08-09に X の固定ツイート節で実際に発生。`pinned` は突合対象外だったので
+> 番犬も鳴かなかった）。上記の印方式はその依存を無くしたもの。
+
 ### 反映状況（2026-08-09 実測）
 | 媒体 | 項目 | 実物の状態 | 設計版の反映 |
 |---|---|---|---|
@@ -66,24 +92,29 @@ X @taitan_LIVER の固定ポスト（tweet id `2037849449498837271`・2026-03-28
 ## Threads（@taitanblog）
 
 ### 表示名
-```
+```canonical:threads.name
 たいたん｜元Pococha S帯の事務所代表
 ```
 別案：`たいたん☕️｜ライバー事務所TAITAN PRO代表`
 
 ### 自己紹介（bio・150字制限内／約136字）
-```
+```canonical:threads.bio
 元Pococha S帯｜ライバー事務所「TAITAN PRO」代表
 Pococha・TikTok LIVE・17LIVE対応／200名所属・還元率100%+α
 未経験から伸ばす"配信のリアル"を毎日発信
 📘『ライバー新人期スタートダッシュガイド』LINE友だち追加で無料配布中👇
 ```
-リンク欄：`https://lin.ee/xchCfdn`（旧 `lit.link/taitan118` から差し替え）
+
+### リンク欄
+旧 `lit.link/taitan118` から差し替え。
+```canonical:threads.link
+https://lin.ee/xchCfdn
+```
 
 **旧bioから落とすもの**：「三冠🥇ミクチャ賞」「ヤングキング裏表紙」「女性誌Ray 掲載」「ポコチャでトップを目指し配信中」。確定ファクト一覧に無く、かつ"現役ライバー"の印象になり事務所代表の立ち位置とぶつかるため。残す場合は確定ファクトへ追記してから。
 
 ### 固定投稿
-```
+```canonical:threads.pinned
 はじめまして、たいたんです☕️
 
 元Pococha S帯。ミクチャでは8,000人の中からミスターコン1位をとりました。Pocochaを4年見続けて、いまはライバー事務所「TAITAN PRO」をやっています。Pococha・TikTok LIVE・17LIVEで200名が一緒に配信中です。
@@ -108,18 +139,22 @@ https://lin.ee/xchCfdn
 ## X（Twitter）
 
 ### 表示名
-```
+```canonical:x.name
 たいたん｜元Pococha S帯／ライバー事務所代表
 ```
 
 ### bio（160字制限内）
-```
+```canonical:x.bio
 元Pococha S帯｜石川発・ライバー事務所「TAITAN PRO」代表
 Pococha・TikTokで200名が所属／11の配信代理店と提携／還元率100%+α
 甘い言葉は言えません。配信4年で見てきた現実だけを毎日。
 始め方・悩み相談はLINEへ→
 ```
-URL欄：`https://lin.ee/xchCfdn`
+
+### URL欄
+```canonical:x.link
+https://lin.ee/xchCfdn
+```
 
 **反映手順**：この文面は `x_profile_update.py` にも同じものが埋め込まれている（bio更新には
 OAuth1.0aユーザーコンテキストが必要で、トークンはGitHub Secretsにしか無いため）。
@@ -138,15 +173,12 @@ OAuth1.0aユーザーコンテキストが必要で、トークンはGitHub Secr
 3. 固定が入れ替わったのを確認してから旧ポストを削除：
    `gh workflow run social_pinned_publish.yml -f action=delete-x -f tweet_id=2037849449498837271 -f dry_run=false`
 
-> ⚠️ **この節に ``` のブロックを足すときは、必ず下の設計版フェンスより「後ろ」に置く**。
-> `social_profile_guard.parse_canonical` は**項目見出しの直後の最初のフェンスを本文として採る**ので、
-> 手順例を上に置くと**それが正本の固定ポスト本文として読まれる**（2026-08-09に実際にやらかした）。
-
 **反映手順（文面を変えるとき）**：この文面は `social_pinned_publish.py` にも同じものが埋め込まれている（投稿には
 OAuth1.0aユーザーコンテキストが必要で、トークンはGitHub Secretsにしか無いため）。
 変更時は**両方を直してから** `gh workflow run social_pinned_publish.yml -f action=post-x -f dry_run=false` を実行し、
 **Xアプリで固定を新ポストに差し替えてから**旧ポストを `action=delete-x` で削除する。
-```
+
+```canonical:x.pinned
 4年前、0人の枠で2時間ひとり喋ってた僕が、いま200名のライバー事務所の代表をやってます。
 
 元Pococha S帯。最初は誰より震えてた。
@@ -183,19 +215,24 @@ OAuth1.0aユーザーコンテキストが必要で、トークンはGitHub Secr
 ### ① @taitan_pro7（事務所公式）
 
 #### 名前欄（30字制限内）
-```
+```canonical:ig_taitan_pro7.name
 TAITAN PRO｜ライバー事務所
 ```
 
 #### bio（150字制限内／約114字）
-```
+```canonical:ig_taitan_pro7.bio
 ライバー事務所【TAITAN PRO】公式
 取扱👉Pococha・TikTok LIVE・17LIVE
 未経験中心に200名が所属／還元率100%+α
 顔出しなしのラジオ配信も歓迎⭐️
 📘新人ガイド無料配布中→プロフのLINEから
 ```
-リンク欄：`https://lin.ee/xchCfdn`（**@taitan_pro7 は既にこのリンク＝変更不要**）
+
+#### リンク欄
+**@taitan_pro7 は既にこのリンク＝変更不要**。
+```canonical:ig_taitan_pro7.link
+https://lin.ee/xchCfdn
+```
 
 **@taitan_pro7 の旧bioからの是正点**（実物は2026-08-09時点でも下記のまま。
 上のとおり**API書き込みは実測で不可**なので、アプリ／Webから手動で貼り替えるしかない）
@@ -229,18 +266,23 @@ TAITAN PRO｜ライバー事務所
 Threadsと同一ハンドルなので、**事務所公式版ではなく「元S帯の個人」版**でThreadsと揃える。
 
 #### 名前欄（30字制限内）
-```
+```canonical:ig_taitanblog.name
 たいたん｜元Pococha S帯
 ```
 
 #### bio（150字制限内／約93字）
-```
+```canonical:ig_taitanblog.bio
 元Pococha S帯／ミクチャ8,000人中ミスターコン1位
 ライバー事務所「TAITAN PRO」代表
 未経験から伸ばす"配信のリアル"を発信
 📘新人ガイド無料配布中→下のLINEから
 ```
-リンク欄：`https://lin.ee/xchCfdn`（旧 lit.link から差し替え）
+
+#### リンク欄
+旧 lit.link から差し替え。
+```canonical:ig_taitanblog.link
+https://lin.ee/xchCfdn
+```
 
 **賞名は確定ファクト側が正**（2026-08-08 ユーザー確定）。2026-08-08時点の実物bioにある
 `8000人応募の中でミスターからあげアワードGP🥇` は**誤りなので使わない**。正しくは
