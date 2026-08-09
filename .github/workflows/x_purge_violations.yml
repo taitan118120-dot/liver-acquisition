@@ -1,0 +1,66 @@
+name: X公開済みポストの違反走査・削除
+
+# X APIの認証情報は Secrets にしか無いので、この作業はActions経由でしか実行できない。
+# 削除は取り消せないため、既定はdry-run。消すときだけ confirm に DELETE と打つ。
+on:
+  workflow_dispatch:
+    inputs:
+      reasons:
+        description: '対象（ratio=割合統計のみ / all=全違反）'
+        type: choice
+        options: [ratio, all]
+        default: ratio
+      confirm:
+        description: '実削除するなら DELETE と入力（空ならdry-run）'
+        type: string
+        default: ''
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  purge:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install tweepy
+
+      - name: 走査（＋confirm=DELETE なら削除）
+        env:
+          TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
+          TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
+          TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
+          TWITTER_ACCESS_TOKEN_SECRET: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
+          TWITTER_BEARER_TOKEN: ${{ secrets.TWITTER_BEARER_TOKEN }}
+        run: |
+          ARGS="--reasons ${{ inputs.reasons }}"
+          if [ "${{ inputs.confirm }}" = "DELETE" ]; then
+            echo "::warning::実削除モードで実行します"
+            ARGS="$ARGS --delete"
+          else
+            echo "dry-run（confirm が DELETE ではありません）"
+          fi
+          python x_purge_violations.py $ARGS
+
+      - name: レポート保存
+        if: always()
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add data/x_purge_report.json || true
+          git diff --staged --quiet && exit 0
+          git commit -m "X公開済みポストの違反走査レポート更新"
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push && exit 0
+            sleep 5
+          done
+          echo "::warning::レポートのpushに失敗しました"
