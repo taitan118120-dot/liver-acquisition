@@ -36,6 +36,13 @@ from datetime import datetime
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 POSTS_FILE = os.path.join(SCRIPT_DIR, "threads_posts.json")
 
+# 割合統計のパターンはリポジトリ直下の facts_patterns.py が正本（媒体共通）。
+# 2026-08-09: Threads のキューは実測で違反ゼロだったが、_violations() 自体には
+# 割合統計の検査が無く、X と同じ事故（「9割の副業ライバーは〜」）を止められない
+# 状態だった。潜在的な穴なので同じ正本に繋いでおく。
+sys.path.insert(0, os.path.dirname(SCRIPT_DIR))
+from facts_patterns import ratio_violations  # noqa: E402
+
 LP_AGENCY = "https://taitan-pro-lp.netlify.app/agency/"
 LINE_URL = "https://lin.ee/xchCfdn"
 
@@ -69,6 +76,8 @@ FACTS = """
 - 「絶対稼げる」「確実に」「必ず月◯万」「安定して稼げる」等の断定・保証
 - 月10万円未満の金額（「月3万」「数万円」「お小遣い程度」等の少額表記）
 - 業界収入分布の%、DM返信率、倍率等の根拠なし数字。「多数輩出」「多くの実績」もNG
+- 出典なしの割合統計。「9割が挫折する」「99%が知らない」「10人に1人も成功しない」型に加えて、
+  「9割の副業ライバーは〜」のように**割合が主語を修飾する形も禁止**（Xで実際に公開まで到達した型）
 - 他社事務所を下げる書き方（「多くの事務所は〜」「よくある事務所と違って〜」）
 - 実在しないライバーのエピソードの捏造（FACTSにある実例だけ使う）
 """
@@ -205,6 +214,9 @@ def _violations(text, angle):
             continue
         if re.search(pat, text):
             v.append(label)
+
+    # 出典なしの割合統計（「9割が挫折」「9割の副業ライバーは〜」型）
+    v += [reason for reason, _hit in ratio_violations(text)]
 
     # 金額表記：許可レンジ以外の「月◯万」を弾く
     for m in re.finditer(r"月\s*([0-9０-９]{1,3})\s*万", text):

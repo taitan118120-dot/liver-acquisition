@@ -49,6 +49,16 @@ import sys
 
 import requests
 
+# 割合統計・収入レンジのパターンは媒体共通なので facts_patterns.py が正本。
+# ここに再定義すると、X/Threads 側と片方だけ更新されて必ずズレる
+# （2026-08-08 に RATIO_SUBJECT を足したとき、まさにX側が取り残された）。
+from facts_patterns import (
+    LINE_ALLOWED,
+    line_link_violations,
+    money_violations,
+    ratio_violations,
+)
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 REPORT_FILE = os.path.join(BASE_DIR, "data", "social_profile_guard_report.json")
 CANON_FILE = os.path.join(BASE_DIR, "marketing", "social_profiles.md")
@@ -56,8 +66,6 @@ CANON_FILE = os.path.join(BASE_DIR, "marketing", "social_profiles.md")
 X_USERNAME = "taitan_LIVER"
 IG_GRAPH = "https://graph.facebook.com/v21.0"
 THREADS_GRAPH = "https://graph.threads.net/v1.0"
-
-LINE_ALLOWED = "https://lin.ee/xchCfdn"
 
 # ── 禁止パターン ──────────────────────────────────────────────
 # 確定ファクトの「常設grepパターン」を、旧値ではなく **フィールド** で組む
@@ -86,20 +94,6 @@ NG_PATTERNS = [
     (r"他アプリ(?:も)?多数", "取扱は Pococha・TikTok LIVE・17LIVE の3つで統一"),
 ]
 
-# 出典なしの割合統計。2系統で当てる（片方だけだと必ず取りこぼす）
-#   ① 割合語 × 離脱/成功語の近接 …「9割が消える」「10人に1人も成功しない」型
-#   ② 割合が主語を直接修飾する形 …「9割の副業ライバーはフリーで十分」型。
-#      ②は離脱語を含まないので①では絶対に出ない（2026-08-08 実測で取りこぼした）
-DROPOUT_RATIO = re.compile(r"[7-9]\s*割|[6-9]0\s*[%％]|10人に[1-3]人")
-DROPOUT_WORD = re.compile(r"辞め|消え|脱落|挫折|離脱|成功|続か")
-RATIO_SUBJECT = re.compile(
-    r"(?:[1-9]\s*割|[0-9]{1,3}\s*[%％])の(?:ライバー|人|副業|女性|男性|初心者|配信者)")
-
-MONEY_LOW = re.compile(r"月\s*([0-9]{1,2})\s*万")
-# 確定レンジ（3ヶ月15〜20万 / 6ヶ月30〜40万 / B帯20〜30万）より下は書かない
-MONEY_FLOOR = 15
-
-
 def scan(text, where):
     """1本のテキストに全パターンを当てて violation のリストを返す。"""
     if not text:
@@ -111,29 +105,10 @@ def scan(text, where):
         if m:
             out.append({"where": where, "reason": label, "hit": m.group(0)[:40]})
 
-    # 割合 × 離脱語の近接（330字窓）
-    for m in DROPOUT_RATIO.finditer(text):
-        window = text[max(0, m.start() - 40): m.end() + 40]
-        if DROPOUT_WORD.search(window):
-            out.append({"where": where, "reason": "出典なしの割合統計（離脱/成功率）",
-                        "hit": window.strip()[:60]})
-            break
-
-    m = RATIO_SUBJECT.search(text)
-    if m:
-        out.append({"where": where, "reason": "出典なしの割合統計（割合が主語を修飾）",
-                    "hit": text[max(0, m.start() - 10): m.end() + 20].strip()[:60]})
-
-    for m in MONEY_LOW.finditer(text):
-        if int(m.group(1)) < MONEY_FLOOR:
-            out.append({"where": where, "reason": f"確定レンジ未満の少額表記",
-                        "hit": m.group(0)})
-            break
-
-    for m in re.finditer(r"https?://lin\.ee/\S+", text):
-        if m.group(0).rstrip("/。、）)") != LINE_ALLOWED:
-            out.append({"where": where, "reason": "許可リスト外のLINEリンク",
-                        "hit": m.group(0)})
+    # 割合統計・収入レンジ・LINEリンクは facts_patterns.py（媒体共通の正本）に委譲
+    for reason, hit in (ratio_violations(text) + money_violations(text)
+                        + line_link_violations(text)):
+        out.append({"where": where, "reason": reason, "hit": hit})
     return out
 
 
