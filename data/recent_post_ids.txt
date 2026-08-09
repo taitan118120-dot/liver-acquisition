@@ -207,6 +207,7 @@ evo_372
 evo_374
 evo_375
 evo_376
+evo_377
 evo_378
 evo_387
 evo_393
