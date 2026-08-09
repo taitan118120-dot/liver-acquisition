@@ -34,6 +34,12 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
+      # 再検知コメントの重複判定（.github/scripts/guard_comment.js）だけのための取得。
+      # 番犬本体はリポジトリのファイルを使わないので sparse で最小限に留める。
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: .github/scripts
+
       - name: 直近36時間の実投稿を確認
         id: check
         env:
@@ -60,13 +66,6 @@ jobs:
         with:
           script: |
             const title = 'X自動投稿が36時間以上成功していません（ウォッチドッグ検知）';
-            const { data: existing } = await github.rest.issues.listForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-              per_page: 100,
-            });
-            const match = existing.find(i => i.title === title);
             const body = [
               '## X投稿ウォッチドッグ検知',
               '',
@@ -74,7 +73,7 @@ jobs:
               'ワークフローが緑でも実投稿が止まっている可能性があります。',
               '',
               '- 自動投稿ワークフローを即時トリガー済み（自己回復の試み）',
-              '- 明日も検知された場合はこのIssueにコメントが追加されます',
+              '- 検知内容が変わったときだけこのIssueにコメントが追加されます',
               '',
               '## 原因確認コマンド',
               '```bash',
@@ -87,21 +86,13 @@ jobs:
               '---',
               '_このIssueは `.github/workflows/x_post_watchdog.yml` により自動生成されました。_',
             ].join('\n');
-            if (match) {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: match.number,
-                body: `再検知: ${new Date().toISOString()} 時点でも直近36時間の実投稿がありません。`,
-              });
-            } else {
-              await github.rest.issues.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                title,
-                body,
-              });
-            }
+            // 停止が続くあいだ毎ラン同じ内容のコメントを積むとメール通知だけが増えるので、
+            // 内容が変わったときだけ鳴く（Issueはオープンのまま／検知自体は毎日走る）。
+            const guard = require('./.github/scripts/guard_comment.js');
+            await guard.notify({
+              github, context, title, body,
+              recomment: `再検知: ${new Date().toISOString()} 時点でも直近36時間の実投稿がありません。`,
+            });
 
       - name: 投稿再開を確認 → Issueを自動クローズ
         # このワークフローは検知しても赤くならない（outputs で判定する型）ので

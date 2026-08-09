@@ -114,28 +114,13 @@ jobs:
               '_このIssueは `.github/workflows/note_keys_shrink_guard.yml` により自動生成されました。_',
               marker,
             ].join('\n');
-            const { data: existing } = await github.rest.issues.listForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-              per_page: 100,
+            // 同じ巻き戻しが直るまでは毎ラン赤になる。そのたびに同内容のコメントを積むと
+            // メール通知だけが毎日増えるので、内容が変わったときだけ鳴く（赤は維持）。
+            const guard = require('./.github/scripts/guard_comment.js');
+            await guard.notify({
+              github, context, title, body,
+              recomment: `再検知: ${new Date().toISOString()}\n\n${culprits || keys}\n\n${marker}`,
             });
-            const match = existing.find(i => i.title === title);
-            if (match) {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: match.number,
-                body: `再検知: ${new Date().toISOString()}\n\n${culprits || keys}\n\n${marker}`,
-              });
-            } else {
-              await github.rest.issues.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                title,
-                body,
-              });
-            }
 
       - name: 巻き戻し復旧 → Issueを自動クローズ
         # この番犬が見るのは base..head の差分だけなので、「緑だった」＝「巻き戻しが直った」

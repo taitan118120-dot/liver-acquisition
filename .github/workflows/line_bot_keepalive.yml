@@ -35,6 +35,12 @@ jobs:
     # 本物の障害通知は下の Issue ステップが担うので、赤/緑に頼る必要はない。
     continue-on-error: true
     steps:
+      # 再検知コメントの重複判定（.github/scripts/guard_comment.js）だけのための取得。
+      # keepaliveは1時間ごとに走るので sparse で最小限に留める。
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: .github/scripts
+
       - name: Renderのbotを叩いて生存確認
         id: ping
         shell: bash
@@ -77,28 +83,13 @@ jobs:
               '---',
               '_このIssueは `.github/workflows/line_bot_keepalive.yml` により自動生成されました。_',
             ].join('\n');
-            const { data: existing } = await github.rest.issues.listForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-              per_page: 100,
+            // keepaliveは1時間ごとに走るので、ダウンが続くと同内容のコメントが1日24件積まれ
+            // メール通知だけが増える。内容が変わったときだけ鳴く（Issueはオープンのまま）。
+            const guard = require('./.github/scripts/guard_comment.js');
+            await guard.notify({
+              github, context, title, body,
+              recomment: `再検知: ${new Date().toISOString()}`,
             });
-            const match = existing.find(i => i.title === title);
-            if (match) {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: match.number,
-                body: `再検知: ${new Date().toISOString()}`,
-              });
-            } else {
-              await github.rest.issues.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                title,
-                body,
-              });
-            }
 
       - name: 復旧していたらIssueを自動クローズ
         if: steps.ping.outputs.down == 'false'
