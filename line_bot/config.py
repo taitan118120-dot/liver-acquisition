@@ -14,7 +14,7 @@ ADMIN_USER_ID = os.environ.get("LINE_ADMIN_USER_ID", "")
 
 # 事務所情報
 OFFICE_NAME = "TAITAN PRO"
-OFFICE_URL = "https://taitan-pro-lp-targets.netlify.app/#apply"
+OFFICE_URL = "https://taitan-pro-lp-targets.netlify.app/beginner/?utm_source=line&utm_medium=bot&utm_campaign=line_bot"
 LP_BEGINNER = "https://taitan-pro-lp-targets.netlify.app/beginner/"
 LP_LIVER = "https://taitan-pro-lp-targets.netlify.app/liver/"
 LP_SIDEJOB = "https://taitan-pro-lp-targets.netlify.app/sidejob/"

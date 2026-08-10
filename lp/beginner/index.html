@@ -1016,8 +1016,15 @@
     </div>
   </section>
 
-  <!-- ============ 16. 希少性セクション ============ -->
-  <section class="sec scarcity">
+  <!-- ============ 16. 希少性セクション ============
+       id="apply" は「応募する」導線の着地点。
+       2026-08-10: 過去に配布した誘導URL `…netlify.app/#apply` に対応する id が
+       LP側に一度も存在せず、アンカージャンプが無言で効いていなかった（トップに着地するだけ）。
+       すでに世に出ている分（送信済みDM・投稿済みThreads・旧Xプロフィール）は
+       もう書き換えられないので、受け皿としてここに id を置く。
+       新規に作るリンクは #apply を使わず `/beginner/?utm_…`（ads/utm設計.md §3）に統一すること。
+       このセクションはコメントアウト運用の対象外なので、着地点として安定している。 -->
+  <section class="sec scarcity" id="apply">
     <div class="container reveal">
       <div class="sec-head">
         <span class="sec-label">LIMITED</span>

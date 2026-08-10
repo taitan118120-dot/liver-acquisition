@@ -138,6 +138,38 @@ LINE直リンクは §1-1 のとおり計測できないので、**LPリンク�
 
 `https://taitan-pro-lp.netlify.app/beginner/?utm_source=gbp&utm_medium=organic&utm_campaign=gbp_profile`
 
+### 3-6. DM・公式LINE（2026-08-10 追加）
+
+| 導線 | 実装ファイル | URL |
+|---|---|---|
+| DMテンプレ（`dm_sender.py` 系・媒体横断） | `config.py` `OFFICE_URL` / `templates/dm_*.txt` | `…/beginner/?utm_source=dm&utm_medium=dm&utm_campaign=dm_direct` |
+| liver_app のDMテンプレ（Instagram） | `liver_app/db.py` `_DEFAULT_*_TEMPLATE` | `…/beginner/?utm_source=instagram&utm_medium=dm&utm_campaign=ig_dm` |
+| x_app のDMテンプレ（X） | `x_app/db.py` `_DEFAULT_*_TEMPLATE` | `…/beginner/?utm_source=x&utm_medium=dm&utm_campaign=x_dm` |
+| 公式LINE リッチメニューのボタン | `line_bot/rich_menu.py` | `…/beginner/?utm_source=line&utm_medium=richmenu&utm_campaign=line_richmenu` |
+| 公式LINE `OFFICE_URL`（現在どこからも参照されていない） | `line_bot/config.py` | `…-targets.netlify.app/beginner/?utm_source=line&utm_medium=bot&utm_campaign=line_bot` |
+
+> `liver_app` / `x_app` はテンプレ本体を **Fly.io の本番DB** に持つ。`db.py` の `_DEFAULT_*` を
+> 書き換えても既存DBは `INSERT OR IGNORE` で無視されるので、**URL置換マイグレーションを
+> `init_db()` に足してデプロイするまで本番の文面は変わらない**（記憶 `project_liver_app_template_migration`）。
+
+### 3-7. `#apply` は使わない（2026-08-10 決定）
+
+長らく `https://taitan-pro-lp.netlify.app/#apply` を「応募ページ」として各所に配っていたが、
+**LP側に `id="apply"` は一度も存在しなかった**。`netlify.toml` の `/` → `/beginner/index.html`
+200リライトで beginner LP のトップに着地するだけで、アンカージャンプは無言で不発だった。
+`link_guard.py` はURLをGETするだけだったので HTTP 200 で素通りしていた（＝1年近く誰も気づけなかった）。
+
+対応は2本立て：
+
+1. **LP に受け皿の `id="apply"` を追加**（`lp/beginner/index.html` の希少性セクション＝最後のCTA）。
+   送信済みDM・投稿済みThreads・旧Xプロフィールなど**もう書き換えられない分**のための救済。
+   コメントアウト運用の対象になっている `#campaign` ではなく、常設のセクションに置いてある。
+2. **新規に作るリンクは `#apply` を使わない。** 上表のとおり `/beginner/?utm_…` に統一する。
+   フラグメントとクエリを併用すると §3-1 のとおり壊れやすいので、**アンカーは付けない**のが既定。
+
+再発防止として `link_guard.py` に**フラグメント実在チェック**を入れた（自サイトのLPに限り、
+着地先HTMLに `id`/`name` があるかまで見る。無ければ DEAD 扱いで Actions が赤くなる）。
+
 ---
 
 ## 4. Google広告のCV計測を壊さないことの根拠
@@ -210,3 +242,4 @@ event conversion     {send_to:"AW-429748464/-KwzCJvzmNQcEPDh9cwB", event_callbac
 | 日付 | 内容 |
 |---|---|
 | 2026-08-10 | 新規作成。`lp/shared/tracking.js` に計測を一元化し、全4LPへ適用。utm設計を確定。Google広告側は未変更（ユーザー承認待ち） |
+| 2026-08-10 | 死にアンカー `#apply` を撤去（§3-7）。DM・公式LINE導線に utm を付与（§3-6）。`link_guard.py` にフラグメント実在チェックを追加 |

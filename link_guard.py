@@ -12,9 +12,12 @@
      URLを抽出してGETし、404/410 を検知
   3. 公開Note全記事のURL実チェック — 公開APIで全記事本文を取得して同様に検知
      （公開版とリポジトリの乖離も拾える）
+  4. フラグメント(#anchor)の実在チェック — 自サイトのLPに限り、着地先HTMLに
+     その id/name があるかまで見る（2026-08-10 追加。経緯は check_url 内のコメント）
 
 判定ポリシー:
-  - DEAD  = 404/410、または許可リスト外の lin.ee URL → exit 1（Actionsが赤くなる）
+  - DEAD  = 404/410、許可リスト外の lin.ee URL、自サイトの存在しない #anchor
+            → exit 1（Actionsが赤くなる）
   - WARN  = 403/405/429/5xx/タイムアウト等（bot拒否の可能性が高い）→ 報告のみ
   - SKIP  = botを全面ブロックするSNSドメイン（誤検知源なので見ない）
 
@@ -82,6 +85,13 @@ SKIP_DOMAINS = (
     "x.com", "twitter.com", "instagram.com", "facebook.com", "tiktok.com",
     "threads.net", "localhost", "127.0.0.1", "example.com",
     "api.line.me", "notify-api.line.me",  # API系はGETで判定できない
+)
+
+# フラグメント（#anchor）の実在まで検証するドメイン。
+# 自分で中身を管理しているサイトだけに限る。他所のSPAはHTMLにidが出ないため誤検知源。
+FRAGMENT_CHECK_DOMAINS = (
+    "taitan-pro-lp.netlify.app",
+    "taitan-pro-lp-targets.netlify.app",
 )
 
 # 読者が踏むリンクではないURL（preconnectヒント・JSON-LDの@context等）
@@ -160,12 +170,29 @@ def fetch_note_urls():
     return found
 
 
+def _fragment_exists(html, frag):
+    """HTML中に id="frag" / name="frag" が存在するか"""
+    q = re.escape(frag)
+    return bool(re.search(rf'\b(?:id|name)\s*=\s*["\']{q}["\']', html)
+                or re.search(rf"\b(?:id|name)\s*=\s*{q}(?=[\s/>])", html))
+
+
 def check_url(url):
     """URLの生死判定。('dead'|'warn'|'ok', 詳細) を返す"""
+    frag = ""
+    if "#" in url:
+        base, frag = url.split("#", 1)
+    else:
+        base = url
     try:
         r = requests.get(url, headers={"User-Agent": UA}, timeout=15,
                          allow_redirects=True, stream=True)
         code = r.status_code
+        # フラグメント検証のため本文が要る場合だけ読む（それ以外は stream のまま捨てる）
+        html = ""
+        if frag and code < 400 and any(d in base for d in FRAGMENT_CHECK_DOMAINS):
+            r.encoding = r.encoding or "utf-8"
+            html = r.text
         r.close()
     except requests.RequestException as e:
         return "warn", f"接続エラー: {type(e).__name__}"
@@ -173,6 +200,12 @@ def check_url(url):
         return "dead", f"HTTP {code}"
     if code >= 400:
         return "warn", f"HTTP {code}（bot拒否の可能性）"
+    # フラグメント切れ（自サイトのみ判定する）
+    # 2026-08-10: `…netlify.app/#apply` の id が LP に一度も存在せず、読者は
+    # アンカージャンプせずトップに着地していた。HTTP 200 なので従来のGET判定は
+    # 素通りしていた。リンク先の「セクション」まで含めて生死を見る。
+    if html and not _fragment_exists(html, frag):
+        return "dead", f"HTTP {code} だが #{frag} が着地先に存在しない"
     return "ok", f"HTTP {code}"
 
 

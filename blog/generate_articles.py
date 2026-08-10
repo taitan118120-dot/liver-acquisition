@@ -39,7 +39,7 @@ TAITAN PROは、**200名のライバーが所属**する実績あるライバー
 
 **[LINE で無料相談する →](https://lin.ee/xchCfdn)**
 
-**[Web から応募する →](https://taitan-pro-lp.netlify.app/#apply)**
+**[Web から応募する →](https://taitan-pro-lp.netlify.app/beginner/?utm_source=note&utm_medium=article&utm_campaign=note_cta)**
 """
 
 

@@ -40,7 +40,7 @@ RICH_MENU_BODY = {
             "bounds": {"x": 1667, "y": 843, "width": 833, "height": 843},
             "action": {
                 "type": "uri",
-                "uri": "https://taitan-pro-lp.netlify.app/#apply",
+                "uri": "https://taitan-pro-lp.netlify.app/beginner/?utm_source=line&utm_medium=richmenu&utm_campaign=line_richmenu",
             },
         },
     ],
