@@ -161,30 +161,12 @@ def list_leads(status=None, platform=None, limit=20):
         print(f"  ... 他 {len(leads) - limit}件")
 
 
-def export_json():
-    """リードデータをJSON形式で出力（ダッシュボード用）"""
-    leads = load_leads()
-
-    status_counts = Counter(l["status"] for l in leads)
-    platform_counts = Counter(l["platform"] for l in leads)
-    type_counts = Counter(l["target_type"] for l in leads)
-
-    import json
-    data = {
-        "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "total": len(leads),
-        "status_counts": dict(status_counts),
-        "platform_counts": dict(platform_counts),
-        "type_counts": dict(type_counts),
-        "leads": leads,
-    }
-
-    output_path = "data/dashboard_data.json"
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-
-    print(f"ダッシュボードデータを {output_path} に出力しました。")
+# 2026-08-10: export_json() / dashboard/ を削除。
+# 閲覧側 dashboard/index.html は手動ファイル選択でしか読まず、入力元の
+# data/leads.csv を書く「リード検索」ワークフローは 2026-04-04 以降 disabled_manually。
+# さらに leads.csv は第三者PIIのため .gitignore 済みなのに、その中身を丸ごと含む
+# data/dashboard_data.json だけが public リポに tracked で残る経路になっていた。
+# 統計は show_stats() / list_leads() で足りるため、出力側ごと廃止した。
 
 
 def main():
@@ -193,7 +175,6 @@ def main():
 
     sub.add_parser("stats", help="統計表示")
     sub.add_parser("followup", help="フォローアップ対象表示")
-    sub.add_parser("export", help="ダッシュボード用JSON出力")
 
     list_parser = sub.add_parser("list", help="リード一覧")
     list_parser.add_argument("--status", help="ステータスでフィルタ")
@@ -214,8 +195,6 @@ def main():
         list_leads(status=args.status, platform=args.platform, limit=args.limit)
     elif args.command == "update":
         update_status(args.username, args.status)
-    elif args.command == "export":
-        export_json()
     else:
         parser.print_help()
 
