@@ -94,6 +94,40 @@ def _err(data):
     return (data.get("error") or {}).get("message", "") or json.dumps(data, ensure_ascii=False)[:300]
 
 
+class PermissionAbort(Exception):
+    """権限不足・トークン失効。全メディアで同じ結果になるので即中断する。"""
+
+
+# 権限・トークン系のエラーコード。指標の対応/非対応とは無関係で、
+# メディアを変えても絶対に直らないため1件目で打ち切る
+FATAL_CODES = {10, 190, 200, 803}
+
+
+def _raise_if_fatal(data, media_id=""):
+    err = data.get("error") or {}
+    if err.get("code") in FATAL_CODES:
+        raise PermissionAbort(
+            f"(#{err.get('code')}) {err.get('message', '')}"
+            + (f" [media {media_id}]" if media_id else "")
+        )
+
+
+def report_scopes(token):
+    """トークンに付いている権限を出す。insights が取れない時の原因特定用。"""
+    data = _get("https://graph.facebook.com/v21.0/debug_token",
+                {"input_token": token, "access_token": token})
+    info = data.get("data") or {}
+    if not info:
+        print(f"[WARN] トークン情報を取得できませんでした: {_err(data)[:160]}")
+        return []
+    scopes = info.get("scopes", [])
+    print(f"[INFO] トークン権限: {', '.join(scopes) or '（なし）'}")
+    if "instagram_manage_insights" not in scopes:
+        print("[WARN] instagram_manage_insights がありません。"
+              "インサイトAPIは権限不足で失敗します")
+    return scopes
+
+
 def pick_api_version(token, user_id):
     """生きている最新の API バージョンを選ぶ。"""
     override = os.environ.get("IG_GRAPH_API_VERSION", "").strip()
@@ -188,6 +222,7 @@ def resolve_metrics(base, token, media_id, media_type, delay):
             _SUPPORTED_CACHE[media_type] = metrics
             print(f"[INFO] {media_type} で取得できる指標: {', '.join(metrics)}")
             return metrics
+        _raise_if_fatal(data, media_id)
         narrowed = _narrow_metrics(_err(data), metrics)
         if not narrowed:
             break
@@ -202,6 +237,7 @@ def resolve_metrics(base, token, media_id, media_type, delay):
         if "data" in data:
             ok.append(m)
         else:
+            _raise_if_fatal(data, media_id)
             last = _err(data)
         time.sleep(delay)
     if not ok:
@@ -489,11 +525,19 @@ def main():
 
     token = _env("INSTAGRAM_ACCESS_TOKEN")
     user_id = _env("INSTAGRAM_BUSINESS_ID")
+    report_scopes(token)
     version = pick_api_version(token, user_id)
     base = f"https://graph.facebook.com/{version}"
 
-    rows, raw, linked = build_rows(base, token, user_id, args.limit,
-                                   args.delay, args.page_delay)
+    try:
+        rows, raw, linked = build_rows(base, token, user_id, args.limit,
+                                       args.delay, args.page_delay)
+    except PermissionAbort as e:
+        print(f"\n[ERROR] インサイトAPIが権限不足で拒否されました: {e}")
+        print("  Metaアプリに instagram_manage_insights（＋対象IGアカウントの")
+        print("  ビジネス連携）を付けてトークンを取り直す必要があります。")
+        print("  権限のないまま回しても全指標0のCSVを上書きするだけなので中断します。")
+        sys.exit(3)
     if not rows:
         print("[ERROR] 取得0件")
         sys.exit(1)
