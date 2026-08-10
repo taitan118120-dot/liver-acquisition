@@ -43,11 +43,22 @@ MAX_LEN = 500
 # 型の配分は threads_content.py が正本。生成側と投稿側で目標がズレると
 # 「storyを多く作ったのにliverばかり出る」が起きるので必ず同じ値を使う。
 # 生成側が壊れても投稿は止めたくないので、読めなければ同値でフォールバックする。
+#
+# _violations も同じ理由でここから借りる。生成時に検品して落としているとはいえ、
+# 基準を後から厳しくした・手動でキューに足した場合は未投稿分に違反が残りうる。
+# 「公開する直前」に一度見るのが最後の砦になる（--audit はCIの通知用でしかなく、
+# キューを実際に消化するのはこのモジュールなので、ここに置かないと素通りする）。
 try:
     sys.path.insert(0, SCRIPT_DIR)
-    from threads_content import TARGET_MIX
+    from threads_content import TARGET_MIX, _violations as _fact_violations
 except Exception:
     TARGET_MIX = {"story": 0.60, "liver": 0.25, "agency": 0.15}
+    # 検品モジュールが読めないときは検品なしで投稿を続ける（fail-open）。
+    # 1日2回の配信を止める損失のほうが大きく、キューの中身は生成時に一度
+    # 検品済みだから。ただし黙って素通りさせず必ず警告を出す。
+    _fact_violations = None
+    print("[WARN] threads_content の検品関数を読み込めませんでした。"
+          "確定ファクト検品なしで投稿します")
 
 # 配分を見るときに遡る投稿数。短いと1本ごとに型が振れ、長いと過去の
 # liver偏重（2026-08-07以前の在庫）を取り戻そうとして偏り続ける。
@@ -256,6 +267,10 @@ def cmd_next(dry_run=False, require_reply_link=False):
     実測で story 245views / liver 38 / agency 17 と8倍以上の差があるので、
     「何を出すか」ではなく「どの型を出すか」が伸びの主因になる。
 
+    確定ファクト違反の投稿は候補から除外する（キューからは消さない）。
+    違反1本のせいで配信を止めると1日2回の配信そのものが欠けるので、
+    落とすのは「その1本」だけにして、次に良い型の1本を代わりに出す。
+
     require_reply_link=True のときは reply_link を持つ投稿だけを対象にする。
     CTA返信(reply_to_id)の動作確認を、通常の順番待ちをせずに1本試すための入口。
     """
@@ -268,6 +283,7 @@ def cmd_next(dry_run=False, require_reply_link=False):
 
     done = _already_posted_hashes()
     candidates = []
+    blocked = []
     for p in posts:
         text = p.get("text", "")
         if not text:
@@ -279,11 +295,32 @@ def cmd_next(dry_run=False, require_reply_link=False):
             continue
         if require_reply_link and not (p.get("reply_link") or "").strip():
             continue
+        # 確定ファクト違反は投稿対象から外す。キューからは消さない（後で
+        # 直せる形で残す）が、選択肢には入れないので世には出ない。
+        v = _fact_violations(text, p.get("angle") or "liver") if _fact_violations else []
+        if v:
+            blocked.append((p, v))
+            continue
         candidates.append(p)
+
+    for p, v in blocked:
+        head = p.get("text", "").splitlines()[0][:34]
+        print(f"  [BLOCKED] 確定ファクト違反のため除外 :: {', '.join(v)}"
+              f"\n            {head}")
+    if blocked:
+        print(f"  [BLOCKED] 計{len(blocked)}本を投稿対象から除外しました")
 
     target = _pick_by_mix(candidates, posts) if candidates else None
 
     if target is None:
+        if blocked and not require_reply_link:
+            # 出せる在庫が違反で全滅した状態。投稿は起きないので、握り潰さず
+            # 非ゼロで返してワークフローに警告を出させる（ジョブ自体は落とさない）。
+            print(f"[ERROR] 投稿できる未投稿キューがありません"
+                  f"（{len(blocked)}本すべて確定ファクト違反）。"
+                  f"threads_content.py --audit で内容を確認して直してください。")
+            _save_posts(posts)
+            return 1
         if require_reply_link:
             print("[INFO] reply_link付きの未投稿キューがありません。")
         else:

@@ -69,7 +69,26 @@ jobs:
             python threads/threads_content.py --gen 14
           fi
           echo "--- キュー検品 ---"
-          python threads/threads_content.py --audit | tail -1
+          # 検品の結果でジョブを落とさない。落とすと1日2回の配信が丸ごと欠けるうえ、
+          # 違反1本と配信停止では後者のほうが損が大きい。実際のブロックは
+          # threads_poster 側（投稿直前に同じ _violations を掛けて該当分だけ除外）が担う。
+          # ここは「気づける」ことに徹して警告とサマリを出す。
+          # ※ `--audit | tail -1` はパイプ後段の終了コードを見てしまうので変数に受ける。
+          AUDIT_OUT=$(python threads/threads_content.py --audit 2>&1)
+          AUDIT_RC=$?
+          echo "$AUDIT_OUT" | tail -1
+          if [ "$AUDIT_RC" -ne 0 ]; then
+            echo "::warning::未投稿キューに確定ファクト違反あり。該当分は投稿対象から自動除外されます（要修正）"
+            {
+              echo "## ⚠️ Threadsキュー検品NG（未投稿分）"
+              echo ""
+              echo '```'
+              echo "$AUDIT_OUT" | grep -A1 '^\[NG\].*未投稿' || echo "$AUDIT_OUT" | tail -1
+              echo '```'
+              echo ""
+              echo "該当分は投稿されません。\`python threads/threads_content.py --audit\` で確認して修正してください。"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
           exit 0
 
       - name: Threads投稿
