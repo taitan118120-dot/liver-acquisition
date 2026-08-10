@@ -78,79 +78,11 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
-  /* ---------- LINEボタンのクリック計測（Google広告コンバージョン） ----------
-     各ボタンには data-cta-position（設置場所）が付いています。
-     GA4 なら gtag、GTM なら dataLayer にイベントを送ります。
-
-     Google広告のCVは「クリック」計測なので、LINEへ遷移する前に
-     コンバージョンの送信が完了している必要があります。
-     同一タブでそのまま lin.ee へ飛ぶと送信が中断されて計上されないため、
-     Google公式のクリック用スニペットと同じく
-     「遷移を一旦止める → 送信完了(event_callback)で遷移」方式にしています。
-     送信が詰まっても必ず遷移するよう、1秒のフォールバックを入れています。
-     ------------------------------------------------------------------- */
-  var ctaButtons = document.querySelectorAll('.js-line-cta');
-  var ADS_NAV_FALLBACK_MS = 1000;
-
-  ctaButtons.forEach(function (btn) {
-    btn.addEventListener('click', function (e) {
-      var position = btn.getAttribute('data-cta-position') || 'unknown';
-      var label = btn.getAttribute('data-cta-label') || btn.textContent.trim();
-      var cfg = window.TAITAN_TRACKING || {};
-      var hasGtag = typeof window.gtag === 'function';
-
-      // Google タグマネージャー
-      window.dataLayer = window.dataLayer || [];
-      window.dataLayer.push({
-        event: 'line_cta_click',
-        ctaPosition: position,
-        ctaLabel: label
-      });
-
-      if (!hasGtag) return;
-
-      // Google タグ（GA4）
-      window.gtag('event', 'line_cta_click', {
-        cta_position: position,
-        cta_label: label,
-        page_path: window.location.pathname
-      });
-
-      // Google 広告のコンバージョン（index.html の TAITAN_TRACKING に
-      // ADS_ID と ADS_CV_LABEL を入れると送信されます）
-      if (!cfg.ADS_ID || !cfg.ADS_CV_LABEL) return;
-
-      var url = btn.getAttribute('href');
-      // 別タブ・新規ウィンドウで開くクリック、href が無いボタン、
-      // すでに他の処理でキャンセル済みのクリックは遷移制御しない
-      var opensInNewContext =
-        e.defaultPrevented ||
-        e.button !== 0 ||
-        e.metaKey || e.ctrlKey || e.shiftKey || e.altKey ||
-        btn.getAttribute('target') === '_blank' ||
-        !url;
-
-      var params = { send_to: cfg.ADS_ID + '/' + cfg.ADS_CV_LABEL };
-
-      if (opensInNewContext) {
-        window.gtag('event', 'conversion', params);
-        return;
-      }
-
-      // ここから先はこのタブで LINE に遷移するケース
-      e.preventDefault();
-
-      var navigated = false;
-      var go = function () {
-        if (navigated) return;
-        navigated = true;
-        window.location.href = url;
-      };
-
-      params.event_callback = go;
-      window.gtag('event', 'conversion', params);
-      window.setTimeout(go, ADS_NAV_FALLBACK_MS);
-    });
-  });
+  /* ---------- LINEボタンのクリック計測 ----------
+     GA4 / Google広告CV / GTM への送信は ../shared/tracking.js に移しました
+     （4つのLPで同じ実装を重複させないため）。各ボタンの
+     data-cta-position / data-cta-label はそのまま tracking.js が読みます。
+     ここに再実装するとイベントが二重送信になるので追加しないこと。
+     ------------------------------------------------- */
 
 });

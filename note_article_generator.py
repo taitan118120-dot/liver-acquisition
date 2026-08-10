@@ -43,7 +43,7 @@ CTA_BLOCK = """
 
 TAITAN PROの公式LINEでは、友だち追加特典として**『ライバー新人期スタートダッシュガイド』**（最初の30日でやることを全部まとめた非売品PDF）を無料でお渡ししています。「自分もやってみたい」「もう少し聞いてみたい」という方は、特典を受け取りつつ気軽に聞いてください。ノルマなし・初期費用0円です。
 
-**[LINEで特典を受け取る →](https://lin.ee/xchCfdn)**　|　**[サイトを見る →](https://taitan-pro-lp.netlify.app)**
+**[LINEで特典を受け取る →](https://lin.ee/xchCfdn)**　|　**[サイトを見る →](https://taitan-pro-lp.netlify.app/beginner/?utm_source=note&utm_medium=article&utm_campaign=note_cta)**
 
 _— たいたん（TAITAN PRO代表 / 元Pococha Sランク / ミスターコン1位）_
 """

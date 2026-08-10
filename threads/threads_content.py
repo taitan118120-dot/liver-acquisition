@@ -43,7 +43,8 @@ POSTS_FILE = os.path.join(SCRIPT_DIR, "threads_posts.json")
 sys.path.insert(0, os.path.dirname(SCRIPT_DIR))
 from facts_patterns import ratio_violations  # noqa: E402
 
-LP_AGENCY = "https://taitan-pro-lp.netlify.app/agency/"
+LP_AGENCY = ("https://taitan-pro-lp.netlify.app/agency/"
+             "?utm_source=threads&utm_medium=post&utm_campaign=threads_post")
 LINE_URL = "https://lin.ee/xchCfdn"
 
 # リンク付き投稿はリーチが半分以下になる（実測）。6本に1本だけに絞る。

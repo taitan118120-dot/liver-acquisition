@@ -422,10 +422,22 @@ def load_template(platform):
         return f.read()
 
 
+def lp_url_with_utm(platform, target):
+    """媒体別の流入分離用に utm を付けたLP URLを返す（設計は ads/utm設計.md §3-4）。
+
+    ⚠️ 誘導先の taitan-pro-lp-targets は手動zipデプロイの別サイト。
+       lp/shared/tracking.js を反映した再デプロイをするまで計測タグ自体が乗らないので、
+       utm を付けても数字は出ない。
+    """
+    sep = "&" if "?" in LP_URLS[target] else "?"
+    return (f"{LP_URLS[target]}{sep}"
+            f"utm_source={platform}&utm_medium=job&utm_campaign=job_{target}")
+
+
 def generate(platform, target):
     template = load_template(platform)
     data = TARGET_DATA[target]
-    lp_url = LP_URLS[target]
+    lp_url = lp_url_with_utm(platform, target)
 
     cta = (
         f"LINE で無料相談: {LINE_URL}\n"
