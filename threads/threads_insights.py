@@ -39,7 +39,7 @@ FIELDS = [
     "media_id", "timestamp", "permalink",
     "views", "likes", "replies", "reposts", "quotes", "shares",
     "engagements", "eng_rate",
-    "angle", "style", "has_link", "text_len", "hook", "text",
+    "angle", "style", "has_link", "has_cta_reply", "text_len", "hook", "text",
 ]
 
 # 本文からの型判定（生成プロンプト側の型に対応）
@@ -122,7 +122,11 @@ def _queue_index():
                 if p.get("media_id"):
                     idx[str(p["media_id"])] = {
                         "angle": p.get("angle", ""),
+                        # 本文リンクはリーチを半減させるので廃止し、CTAは返信に退避した。
+                        # 以降 link は常にNoneになるため、返信CTAの有無も併せて記録する。
+                        # これが無いと新方式の投稿が全部「リンクなし」に潰れて比較できない。
                         "has_link": bool(p.get("link")),
+                        "has_cta_reply": bool(p.get("reply_link")),
                     }
     except Exception:
         pass
@@ -175,6 +179,7 @@ def build_rows(token, user_id, limit):
             "angle": q.get("angle", ""),
             "style": classify_style(text),
             "has_link": int(q.get("has_link", False)),
+            "has_cta_reply": int(q.get("has_cta_reply", False)),
             "text_len": len(text),
             "hook": classify_hook(text),
             "text": text.replace("\n", "\\n"),
@@ -201,7 +206,7 @@ def load_csv():
     with open(CSV_PATH, encoding="utf-8") as f:
         rows = list(csv.DictReader(f))
     for r in rows:
-        for k in METRICS + ["engagements", "text_len", "has_link"]:
+        for k in METRICS + ["engagements", "text_len", "has_link", "has_cta_reply"]:
             try:
                 r[k] = int(float(r.get(k) or 0))
             except ValueError:
@@ -211,6 +216,46 @@ def load_csv():
 
 def _avg(rows, key):
     return round(sum(r[key] for r in rows) / len(rows), 1) if rows else 0
+
+
+# 生成・投稿側の目標配分。ズレたら threads_content.TARGET_MIX 側が正本。
+TARGET_MIX = {"story": 0.60, "liver": 0.25, "agency": 0.15}
+TREND_CHUNK = 30
+
+
+def _mix_trend(rows):
+    """angle配分と平均viewsが直近で改善しているかを追う。
+
+    2026-08-10の配分見直し（story主体へ）が効いているかは、
+    「story比率が上がったか」と「平均viewsが上がったか」を並べないと判定できない。
+    週次のインサイト更新のたびに、この2行を見れば良い状態にしておく。
+    """
+    known = sorted([r for r in rows if r.get("angle") in TARGET_MIX],
+                   key=lambda r: r["timestamp"])
+    if len(known) < 4:
+        print("\n■ angle配分の推移: angleが判明した投稿が少なく判定不能")
+        return
+
+    print(f"\n■ angle配分の推移（直近{TREND_CHUNK}本ずつ / 目標 "
+          + " ".join(f"{a} {100*w:.0f}%" for a, w in TARGET_MIX.items()) + "）")
+    chunks = [known[i:i + TREND_CHUNK] for i in range(0, len(known), TREND_CHUNK)]
+    for c in chunks:
+        period = f"{c[0]['timestamp'][:10]}〜{c[-1]['timestamp'][:10]}"
+        share = " ".join(
+            f"{a} {100 * sum(1 for r in c if r['angle'] == a) / len(c):>4.0f}%"
+            for a in TARGET_MIX
+        )
+        print(f"  {period}  n={len(c):>3}  {share}   平均views {_avg(c,'views'):>7}")
+
+    latest = chunks[-1]
+    story_share = sum(1 for r in latest if r["angle"] == "story") / len(latest)
+    agency_share = sum(1 for r in latest if r["angle"] == "agency") / len(latest)
+    issues = []
+    if story_share < 0.50:
+        issues.append(f"storyが{100*story_share:.0f}%（目標50%以上）")
+    if agency_share > 0.20:
+        issues.append(f"agencyが{100*agency_share:.0f}%（上限20%）")
+    print("  → " + ("配分は目標どおり" if not issues else "要是正: " + " / ".join(issues)))
 
 
 def report(rows):
@@ -239,8 +284,13 @@ def report(rows):
             buckets[r.get(key) or "(不明)"].append(r)
         print(f"\n■ {label}別")
         for k, v in sorted(buckets.items(), key=lambda kv: -_avg(kv[1], "views")):
-            print(f"  {k:<10} n={len(v):>3}  平均views {_avg(v,'views'):>7}  "
+            # シェア(本数比)を並べる。平均viewsだけ見ていると
+            # 「いちばん伸びる型をいちばん出していない」状態に気づけない。
+            print(f"  {k:<10} n={len(v):>3} ({100*len(v)/len(rows):>4.1f}%)  "
+                  f"平均views {_avg(v,'views'):>7}  "
                   f"平均👍{_avg(v,'likes'):>5}  平均💬{_avg(v,'replies'):>4}")
+
+    _mix_trend(rows)
 
     print("\n■ 本文の長さ別")
     def bucket(n):
