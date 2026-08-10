@@ -12,10 +12,25 @@ Threads 投稿コンテンツ生成（Gemini）
   さらに7月を通してリーチが単調減少（中央値43→10）＝宣伝の連投で沈められている
   よって「短い本音」を主軸にし、宣伝と外部リンクを絞る設計に変えた。
 
+■ 2026-08-10 配分の是正（n=121で再集計）
+  angle別 平均views: story 245.1(n=33) / liver 38.3(n=76) / agency 17.4(n=11)
+  style別 平均views: 本音型 143.9(n=69) / 混在型 34.0(n=22) / 宣伝型 17.4(n=30)
+  上位5本はすべて story×本音型（最高1,317views）。
+  ところが実際に出していた配分は liver 62.8% / story 27.3% で、
+  **いちばん伸びない型をいちばん多く出していた**。
+  月別に見るとこれが直接リーチに出ている:
+    6月前半 story 53% → 平均188views
+    7月中旬 story  0% / liver 93% → 平均26.5views（リーチ崩壊）
+  よって TARGET_MIX を story 60% / liver 25% / agency 15% に固定し、
+  生成側(_mix)だけでなく投稿側(threads_poster._pick_by_mix)でも担保する。
+  生成の配分を直しても、キューの消化がFIFOのままだと実際に世に出る比率は
+  キューの並び順で決まってしまい、意味がなかったため。
+
 3系統:
   - story  : 短い本音・現場のリアル（事務所名も誘導も入れない）。主力。
   - liver  : ライバー本人向けの気づき（役に立つ話→最後に小さく一言）
   - agency : 代理店パートナー募集（本数を絞る。滑りやすいので価値提供に徹する）
+             LINE/代理店LPへの導線なので、ゼロにはせず1〜2割で残す。
 
 確定ファクト（project_taitan_pro_note_facts）を厳守し、
 生成後に _violations() で機械検品して、違反した投稿はキューに入れない。
@@ -46,6 +61,17 @@ from facts_patterns import ratio_violations  # noqa: E402
 LP_AGENCY = "https://taitan-pro-lp.netlify.app/agency/"
 LINE_URL = "https://lin.ee/xchCfdn"
 
+# ── 型の配分（実測ベース。threads_poster.py も投稿順の決定にこれを読む）─────
+# data/threads_insights.csv n=121 の平均views:
+#   story 245.1 (n=33) / liver 38.3 (n=76) / agency 17.4 (n=11)
+# 上位5本はすべて story×本音型（最高1,317views）。宣伝型は25〜42viewsに張り付く。
+# にもかかわらず2026-08-07以前の在庫は liver が6割で、いちばん伸びない型を
+# いちばん多く出していた。生成・投稿の両方をこの配分に合わせる。
+# agency をゼロにはしない（LINE/代理店LPへの導線が必要なため）。
+TARGET_MIX = {"story": 0.60, "liver": 0.25, "agency": 0.15}
+AGENCY_MAX_SHARE = 0.20   # 宣伝は多くても2割まで
+AGENCY_MIN_TOTAL = 4      # 4本以上まとめて作るときは最低1本は宣伝を残す
+
 # リンク付き投稿はリーチが半分以下になる（実測）。6本に1本だけに絞る。
 LINK_EVERY = 6
 
@@ -57,6 +83,10 @@ STORY_MAX_LEN = 120
 LEAD_MAGNET_LINE = "新人期の30日でやることを全部まとめたPDF、LINEの友だち追加で配ってます。"
 AGENCY_CTA_LINE = "配信代理店パートナーの仕事の中身は、ここにまとめてあります。"
 
+# 2026-08-10: FACTS が「月10万円未満は禁止」と教えていたのに、_violations() の
+# 下限は15万だった。AIは「月12万」を安全だと思って書き、毎回検品で落ちる。
+# 検品側に合わせて15万に統一し、あわせて検品にあってFACTSに無かった項目
+# （不労所得/権利収入・カーブアウトパートナー・オンライン無料相談・オフの日の主語）を追記。
 FACTS = """
 【絶対に守る確定ファクト】
 - 事務所名：TAITAN PRO
@@ -74,7 +104,11 @@ FACTS = """
 - 「手数料」という語そのもの（なし/0円/ゼロ/他社は引かれる、すべて禁止）
 - 「いつでも退所OK」「違約金なし」など退所・契約解除が自由だと示す表現、および契約期間への言及
 - 「絶対稼げる」「確実に」「必ず月◯万」「安定して稼げる」等の断定・保証
-- 月10万円未満の金額（「月3万」「数万円」「お小遣い程度」等の少額表記）
+- 月15万円未満の金額（「数万円」「お小遣い程度」等の少額表記。稼げていない側の描写でも書かない）
+- 「不労所得」「権利収入」（マルチ的表現）
+- 「カーブアウトパートナー」という呼称（名乗るなら TAITAN PRO）
+- 「オンライン無料相談」（CTAはLINE導線に統一）
+- 「オフの日」をTAITAN PROの制度として書くこと（Pococha側の制度なので主語を間違えない）
 - 業界収入分布の%、DM返信率、倍率等の根拠なし数字。「多数輩出」「多くの実績」もNG
 - 出典なしの割合統計。「9割が挫折する」「99%が知らない」「10人に1人も成功しない」型に加えて、
   「9割の副業ライバーは〜」のように**割合が主語を修飾する形も禁止**（Xで実際に公開まで到達した型）
@@ -363,11 +397,35 @@ def _load_posts():
 
 
 def _mix(total):
-    """型の配分。実測でstoryが圧勝しているので主力をstoryにする。"""
-    story = max(1, round(total * 0.6))
-    liver = max(1, round(total * 0.3))
-    agency = max(0, total - story - liver)
-    return {"story": story, "liver": liver, "agency": agency}
+    """型の配分。実測でstoryが圧勝しているので主力をstoryにする。
+
+    以前は round() を型ごとに独立して掛けていたので、合計が総数に合わず
+    余りを全部 agency に押し付ける形になっていた。結果 total=2,3,5,6 では
+    agency が0本になり（宣伝が完全に消える）、total=6 では story 67%まで
+    振れる。最大剰余法で TARGET_MIX に忠実に割り、そのうえで
+    「agency は最低1本だが2割まで」「story は5割を切らない」を保証する。
+    """
+    n = max(1, total)
+    raw = {a: n * w for a, w in TARGET_MIX.items()}
+    alloc = {a: int(v) for a, v in raw.items()}
+    # 端数の大きい型から1本ずつ配って合計を total に合わせる（最大剰余法）
+    for a in sorted(raw, key=lambda k: -(raw[k] - alloc[k]))[: n - sum(alloc.values())]:
+        alloc[a] += 1
+
+    # 宣伝はゼロにしない（LINE導線が必要）。ただし2割を超えさせない。
+    agency_cap = max(1, int(n * AGENCY_MAX_SHARE))
+    if n >= AGENCY_MIN_TOTAL and alloc["agency"] == 0:
+        alloc["agency"] = 1
+        alloc["liver" if alloc["liver"] > alloc["story"] else "story"] -= 1
+    while alloc["agency"] > agency_cap:
+        alloc["agency"] -= 1
+        alloc["story"] += 1
+
+    # storyが過半を切ったらliverから寄せる（伸びる型を主力に保つ）
+    while alloc["story"] * 2 < n and alloc["liver"] > 0:
+        alloc["liver"] -= 1
+        alloc["story"] += 1
+    return alloc
 
 
 def generate(total, angle_filter=None):

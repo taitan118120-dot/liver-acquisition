@@ -11,7 +11,6 @@
   python run.py engage --manual  手動用リスト出力（API不要）
   python run.py stats         統計表示
   python run.py followup      フォローアップ対象
-  python run.py dashboard     ダッシュボードデータ更新
   python run.py all           全工程をドライラン実行
 """
 
@@ -31,7 +30,6 @@ def main():
   stats       リード統計表示
   followup    フォローアップ対象表示
   list        リード一覧表示
-  dashboard   ダッシュボードデータ更新
   all         全工程をドライラン実行
 
 例:
@@ -91,9 +89,6 @@ def main():
     list_parser = sub.add_parser("list", help="リード一覧")
     list_parser.add_argument("--status")
     list_parser.add_argument("--platform", choices=["twitter", "instagram"])
-
-    # dashboard
-    sub.add_parser("dashboard", help="ダッシュボードデータ更新")
 
     # all
     sub.add_parser("all", help="全工程ドライラン")
@@ -177,10 +172,6 @@ def main():
         list_leads(status=getattr(args, "status", None),
                    platform=getattr(args, "platform", None))
 
-    elif args.command == "dashboard":
-        from tracker import export_json
-        export_json()
-
     elif args.command == "all":
         print("=" * 60)
         print("  全工程ドライラン実行")
@@ -200,9 +191,8 @@ def main():
         post_next("twitter", dry_run=True)
 
         print("\n[4/4] 統計表示...")
-        from tracker import show_stats, export_json
+        from tracker import show_stats
         show_stats()
-        export_json()
 
         print("\n全工程のドライラン完了！")
 

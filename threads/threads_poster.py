@@ -40,6 +40,19 @@ LOG_CSV = os.path.join(PROJECT_ROOT, "data", "threads_post_log.csv")
 # Threadsの本文上限は500文字
 MAX_LEN = 500
 
+# 型の配分は threads_content.py が正本。生成側と投稿側で目標がズレると
+# 「storyを多く作ったのにliverばかり出る」が起きるので必ず同じ値を使う。
+# 生成側が壊れても投稿は止めたくないので、読めなければ同値でフォールバックする。
+try:
+    sys.path.insert(0, SCRIPT_DIR)
+    from threads_content import TARGET_MIX
+except Exception:
+    TARGET_MIX = {"story": 0.60, "liver": 0.25, "agency": 0.15}
+
+# 配分を見るときに遡る投稿数。短いと1本ごとに型が振れ、長いと過去の
+# liver偏重（2026-08-07以前の在庫）を取り戻そうとして偏り続ける。
+MIX_WINDOW = 20
+
 
 def _token():
     tok = os.environ.get("THREADS_ACCESS_TOKEN", "").strip()
@@ -199,8 +212,49 @@ def post_text(token, user_id, text, link=None, reply_control="everyone", dry_run
     return media_id
 
 
+def _recent_angles(posts, window=MIX_WINDOW):
+    """直近に実際に投稿した型の並び。posted_atがある分は時系列、無い分はキュー順。"""
+    done = [p for p in posts if p.get("posted") and p.get("angle")]
+    done.sort(key=lambda p: p.get("posted_at") or "")
+    return [p["angle"] for p in done[-window:]]
+
+
+def _pick_by_mix(candidates, posts):
+    """TARGET_MIX から最も不足している型を選ぶ。同じ型の中ではキュー順（＝FIFO）。
+
+    以前はキュー全体を素通しのFIFOで消化していた。生成側の配分をstory主体に
+    直しても、キューの並び順次第で実際に世に出る比率は別物になる
+    （2026-08-10時点の未投稿4本は story2/agency2 で、FIFOだと今後2日の
+    半分が平均17viewsのagencyだった）。実際に出る比率をここで担保する。
+    """
+    by_angle = {}
+    for p in candidates:
+        by_angle.setdefault(p.get("angle") or "", []).append(p)
+
+    known = {a: v for a, v in by_angle.items() if a in TARGET_MIX}
+    if not known:
+        return candidates[0]  # angle不明（手動投入など）はFIFOのまま
+
+    recent = _recent_angles(posts)
+    total = len(recent) + 1  # これから出す1本を含めた分母で評価する
+    # 不足＝目標本数−実績本数。大きいものから出す。
+    deficit = {
+        a: TARGET_MIX[a] * total - recent.count(a)
+        for a in known
+    }
+    best = max(known, key=lambda a: (deficit[a], TARGET_MIX[a]))
+    share = {a: f"{100 * recent.count(a) / len(recent):.0f}%" for a in TARGET_MIX} if recent else {}
+    print(f"  [MIX] 直近{len(recent)}本の型配分 {share} → 今回は {best}"
+          f"（不足 {deficit[best]:+.1f}本）")
+    return known[best][0]
+
+
 def cmd_next(dry_run=False, require_reply_link=False):
-    """キュー(threads_posts.json)から未投稿の先頭を1本投稿する。
+    """キュー(threads_posts.json)から未投稿を1本投稿する。
+
+    先頭から順ではなく、TARGET_MIX に対していちばん不足している型を選ぶ。
+    実測で story 245views / liver 38 / agency 17 と8倍以上の差があるので、
+    「何を出すか」ではなく「どの型を出すか」が伸びの主因になる。
 
     require_reply_link=True のときは reply_link を持つ投稿だけを対象にする。
     CTA返信(reply_to_id)の動作確認を、通常の順番待ちをせずに1本試すための入口。
@@ -213,7 +267,7 @@ def cmd_next(dry_run=False, require_reply_link=False):
         return 0
 
     done = _already_posted_hashes()
-    target = None
+    candidates = []
     for p in posts:
         text = p.get("text", "")
         if not text:
@@ -225,8 +279,9 @@ def cmd_next(dry_run=False, require_reply_link=False):
             continue
         if require_reply_link and not (p.get("reply_link") or "").strip():
             continue
-        target = p
-        break
+        candidates.append(p)
+
+    target = _pick_by_mix(candidates, posts) if candidates else None
 
     if target is None:
         if require_reply_link:

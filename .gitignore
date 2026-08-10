@@ -35,6 +35,14 @@ data/ig_discovery_*.md
 data/ig_dm_queue_*.md
 data/recruitment_tracker.csv
 liver_app/data.sqlite.bak_*
+# leads.csv の中身を丸ごと含むダッシュボード出力。2026-08-10 に出力側ごと廃止したが、
+# 旧版の tracker.py を実行しても PII が tracked に戻らないよう残す。
+data/dashboard_data.json
+
+# 旧ローカル投稿スクリプト post_scheduler.py のログ。稼働中の投稿は
+# cloud_post.py の data/posted_text_hashes.txt / data/recent_post_ids.txt が正本で、
+# こちらは 2026-04-03 で止まった状態が commit され続け実績を誤読させていた。
+data/post_log.csv
 
 # 生成メディア（動画・音声・レンダー出力。容量が大きく再生成可能）
 *.mp4

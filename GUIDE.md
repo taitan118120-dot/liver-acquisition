@@ -74,9 +74,6 @@ python3 run.py dm --platform twitter
 
 # フォローアップ確認
 python3 run.py followup
-
-# ダッシュボード更新
-python3 run.py dashboard
 ```
 
 ---
