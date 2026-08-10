@@ -42,15 +42,25 @@ jobs:
           INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
           INSTAGRAM_BUSINESS_ID: ${{ secrets.INSTAGRAM_BUSINESS_ID }}
         run: |
+          # tee を挟むとPython側の異常終了が握り潰されて緑になる。権限切れで
+          # ずっと0件のまま成功扱いにしないため pipefail を必ず立てる
+          set -o pipefail
+          set +e
           python instagram/ig_insights.py \
             --limit "${{ inputs.limit || 200 }}" \
             --delay "${{ inputs.delay || 2.0 }}" | tee /tmp/ig_report.txt
+          RC=$?
           {
             echo '## Instagramインサイト'
             echo '```'
-            sed -n '/^=\{10,\}/,$p' /tmp/ig_report.txt
+            if [ "$RC" -eq 0 ]; then
+              sed -n '/^=\{10,\}/,$p' /tmp/ig_report.txt
+            else
+              grep -E '^\[(ERROR|WARN)\]|^ ' /tmp/ig_report.txt | tail -20
+            fi
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+          exit $RC
 
       - name: CSV保存
         if: always()

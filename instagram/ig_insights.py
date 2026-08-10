@@ -105,11 +105,12 @@ FATAL_CODES = {10, 190, 200, 803}
 
 def _raise_if_fatal(data, media_id=""):
     err = data.get("error") or {}
-    if err.get("code") in FATAL_CODES:
-        raise PermissionAbort(
-            f"(#{err.get('code')}) {err.get('message', '')}"
-            + (f" [media {media_id}]" if media_id else "")
-        )
+    code = err.get("code")
+    if code in FATAL_CODES:
+        msg = err.get("message", "")
+        if f"(#{code})" not in msg:
+            msg = f"(#{code}) {msg}"
+        raise PermissionAbort(msg + (f" [media {media_id}]" if media_id else ""))
 
 
 def report_scopes(token):
