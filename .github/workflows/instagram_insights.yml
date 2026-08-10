@@ -1,0 +1,72 @@
+name: Instagramインサイト集計
+
+on:
+  schedule:
+    # 週1（JST 月曜 9:30 = UTC 日曜 0:30）。Threads側と30分ずらしてpush衝突を避ける
+    - cron: '30 0 * * 0'
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: '取得する投稿数'
+        default: '200'
+      delay:
+        description: 'メディア1件ごとの待機秒（バースト防止）'
+        default: '2.0'
+
+concurrency:
+  group: instagram-insights
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  insights:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: 依存パッケージ
+        run: pip install requests
+
+      - name: インサイト取得（公式Graph APIの読み取りのみ）
+        env:
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          INSTAGRAM_BUSINESS_ID: ${{ secrets.INSTAGRAM_BUSINESS_ID }}
+        run: |
+          python instagram/ig_insights.py \
+            --limit "${{ inputs.limit || 200 }}" \
+            --delay "${{ inputs.delay || 2.0 }}" | tee /tmp/ig_report.txt
+          {
+            echo '## Instagramインサイト'
+            echo '```'
+            sed -n '/^=\{10,\}/,$p' /tmp/ig_report.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: CSV保存
+        if: always()
+        run: |
+          set +e
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          # media_id の書き戻しが入るので ig_posts.json も対象にする
+          git add data/ig_insights.csv instagram/ig_posts.json 2>/dev/null || true
+          if git diff --staged --quiet; then
+            echo "変更なし"; exit 0
+          fi
+          git commit -m "Instagramインサイト更新 $(TZ=Asia/Tokyo date +'%Y-%m-%d %H:%M')"
+          for i in 1 2 3; do
+            if git push origin main; then exit 0; fi
+            sleep 5
+            git pull --rebase origin main || { git rebase --abort || true; git checkout main || true; }
+          done
+          echo "::warning::インサイトCSVのpushに失敗"
