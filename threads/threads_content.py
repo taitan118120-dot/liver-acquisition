@@ -38,7 +38,7 @@ Threads 投稿コンテンツ生成（Gemini）
 使い方:
   python threads/threads_content.py --gen 8       # 型配分に沿って8本生成
   python threads/threads_content.py --angle story --gen 6
-  python threads/threads_content.py --audit       # 既存キューを検品するだけ
+  python threads/threads_content.py --audit       # 既存キューを検品（未投稿分に違反があれば exit 1）
 """
 
 import argparse
@@ -101,7 +101,9 @@ FACTS = """
 - 副業ペースの実例：1日4時間・週4日で配信した男性ライバーが2〜3か月で月20〜30万円（「配信時間により変動」を必ず添える）
 - 収入の目安を書くなら3か月で15〜20万／6か月で30〜40万のレンジだけ
 - 視聴者のことは必ず「リスナーさん」と書く（「リスナー」の呼び捨てNG）
+- LINE登録特典の非売品PDFの正式名は『ライバー新人期スタートダッシュガイド』（この表記以外で呼ばない）
 【禁止表現】
+- 旧特典PDF名『Pococha新人期スタートダッシュガイド』（2026-07-29に改名済み。Pocochaを頭に付けない）
 - 「手数料」という語そのもの（なし/0円/ゼロ/他社は引かれる、すべて禁止）
 - 「いつでも退所OK」「違約金なし」など退所・契約解除が自由だと示す表現、および契約期間への言及
 - 「絶対稼げる」「確実に」「必ず月◯万」「安定して稼げる」等の断定・保証
@@ -215,6 +217,13 @@ NG_PATTERNS = [
     (r"多くの事務所|一般的な事務所|他の事務所(では|は)", "他社を下げる書き方"),
     (r"カーブアウトパートナー", "使用禁止の呼称"),
     (r"オンライン無料相談", "CTAはLINE導線に統一"),
+    # 2026-08-10: 特典PDFは2026-07-29に『Pococha新人期スタートダッシュガイド』から
+    # 『ライバー新人期スタートダッシュガイド』へ改名済み（Pococha専用ではなくなったため）。
+    # Note側は note_facts_fix_20260729.py で一括修正したが Threads は対象外で、
+    # 7月の投稿11本に旧名が残ったまま公開されている。検品にも無かったので再発が止まらない。
+    # 「ライバー」以外が頭に付く／頭に何も付かない形は全部落とす。
+    (r"(?<!ライバー)新人期スタートダッシュ",
+     "特典PDF名は『ライバー新人期スタートダッシュガイド』"),
     (r"リスナー(?!さん)", "「リスナーさん」と書く"),
 ]
 
@@ -290,18 +299,32 @@ def _violations(text, angle):
 
 
 def audit_queue():
+    """キュー全体を検品し、(全体の違反数, 未投稿分の違反数) を返す。
+
+    2026-08-10: 以前は全件の違反数しか返しておらず、しかも --audit は
+    `sys.exit(0 if audit_queue() == 0 else 0)` と両辺0の三項演算子だったので
+    何件検出しても必ず exit 0 だった＝門番として死んでいた。
+    終了コードの根拠に使えるのは未投稿分だけ。投稿済みの過去分は今から
+    直せないうえ、基準を厳しくするたびに増える（現に50本ある）ので、
+    全件で判定すると常時赤になって誰も見なくなる。
+    """
     posts = _load_posts()
     bad = 0
+    bad_unposted = 0
     for i, p in enumerate(posts):
         v = _violations(p.get("text", ""), p.get("angle", "liver"))
-        if v:
-            bad += 1
-            state = "投稿済" if p.get("posted") else "未投稿"
-            head = p.get("text", "").split("\n")[0][:34]
-            print(f"[NG] #{i} {state} {p.get('angle')} :: {', '.join(v)}\n     {head}")
+        if not v:
+            continue
+        bad += 1
+        posted = bool(p.get("posted"))
+        if not posted:
+            bad_unposted += 1
+        state = "投稿済" if posted else "未投稿"
+        head = p.get("text", "").split("\n")[0][:34]
+        print(f"[NG] #{i} {state} {p.get('angle')} :: {', '.join(v)}\n     {head}")
     print(f"\n合計 {len(posts)}本中 {bad}本が現在の基準に不適合"
-          f"（未投稿分: {sum(1 for p in posts if not p.get('posted') and _violations(p.get('text',''), p.get('angle','liver')))}本）")
-    return bad
+          f"（未投稿分: {bad_unposted}本）")
+    return bad, bad_unposted
 
 
 # ── 生成 ───────────────────────────────────────────────────
@@ -515,7 +538,9 @@ def main():
     args = ap.parse_args()
 
     if args.audit:
-        sys.exit(0 if audit_queue() == 0 else 0)
+        _bad_all, bad_unposted = audit_queue()
+        # 未投稿分に違反があるときだけ非ゼロ。投稿済みの過去分では落とさない。
+        sys.exit(1 if bad_unposted else 0)
     generate(args.gen, args.angle)
 
 
