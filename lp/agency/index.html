@@ -18,42 +18,16 @@
   <!-- JSが動く環境でのみ出現アニメを有効化（JS無効時にコンテンツが隠れないようにする） -->
   <script>document.documentElement.className += ' js';</script>
 
-  <!-- ============ 計測タグ設定 ============
-       ▼ここの3つのIDを書き換えるだけで計測が有効になります。
-         空のままなら計測タグは読み込まれません（誤ったIDでの計測事故を防ぐため）。
+  <!-- ============ 計測タグ（GA4 / Google広告 / 流入元・CTAクリック） ============
+       設定もイベント送信も ../shared/tracking.js に一元化しています。
+       GA4を有効にするときは tracking.js 冒頭の GA4_ID に測定IDを入れるだけ。
 
-         GA4_ID       : GA4の測定ID。GA4管理画面 > 管理 > データストリーム で確認（G-から始まる）
-         ADS_ID       : Google広告のコンバージョンID。広告管理画面 > 目標 > コンバージョン
-                        > 該当CV > タグを設定 で確認（AW-から始まる）
-         ADS_CV_LABEL : 同じ画面に出る「コンバージョンラベル」の文字列
-
-       ここは beginner/ LP と同じアカウント（CID 927-150-4466）の
-       「LINE_ボタンクリック」コンバージョンをそのまま流用しています。
-       代理店募集用に別キャンペーンを作る場合も、LINEボタンのクリックを
-       計測するという性質は同じなのでこの1つのCVアクションで計測できます。
-       ==================================================== -->
-  <script>
-    window.TAITAN_TRACKING = {
-      GA4_ID: '',
-      ADS_ID: 'AW-429748464',
-      ADS_CV_LABEL: '-KwzCJvzmNQcEPDh9cwB'
-    };
-    (function () {
-      var cfg = window.TAITAN_TRACKING;
-      var ids = [cfg.GA4_ID, cfg.ADS_ID].filter(Boolean);
-      if (!ids.length) return;
-
-      window.dataLayer = window.dataLayer || [];
-      window.gtag = function () { window.dataLayer.push(arguments); };
-      window.gtag('js', new Date());
-      ids.forEach(function (id) { window.gtag('config', id); });
-
-      var s = document.createElement('script');
-      s.async = true;
-      s.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(ids[0]);
-      document.head.appendChild(s);
-    })();
-  </script>
+       Google広告のCVは beginner/ LP と同じアカウント（CID 927-150-4466）の
+       「LINE_ボタンクリック」を流用しています。代理店募集用に別キャンペーンを
+       作る場合も、LINEボタンのクリックを計測する性質は同じなので
+       この1つのCVアクションで計測でき、どちらのLPかは GA4 の lp_page で分けます。
+       ============================================================ -->
+  <script src="../shared/tracking.js?v=20260810a"></script>
 
   <!-- ここにGoogleタグ（Google タグマネージャー のコンテナスニペット / head 用） -->
 
@@ -1061,6 +1035,6 @@
     </div>
   </div>
 
-  <script src="script.js?v=20260802"></script>
+  <script src="script.js?v=20260810a"></script>
 </body>
 </html>

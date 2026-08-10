@@ -1,7 +1,8 @@
-# 入稿シート（コピペ用） — 2026-07-22 作成 / 2026-07-31 更新
+# 入稿シート（コピペ用） — 2026-07-22 作成 / 2026-08-10 更新
 
 対象：キャンペーンA（ID 24048528471）への広告グループ A2〜A5 追加 ＋ キャンペーンC 新規作成
 最終ページURL（全グループ共通）：`https://taitan-pro-lp.netlify.app/beginner/`
+**utmは最終ページURLに書かない。** キャンペーン単位の「最終ページURLのサフィックス」で付ける（§7 / `ads/utm設計.md` §3-1）。
 
 > ⚠️ **2026-07-31 注意（このシートは入稿当時のスナップショット。稼働中の実文言とは一部ずれている）**
 > 1. **禁止表現の撤去**：「初期費用・月額費用は0円」「還元率100%+α・初期費用0円」が残っていたため、稼働中の実文言（「新人期スタートガイド配布中」「還元率100%+αの報酬体系」）に差し替えた。**このシートを再利用するときも「0円／初期費用／月額／手数料なし」は絶対に入れないこと**（設計書 §1-1）。
@@ -224,6 +225,7 @@ Pococha・TikTok LIVE・17LIVEに対応。担当が配信の始め方から伸�
 | 広告スケジュール | 全曜日 0:00-2:00 / 7:00-24:00 |
 | 除外キーワードリスト | 共有リスト「TAITANPRO_共通除外」を適用 |
 | 最終ページURL | https://taitan-pro-lp.netlify.app/beginner/ |
+| 最終ページURLのサフィックス | `utm_source=google&utm_medium=cpc&utm_campaign=ads_c_kyogo&utm_content={adgroupid}&utm_term={keyword}`（§7） |
 
 ### 広告グループ C1_321
 
@@ -321,3 +323,28 @@ LINE登録で新人攻略ガイド
 - 他社名は**キーワードにのみ**。見出し・説明文・パス・サイトリンク・LP本文に他社名を書かない
 - 「◯◯より安い」等の比較優位表現も不可
 - 商標権者から申し立てが来たら該当キーワードを即停止
+
+---
+
+## 7. 流入元計測（utm）— 2026-08-10 追加 ⚠️ **ユーザー承認待ち・未適用**
+
+**貼る場所**：キャンペーン → 設定 → その他の設定 → キャンペーンURLのオプション → **最終ページURLのサフィックス**
+（広告ごとの最終ページURLは**触らない**）
+
+| キャンペーン | 貼る文字列 |
+|---|---|
+| A｜TAITANPRO_顕在層_事務所探し | `utm_source=google&utm_medium=cpc&utm_campaign=ads_a_kensou&utm_content={adgroupid}&utm_term={keyword}` |
+| C｜TAITANPRO_競合名_テスト | `utm_source=google&utm_medium=cpc&utm_campaign=ads_c_kyogo&utm_content={adgroupid}&utm_term={keyword}` |
+| D｜TAITANPRO_代理店パートナー | `utm_source=google&utm_medium=cpc&utm_campaign=ads_d_dairiten&utm_content={adgroupid}&utm_term={keyword}` |
+
+**トラッキングテンプレート（`{lpurl}?utm_…`）は使わないこと。** 上の「サイトリンク4本」はアンカー付きURL
+（`…/beginner/#cases`）なので、テンプレート方式だと `#cases?utm_source=…` になり
+**アンカージャンプもutm解釈も壊れる**。
+
+### 適用後に必ず見る3点
+
+1. 実クリックで着地し、アドレスバーに `utm_source=google` と `gclid=` の**両方**が乗っているか
+2. **サイトリンク4本**（`#cases` `#reward` `#reasons` `#faq`）が、utm付与後も該当セクションへ**ジャンプするか**
+3. 翌日、**期間セレクタを「過去30日間」に直してから**CV列が引き続き記録されているか
+
+詳細と根拠：`ads/utm設計.md` ／ 経緯：`ads/google_ads_設計書.md` §0-12

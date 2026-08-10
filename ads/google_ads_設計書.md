@@ -1,6 +1,6 @@
 # TAITAN PRO Google検索広告 設計書
 
-作成日：2026-07-20（同日夜に月予算10万円版へ改訂） / **最終更新：2026-08-08（キャンペーンA・Dの両方で「錨のないキーワード1語」が無関係流入の犯人と判明し、2語とも停止。§0-7→§0-8 の順に最初に読むこと）** / 月予算：約128,000円（実測） / 誘導先：ライバー募集LP → 公式LINE
+作成日：2026-07-20（同日夜に月予算10万円版へ改訂） / **最終更新：2026-08-10（流入元とCTAクリックの計測をLP側で実装。utm設計は `ads/utm設計.md` に分離。§0-12 を参照。Google広告アカウントは未変更＝ユーザー承認待ち）** / 前回：2026-08-08（キャンペーンA・Dの両方で「錨のないキーワード1語」が無関係流入の犯人と判明し、2語とも停止。§0-7→§0-8 の順に読むこと） / 月予算：約128,000円（実測） / 誘導先：ライバー募集LP → 公式LINE
 
 > 過去の更新：2026-07-23（管理画面の実態に合わせて予算・スケジュール・オーディエンス・入札を訂正／稼働RSAから「0円」表現を撤去／全7広告の見出しとサイトリンクを全数照合）。
 
@@ -825,11 +825,11 @@ CID 927-150-4466（ocid=644541294）の管理画面を全画面スクロール�
 | 電話番号表示 | 設定しない（LINE誘導に一本化） | | |
 | 自動作成アセット | **OFF**（意図しない誇大表現や他社名混入を防ぐため必須）。**2026-07-31 実データ：A・Cとも「無効: 提供したアセットのみを、直接広告に使用します」＝設計どおり** |
 | URLの自動タグ設定 | ON（GA4連携用）。※「キャンペーンURLのオプション（トラッキングテンプレート）」はA・Cとも未設定 |
-| 最終ページURL | 設計：`https://taitan-pro-lp.netlify.app/beginner/?utm_source=google&utm_medium=cpc&utm_campaign={キャンペーンID}`<br>⚠️ **2026-07-31 実データ：稼働7広告すべて `https://taitan-pro-lp.netlify.app/beginner/`（utmパラメータなし）**。自動タグ設定（gclid）が入っていればGoogle広告↔GA4の紐付け自体は成立するが、GA4の参照元/メディア手動分類は効かない<br>※ 全キャンペーン共通。地域別・アプリ別のLP出し分けはしない（1枚に集約してCVデータを分散させないため） |
+| 最終ページURL | `https://taitan-pro-lp.netlify.app/beginner/`（**utmは最終ページURLに直接書かない**）<br>⚠️ **2026-07-31 実データ：稼働7広告すべて utmパラメータなし**＝ズレ項目⑦。<br>✅ **2026-08-10 に方式を確定**：最終ページURLは触らず、**キャンペーン単位の「最終ページURLのサフィックス」で utm を付与する**。旧設計のトラッキングテンプレート（`{lpurl}?utm_…`）方式は、キャンペーンCのサイトリンクがアンカー付きURL（`…/beginner/#cases`）のため `#cases?utm_source=…` になり**アンカージャンプもutm解釈も壊れる**ので採用しない。貼る文字列と検証手順は **`ads/utm設計.md` §3-1**（管理画面は**ユーザー承認待ちで未変更**）<br>※ 全キャンペーン共通。地域別・アプリ別のLP出し分けはしない（1枚に集約してCVデータを分散させないため） |
 
 ### 5-6. コンバージョン設定
 
-> **LP側の実装は2026-07-20に完了済み**。`lp/beginner/index.html` の `TAITAN_TRACKING` に3つのIDを入れるだけで計測が有効になる。LINEボタン16箇所（header / hero / campaign / worries / steps / mechanism / needs / reasons / cases / safety / staff / flow / faq / knowledge / scarcity / dock）すべてにクリック検知が入っており、`line_cta_click` イベントとGoogle広告コンバージョンの両方をローカル検証済み。
+> **LP側の実装は2026-07-20に完了、2026-08-10に全LPへ一元化**。計測の設定もイベント送信も **`lp/shared/tracking.js` の1ファイル**に集約してあり、beginner / agency / liver / sidejob の4LPが同じファイルを読む。**GA4を有効にするには `tracking.js` 冒頭の `GA4_ID` に測定IDを入れるだけ**（旧：各HTMLの `TAITAN_TRACKING` に3箇所。プレースホルダは解消済み）。LINEボタンは beginner・agency が各17箇所（header / hero / campaign / worries / steps / mechanism / needs / reasons / cases / safety / staff / flow / faq / knowledge / scarcity / dock ほか）、liver・sidejob が各2箇所（hero / footer）で、すべてにクリック検知と流入元パラメータが入る。詳細は **`ads/utm設計.md`**。
 
 | 項目 | 設定 |
 |---|---|
@@ -847,7 +847,7 @@ CID 927-150-4466（ocid=644541294）の管理画面を全画面スクロール�
 
 | # | 作業 | 状態（2026-08-08 検証） | 取得場所 | 貼る場所 |
 |---|---|---|---|---|
-| 1 | GA4の測定ID（G-…）を取得 | ⛔ **未実施。`GA4_ID` は空のまま**。Google広告のCV計測には影響しないが、GA4側で `line_cta_click` が見られない | GA4管理画面 > 管理 > データストリーム | `lp/beginner/index.html` の `GA4_ID` |
+| 1 | GA4の測定ID（G-…）を取得 | ⛔ **未実施。測定IDが未発行**（2026-08-10 時点でリポジトリ内に `G-…` は1件も存在せず、GA4にデータは1件も入っていない）。**ユーザーによるGA4プロパティ／測定IDの発行が必要**。Google広告のCV計測には影響しないが、GA4側で `line_cta_click`（＝16箇所のどのボタンが押されたか）が見られない | GA4管理画面 > 管理 > データストリーム | **`lp/shared/tracking.js` 冒頭の `GA4_ID` 1箇所**（入れて push すれば全4LPで即有効。GA4側の後続設定は `ads/utm設計.md` §5） |
 | 2 | Google広告でコンバージョン「LINE_ボタンクリック」を作成し、コンバージョンID（AW-…）とラベルを取得 | ✅ **完了**。`AW-429748464` / `-KwzCJvzmNQcEPDh9cwB` | 広告管理画面 > 目標 > コンバージョン > タグを設定 | `ADS_ID` と `ADS_CV_LABEL` |
 | 3 | git push（Netlify自動デプロイ）→ 公開URLでボタンを1回押し、広告管理画面で計測を確認 | ✅ **完了**。本番LPでタグ読み込み・発火・ラベル一致を確認し、**2026-08-08 に キャンペーンA 経由の実CV 1件を管理画面で確認**（§0-9） | − | − |
 
@@ -1848,3 +1848,56 @@ VTuber系は8語 **16表示・2クリック・￥394** に減少。中身が決�
 1. **8/10以降の検索語句レポート（期間セレクタを必ず確認）で、`v ライバー` 系・`にじ さん じ` 系・`v オーディション` が残っているか。** `"v ライバー"` は 2026-08-09 21:45 に追加済みなので、**`v ライバー` 系が消えたかどうかは「除外が効いたか」の検証**として読む。残る `にじ さん じ` 系・`v オーディション` 系が出ていたら、⑤の優先1〜2の**残り6語**をフレーズ一致で追加（要承認）
 2. **`ホロライブ`（8/9追加）の対照実験。** `ホロライブ ライバー 募集` `ホロライブ 面接` が 8/10 以降ゼロになれば「1トークン語はベタ書きで効く」が実証される。ゼロにならなければ、**インテントマッチそのものを疑う必要が出てくる**（現時点ではその証拠はない）
 3. **④の37語は現状ノーデータ・実害ゼロ。**先回りで触らない。検索語句に出てきたときに、そのときのトークン列を見てから決める
+
+---
+
+## 0-12. 2026-08-10 流入元とCTAクリックの計測を実装（LPのみ変更／**アカウントは一切変更していない**）
+
+§0-9 で残っていた2つの穴（GA4_IDが空・utmなし）に着手した。**Google広告の管理画面には何も入れていない**（承認待ち）。
+
+### やったこと（LP側・実装済み）
+
+| # | 内容 |
+|---|---|
+| 1 | **計測を `lp/shared/tracking.js` の1ファイルに一元化。** beginner / agency / liver / sidejob の4LPが同じファイルを読む。`GA4_ID` `ADS_ID` `ADS_CV_LABEL` はこのファイル冒頭の3定数だけ |
+| 2 | **`GA4_ID` プレースホルダを解消。** 旧構成では beginner・agency の各HTMLに同じ設定ブロックが重複していた（3箇所）。**測定IDを1箇所に入れるだけで全LPが動く状態**にした |
+| 3 | **liver / sidejob にも計測を追加。** この2枚は今まで計測タグもCTAクリック検知も**一切入っていなかった**。各2箇所のLINEボタンに `data-cta-position`（hero / footer）を付与 |
+| 4 | **CTAクリックに流入元を同梱。** `line_cta_click` に `cta_position` `cta_label` `lp_page` `traffic_source` `traffic_medium` `traffic_campaign` `traffic_content` `has_gclid` を乗せる |
+| 5 | **utm設計を確定して文書化。** → **`ads/utm設計.md`**（新規） |
+| 6 | 新規コンテンツ側の導線に utm を適用：`note_article_generator.py`（記事末CTAのLPリンク）、`threads/threads_content.py`（LP_AGENCY）、`job_generator.py`（求人媒体4ターゲット） |
+
+> ⚠️ §0-9 の「`lp/beginner/index.html` の `GA4_ID` に入れる」という記述は**この変更で古くなった**。
+> 正しい貼り先は **`lp/shared/tracking.js`** の1箇所。
+
+### Google広告側（**ユーザー承認が必要・未実施**）
+
+キャンペーン単位で**最終ページURLのサフィックス**を設定する。最終ページURLそのものは触らない。
+
+| キャンペーン | サフィックス |
+|---|---|
+| A｜TAITANPRO_顕在層_事務所探し | `utm_source=google&utm_medium=cpc&utm_campaign=ads_a_kensou&utm_content={adgroupid}&utm_term={keyword}` |
+| C｜TAITANPRO_競合名_テスト | `utm_source=google&utm_medium=cpc&utm_campaign=ads_c_kyogo&utm_content={adgroupid}&utm_term={keyword}` |
+| D｜TAITANPRO_代理店パートナー | `utm_source=google&utm_medium=cpc&utm_campaign=ads_d_dairiten&utm_content={adgroupid}&utm_term={keyword}` |
+
+**トラッキングテンプレート（`{lpurl}?utm_…`）は使わない。** キャンペーンCのサイトリンク4本がアンカー付きURL
+（`…/beginner/#cases` 等）なので、テンプレート方式だと `#cases?utm_source=…` になり
+**アンカージャンプとutm解釈が両方壊れる**。サフィックス方式ならこの問題が起きない。理由の全文は `ads/utm設計.md` §3-1。
+
+### CV計測を壊さないことの確認状況
+
+- ✅ **ローカル実測済み**：`?utm_source=google&…&gclid=TEST_GCLID_12345` で着地→CTAクリックで
+  `conversion {send_to:"AW-429748464/-KwzCJvzmNQcEPDh9cwB"}` が発火（公式スニペットと完全一致）。
+  17個のCTAで `line_cta_click` 17件・`conversion` 17件＝**二重送信なし**。`event_callback` 経由の遷移も動作
+- ✅ **原理的にも壊れない**：CV送信は `gtag('event','conversion',…)` だけで**URLパラメータを一切参照していない**。
+  gclid は自動タグ設定が別パラメータとして付けるので utm と衝突しない
+- ⛔ **管理画面上でCVが引き続き記録されることは未確認**。サフィックス適用がユーザー承認待ちのため。
+  適用後の翌日以降に、**期間セレクタを「過去30日間」に直してから**（§0-2 の鉄則）CV列を確認すること
+
+### まだ残っていること
+
+1. **GA4プロパティ／測定IDの発行（ユーザー作業）。** これが無いと `line_cta_click` はどこにも溜まらない
+2. **サフィックスの管理画面適用（ユーザー承認）**＋適用後3点検証（`ads/utm設計.md` §3-1）
+3. **公開済みNote 108本のLPリンクへのutm付与。** 本文一括書き換えは `note_publish_core.py` 経由の再公開が要り、
+   タグ・カバーの巻き添え事故リスクがあるため独立タスク扱い
+4. **`taitan-pro-lp-targets.netlify.app`（求人媒体の誘導先・手動zipデプロイ）の再デプロイ。**
+   今回の `shared/tracking.js` はこのサイトには自動反映されない
