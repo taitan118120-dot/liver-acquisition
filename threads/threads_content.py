@@ -38,7 +38,7 @@ Threads 投稿コンテンツ生成（Gemini）
 使い方:
   python threads/threads_content.py --gen 8       # 型配分に沿って8本生成
   python threads/threads_content.py --angle story --gen 6
-  python threads/threads_content.py --audit       # 既存キューを検品するだけ
+  python threads/threads_content.py --audit       # 既存キューを検品（未投稿分に違反があれば exit 1）
 """
 
 import argparse
@@ -290,18 +290,32 @@ def _violations(text, angle):
 
 
 def audit_queue():
+    """キュー全体を検品し、(全体の違反数, 未投稿分の違反数) を返す。
+
+    2026-08-10: 以前は全件の違反数しか返しておらず、しかも --audit は
+    `sys.exit(0 if audit_queue() == 0 else 0)` と両辺0の三項演算子だったので
+    何件検出しても必ず exit 0 だった＝門番として死んでいた。
+    終了コードの根拠に使えるのは未投稿分だけ。投稿済みの過去分は今から
+    直せないうえ、基準を厳しくするたびに増える（現に50本ある）ので、
+    全件で判定すると常時赤になって誰も見なくなる。
+    """
     posts = _load_posts()
     bad = 0
+    bad_unposted = 0
     for i, p in enumerate(posts):
         v = _violations(p.get("text", ""), p.get("angle", "liver"))
-        if v:
-            bad += 1
-            state = "投稿済" if p.get("posted") else "未投稿"
-            head = p.get("text", "").split("\n")[0][:34]
-            print(f"[NG] #{i} {state} {p.get('angle')} :: {', '.join(v)}\n     {head}")
+        if not v:
+            continue
+        bad += 1
+        posted = bool(p.get("posted"))
+        if not posted:
+            bad_unposted += 1
+        state = "投稿済" if posted else "未投稿"
+        head = p.get("text", "").split("\n")[0][:34]
+        print(f"[NG] #{i} {state} {p.get('angle')} :: {', '.join(v)}\n     {head}")
     print(f"\n合計 {len(posts)}本中 {bad}本が現在の基準に不適合"
-          f"（未投稿分: {sum(1 for p in posts if not p.get('posted') and _violations(p.get('text',''), p.get('angle','liver')))}本）")
-    return bad
+          f"（未投稿分: {bad_unposted}本）")
+    return bad, bad_unposted
 
 
 # ── 生成 ───────────────────────────────────────────────────
@@ -515,7 +529,9 @@ def main():
     args = ap.parse_args()
 
     if args.audit:
-        sys.exit(0 if audit_queue() == 0 else 0)
+        _bad_all, bad_unposted = audit_queue()
+        # 未投稿分に違反があるときだけ非ゼロ。投稿済みの過去分では落とさない。
+        sys.exit(1 if bad_unposted else 0)
     generate(args.gen, args.angle)
 
 
