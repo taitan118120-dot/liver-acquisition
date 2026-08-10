@@ -4,8 +4,14 @@
 
 テンプレ投稿はXアルゴリズムに嫌われるため、
 毎週AIで新鮮なコンテンツを自動生成する
+
+使い方:
+  python3 cloud_evolve.py                # 生成してキューに追加（本番）
+  python3 cloud_evolve.py --dry-run      # 生成するが保存しない。検品通過率を出す
+  python3 cloud_evolve.py --check-facts  # 検品ルールとFACTSの対応漏れを検査（API不要）
 """
 
+import argparse
 import os
 import json
 import random
@@ -14,7 +20,7 @@ import time
 
 import tweepy
 
-from x_post_guard import violations
+from x_post_guard import NG_PATTERNS, violations
 
 try:
     from google import genai
@@ -26,6 +32,10 @@ except ImportError:
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 POSTS_FILE = "posts/twitter_posts.json"
 
+# 生成→検品の通過率。FACTSと検品がズレていると rejected が跳ね上がる＝
+# Gemini呼び出しの空振り。--dry-run と本番の両方でサマリを出す。
+GUARD_STATS = {"checked": 0, "rejected": 0, "reasons": {}}
+
 # --- 対立軸テーマ（論争・引用を誘発）---
 # 人間化改修(2026-06-15): これ「だけ」だと毎投稿が同じ煽りテンプレでbot臭くなる。
 # 下の EXPERIENCE_THEMES と交互に使い、生成プロンプトも分ける。
@@ -36,13 +46,16 @@ THEMES = [
     "ライバー副業を会社にバレずにやる方法（ツッコミ歓迎の言い切り）",
     "「ライバーは楽して稼いでる」論への反論（噛みつき誘発）",
     "顔出しなしライバー vs 顔出しライバー、収入の現実差（対立軸）",
-    "ライバー業界の月収格差はなぜ起こるか（強めの主張）",
+    # 「月収格差」は金額を並べたくなるテーマ。少額表記は確定レンジ違反なので、
+    # 金額でなく「要因」で語らせる（2026-08-10: 破棄理由の1位が少額表記だった）
+    "ライバーの月収格差を生んでいる要因は何か（金額でなく要因で語る／強めの主張）",
     "ライバー事務所の取り分は搾取か投資か（業界論争）",
     "副業勢ライバー vs 専業ライバー、続くのはどっち（対立軸）",
     "20代女性が会社員辞めてライバー専業になるのはアリかナシか",
     "男性ライバーが稼げない説は本当か（少数派視点で反論）",
     "ライバー初月でつまずく人に共通する準備不足（言い切り）",
-    "代理店ビジネスは稼げる/稼げない論争（実数字で殴る）",
+    # 旧「実数字で殴る」は数字の捏造を指示していたのと同じなので削除
+    "代理店ビジネスは稼げる/稼げない論争（構造で殴る）",
     "ライブ配信は若い子のもの説に40代が反論（世代論争）",
     "イベント期間中の課金圧、ファンに頼るのはアリかナシか",
     "「楽しいから配信してる」勢 vs 「金のため」勢、どっちが伸びるか",
@@ -69,6 +82,13 @@ EXPERIENCE_THEMES = [
 # 残り9割は事務所入った方が早い」を**勝ちパターンの手本として提示していた**ため、
 # 生成物に出典なしの割合統計が量産され、そのままXに公開されていた。
 # 文章での指示は破られる前提で、x_post_guard.violations() でも機械的に弾く。
+#
+# 2026-08-10 補完。x_post_guard.NG_PATTERNS / facts_patterns の全チェックと
+# **1対1で対応させた**。以前は検品にあってFACTSに無い項目が10個あり
+# （統括/傘下・現役表記・マージンゼロ・DM誘導・オンライン無料相談・カーブアウト・
+#   旧特典PDF名・lit.link・不労所得/権利収入・実績誇張）、
+# その分だけ「生成→検品で破棄」の空振りが出る状態だった。
+# **検品側にチェックを足したら、必ずここにも同じ項目を足すこと。**
 FACTS = """【割合統計の禁止（最優先・違反したら投稿は破棄される）】
 - 業界の割合・率を**一切書かない**。裏が取れる出典が存在しないため全部でっち上げになる。
   禁止例: 「9割が挫折する」「99%が知らない」「10人に1人も成功しない」
@@ -76,16 +96,108 @@ FACTS = """【割合統計の禁止（最優先・違反したら投稿は破棄
 - 「◯割の人が/◯%のライバーが」という**主語の修飾**も同じく禁止。
 - 割合の代わりに、断定したいときは「多い」「よく見る」「ほとんど」で書く。
 
-【その他の確定ファクト】
-- 「手数料」という単語は使わない（他社が引いている、という比較も禁止）。報酬は「還元率100%+α」
+【金額の下限（違反が最も多い。必ず守る）】
 - 収入は 3ヶ月15〜20万 / 6ヶ月30〜40万 / Pococha B帯 月20〜30万 のみ。
-  「月10万」「月5万」等、月15万未満の金額は書かない
-- 所属ライバー数は「200名」固定。「200名以上」「累計◯名」は書かない
-- 扱うのは Pococha・TikTok LIVE・17LIVE の3つ。IRIAM/SHOWROOM/ふわっち/REALITY は出さない
-- リスナーは必ず「リスナーさん」。呼び捨てにしない
+- **「月◯万」と書くとき、◯が15未満なら一律で違反**（「月3万」「月10万」「お小遣い程度」型）。
+  これは **他人の失敗例・稼げていない側の描写・過去の自分の話であっても同じ**。
+  月収格差や「稼げない人」の話をするときは、金額を出さずに
+  「伸びない」「思ったより増えない」と**状態で書く**こと。
+
+【リスナーの呼称（違反が2番目に多い。必ず守る）】
+- 視聴者は **必ず「リスナーさん」**。「リスナー」という呼び捨ては1回でも使ったら破棄。
+- 「リスナーが増えない」→「リスナーさんが増えない」。
+  複合語（リスナー層・リスナー数・固定リスナー）も**すべて「リスナーさん」に開いて書く**。
+  例:「固定リスナーがつく」→「いつも来てくれるリスナーさんがつく」
+
+【その他の確定ファクト】
+- 「手数料」という単語は使わない（他社が引いている、という比較も禁止）。報酬は「還元率100%+α」。
+  「マージンゼロ」「ノーマージン」「マージン0%」も同義語なので禁止
+- 所属ライバー数は「200名」固定。「200名以上」「累計◯名」「総勢◯名」「延べ◯名」は書かない
+- 代理店との関係は「提携」。「統括」「傘下」とは書かない
+- 代表たいたんは **元** Pococha S帯。「現役ライバー」「現役プレイヤー」とは書かない
+- 扱うのは Pococha・TikTok LIVE・17LIVE の3つ。IRIAM/SHOWROOM/ふわっち/REALITY は出さない。
+  「他アプリも多数」のような曖昧なまとめ方もしない
 - 「いつでも退所」「違約金なし」「契約期間」には触れない
-- 「絶対稼げる」「確実に」「保証」等の断定・保証表現は使わない
+- 「絶対稼げる」「確実に」「必ず月◯万」「保証」等の断定・保証表現は使わない
+- 「不労所得」「権利収入」は使わない（マルチ的表現）
+- 「多数輩出」「多くの実績」「続々と」「数百人」「何百人」「数千」など、
+  裏の取れない実績の誇張は書かない
+- 「カーブアウト（パートナー）」という呼称は使わない。名乗るなら TAITAN PRO
+- 特典PDFの名前は『ライバー新人期スタートダッシュガイド』。
+  旧名の「Pococha新人期スタートダッシュ〜」は書かない
+- CTAをDM誘導にしない（「DMで相談」「お気軽にDM」等）。導線は特典PDF→LINE登録に統一。
+  「オンライン無料相談」という言い方もしない。
+  ※そもそもこの投稿にURL・リンク（lin.ee / lit.link 等）は入れない
 """
+
+
+# ── 検品ルール ↔ FACTS の対応表 ────────────────────────────────
+# 2026-08-10。検品(x_post_guard)にだけルールを足してFACTSに書き忘れると、
+# AIは違反を教わらないまま出し続け、生成のたびに捨てられる（＝Gemini呼び出しの
+# 空振り）。それを検知するために、検品ラベルごとに「FACTSに必ず出現する語」を
+# 明示する。--check-facts で照合し、対応が無ければ落とす。
+#
+# 検品側に新しいNG_PATTERNSを足したら、FACTSに1行足して、ここにも1行足す。
+FACTS_COVERAGE = {
+    "所属数が200名以外": "200名",
+    "所属数の旧表記（累計/総勢）": "総勢◯名",
+    "代理店の関係が「提携」でない（統括/傘下）": "統括",
+    "代表は「元」Pococha S帯（現役表記はbioと矛盾）": "現役ライバー",
+    "禁止語「手数料」": "手数料",
+    "「マージンゼロ」＝手数料なしの同義語": "マージンゼロ",
+    "「いつでも退所」「違約金なし」系／契約期間への言及": "違約金なし",
+    "還元率が「100%+α」になっていない": "還元率100%+α",
+    "還元率が確定値でない": "還元率100%+α",
+    "取扱外プラットフォーム": "IRIAM",
+    "取扱は Pococha・TikTok LIVE・17LIVE の3つで統一": "他アプリも多数",
+    "CTAがDM誘導（導線は特典PDF→LINE登録に統一）": "DMで相談",
+    "「オンライン無料相談」は使わない": "オンライン無料相談",
+    "使用禁止ブランド（TAITAN PROで統一）": "カーブアウト",
+    "旧・特典PDF名": "Pococha新人期スタートダッシュ",
+    "リンクが lit.link（公式LINEでない）": "lit.link",
+    "リスナーの呼び捨て": "リスナーさん",
+    "断定・保証表現": "保証",
+    "マルチ的表現": "不労所得",
+    "根拠なしの実績誇張": "多数輩出",
+    # facts_patterns.py（媒体共通の正本）由来。ラベルは実際に検品を通して集める
+    "出典なしの割合統計（離脱/成功率）": "割合",
+    "出典なしの割合統計（割合が主語を修飾）": "割合",
+    "確定レンジ未満の少額表記（月15万が下限）": "15未満",
+    "許可リスト外のLINEリンク": "lin.ee",
+}
+
+# facts_patterns 由来のラベルは動的に組み立てられるので、実際に違反サンプルを
+# 検品に通してラベルを回収する（文字列をコピペすると必ず片方が古くなる）。
+_SHARED_PROBES = [
+    "9割が辞めていく現実",
+    "9割のライバーはフリーで十分",
+    "月3万くらいから始まる",
+    "詳しくは https://lin.ee/xxxxxxx へ",
+]
+
+
+def check_facts_coverage(verbose=True):
+    """検品ルールに対応するFACTSの記述が無い項目を返す。空なら1対1で揃っている。"""
+    labels = [label for _pat, label in NG_PATTERNS]
+    for probe in _SHARED_PROBES:
+        labels += violations(probe)
+
+    missing = []
+    for label in dict.fromkeys(labels):          # 順序を保って重複除去
+        anchor = FACTS_COVERAGE.get(label)
+        if anchor is None:
+            missing.append((label, "FACTS_COVERAGE に対応表が無い"))
+        elif anchor not in FACTS:
+            missing.append((label, f"FACTS に「{anchor}」が出てこない"))
+
+    if verbose:
+        if missing:
+            print(f"[NG] 検品ルール {len(missing)}件が FACTS に書かれていない:")
+            for label, why in missing:
+                print(f"  - {label} … {why}")
+        else:
+            print(f"[OK] 検品ルール {len(set(labels))}件すべてが FACTS に対応済み")
+    return missing
 
 PROMPT_TEMPLATE = """あなたはX(Twitter)で「ライブ配信」「ライバー副業」「ライバー事務所」について発信しているアカウントの投稿を書きます。
 目的は **インプレッション最大化** と **DM/LP流入**。そのために以下の収益構造を最大限利用します。
@@ -109,7 +221,8 @@ PROMPT_TEMPLATE = """あなたはX(Twitter)で「ライブ配信」「ライバ�
 2. 1ツイート目は120〜140文字（日本語全角）、強いフック。最後を「↓」「↓続く」「答えは下に」等で締めてリプ欄を開かせる
 3. 2ツイート目以降は100〜140文字。具体ノウハウ・数字・箇条書きで本体を展開
 4. 数字は「配信時間」「日数」「項目数」など**自分で確認できるもの**を使う。
-   **業界の割合・率は絶対に書かない**（後述の【割合統計の禁止】を必ず読むこと）
+   **業界の割合・率は絶対に書かない**（後述の【割合統計の禁止】を必ず読むこと）。
+   金額を出すときは後述の確定レンジのみ。**月15万未満の金額は書かない**
 5. 最終ツイートの末尾に **議論を呼ぶ問いかけ or 引用させる挑発** を入れる
    例: 「異論あれば引用で殴ってきてOK」「あなたはどっち派？」「これ反対する人おる？」
 6. 絵文字は1スレッドにつき1〜2個まで。本文中の乱用は禁止
@@ -121,7 +234,7 @@ PROMPT_TEMPLATE = """あなたはX(Twitter)で「ライブ配信」「ライバ�
 {facts}
 
 【データに基づく勝ちパターン（直近の分析）】
-- 伸びる: 箇条書き5項目、❌⭕対比、具体数字、断言、リプ誘導
+- 伸びる: 箇条書き5項目、❌⭕対比、具体数字（配信時間・日数・項目数）、断言、リプ誘導
 - 沈む: あるある、内輪話、抽象論、丁寧すぎる説明
 
 テーマ: {theme}
@@ -300,7 +413,12 @@ def generate_with_gemini(theme, top_posts, style="debate"):
                     # 止まらなかった（実測でXに公開まで到達）。スレッド全体を
                     # 連結して当て、1ツイートでも違反したらスレッドごと捨てる。
                     v = violations("\n".join(tweets))
+                    GUARD_STATS["checked"] += 1
                     if v:
+                        GUARD_STATS["rejected"] += 1
+                        for label in v:
+                            GUARD_STATS["reasons"][label] = \
+                                GUARD_STATS["reasons"].get(label, 0) + 1
                         print(f"  [NG] 検品で破棄: {', '.join(v)}\n       {tweets[0][:40]}...")
                         continue
                     cleaned.append(tweets)
@@ -314,7 +432,35 @@ def generate_with_gemini(theme, top_posts, style="debate"):
     return []
 
 
+def _print_guard_summary():
+    """検品の通過率サマリ。rejected が多いなら FACTS と検品がズレている。"""
+    checked = GUARD_STATS["checked"]
+    if not checked:
+        print("\n検品サマリ: 生成物なし（Gemini未設定 or 全リトライ失敗）")
+        return
+    ok = checked - GUARD_STATS["rejected"]
+    print(f"\n検品サマリ: 生成 {checked}本 → 通過 {ok}本 / 破棄 "
+          f"{GUARD_STATS['rejected']}本（破棄率 {GUARD_STATS['rejected'] / checked:.0%}）")
+    for label, n in sorted(GUARD_STATS["reasons"].items(),
+                           key=lambda kv: -kv[1]):
+        print(f"  {n:3d}  {label}")
+
+
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--dry-run", action="store_true",
+                    help="生成して検品するが、キューにもレポートにも書き込まない")
+    ap.add_argument("--check-facts", action="store_true",
+                    help="検品ルールとFACTSの対応漏れだけ検査する（Gemini呼び出しなし）")
+    args = ap.parse_args()
+
+    # 0. 検品ルールとFACTSの1対1対応を先に検査する。
+    #    ここがズレたまま生成すると、AIは違反を教わらないまま出し続けて
+    #    毎回捨てられる（＝Gemini呼び出しの空振り）。
+    missing = check_facts_coverage()
+    if args.check_facts:
+        return 1 if missing else 0
+
     # 1. 過去の投稿を分析
     top_posts = analyze_tweets()
     if top_posts:
@@ -370,6 +516,13 @@ def main():
             next_id += 1
             print(f"  ✅ 追加({len(thread)}T): {thread[0][:40]}...")
 
+    _print_guard_summary()
+
+    if args.dry_run:
+        print(f"\n[dry-run] {new_count}件を追加できたが書き込みはしない"
+              f"（キューは {len(existing) - new_count}件のまま）")
+        return 0
+
     # 4. 保存
     with open(POSTS_FILE, "w", encoding="utf-8") as f:
         json.dump(existing, f, ensure_ascii=False, indent=4)
@@ -384,8 +537,13 @@ def main():
             "themes_used": selected_themes,
             "new_posts_added": new_count,
             "total_posts": len(existing),
+            # 検品の通過率。急に落ちたら FACTS と検品のズレを疑う
+            "guard_checked": GUARD_STATS["checked"],
+            "guard_rejected": GUARD_STATS["rejected"],
+            "guard_reasons": GUARD_STATS["reasons"],
         }, f, ensure_ascii=False, indent=2)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main() or 0)
