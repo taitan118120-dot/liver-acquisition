@@ -17,13 +17,11 @@ ADMIN_USER_ID = os.environ.get("LINE_ADMIN_USER_ID", "")
 # 未設定なら差し替えをスキップし、全員デフォルト（ライバー向け）のままになる。
 RICH_MENU_ID_AGENCY = os.environ.get("RICH_MENU_ID_AGENCY", "")
 
-# 事務所情報
-OFFICE_NAME = "TAITAN PRO"
-OFFICE_URL = "https://taitan-pro-lp-targets.netlify.app/beginner/?utm_source=line&utm_medium=bot&utm_campaign=line_bot"
-LP_BEGINNER = "https://taitan-pro-lp-targets.netlify.app/beginner/"
-LP_LIVER = "https://taitan-pro-lp-targets.netlify.app/liver/"
-LP_SIDEJOB = "https://taitan-pro-lp-targets.netlify.app/sidejob/"
-CONTACT_LINE = "https://lin.ee/xchCfdn"
+# 事務所情報・LPのURLはここに置かない。
+# 実際にユーザーへ配信されるURLは messages.py / rich_menu.py が持っている
+# （誘導先は git 自動デプロイ側の taitan-pro-lp.netlify.app＝計測タグあり）。
+# ここに定数を置くと -targets 側（手動zipデプロイ・計測タグ未反映）と二重管理になり
+# ドメインが食い違ったまま放置されるため、2026-08-11 に未参照定数ごと削除した。
 
 # ステップ配信スケジュール（秒）
 STEP_DELAYS = {
