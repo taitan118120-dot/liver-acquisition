@@ -5,8 +5,6 @@
   python run.py find          リード検索
   python run.py dm            DM送信
   python run.py dm --copy     コピペ用DM出力（API不要）
-  python run.py post          テスト投稿
-  python run.py post --auto   自動投稿スケジュール開始
   python run.py engage        エンゲージメント（いいね/リプライ/フォロー）
   python run.py engage --manual  手動用リスト出力（API不要）
   python run.py stats         統計表示
@@ -26,7 +24,6 @@ def main():
 コマンド一覧:
   find        X/Instagramでライバー候補を検索
   dm          DM送信（--copy でコピペモード）
-  post        投稿（--auto で自動スケジュール）
   stats       リード統計表示
   followup    フォローアップ対象表示
   list        リード一覧表示
@@ -36,8 +33,6 @@ def main():
   python run.py find --dry-run          検索テスト
   python run.py dm --copy               コピペ用DM出力
   python run.py dm --dry-run            DM送信テスト
-  python run.py post --dry-run          投稿テスト
-  python run.py post --auto             自動投稿開始
   python run.py stats                   統計表示
         """,
     )
@@ -62,12 +57,6 @@ def main():
     dm_parser.add_argument("--copy", action="store_true", help="コピペモード（API不要）")
     dm_parser.add_argument("--platform", choices=["twitter", "instagram"])
     dm_parser.add_argument("--limit", type=int)
-
-    # post
-    post_parser = sub.add_parser("post", help="投稿")
-    post_parser.add_argument("--dry-run", action="store_true")
-    post_parser.add_argument("--auto", action="store_true", help="自動スケジュール実行")
-    post_parser.add_argument("--platform", choices=["twitter", "instagram"])
 
     # engage
     engage_parser = sub.add_parser("engage", help="エンゲージメント自動化")
@@ -124,19 +113,6 @@ def main():
             sys.argv.extend(["--limit", str(args.limit)])
         dm_main()
 
-    elif args.command == "post":
-        from post_scheduler import main as post_main
-        sys.argv = ["post_scheduler.py"]
-        if args.auto:
-            sys.argv.append("--schedule")
-        elif args.dry_run:
-            sys.argv.append("--dry-run")
-        else:
-            sys.argv.append("--test")
-        if args.platform:
-            sys.argv.extend(["--platform", args.platform])
-        post_main()
-
     elif args.command == "engage":
         from engager import main as engage_main
         sys.argv = ["engager.py"]
@@ -177,20 +153,16 @@ def main():
         print("  全工程ドライラン実行")
         print("=" * 60)
 
-        print("\n[1/4] リード検索...")
+        print("\n[1/3] リード検索...")
         from lead_finder import main as finder_main
         sys.argv = ["lead_finder.py", "--dry-run"]
         finder_main()
 
-        print("\n[2/4] DM生成...")
+        print("\n[2/3] DM生成...")
         from dm_sender import copy_mode
         copy_mode(limit=2)
 
-        print("\n[3/4] 投稿テスト...")
-        from post_scheduler import post_next
-        post_next("twitter", dry_run=True)
-
-        print("\n[4/4] 統計表示...")
+        print("\n[3/3] 統計表示...")
         from tracker import show_stats
         show_stats()
 

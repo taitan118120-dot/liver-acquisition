@@ -17,7 +17,7 @@
 python3 engager.py --manual
 
 # 投稿テキスト確認
-python3 post_scheduler.py --dry-run
+cat posts/twitter_posts.json
 ```
 
 ポイント:
@@ -63,8 +63,7 @@ python3 run.py stats
 
 コマンド:
 ```bash
-# 自動投稿スケジュール開始
-python3 run.py post --auto
+# 自動投稿は GitHub Actions (auto_post.yml → cloud_post.py) で運用中。手動操作は不要
 
 # 自動いいね・リプライ・フォロー
 python3 engager.py --all
