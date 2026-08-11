@@ -12,6 +12,11 @@ LINE_CHANNEL_ACCESS_TOKEN = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN", "")
 # 自分のIDは data/message_log.json か Render のログで確認できる
 ADMIN_USER_ID = os.environ.get("LINE_ADMIN_USER_ID", "")
 
+# 代理店パートナー向けリッチメニューのID（rich_menu.py が作成時に表示する）
+# intent が "agency" と分かった時点で、そのユーザーだけこのメニューに差し替える。
+# 未設定なら差し替えをスキップし、全員デフォルト（ライバー向け）のままになる。
+RICH_MENU_ID_AGENCY = os.environ.get("RICH_MENU_ID_AGENCY", "")
+
 # 事務所情報
 OFFICE_NAME = "TAITAN PRO"
 OFFICE_URL = "https://taitan-pro-lp-targets.netlify.app/beginner/?utm_source=line&utm_medium=bot&utm_campaign=line_bot"

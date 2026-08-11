@@ -18,7 +18,10 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 
-from config import LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN, STEP_DELAYS, ADMIN_USER_ID
+from config import (
+    LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN, STEP_DELAYS, ADMIN_USER_ID,
+    RICH_MENU_ID_AGENCY,
+)
 from messages import (
     STEP_MESSAGES, AUTO_REPLIES, AGENCY_REPLIES, DEFAULT_REPLY, SOURCE_THANKS,
     find_source, make_meeting_offer, parse_slot_choice, MEETING_BOOKED,
@@ -115,6 +118,32 @@ def get_display_name(user_id):
             return json.loads(res.read().decode("utf-8")).get("displayName", "")
     except Exception:
         return ""
+
+
+def link_agency_rich_menu(user_id):
+    """代理店希望者のリッチメニューを代理店向けに差し替える。
+
+    デフォルト（ライバー向け）は全員に出ているので、ここでリンクした人だけが
+    上書きされる。失敗してもデフォルトが出るだけなので会話は止めない。
+    """
+    if not RICH_MENU_ID_AGENCY:
+        print("[RICHMENU] RICH_MENU_ID_AGENCY 未設定のため差し替えをスキップ")
+        return False
+
+    url = f"https://api.line.me/v2/bot/user/{user_id}/richmenu/{RICH_MENU_ID_AGENCY}"
+    req = Request(url, headers={"Authorization": f"Bearer {LINE_CHANNEL_ACCESS_TOKEN}"},
+                  method="POST")
+    try:
+        urlopen(req)
+        print(f"[RICHMENU] {user_id[:8]}... -> agency")
+        return True
+    except HTTPError as e:
+        print(f"[ERROR] richmenu link failed: {e.code} {e.read().decode()}")
+        return False
+    except Exception as e:
+        # メニューの見た目の問題でしかないので、通信断でも返信処理は止めない
+        print(f"[ERROR] richmenu link failed: {e}")
+        return False
 
 
 def notify_admin(text):
@@ -291,6 +320,32 @@ def handle_admin_command(text):
             + "\n".join(lines)
         )
 
+    if t in ("メニュー同期", "メニュー"):
+        # 代理店メニューを用意する前に intent が付いた人へ後追いで差し替える。
+        # 何度打っても差し替え済みは飛ばすので、実行が重複しても害はない。
+        if not RICH_MENU_ID_AGENCY:
+            return "RICH_MENU_ID_AGENCY が未設定です。rich_menu.py で作成したIDを環境変数に入れてください"
+        users = load_json(USERS_FILE)
+        done = skipped = failed = 0
+        for uid, u in users.items():
+            if u.get("intent") != "agency" or u.get("unfollowed"):
+                continue
+            if u.get("rich_menu") == "agency":
+                skipped += 1
+                continue
+            if link_agency_rich_menu(uid):
+                u["rich_menu"] = "agency"
+                done += 1
+            else:
+                failed += 1
+        save_json(USERS_FILE, users)
+        return (
+            "🔄 代理店メニューの差し替え\n"
+            f"新たに差し替え: {done}人\n"
+            f"すでに済み: {skipped}人\n"
+            f"失敗: {failed}人"
+        )
+
     for cmd, pause in (("停止", True), ("再開", False)):
         if t.startswith(cmd):
             prefix = t[len(cmd):].strip()
@@ -382,7 +437,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
         self.end_headers()
-        self.wfile.write(b"TAITAN PRO LINE Bot is running (v13-intent-liver-or-agency)")
+        self.wfile.write(b"TAITAN PRO LINE Bot is running (v14-richmenu-agency)")
 
     def do_POST(self):
         content_length = int(self.headers.get("Content-Length", 0))
@@ -467,7 +522,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
                 log_message(user_id, "receive", text)
                 print(f"[MSG] {user_id[:8]}...: {text[:50]}")
 
-                # 管理者コマンド（一覧 / 停止 <ID> / 再開 <ID>）
+                # 管理者コマンド（一覧 / 停止 <ID> / 再開 <ID> / メニュー同期）
                 if ADMIN_USER_ID and user_id == ADMIN_USER_ID:
                     admin_reply = handle_admin_command(text)
                     if admin_reply:
@@ -527,6 +582,14 @@ class WebhookHandler(BaseHTTPRequestHandler):
                         users[user_id] = user_data
                         save_json(USERS_FILE, users)
                         print(f"[INTENT] {user_id[:8]}... -> {intent}")
+                        # 代理店希望者はリッチメニューも代理店向けに差し替える。
+                        # 「両方」の人はライバー向け（＝代理店ボタンを含む）のままにする。
+                        if intent == "agency":
+                            user_data["rich_menu"] = (
+                                "agency" if link_agency_rich_menu(user_id) else "liver"
+                            )
+                            users[user_id] = user_data
+                            save_json(USERS_FILE, users)
                         reply_line_message(reply_token, INTENT_REPLIES[intent], user_id)
                         name = get_display_name(user_id)
                         notify_admin(

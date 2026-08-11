@@ -179,7 +179,8 @@ LINE直リンクは §1-1 のとおり計測できないので、**LPリンク�
 | DMテンプレ（`dm_sender.py` 系・媒体横断） | `config.py` `OFFICE_URL` / `templates/dm_*.txt` | `…/beginner/?utm_source=dm&utm_medium=dm&utm_campaign=dm_direct` |
 | liver_app のDMテンプレ（Instagram） | `liver_app/db.py` `_DEFAULT_*_TEMPLATE` | `…/beginner/?utm_source=instagram&utm_medium=dm&utm_campaign=ig_dm` |
 | x_app のDMテンプレ（X） | `x_app/db.py` `_DEFAULT_*_TEMPLATE` | `…/beginner/?utm_source=x&utm_medium=dm&utm_campaign=x_dm` |
-| 公式LINE リッチメニューのボタン | `line_bot/rich_menu.py` | `…/beginner/?utm_source=line&utm_medium=richmenu&utm_campaign=line_richmenu` |
+| 公式LINE リッチメニュー（ライバー向け＝デフォルト） | `line_bot/rich_menu.py` | `…/beginner/?utm_source=line&utm_medium=richmenu&utm_campaign=line_richmenu` |
+| 公式LINE リッチメニュー（代理店向け＝intent=agencyの人だけ差し替え） | `line_bot/rich_menu.py` | `…/agency/?utm_source=line&utm_medium=richmenu&utm_campaign=line_richmenu_agency` |
 | 公式LINE `OFFICE_URL`（現在どこからも参照されていない） | `line_bot/config.py` | `…-targets.netlify.app/beginner/?utm_source=line&utm_medium=bot&utm_campaign=line_bot` |
 
 > `liver_app` / `x_app` はテンプレ本体を **Fly.io の本番DB** に持つ。`db.py` の `_DEFAULT_*` を
