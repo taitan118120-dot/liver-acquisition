@@ -69,7 +69,7 @@ TTS_PITCH = "+0Hz"
 
 # ブランディング
 AGENCY_NAME = "TAITAN PRO"
-LP_URL = "https://taitan-pro-lp.netlify.app/#apply"
+LP_URL = "https://taitan-pro-lp.netlify.app/beginner/"
 LINE_URL = "https://lin.ee/xchCfdn"
 CTA_TEXT = "プロフのLINEで\n無料診断プレゼント中"
 

@@ -58,6 +58,12 @@ RECENT_IDS_FILE = os.path.join(BASE_DIR, "data", "recent_post_ids.txt")
 # 事務所の確定ファクト（所属数・還元率・取扱プラットフォーム・呼称など）は
 # 媒体を問わないので facts_patterns.COMMON_NG_PATTERNS 側に置くこと。
 # ここに書くと Threads/プロフィール側が素通りする＝この共通化で潰した事故が戻る。
+#
+# 2026-08-11: 並行セッションが代理店解禁に合わせてこのファイルへ直接
+# DM誘導の拡張・市場規模/成長率・ロイヤリティ食い違い・不労所得の言い換えを
+# 追加していた。いずれもXに限らずThreadsの代理店投稿(agency比率30%)にも
+# 同じ事故が起きうる確定ファクト系のルールなので、共通化の趣旨に沿って
+# facts_patterns.COMMON_NG_PATTERNS 側に統合した。
 X_NG_PATTERNS = []
 
 # 外部（cloud_evolve.check_facts_coverage）はこれを「Xで当たる全ラベル」として読む。

@@ -23,6 +23,7 @@ import argparse
 import json
 import os
 import sys
+from datetime import date
 
 from x_post_guard import details, post_body
 
@@ -45,7 +46,7 @@ def main():
         if d:
             entry = dict(p)
             entry["blocked_reasons"] = [{"reason": r, "hit": h} for r, h in d]
-            entry["blocked_at"] = "2026-08-09"
+            entry["blocked_at"] = date.today().isoformat()
             moved.append(entry)
         else:
             keep.append(p)

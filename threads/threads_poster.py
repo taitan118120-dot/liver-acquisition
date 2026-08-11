@@ -52,7 +52,8 @@ try:
     sys.path.insert(0, SCRIPT_DIR)
     from threads_content import TARGET_MIX, _violations as _fact_violations
 except Exception:
-    TARGET_MIX = {"story": 0.60, "liver": 0.25, "agency": 0.15}
+    # threads_content.TARGET_MIX のフォールバック。向こうを変えたらここも直す
+    TARGET_MIX = {"story": 0.50, "liver": 0.20, "agency": 0.30}
     # 検品モジュールが読めないときは検品なしで投稿を続ける（fail-open）。
     # 1日2回の配信を止める損失のほうが大きく、キューの中身は生成時に一度
     # 検品済みだから。ただし黙って素通りさせず必ず警告を出す。

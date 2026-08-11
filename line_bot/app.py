@@ -18,11 +18,16 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 
-from config import LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN, STEP_DELAYS, ADMIN_USER_ID
-from messages import (
-    STEP_MESSAGES, AUTO_REPLIES, DEFAULT_REPLY, SOURCE_THANKS, find_source,
-    make_meeting_offer, parse_slot_choice, MEETING_BOOKED, MEETING_NUDGE_INTRO,
+from config import (
+    LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN, STEP_DELAYS, ADMIN_USER_ID,
+    RICH_MENU_ID_AGENCY,
 )
+from messages import (
+    STEP_MESSAGES, AUTO_REPLIES, AGENCY_REPLIES, DEFAULT_REPLY, SOURCE_THANKS,
+    find_source, make_meeting_offer, parse_slot_choice, MEETING_BOOKED,
+    find_intent, INTENT_LABELS, INTENT_REPLIES, meeting_intro, step_text,
+)
+import rich_menu
 import state_sync
 
 # --- データ保存 ---
@@ -116,6 +121,56 @@ def get_display_name(user_id):
         return ""
 
 
+_agency_rich_menu_id = None
+
+
+def agency_rich_menu_id(refresh=False):
+    """代理店向けリッチメニューのIDを解決する。
+
+    環境変数 RICH_MENU_ID_AGENCY があればそれを使い、無ければ LINE 側の一覧から
+    名前で引いて記憶する。環境変数を手で入れなくても動かすための仕掛けで、
+    「メニュー作成」で作り直したときは refresh=True で引き直す。
+    """
+    global _agency_rich_menu_id
+    if RICH_MENU_ID_AGENCY:
+        return RICH_MENU_ID_AGENCY
+    if _agency_rich_menu_id and not refresh:
+        return _agency_rich_menu_id
+    try:
+        _agency_rich_menu_id = rich_menu.find_rich_menu_id("agency")
+    except Exception as e:
+        print(f"[ERROR] richmenu lookup failed: {e}")
+        return None
+    return _agency_rich_menu_id
+
+
+def link_agency_rich_menu(user_id):
+    """代理店希望者のリッチメニューを代理店向けに差し替える。
+
+    デフォルト（ライバー向け）は全員に出ているので、ここでリンクした人だけが
+    上書きされる。失敗してもデフォルトが出るだけなので会話は止めない。
+    """
+    menu_id = agency_rich_menu_id()
+    if not menu_id:
+        print("[RICHMENU] 代理店メニューが未作成のため差し替えをスキップ")
+        return False
+
+    url = f"https://api.line.me/v2/bot/user/{user_id}/richmenu/{menu_id}"
+    req = Request(url, headers={"Authorization": f"Bearer {LINE_CHANNEL_ACCESS_TOKEN}"},
+                  method="POST")
+    try:
+        urlopen(req)
+        print(f"[RICHMENU] {user_id[:8]}... -> agency")
+        return True
+    except HTTPError as e:
+        print(f"[ERROR] richmenu link failed: {e.code} {e.read().decode()}")
+        return False
+    except Exception as e:
+        # メニューの見た目の問題でしかないので、通信断でも返信処理は止めない
+        print(f"[ERROR] richmenu link failed: {e}")
+        return False
+
+
 def notify_admin(text):
     """管理者に通知（ADMIN_USER_ID 未設定ならログのみ）"""
     if ADMIN_USER_ID:
@@ -128,8 +183,13 @@ def notify_admin(text):
 SCHEDULE_FILE = os.path.join(DATA_DIR, "step_schedule.json")
 
 
-def _send_step_if_active(user_id, step_name, text):
-    """ステップ送信前にユーザーがまだアクティブか確認"""
+def _send_step_if_active(user_id, step_name):
+    """ステップ送信前にユーザーがまだアクティブか確認
+
+    本文は「送信する直前」に希望の種別（ライバー/代理店）で選び直す。
+    スケジュール時点ではまだ種別を聞けていないため、ここで解決しないと
+    代理店希望の人にライバー向けのフォローが飛ぶ。
+    """
     try:
         users = load_json(USERS_FILE)
         user = users.get(user_id, {})
@@ -160,6 +220,10 @@ def _send_step_if_active(user_id, step_name, text):
         # 再起動やstate復元で同じスケジュールが蘇っても二重送信しない
         if step_name in user.get("step_sent", []):
             print(f"[STEP] Skipped '{step_name}' for {user_id[:8]}... (already sent)")
+            _remove_schedule(user_id, step_name)
+            return
+        text = step_text(step_name, user.get("intent"))
+        if not text:
             _remove_schedule(user_id, step_name)
             return
         send_line_message(user_id, text)
@@ -212,7 +276,7 @@ def schedule_step_messages(user_id):
         })
 
         # Timer もセット（サーバーが落ちなければTimerで送信）
-        t = threading.Timer(delay, _send_step_if_active, args=[user_id, step_name, msg["text"]])
+        t = threading.Timer(delay, _send_step_if_active, args=[user_id, step_name])
         t.daemon = True
         t.start()
         print(f"[STEP] Scheduled '{step_name}' for {user_id[:8]}... at {send_at}")
@@ -240,14 +304,14 @@ def restore_pending_steps():
             # 送信時刻を過ぎている → 即送信
             threading.Thread(
                 target=_send_step_if_active,
-                args=[s["user_id"], s["step"], msg["text"]],
+                args=[s["user_id"], s["step"]],
                 daemon=True,
             ).start()
             immediate += 1
         else:
             # まだ先 → Timerで再スケジュール
             delay = (send_at - now).total_seconds()
-            t = threading.Timer(delay, _send_step_if_active, args=[s["user_id"], s["step"], msg["text"]])
+            t = threading.Timer(delay, _send_step_if_active, args=[s["user_id"], s["step"]])
             t.daemon = True
             t.start()
             restored += 1
@@ -272,10 +336,95 @@ def handle_admin_command(text):
                 status = "⏸手動対応中"
             else:
                 status = "🤖自動対応中"
-            lines.append(f"{uid[:8]} | {u.get('source', '不明')} | {status}")
+            intent = INTENT_LABELS.get(u.get("intent"), "種別不明")
+            lines.append(f"{uid[:8]} | {intent} | {u.get('source', '不明')} | {status}")
         if not lines:
             return "ユーザーはまだいません"
-        return "直近のユーザー（先頭8文字 | 流入元 | 状態）:\n" + "\n".join(lines)
+        return (
+            "直近のユーザー（先頭8文字 | 希望 | 流入元 | 状態）:\n"
+            + "\n".join(lines)
+        )
+
+    if t in ("メニュー確認", "メニュー状態"):
+        # メニューが出ない時の切り分け用。作成済みか／デフォルトになっているか／
+        # 画像が乗っているか／自分に何が出るはずか を一度に見る。
+        menus = rich_menu.list_rich_menus()
+        default_id = rich_menu.get_default_rich_menu()
+        lines = [f"📋 リッチメニュー {len(menus)}件"]
+        if not menus:
+            lines.append("（1件もありません。「メニュー作成」を送ってください）")
+        for m in menus:
+            mark = "★デフォルト" if m["richMenuId"] == default_id else ""
+            img = "画像あり" if rich_menu.has_image(m["richMenuId"]) else "⚠️画像なし＝表示されません"
+            lines.append(f"・{m.get('name')} / {len(m.get('areas', []))}枠 / {img} {mark}")
+        if menus and not default_id:
+            lines.append("\n⚠️ デフォルト未設定です。誰にもメニューが出ません")
+
+        mine = rich_menu.get_user_rich_menu(ADMIN_USER_ID) if ADMIN_USER_ID else None
+        lines.append("")
+        lines.append(f"自分に出るはずのメニュー: {'個別リンクあり' if mine else 'デフォルト'}")
+        lines.append("")
+        lines.append(
+            "これで全部✅なのに表示されないときは、LINE公式アカウントマネージャー側の"
+            "リッチメニュー（ホーム→リッチメニュー）が「表示する」になっていないか確認してください。"
+            "そちらが優先され、APIで作ったメニューが隠れます。"
+            "アプリの再起動（トーク画面を開き直す）でも直ることがあります。"
+        )
+        return "\n".join(lines)
+
+    if t in ("メニュー作成", "メニュー更新"):
+        # リッチメニューの作り直しをLINEから実行する。
+        # 画像はリポジトリにコミット済み（assets/）、トークンは本番の環境変数にあるので、
+        # 手元にトークンが無くてもこのコマンドだけで完結する。
+        # 新しいメニューを作ってデフォルトに切り替えたあとで旧メニューを消す。
+        # 逆順にすると、その隙間だけメニューが消えた状態が見えてしまう。
+        old = [m["richMenuId"] for m in rich_menu.list_rich_menus()]
+        try:
+            created = rich_menu.deploy(["liver", "agency"])
+        except Exception as e:
+            return f"❌ メニュー作成に失敗しました\n{e}"
+        if "liver" not in created or "agency" not in created:
+            return (
+                "❌ 一部しか作成できませんでした\n"
+                f"作成できたもの: {', '.join(created) or 'なし'}\n"
+                "Renderのログを確認してください（旧メニューは消していません）"
+            )
+
+        deleted = sum(1 for rid in old if rich_menu.delete_rich_menu(rid))
+        agency_rich_menu_id(refresh=True)
+        return (
+            "✅ リッチメニューを作り直しました\n"
+            f"ライバー向け（デフォルト）: {created['liver'][-6:]}\n"
+            f"代理店向け: {created['agency'][-6:]}\n"
+            f"古いメニューの削除: {deleted}/{len(old)}件\n\n"
+            "続けて「メニュー同期」を送ると、すでに代理店希望と分かっている人にも反映されます"
+        )
+
+    if t in ("メニュー同期", "メニュー"):
+        # 代理店メニューを用意する前に intent が付いた人へ後追いで差し替える。
+        # 何度打っても差し替え済みは飛ばすので、実行が重複しても害はない。
+        if not agency_rich_menu_id(refresh=True):
+            return "代理店メニューがまだありません。先に「メニュー作成」を送ってください"
+        users = load_json(USERS_FILE)
+        done = skipped = failed = 0
+        for uid, u in users.items():
+            if u.get("intent") != "agency" or u.get("unfollowed"):
+                continue
+            if u.get("rich_menu") == "agency":
+                skipped += 1
+                continue
+            if link_agency_rich_menu(uid):
+                u["rich_menu"] = "agency"
+                done += 1
+            else:
+                failed += 1
+        save_json(USERS_FILE, users)
+        return (
+            "🔄 代理店メニューの差し替え\n"
+            f"新たに差し替え: {done}人\n"
+            f"すでに済み: {skipped}人\n"
+            f"失敗: {failed}人"
+        )
 
     for cmd, pause in (("停止", True), ("再開", False)):
         if t.startswith(cmd):
@@ -302,20 +451,26 @@ def handle_admin_command(text):
 _URL_RE = re.compile(r"https?://\S+")
 
 
-def find_auto_reply(text):
+def find_auto_reply(text, intent=None):
     """ユーザーメッセージからキーワードを探して自動返信テキストを返す
 
     URL部分はキーワード判定から除外する。プロフィールリンクの共有
     （例: pococha.comのURL）は質問ではないので、URL内の文字列に
     反応して解説を送り返さない。
+
+    代理店希望のユーザーには AGENCY_REPLIES を先に引く。「収入」「始め方」
+    「費用」「副業」「事務所」は両方に存在する語なので、先に引かないと
+    配信者向けの答えが返ってしまう。該当がなければ共通側にフォールバックする。
     """
     text_normalized = _URL_RE.sub(" ", text).strip().lower()
     if not text_normalized:
         # メッセージがURLだけ＝リンク共有。自動応答しない
         return None
-    for keyword, reply in AUTO_REPLIES.items():
-        if keyword.lower() in text_normalized:
-            return reply
+    tables = [AGENCY_REPLIES, AUTO_REPLIES] if intent == "agency" else [AUTO_REPLIES]
+    for table in tables:
+        for keyword, reply in table.items():
+            if keyword.lower() in text_normalized:
+                return reply
     return None
 
 
@@ -362,7 +517,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
         self.end_headers()
-        self.wfile.write(b"TAITAN PRO LINE Bot is running (guide-v12-app-agnostic-pdf)")
+        self.wfile.write(b"TAITAN PRO LINE Bot is running (v16-richmenu-diag)")
 
     def do_POST(self):
         content_length = int(self.headers.get("Content-Length", 0))
@@ -413,6 +568,10 @@ class WebhookHandler(BaseHTTPRequestHandler):
                     "follow_date": datetime.now().isoformat(),
                     "step_sent": ["welcome"],
                     "unfollowed": False,
+                    # welcome で希望の種別（ライバー/代理店）を質問済み、の印。
+                    # このフラグが無いユーザー（この機能より前からの友だち）には
+                    # 種別判定を走らせない＝会話の途中で突然聞き返さない
+                    "intent_asked": True,
                 }
                 save_json(USERS_FILE, users)
 
@@ -430,7 +589,8 @@ class WebhookHandler(BaseHTTPRequestHandler):
                     "🆕 新しい友だちが追加されました\n"
                     f"名前: {name or '(取得失敗)'}\n"
                     f"ID: {user_id[:8]}\n\n"
-                    "welcomeと特典PDFは自動送信済みです。"
+                    "welcomeを送信し、ライバー希望か代理店希望かを質問済みです。\n"
+                    "返答が来たら種別に合った特典PDFを自動で送ります。"
                 )
 
             elif event_type == "message":
@@ -442,7 +602,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
                 log_message(user_id, "receive", text)
                 print(f"[MSG] {user_id[:8]}...: {text[:50]}")
 
-                # 管理者コマンド（一覧 / 停止 <ID> / 再開 <ID>）
+                # 管理者コマンド（一覧 / 停止 <ID> / 再開 <ID> / メニュー作成 / メニュー同期）
                 if ADMIN_USER_ID and user_id == ADMIN_USER_ID:
                     admin_reply = handle_admin_command(text)
                     if admin_reply:
@@ -463,6 +623,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
                         "step_sent": ["welcome"],
                         "unfollowed": False,
                         "follow_recovered": True,
+                        "intent_asked": True,
                     }
                     users[user_id] = user_data
                     save_json(USERS_FILE, users)
@@ -474,7 +635,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
                         "🆕 新しい友だちを回収しました（follow未受信→初回メッセージで登録）\n"
                         f"名前: {name or '(取得失敗)'}\n"
                         f"ID: {user_id[:8]}\n\n"
-                        "welcomeと特典PDFは今送信しました。"
+                        "welcomeを今送信しました（ライバー希望か代理店希望かを質問中）。"
                     )
 
                 # 最終受信時刻を記録（フォローアップの「会話中スキップ」判定に使う）
@@ -489,6 +650,36 @@ class WebhookHandler(BaseHTTPRequestHandler):
                 if user_data.get("auto_paused") or user_data.get("meeting_scheduled"):
                     print(f"[PAUSED] {user_id[:8]}... (手動対応中、自動応答スキップ)")
                     continue
+
+                # 希望の種別（ライバー / 代理店パートナー）の記録。
+                # welcome の①②③への返答を判定する。流入元アンケートより必ず先。
+                # 判定できなければ聞き返さず通常処理に流す（いきなり質問から入る人がいるため）。
+                if user_data.get("intent_asked") and not user_data.get("intent"):
+                    intent = find_intent(text)
+                    if intent:
+                        user_data["intent"] = intent
+                        user_data["intent_date"] = datetime.now().isoformat()
+                        users[user_id] = user_data
+                        save_json(USERS_FILE, users)
+                        print(f"[INTENT] {user_id[:8]}... -> {intent}")
+                        # 代理店希望者はリッチメニューも代理店向けに差し替える。
+                        # 「両方」の人はライバー向け（＝代理店ボタンを含む）のままにする。
+                        if intent == "agency":
+                            user_data["rich_menu"] = (
+                                "agency" if link_agency_rich_menu(user_id) else "liver"
+                            )
+                            users[user_id] = user_data
+                            save_json(USERS_FILE, users)
+                        reply_line_message(reply_token, INTENT_REPLIES[intent], user_id)
+                        name = get_display_name(user_id)
+                        notify_admin(
+                            "🙋 希望の種別が分かりました\n"
+                            f"名前: {name or '(取得失敗)'}\n"
+                            f"ID: {user_id[:8]}\n"
+                            f"希望: {INTENT_LABELS[intent]}\n\n"
+                            "種別に合わせた特典PDFと案内は自動送信済みです。"
+                        )
+                        continue
 
                 # 流入元の記録（まだ未記録のユーザーのみ。初回返答を判定）
                 if not user_data.get("source"):
@@ -528,6 +719,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
                             f"名前: {name or '(取得失敗)'}\n"
                             f"ID: {user_id[:8]}\n"
                             f"希望日時: {slot}\n"
+                            f"希望: {INTENT_LABELS.get(user_data.get('intent'), '種別不明')}\n"
                             f"流入元: {user_data.get('source', '不明')}\n\n"
                             "このLINEチャットから確定の連絡をしてください。\n"
                             "（この人への自動送信は停止済みです）"
@@ -545,7 +737,9 @@ class WebhookHandler(BaseHTTPRequestHandler):
 
                 # 「面談」キーワード → LINE内で日程候補を提示
                 if "面談" in text or "めんだん" in text:
-                    offer, cands = make_meeting_offer()
+                    offer, cands = make_meeting_offer(
+                        meeting_intro(user_data.get("intent"))
+                    )
                     user_data["awaiting_slot"] = True
                     user_data["slot_candidates"] = cands
                     user_data["meeting_offered"] = True
@@ -555,14 +749,16 @@ class WebhookHandler(BaseHTTPRequestHandler):
                     continue
 
                 # キーワード自動応答
-                auto_reply = find_auto_reply(text)
+                auto_reply = find_auto_reply(text, user_data.get("intent"))
                 if auto_reply:
                     count = user_data.get("auto_reply_count", 0) + 1
                     user_data["auto_reply_count"] = count
                     replies = [auto_reply]
                     # 2つ目の質問に答えたタイミングで日程候補も提示（質問だけで離脱させない）
                     if count >= 2 and not user_data.get("meeting_offered"):
-                        offer, cands = make_meeting_offer(MEETING_NUDGE_INTRO)
+                        offer, cands = make_meeting_offer(
+                            meeting_intro(user_data.get("intent"), nudge=True)
+                        )
                         user_data["awaiting_slot"] = True
                         user_data["slot_candidates"] = cands
                         user_data["meeting_offered"] = True

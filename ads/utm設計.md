@@ -160,13 +160,88 @@ LINE直リンクは §1-1 のとおり計測できないので、**LPリンク�
 
 `…/{target}/?utm_source={indeed|wantedly|engage}&utm_medium=job&utm_campaign=job_{target}`
 
-> ⚠️ 求人媒体の誘導先は **`taitan-pro-lp-targets.netlify.app`**（メインとは別のNetlifyサイト・**手動zipデプロイ**）。
-> 今回追加した `shared/tracking.js` は、このサイトを**手動で再デプロイするまで反映されない**。
-> utmだけ付いていても計測タグが無ければ何も取れないので、再デプロイまでは求人媒体の数字は出ないと理解しておくこと。
+> ✅ **`shared/tracking.js` は再デプロイ済みで反映されている（2026-08-11 実測）。**
+> 求人媒体の誘導先は **`taitan-pro-lp-targets.netlify.app`**（メインとは別のNetlifyサイト・**手動zipデプロイ**）だが、
+> 本日 curl で確認したところ **`/beginner/` `/agency/` `/liver/` `/sidejob/` の4ページすべてに
+> `<script src="../shared/tracking.js?v=20260810a">` が入っており**、`/shared/tracking.js` 自体も HTTP 200 で配信されている。
+> 中身はメイン側 `taitan-pro-lp.netlify.app` およびリポジトリの `lp/shared/tracking.js` と**バイト単位で同一**。
+>
+> ⚠️ **注意は残る。このサイトは手動zipデプロイのままである。**
+> メイン側は git push で自動反映されるが、こちらは反映されない。
+> **今後 `lp/shared/` や `lp/{target}/` を触ったら、その都度 zip を作って手動で再デプロイすること**
+> （手順は記憶 `project_netlify_lp_deploy`）。片方だけ直して満足すると、また今回のようにズレる。
+>
+> ⛔ **ただし「タグが載った＝数字が読める」ではない。** §0 のとおり utm も `line_cta_click` も
+> **いま受け取り手がいない**ので、タグが入っただけでは求人媒体の数字は依然として出ない。
+> 数字になるのは受け取り手（A案のセカンダリCV、またはGTM）を用意してから。
 
 ### 3-5. Googleビジネスプロフィール
 
 `https://taitan-pro-lp.netlify.app/beginner/?utm_source=gbp&utm_medium=organic&utm_campaign=gbp_profile`
+
+### 3-6. DM・公式LINE（2026-08-10 追加）
+
+> ⚠️ **§0 のとおり、いま utm を読む主体はいない。** ここで付けた値がレポートになるのは
+> 受け取り手（A案のセカンダリCV、またはGTM/GA4）を用意してから。付けておくこと自体は無害で、
+> 用意した瞬間に遡らず・そこから意味を持つ、という前提で読むこと。
+
+| 導線 | 実装ファイル | URL |
+|---|---|---|
+| DMテンプレ（`dm_sender.py` 系・媒体横断） | `config.py` `OFFICE_URL` / `templates/dm_*.txt` | `…/beginner/?utm_source=dm&utm_medium=dm&utm_campaign=dm_direct` |
+| liver_app のDMテンプレ（Instagram） | `liver_app/db.py` `_DEFAULT_*_TEMPLATE` | `…/beginner/?utm_source=instagram&utm_medium=dm&utm_campaign=ig_dm` |
+| x_app のDMテンプレ（X） | `x_app/db.py` `_DEFAULT_*_TEMPLATE` | `…/beginner/?utm_source=x&utm_medium=dm&utm_campaign=x_dm` |
+| 公式LINE リッチメニュー（ライバー向け＝デフォルト） | `line_bot/rich_menu.py` | `…/beginner/?utm_source=line&utm_medium=richmenu&utm_campaign=line_richmenu` |
+| 公式LINE リッチメニュー（代理店向け＝intent=agencyの人だけ差し替え） | `line_bot/rich_menu.py` | `…/agency/?utm_source=line&utm_medium=richmenu&utm_campaign=line_richmenu_agency` |
+
+> 🗑️ **`line_bot/config.py` の `OFFICE_URL` / `LP_BEGINNER` / `LP_LIVER` / `LP_SIDEJOB` /
+> `CONTACT_LINE` / `OFFICE_NAME` は 2026-08-11 に削除した。** どこからも参照されていない上に、
+> 誘導先が `-targets.netlify.app`（手動zipデプロイ）を指していて、
+> 実際に配信している `line_bot/rich_menu.py` の `taitan-pro-lp.netlify.app` と食い違っていたため。
+> （削除を判断した時点では `tracking.js` 未反映も理由に挙げていたが、**その点は同日中に解消済み**＝§3-4。
+> 削除の主因である「配信実体との食い違い」は変わらないので、削除はそのままでよい。）
+> 公式LINEからLPへ送る導線は**リッチメニューの2本だけ**で、`messages.py` にLPのURLは無い
+> （持っているのは特典PDFのjsDelivr URLのみ）。今後 bot 本文からLPへ送るなら
+> `taitan-pro-lp.netlify.app` 側を使うこと。
+
+> `liver_app` / `x_app` はテンプレ本体を **Fly.io の本番DB** に持つ。`db.py` の `_DEFAULT_*` を
+> 書き換えても既存DBは `INSERT OR IGNORE` で無視されるので、**URL置換マイグレーションを
+> `init_db()` に足してデプロイするまで本番の文面は変わらない**（記憶 `project_liver_app_template_migration`）。
+
+### 3-7. `#apply` は使わない（2026-08-10 決定）
+
+長らく `https://taitan-pro-lp.netlify.app/#apply` を「応募ページ」として各所に配っていたが、
+**LP側に `id="apply"` は一度も存在しなかった**。`netlify.toml` の `/` → `/beginner/index.html`
+200リライトで beginner LP のトップに着地するだけで、アンカージャンプは無言で不発だった。
+`link_guard.py` はURLをGETするだけだったので HTTP 200 で素通りしていた（＝1年近く誰も気づけなかった）。
+
+対応は2本立て：
+
+1. **LP に受け皿の `id="apply"` を追加**（`lp/beginner/index.html` の希少性セクション＝最後のCTA）。
+   送信済みDM・投稿済みThreads・旧Xプロフィールなど**もう書き換えられない分**のための救済。
+   コメントアウト運用の対象になっている `#campaign` ではなく、常設のセクションに置いてある。
+2. **新規に作るリンクは `#apply` を使わない。** 上表のとおり `/beginner/?utm_…` に統一する。
+   フラグメントとクエリを併用すると §3-1 のとおり壊れやすいので、**アンカーは付けない**のが既定。
+
+再発防止として `link_guard.py` に**フラグメント実在チェック**を入れた（自サイトのLPに限り、
+着地先HTMLに `id`/`name` があるかまで見る。無ければ DEAD 扱いで Actions が赤くなる）。
+
+> ⚠️ **2026-08-11 追記：このチェックだけでは広告のアンカーは守れなかった**
+>
+> フラグメント実在チェックは「`link_guard.py` が拾えたURL」にしか働かない。ところが
+> **Google広告のサイトリンクURLは管理画面の中にしか存在せず**、`CONTENT_GLOBS` に
+> `ads/*.md` は入っていないため、**広告のアンカーは1本も検査されていなかった**。
+> しかも稼働中のアカウント単位サイトリンク「初配信までのサポート」の向き先は、
+> **`#campaign`＝コメントアウト運用の対象になっている期間限定セクション**そのものだった
+> （まさに上の 1. で「避けた」場所を、広告側が指していた）。
+>
+> 対応：`link_guard.py` に **`AD_SITELINK_URLS`** を新設して広告サイトリンクを明示的に
+> 監視対象へ。LP側は `#campaign` を「枠ごと消さない」運用に変更し、恒久的な受け皿として
+> `id="flow"`（常設のFLOWセクション）を追加した。広告側のURL変更はユーザー承認待ち。
+> 詳細は `ads/google_ads_設計書.md` §5-5「⛔ `#campaign` は期間限定セクション」。
+>
+> **教訓**：「アンカーが実在するか」だけでなく「**そのアンカーが消えない約束になっているか**」まで
+> 見ないと同じ事故が起きる。広告・DM・印刷物など**後から書き換えられない導線**が指すセクションは、
+> LP側に常設である旨を明記する。
 
 ---
 
@@ -241,3 +316,5 @@ event conversion     {send_to:"AW-429748464/-KwzCJvzmNQcEPDh9cwB", event_callbac
 |---|---|
 | 2026-08-10 | 新規作成。`lp/shared/tracking.js` に計測を一元化し、全4LPへ適用。utm設計を確定 |
 | 2026-08-10 | ユーザー決定：**GA4は使わない**（§0）／Google広告のサフィックス適用は**承認済み**。ただしChrome拡張が応答不能で本セッションでは適用できず、管理画面は未変更のまま |
+| 2026-08-10 | 死にアンカー `#apply` を撤去（§3-7）。DM・公式LINE導線に utm を付与（§3-6）。`link_guard.py` にフラグメント実在チェックを追加 |
+| 2026-08-11 | 稼働中の広告サイトリンクが期間限定セクション `#campaign` を指していた問題（§3-7 の追記）。`link_guard.py` に `AD_SITELINK_URLS` を新設し広告サイトリンク10本を監視対象へ。beginner LP に恒久アンカー `id="flow"` を追加し、`#campaign` を「枠ごと消さない」運用に変更。**広告管理画面のURL変更はユーザー承認待ちで未実施** |

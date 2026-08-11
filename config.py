@@ -51,7 +51,7 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 # 事務所情報
 # ============================================================
 OFFICE_NAME = "TAITAN PRO"
-OFFICE_URL = "https://taitan-pro-lp.netlify.app/#apply"
+OFFICE_URL = "https://taitan-pro-lp.netlify.app/beginner/?utm_source=dm&utm_medium=dm&utm_campaign=dm_direct"
 OFFICE_TWITTER = "@taitan_LIVER"
 OFFICE_INSTAGRAM = "@taitan_pro7"   # 事務所公式（2026-08-08確定）。@taitan_pro は未運用の別アカウント
 CONTACT_LINE = "https://lin.ee/xchCfdn"
@@ -181,20 +181,6 @@ DM_RATE_LIMIT = {
 }
 
 # ============================================================
-# 投稿スケジュール設定
-# ============================================================
-POST_SCHEDULE = {
-    "twitter": {
-        "times": ["10:00", "13:00", "19:00", "22:00"],  # 投稿時刻
-        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
-    },
-    "instagram": {
-        "times": ["07:30", "20:00"],
-        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
-    },
-}
-
-# ============================================================
 # リードステータス定義
 # ============================================================
 LEAD_STATUSES = [
@@ -212,4 +198,3 @@ LEAD_STATUSES = [
 # ============================================================
 LEADS_CSV = "data/leads.csv"
 DM_LOG_CSV = "data/dm_log.csv"
-POST_LOG_CSV = "data/post_log.csv"

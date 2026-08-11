@@ -12,9 +12,14 @@
      URLを抽出してGETし、404/410 を検知
   3. 公開Note全記事のURL実チェック — 公開APIで全記事本文を取得して同様に検知
      （公開版とリポジトリの乖離も拾える）
+  4. フラグメント(#anchor)の実在チェック — 自サイトのLPに限り、着地先HTMLに
+     その id/name があるかまで見る（2026-08-10 追加。経緯は check_url 内のコメント）
+  5. 稼働中のGoogle広告サイトリンクの着地先チェック — リポジトリに書かれていない
+     （管理画面にしか無い）URLを AD_SITELINK_URLS で明示して 2〜4 に乗せる（2026-08-11 追加）
 
 判定ポリシー:
-  - DEAD  = 404/410、または許可リスト外の lin.ee URL → exit 1（Actionsが赤くなる）
+  - DEAD  = 404/410、許可リスト外の lin.ee URL、自サイトの存在しない #anchor
+            → exit 1（Actionsが赤くなる）
   - WARN  = 403/405/429/5xx/タイムアウト等（bot拒否の可能性が高い）→ 報告のみ
   - SKIP  = botを全面ブロックするSNSドメイン（誤検知源なので見ない）
 
@@ -84,6 +89,72 @@ SKIP_DOMAINS = (
     "api.line.me", "notify-api.line.me",  # API系はGETで判定できない
 )
 
+# フラグメント（#anchor）の実在まで検証するドメイン。
+# 自分で中身を管理しているサイトだけに限る。他所のSPAはHTMLにidが出ないため誤検知源。
+FRAGMENT_CHECK_DOMAINS = (
+    "taitan-pro-lp.netlify.app",
+    "taitan-pro-lp-targets.netlify.app",
+)
+
+# ── 稼働中のGoogle広告サイトリンクの着地先（2026-08-11 追加）──
+# これらのURLは「管理画面の中だけ」に存在し、リポジトリのどのコンテンツにも書かれていない。
+# CONTENT_GLOBS には ads/*.md が入っていないため、2026-08-10 に入れたフラグメント実在
+# チェックがあっても**広告のアンカーは1本も見ていなかった**。ここに明示して監視下に置く。
+# 正本は ads/google_ads_設計書.md §5-5「サイトリンク詳細」。
+# サイトリンクを足す・URLを変えるときは、設計書と**この配列の両方**を更新すること。
+# 2026-08-11: 全10本を管理画面で実物照合し、この配列を実値に更新した（推定は残っていない）。
+# 2026-08-11（同日追記）: キャンペーンA にキャンペーン単位4本を新規登録し、稼働本数は 10→14 本
+#   になった。ただしAの4本はCの4本と**同じURL**（#cases #reward #reasons #faq）なので、
+#   この配列に足す行はない。URLの重複を避けるため、本数ではなく「着地先の集合」を管理している。
+# 2026-08-12: アカウント単位の運用をやめた（経緯は下の「⚠️ アカウント単位は使わない」）。
+#   アカウント単位2本を A・C にキャンペーン単位で移設したので稼働本数は 14→16 本。
+#   これもURLの集合は変わらないため、この配列の中身は据え置き。
+AD_SITELINK_URLS = [
+    # 現在は全17本がキャンペーン単位（A 7本 / C 6本 / D 4本）。URLの実体は下の11種。
+    # 2026-08-12: A に #gift を追加して 16→17 本（設計書 §0-15）。
+    # ── ライバー向け（/beginner/）: A と C の両方が使う ──
+    # #flow は 2026-08-11 に #campaign から変更した。#campaign は期間限定セクションで
+    # 枠ごと消される運用だったため、常設の FLOW セクションへ移した（設計書 §5-5）。
+    "https://taitan-pro-lp.netlify.app/beginner/#flow",
+    "https://taitan-pro-lp.netlify.app/beginner/#network",
+    # 下の4本は C単位4本（2026-07-23 照合済み）と A単位4本（2026-08-11 登録）の共通の着地先。
+    # A と C で説明文は違うが、URLは同一。
+    "https://taitan-pro-lp.netlify.app/beginner/#cases",
+    "https://taitan-pro-lp.netlify.app/beginner/#reward",
+    "https://taitan-pro-lp.netlify.app/beginner/#reasons",
+    "https://taitan-pro-lp.netlify.app/beginner/#faq",
+    # A の7本目（2026-08-12 登録＝設計書 §0-15）。LP側に恒久セクション #gift を
+    # 新設したうえで着地先にした。既存6本は消していない＝純増。
+    "https://taitan-pro-lp.netlify.app/beginner/#gift",
+    # ── 代理店向け（/agency/）: D 単位4本のみ ──
+    # 2026-08-04 登録・稼働中。2026-08-11 に確定案へ揃える上書き修正。
+    "https://taitan-pro-lp.netlify.app/agency/#gift",
+    "https://taitan-pro-lp.netlify.app/agency/#reward",
+    "https://taitan-pro-lp.netlify.app/agency/#reasons",
+    "https://taitan-pro-lp.netlify.app/agency/#faq",
+    # ⚠️ #campaign はサイトリンクの着地先ではなくなったが、LP側のセクションは残してある。
+    #    再びサイトリンクを向けるときはここに戻すこと。
+]
+
+# ⚠️ アカウント単位のサイトリンクは今後**使わない**（2026-08-12 決定・実施済み）
+#
+# Google広告では、アカウント単位アセットを「特定のキャンペーンにだけ出さない」ことが
+# できない。管理画面で確認した実態は次のとおり:
+#   ・アセット行の操作は 削除／一時停止／有効／追加先 の4つだけ。「追加先」の中身は
+#     アカウント／キャンペーン／広告グループ＝**足す方向のみ**で、除外に当たる項目がない。
+#   ・キャンペーン設定にもアカウント単位アセットのオプトアウトは存在しない。
+#   ・「キャンペーン単位があれば上書きされる」も誤り。D はキャンペーン単位4本を持ちながら、
+#     アカウント単位2本が各198表示していた（＝併走配信される）。
+# その結果、ライバー文言の2本が代理店キャンペーンD にも出て、踏めばライバーLPに着地する
+# 状態だった（実クリックは0件・￥0 で事故には至らず）。
+#
+# 対処: 同じアセットを A と C に**キャンペーン単位で紐付け直し**、アカウント単位の関連付けは
+# 一時停止した。レベルごとの関連付けは独立していて、アカウント単位を一時停止しても
+# キャンペーン単位は「有効」のまま残ることを実データで確認済み。
+# ※「削除」は使わないこと。確認ダイアログが「関連付けられているキャンペーンまたは広告
+#   グループからも削除されます」と警告するとおり、アセット本体ごと消えてキャンペーン単位の
+#   紐付けまで巻き添えになる。止めたいだけなら必ず「一時停止」を使う。
+
 # 読者が踏むリンクではないURL（preconnectヒント・JSON-LDの@context等）
 SKIP_EXACT = {
     "https://fonts.googleapis.com",
@@ -117,6 +188,10 @@ def extract_repo_urls():
                 if url.endswith("@") or url in SKIP_EXACT:
                     continue
                 found.setdefault(url, set()).add(rel)
+
+    # 稼働中のGoogle広告サイトリンク（管理画面にしか存在しないURL）
+    for url in AD_SITELINK_URLS:
+        found.setdefault(url, set()).add("ads/google_ads_設計書.md §5-5（広告サイトリンク）")
 
     # ランタイム構築される重要URL（特典PDFのjsDelivr URL＝SHA固定）
     try:
@@ -160,12 +235,29 @@ def fetch_note_urls():
     return found
 
 
+def _fragment_exists(html, frag):
+    """HTML中に id="frag" / name="frag" が存在するか"""
+    q = re.escape(frag)
+    return bool(re.search(rf'\b(?:id|name)\s*=\s*["\']{q}["\']', html)
+                or re.search(rf"\b(?:id|name)\s*=\s*{q}(?=[\s/>])", html))
+
+
 def check_url(url):
     """URLの生死判定。('dead'|'warn'|'ok', 詳細) を返す"""
+    frag = ""
+    if "#" in url:
+        base, frag = url.split("#", 1)
+    else:
+        base = url
     try:
         r = requests.get(url, headers={"User-Agent": UA}, timeout=15,
                          allow_redirects=True, stream=True)
         code = r.status_code
+        # フラグメント検証のため本文が要る場合だけ読む（それ以外は stream のまま捨てる）
+        html = ""
+        if frag and code < 400 and any(d in base for d in FRAGMENT_CHECK_DOMAINS):
+            r.encoding = r.encoding or "utf-8"
+            html = r.text
         r.close()
     except requests.RequestException as e:
         return "warn", f"接続エラー: {type(e).__name__}"
@@ -173,6 +265,12 @@ def check_url(url):
         return "dead", f"HTTP {code}"
     if code >= 400:
         return "warn", f"HTTP {code}（bot拒否の可能性）"
+    # フラグメント切れ（自サイトのみ判定する）
+    # 2026-08-10: `…netlify.app/#apply` の id が LP に一度も存在せず、読者は
+    # アンカージャンプせずトップに着地していた。HTTP 200 なので従来のGET判定は
+    # 素通りしていた。リンク先の「セクション」まで含めて生死を見る。
+    if html and not _fragment_exists(html, frag):
+        return "dead", f"HTTP {code} だが #{frag} が着地先に存在しない"
     return "ok", f"HTTP {code}"
 
 

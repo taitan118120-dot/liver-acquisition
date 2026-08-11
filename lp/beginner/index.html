@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260721a">
+  <link rel="stylesheet" href="style.css?v=20260811">
   <!-- JSが動く環境でのみ出現アニメを有効化（JS無効時にコンテンツが隠れないようにする） -->
   <script>document.documentElement.className += ' js';</script>
 
@@ -146,9 +146,18 @@
 
   <!-- ============ 3. 期間限定キャンペーン ============ -->
   <!--
+    ⛔ <section id="campaign"> ごとコメントアウトしないこと（2026-08-11）
+       Google広告のアカウント単位サイトリンク「初配信までのサポート」が #campaign を
+       指しており、A・C・D の全キャンペーンに併走配信されている
+       （ads/google_ads_設計書.md §5-5 / §0-5 ②）。セクションを消すと稼働中の広告の
+       ジャンプ先が消え、`#apply` と同型の事故になる（ads/utm設計.md §3-7）。
+
     キャンペーン差し替え手順：
     ・.ribbon / .c-term / .c-title / .c-list の中身を書き換えるだけでOK
-    ・非掲載にしたい期間は <section id="campaign"> ごとコメントアウト
+    ・非掲載にしたい期間も <section id="campaign"> は残したまま、
+      中身を「常設のサポート訴求」に差し替える（枠ごと消さない）
+    ・どうしても枠ごと落とすなら、先に広告側のサイトリンクを #flow へ向け直し、
+      管理画面での変更完了を確認してから消すこと
   -->
   <section class="sec tint-cream" id="campaign">
     <div class="container reveal">
@@ -449,6 +458,64 @@
           まずはLINEで相談してみる
         </a>
         <p class="cta-note">🎁 友だち追加で「ライバー新人期スタートダッシュガイド」を進呈</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 8.4. LINE登録特典（リードマグネット） ============
+    ⛔ <section id="gift"> は恒久セクション。枠ごと消さないこと（2026-08-12 新設）
+       特典PDF経由のLINE登録が全媒体の主導線のため、beginner LP 側にも常設の
+       着地点を用意した（agency LP の #gift と対）。中身の実体は
+       lead_magnet/liver_starter_guide.html → lp/shared/liver_starter_guide.pdf。
+       ※ PDFへ直リンクしないこと。配布は公式LINEの友だち追加経由に一本化している。
+       ※ 広告サイトリンクの着地先になった場合は ads/google_ads_設計書.md §5-5 と
+         link_guard.py の AD_SITELINK_URLS も合わせて更新する。
+  -->
+  <section class="sec tint-lav" id="gift">
+    <div class="container reveal">
+      <div class="sec-head">
+        <span class="sec-label">FREE GUIDE</span>
+        <h2 class="sec-title">友だち追加で、<br><span class="accent">新人期ガイドを無料配布</span></h2>
+        <p class="sec-sub">『ライバー新人期スタートダッシュガイド』——最初の30日にやることだけを書いた非売品PDF（全10ページ）です。Pococha・TikTok LIVE・17LIVEのどれでも使えます。</p>
+      </div>
+
+      <div class="needs">
+        <div class="need-box is-must">
+          <h3><span class="chip">中身</span>ガイドに書いてあること</h3>
+          <ul class="need-list">
+            <li><strong>配信を始める前の準備</strong>——アイコン・ジャンル・配信時間の決め方</li>
+            <li><strong>初配信のやり方</strong>——何を話すか、画面のメモに出しておく3つ</li>
+            <li><strong>御新規さん対応</strong>——また来てもらうための4つの基本</li>
+            <li><strong>収入の仕組み</strong>——アプリ別・報酬の2タイプをやさしく解説</li>
+            <li><strong>新人期30日ロードマップ</strong>——週ごとにやることを順番に</li>
+            <li><strong>NG集と毎日のチェックリスト</strong>——つまずきやすい場所を先に</li>
+          </ul>
+        </div>
+
+        <div class="need-box is-option">
+          <h3><span class="chip">方針</span>ここに書いていないこと</h3>
+          <ul class="need-list">
+            <li>収入を言い切るような話。報酬は活動状況によって変わります</li>
+            <li>ギフトをお願いして回るような集金テクニック</li>
+            <li>誰かの成功談だけを並べた読み物。つまずく場所から先に書いています</li>
+          </ul>
+        </div>
+      </div>
+
+      <p class="compare-note">
+        ※ 公式LINEを追加すると、最初に「①ライバー／②代理店／③まだ決めていない」の質問が届きます。「①」を選ぶだけで、PDFのリンクがすぐ自動で届きます。<br>
+        ※ 読むだけで終わっても構いません。無理な勧誘はしません。
+      </p>
+
+      <div class="cta-block">
+        <a class="line-btn is-block js-line-cta"
+           href="https://lin.ee/xchCfdn"
+           data-cta-position="gift"
+           data-cta-label="LINEで特典ガイドを受け取る">
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.5 2 2 5.7 2 10.2c0 4 3.6 7.4 8.4 8.1.3.1.8.2.9.5.1.3.1.7 0 1l-.1.9c0 .3-.2 1 .9.6 1.1-.5 6-3.5 8.2-6C21.6 13.6 22 12 22 10.2 22 5.7 17.5 2 12 2z"/></svg>
+          LINEで特典ガイドを受け取る
+        </a>
+        <p class="cta-note">※ 追加したら「①」または「ライバー」と送ってください。すぐにお届けします</p>
       </div>
     </div>
   </section>
@@ -808,7 +875,11 @@
   </section>
 
   <!-- ============ 12. 相談からデビューまでの流れ ============ -->
-  <section class="sec tint-cream">
+  <!--
+    id="flow" は広告サイトリンク「初配信までのサポート」の恒久的な着地点（2026-08-11 追加）。
+    期間限定の #campaign と違い、このセクションは常設。消したり id を変えたりしないこと。
+  -->
+  <section class="sec tint-cream" id="flow">
     <div class="container reveal">
       <div class="sec-head">
         <span class="sec-label">FLOW</span>
@@ -1016,8 +1087,15 @@
     </div>
   </section>
 
-  <!-- ============ 16. 希少性セクション ============ -->
-  <section class="sec scarcity">
+  <!-- ============ 16. 希少性セクション ============
+       id="apply" は「応募する」導線の着地点。
+       2026-08-10: 過去に配布した誘導URL `…netlify.app/#apply` に対応する id が
+       LP側に一度も存在せず、アンカージャンプが無言で効いていなかった（トップに着地するだけ）。
+       すでに世に出ている分（送信済みDM・投稿済みThreads・旧Xプロフィール）は
+       もう書き換えられないので、受け皿としてここに id を置く。
+       新規に作るリンクは #apply を使わず `/beginner/?utm_…`（ads/utm設計.md §3）に統一すること。
+       このセクションはコメントアウト運用の対象外なので、着地点として安定している。 -->
+  <section class="sec scarcity" id="apply">
     <div class="container reveal">
       <div class="sec-head">
         <span class="sec-label">LIMITED</span>
@@ -1045,6 +1123,21 @@
           <br><span class="cta-gift">🎁 友だち追加特典：ライバー新人期スタートダッシュガイド（非売品PDF）</span>
           <p class="cta-note">※ 相談は無料・秘密厳守／無理な勧誘はしません</p>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 16.5. 代理店パートナーへの相互リンク ============ -->
+  <section class="crosslink" id="agency-crosslink">
+    <div class="container reveal">
+      <div class="crosslink-card">
+        <span class="crosslink-label">ANOTHER OPTION</span>
+        <h3>自分が配信するのではなく、<br>「紹介して育てる側」という選択肢も</h3>
+        <p>
+          配信に興味がある方にお声がけして、所属と初配信までをサポートする代理店パートナーも募集しています。育成は事務所のマネージャーと二人三脚で行うので、すべてを一人で背負う必要はありません。<br>
+          在庫の仕入れも発送もなく、必要なのはスマホと通信環境だけ。初期費用0円・ノルマなしで、紹介したライバーの活動が続く限り報酬が積み上がる仕組みです。
+        </p>
+        <a class="crosslink-link" href="../agency/">代理店パートナー募集を見る →</a>
       </div>
     </div>
   </section>

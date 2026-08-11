@@ -69,13 +69,36 @@ CTA_REPLY_VARIANTS = [
     f"→ {LINE_URL}",
 ]
 
+# 代理店投稿にぶら下げるCTA。配布物が別（代理店向けガイド）なので文面も分ける。
+# ライバー向けのPDF名を代理店投稿に付けると、受け取った人の期待とズレる。
+AGENCY_CTA_REPLY_VARIANTS = [
+    "🎁 代理店パートナーの仕事の中身をまとめた非売品PDF\n"
+    "『ライバー代理店パートナー スタートガイド』を無料配布中\n"
+    f"受け取りはこちら → {LINE_URL}",
+    "紹介して育てる側に興味がある人へ🎁\n"
+    "仕事の全体像・出会い方・所属後のフォローまで書いた非売品PDFを"
+    f"LINE友だち追加でお渡ししています → {LINE_URL}",
+    "🎁 無料配布中\n"
+    "『ライバー代理店パートナー スタートガイド』\n"
+    "つまずく場所から先に書いた、営業未経験の人向けの非売品PDFです\n"
+    f"→ {LINE_URL}",
+]
 
-def maybe_post_cta_reply(client, tweet_id):
+# 1回の実行で代理店投稿を選ぶ確率。
+# 2026-08-11 まで代理店投稿は phase フィルタで完全に封印されていて、
+# X からは1本も出ていなかった。ライバー募集より代理店を厚くする方針に合わせて解禁する。
+# ただし全部を代理店にすると宣伝アカウント化してリーチが落ちるので割合で混ぜる。
+AGENCY_POST_RATE = 0.35
+
+
+def maybe_post_cta_reply(client, tweet_id, phase="growth"):
     """確率でリードマグネットCTAを自分の投稿へのリプライとして投稿する。
+    配布物は投稿のphaseで出し分ける（代理店投稿には代理店ガイド）。
     失敗しても本体投稿は成功済みなので握りつぶす（非致命）。"""
     if random.random() > CTA_REPLY_RATE:
         return
-    text = random.choice(CTA_REPLY_VARIANTS)
+    variants = AGENCY_CTA_REPLY_VARIANTS if phase == "agency" else CTA_REPLY_VARIANTS
+    text = random.choice(variants)
     try:
         resp = client.create_tweet(text=text, in_reply_to_tweet_id=tweet_id)
         print(f"  CTAリプライ投稿: {resp.data['id']}")
@@ -326,10 +349,19 @@ def main():
     with open("posts/twitter_posts.json", "r", encoding="utf-8") as f:
         posts = json.load(f)
 
-    # growthフェーズのみ（募集・宣伝は封印）
+    # 出す棚を決める。growth（役に立つ話）を主軸に、代理店パートナー募集を
+    # AGENCY_POST_RATE の割合で混ぜる。代理店在庫が尽きていたら growth に落とす。
     growth_posts = [p for p in posts if p.get("phase") == "growth"]
+    agency_posts = [p for p in posts if p.get("phase") == "agency"]
+    if agency_posts and random.random() < AGENCY_POST_RATE:
+        selected_phase = "agency"
+        growth_posts = agency_posts
+    else:
+        selected_phase = "growth"
+    print(f"[PHASE] 今回の棚: {selected_phase}（growth {len([p for p in posts if p.get('phase') == 'growth'])}本"
+          f" / agency {len(agency_posts)}本）")
     if not growth_posts:
-        print("[ERROR] growth投稿が0件です")
+        print("[ERROR] 投稿候補が0件です")
         sys.exit(1)
 
     # 確定ファクトの機械検品（2026-08-09 追加）。
@@ -406,7 +438,7 @@ def main():
                 tweet_ids = post_thread(client, thread_texts, first_media_id=media_id)
                 print(f"スレッド投稿成功: {post['id']} ({len(tweet_ids)}件)")
                 save_posted_hash(h)
-                maybe_post_cta_reply(client, tweet_ids[-1])
+                maybe_post_cta_reply(client, tweet_ids[-1], selected_phase)
             else:
                 # 通常投稿: ハッシュタグを自動付与
                 hashtags = pick_hashtags(post["text"])
@@ -431,7 +463,7 @@ def main():
                 print(f"投稿成功: {post['id']} → {response.data['id']}")
                 print(f"  ハッシュタグ: {' '.join(hashtags)}")
                 save_posted_hash(h)
-                maybe_post_cta_reply(client, response.data["id"])
+                maybe_post_cta_reply(client, response.data["id"], selected_phase)
 
             # 投稿済みIDを記録
             recent_ids.add(post["id"])

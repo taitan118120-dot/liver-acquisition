@@ -27,7 +27,7 @@ _DEFAULT_BEGINNER_TEMPLATE = (
     "「ちょっと気になるかも…」と思っていただけたら、\n"
     "『興味あり』とだけご返信ください♪\n"
     "詳細を即お送りします！\n\n"
-    "→ https://taitan-pro-lp.netlify.app/#apply"
+    "→ https://taitan-pro-lp.netlify.app/beginner/?utm_source=instagram&utm_medium=dm&utm_campaign=ig_dm"
 )
 
 _DEFAULT_BEGINNER_TEMPLATE_OSHIKATSU = (
@@ -48,7 +48,7 @@ _DEFAULT_BEGINNER_TEMPLATE_OSHIKATSU = (
     "「話聞いてみたい」と思っていただけたら、\n"
     "『興味あり』とだけご返信ください♪\n"
     "詳細を即お送りします！\n\n"
-    "→ https://taitan-pro-lp.netlify.app/#apply"
+    "→ https://taitan-pro-lp.netlify.app/beginner/?utm_source=instagram&utm_medium=dm&utm_campaign=ig_dm"
 )
 
 _DEFAULT_AGENCY_TEMPLATE_SHOP = (
@@ -63,7 +63,7 @@ _DEFAULT_AGENCY_TEMPLATE_SHOP = (
     "🎯既存事業との相性◎・初期費用なし\n\n"
     "🎙ラジオライバー可能\n\n"
     "「興味あり」とご返信いただければ詳細お送りします💌\n\n"
-    "→ https://taitan-pro-lp.netlify.app/#apply"
+    "→ https://taitan-pro-lp.netlify.app/beginner/?utm_source=instagram&utm_medium=dm&utm_campaign=ig_dm"
 )
 
 _DEFAULT_AGENCY_TEMPLATE_SNS = (
@@ -77,7 +77,7 @@ _DEFAULT_AGENCY_TEMPLATE_SNS = (
     "🎯SNSの集客導線そのまま使える\n\n"
     "🎙ラジオライバー可能\n\n"
     "「興味あり」とご返信いただければ詳細お送りします💌\n\n"
-    "→ https://taitan-pro-lp.netlify.app/#apply"
+    "→ https://taitan-pro-lp.netlify.app/beginner/?utm_source=instagram&utm_medium=dm&utm_campaign=ig_dm"
 )
 
 _DEFAULT_AGENCY_TEMPLATE_CAST = (
@@ -92,7 +92,7 @@ _DEFAULT_AGENCY_TEMPLATE_CAST = (
     "🎯完全在宅・スマホ完結\n\n"
     "🎙ラジオライバー可能\n\n"
     "「興味あり」とご返信いただければ詳細お送りします💌\n\n"
-    "→ https://taitan-pro-lp.netlify.app/#apply"
+    "→ https://taitan-pro-lp.netlify.app/beginner/?utm_source=instagram&utm_medium=dm&utm_campaign=ig_dm"
 )
 
 _DEFAULT_AGENCY_TEMPLATE_LIVER_FAN = (
@@ -106,7 +106,7 @@ _DEFAULT_AGENCY_TEMPLATE_LIVER_FAN = (
     "🎯ご自身がライバーになるルートもサポート可能\n\n"
     "🎙ラジオライバー可能\n\n"
     "「興味あり」とご返信いただければ詳細お送りします💌\n\n"
-    "→ https://taitan-pro-lp.netlify.app/#apply"
+    "→ https://taitan-pro-lp.netlify.app/beginner/?utm_source=instagram&utm_medium=dm&utm_campaign=ig_dm"
 )
 
 _DEFAULT_EXISTING_LIVER_TEMPLATE = (
@@ -125,7 +125,7 @@ _DEFAULT_EXISTING_LIVER_TEMPLATE = (
     "「ちょっと話聞いてみたい」と思っていただけたら、\n"
     "『興味あり』とだけご返信ください♪\n"
     "具体的な所属条件をすぐにお送りします！\n\n"
-    "→ https://taitan-pro-lp.netlify.app/#apply"
+    "→ https://taitan-pro-lp.netlify.app/beginner/?utm_source=instagram&utm_medium=dm&utm_campaign=ig_dm"
 )
 
 _DEFAULT_EXISTING_LIVER_TEMPLATE_2 = (
@@ -145,7 +145,7 @@ _DEFAULT_EXISTING_LIVER_TEMPLATE_2 = (
     "少しでも「気になる」「話だけ聞いてみたい」でも大歓迎です！\n"
     "『興味あり』とだけご返信ください🙏\n"
     "詳細をすぐにお送りします。\n\n"
-    "→ https://taitan-pro-lp.netlify.app/#apply"
+    "→ https://taitan-pro-lp.netlify.app/beginner/?utm_source=instagram&utm_medium=dm&utm_campaign=ig_dm"
 )
 
 # ハッシュタグプリセット（target_type別）
@@ -811,6 +811,43 @@ def init_db():
         # 削除する。DEFAULT_SETTINGS からも外してあるため再投入もされない。
         try:
             conn.execute("DELETE FROM settings WHERE key='template'")
+        except Exception:
+            pass
+
+        # 死にアンカー #apply の撤去 (2026-08-10)
+        # 誘導URL `…netlify.app/#apply` の id が LP側に一度も存在せず、アンカージャンプが
+        # 無言で効いていなかった（トップに着地するだけ）。link_guard はURLのGETしか見ない
+        # ので HTTP 200 で素通りし、検知もされていなかった。
+        # LP側には受け皿の id="apply" を足したが（送信済みDM対策）、DB内のテンプレは
+        # 計測可能な正規URL（ads/utm設計.md §3）に寄せる。冪等。
+        try:
+            DEAD_ANCHOR_RE = re.compile(
+                r"https://taitan-pro-lp\.netlify\.app/#apply"
+            )
+            NEW_LP_URL = (
+                "https://taitan-pro-lp.netlify.app/beginner/"
+                "?utm_source=instagram&utm_medium=dm&utm_campaign=ig_dm"
+            )
+            tpl_row = conn.execute("SELECT value FROM settings WHERE key='templates'").fetchone()
+            if tpl_row:
+                templates = json.loads(tpl_row["value"])
+                changed = False
+                if isinstance(templates, dict):
+                    for k, v in templates.items():
+                        if not isinstance(v, list):
+                            continue
+                        for i, tpl in enumerate(v):
+                            if not isinstance(tpl, str):
+                                continue
+                            new_tpl, n = DEAD_ANCHOR_RE.subn(NEW_LP_URL, tpl)
+                            if n:
+                                v[i] = new_tpl
+                                changed = True
+                if changed:
+                    conn.execute(
+                        "UPDATE settings SET value=? WHERE key='templates'",
+                        (json.dumps(templates, ensure_ascii=False),),
+                    )
         except Exception:
             pass
 
