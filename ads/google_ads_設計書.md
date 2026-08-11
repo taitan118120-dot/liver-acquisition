@@ -924,9 +924,9 @@ A（`TAITANPRO_顕在層_事務所探し` / ID `24048528471` / 日予算 ¥1,800
 | 報酬・還元率について | `https://taitan-pro-lp.netlify.app/beginner/#reward` | 還元率100%+αの報酬体系／報酬の仕組みをわかりやすく | キャンペーンC |
 | 選ばれている理由 | `https://taitan-pro-lp.netlify.app/beginner/#reasons` | 代表が直接教える少数精鋭／マンツーマンの専属担当 | キャンペーンC |
 | よくある質問 | `https://taitan-pro-lp.netlify.app/beginner/#faq` | 未経験の方からの質問まとめ／相談だけでもOK・秘密厳守 | キャンペーンC |
-| 所属ライバーの実績 | `https://taitan-pro-lp.netlify.app/beginner/#cases` | 初配信3ヶ月でS帯トップ／学生と主婦、2つの実例 | キャンペーンA（2026-08-11 23:32 追加）※要ファクト確認 |
+| 所属ライバーの実績 | `https://taitan-pro-lp.netlify.app/beginner/#cases` | 初配信3ヶ月でS帯トップ／学生と主婦、2つの実例 | キャンペーンA（2026-08-11 23:32 追加） |
 | 報酬・還元率について | `https://taitan-pro-lp.netlify.app/beginner/#reward` | 還元率100%+αの報酬体系／続けた時間が積み上がる仕組み | キャンペーンA（2026-08-11 23:32 追加） |
-| 選ばれている理由 | `https://taitan-pro-lp.netlify.app/beginner/#reasons` | 元Pococha Sランクが直接指導／実績は数字とリンクで公開 | キャンペーンA（2026-08-11 23:32 追加）※**要ファクト確認** |
+| 選ばれている理由 | `https://taitan-pro-lp.netlify.app/beginner/#reasons` | 元Pococha Sランクが直接指導／実績は数字とリンクで公開 | キャンペーンA（2026-08-11 23:32 追加） |
 | よくある質問 | `https://taitan-pro-lp.netlify.app/beginner/#faq` | 未経験・ノルマ・顔出しの疑問／地方在住でも所属できます | キャンペーンA（2026-08-11 23:32 追加） |
 | スタートガイド無料配布 | `https://taitan-pro-lp.netlify.app/agency/#gift` | 非売品PDF・全10ページ／友だち追加後すぐ自動でお届け | キャンペーンD |
 | 報酬が生まれる仕組み | `https://taitan-pro-lp.netlify.app/agency/#reward` | 単発の紹介料で終わらない／所属期間中ずっと積み上がる | キャンペーンD |
@@ -934,6 +934,8 @@ A（`TAITANPRO_顕在層_事務所探し` / ID `24048528471` / 日予算 ¥1,800
 | よくあるご質問 | `https://taitan-pro-lp.netlify.app/agency/#faq` | 1日どれくらい時間が必要か／どうやって人を見つけるのか | キャンペーンD |
 
 > 📌 **2026-08-12 に全16本の実物照合が完了。** この表は推定値ではなく管理画面の実値のみで構成されている。
+>
+> ✅ **A の4本の文言はファクト照合済み（2026-08-12）**。「元Pococha Sランクが直接指導」は代表たいたんの確定ファクト（メモリ `project_taitan_pro_note_facts`）と一致。「初配信3ヶ月でS帯トップ／学生と主婦、2つの実例」も beginner LP の `#cases` の実体（学生＝むうくん／主婦ライバーの2件）と一致しており、着地先と齟齬なし。
 >
 > ⚠️ **A と C は同じ4アンカーを使っているが、別アセット・別文言**。上表でリンクテキストが重複して見える4行（所属ライバーの実績／報酬・還元率について／選ばれている理由／よくある質問）は、**適用範囲列でA用かC用かを見分ける**こと。片方だけ直して「両方直した」と誤認しないこと。
 
