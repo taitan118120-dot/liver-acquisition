@@ -118,6 +118,9 @@ AD_SITELINK_URLS = [
     "https://taitan-pro-lp.netlify.app/beginner/#reward",
     "https://taitan-pro-lp.netlify.app/beginner/#reasons",
     "https://taitan-pro-lp.netlify.app/beginner/#faq",
+    # キャンペーンA単位5本目（2026-08-12 登録＝設計書 §0-15）。
+    # LP側に恒久セクション #gift を新設したうえで着地先にした。既存4本は消していない。
+    "https://taitan-pro-lp.netlify.app/beginner/#gift",
     # キャンペーンD単位4本（2026-08-04 登録・稼働中。2026-08-11 に確定案へ揃える上書き修正）
     "https://taitan-pro-lp.netlify.app/agency/#gift",
     "https://taitan-pro-lp.netlify.app/agency/#reward",
