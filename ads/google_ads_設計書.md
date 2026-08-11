@@ -1961,5 +1961,9 @@ VTuber系は8語 **16表示・2クリック・￥394** に減少。中身が決�
    本セッションでは Chrome拡張が応答不能で管理画面に到達できなかった
 3. **公開済みNote 108本のLPリンクへのutm付与。** 本文一括書き換えは `note_publish_core.py` 経由の再公開が要り、
    タグ・カバーの巻き添え事故リスクがあるため独立タスク扱い
-4. **`taitan-pro-lp-targets.netlify.app`（求人媒体の誘導先・手動zipデプロイ）の再デプロイ。**
-   今回の `shared/tracking.js` はこのサイトには自動反映されない
+4. ~~**`taitan-pro-lp-targets.netlify.app`（求人媒体の誘導先・手動zipデプロイ）の再デプロイ。**~~
+   → **✅ 2026-08-11 完了（実測確認済み）。** 4ページ（`/beginner/` `/agency/` `/liver/` `/sidejob/`）すべてに
+   `shared/tracking.js` の読み込みが入っており、`/shared/tracking.js` も 200 で配信。中身はメイン側・
+   リポジトリの `lp/shared/tracking.js` とバイト単位で同一。
+   ⚠️ **手動zipデプロイのサイトである点は変わらない**ので、今後 `lp/shared/` を触ったら都度再デプロイが要る。
+   ⛔ **タグが載っても数字は出ない**（項目1のとおり受け取り手がいないため）。詳細は `ads/utm設計.md` §3-4

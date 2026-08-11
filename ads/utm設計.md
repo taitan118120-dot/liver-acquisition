@@ -160,9 +160,20 @@ LINE直リンクは §1-1 のとおり計測できないので、**LPリンク�
 
 `…/{target}/?utm_source={indeed|wantedly|engage}&utm_medium=job&utm_campaign=job_{target}`
 
-> ⚠️ 求人媒体の誘導先は **`taitan-pro-lp-targets.netlify.app`**（メインとは別のNetlifyサイト・**手動zipデプロイ**）。
-> 今回追加した `shared/tracking.js` は、このサイトを**手動で再デプロイするまで反映されない**。
-> utmだけ付いていても計測タグが無ければ何も取れないので、再デプロイまでは求人媒体の数字は出ないと理解しておくこと。
+> ✅ **`shared/tracking.js` は再デプロイ済みで反映されている（2026-08-11 実測）。**
+> 求人媒体の誘導先は **`taitan-pro-lp-targets.netlify.app`**（メインとは別のNetlifyサイト・**手動zipデプロイ**）だが、
+> 本日 curl で確認したところ **`/beginner/` `/agency/` `/liver/` `/sidejob/` の4ページすべてに
+> `<script src="../shared/tracking.js?v=20260810a">` が入っており**、`/shared/tracking.js` 自体も HTTP 200 で配信されている。
+> 中身はメイン側 `taitan-pro-lp.netlify.app` およびリポジトリの `lp/shared/tracking.js` と**バイト単位で同一**。
+>
+> ⚠️ **注意は残る。このサイトは手動zipデプロイのままである。**
+> メイン側は git push で自動反映されるが、こちらは反映されない。
+> **今後 `lp/shared/` や `lp/{target}/` を触ったら、その都度 zip を作って手動で再デプロイすること**
+> （手順は記憶 `project_netlify_lp_deploy`）。片方だけ直して満足すると、また今回のようにズレる。
+>
+> ⛔ **ただし「タグが載った＝数字が読める」ではない。** §0 のとおり utm も `line_cta_click` も
+> **いま受け取り手がいない**ので、タグが入っただけでは求人媒体の数字は依然として出ない。
+> 数字になるのは受け取り手（A案のセカンダリCV、またはGTM）を用意してから。
 
 ### 3-5. Googleビジネスプロフィール
 
@@ -184,8 +195,10 @@ LINE直リンクは §1-1 のとおり計測できないので、**LPリンク�
 
 > 🗑️ **`line_bot/config.py` の `OFFICE_URL` / `LP_BEGINNER` / `LP_LIVER` / `LP_SIDEJOB` /
 > `CONTACT_LINE` / `OFFICE_NAME` は 2026-08-11 に削除した。** どこからも参照されていない上に、
-> 誘導先が `-targets.netlify.app`（手動zipデプロイ・`tracking.js` 未反映）を指していて、
+> 誘導先が `-targets.netlify.app`（手動zipデプロイ）を指していて、
 > 実際に配信している `line_bot/rich_menu.py` の `taitan-pro-lp.netlify.app` と食い違っていたため。
+> （削除を判断した時点では `tracking.js` 未反映も理由に挙げていたが、**その点は同日中に解消済み**＝§3-4。
+> 削除の主因である「配信実体との食い違い」は変わらないので、削除はそのままでよい。）
 > 公式LINEからLPへ送る導線は**リッチメニューの2本だけ**で、`messages.py` にLPのURLは無い
 > （持っているのは特典PDFのjsDelivr URLのみ）。今後 bot 本文からLPへ送るなら
 > `taitan-pro-lp.netlify.app` 側を使うこと。
