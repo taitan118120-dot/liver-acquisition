@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>ライバー代理店パートナー スタートガイド | TAITAN PRO</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --primary: #6C5CE7;
+    --primary-dark: #5A4BD1;
+    --primary-light: #A78BFA;
+    --accent: #FF5C8A;
+    --accent-warm: #FF9F45;
+    --bg-soft: #F5F2FC;
+    --text-main: #1B1433;
+    --text-sub: #574F70;
+    --hairline: rgba(108, 92, 231, 0.18);
+  }
+  body {
+    font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', sans-serif;
+    color: var(--text-main);
+    font-size: 10.5pt;
+    line-height: 1.85;
+  }
+  .page {
+    width: 210mm;
+    height: 296mm;
+    padding: 18mm 17mm 16mm;
+    page-break-after: always;
+    position: relative;
+    overflow: hidden;
+  }
+  .page:last-child { page-break-after: avoid; }
+
+  /* ===== 表紙 ===== */
+  .cover {
+    background: #22222a;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .cover img.logo { width: 62mm; border-radius: 6mm; margin-bottom: 14mm; }
+  .cover .badge {
+    display: inline-block;
+    border: 1px solid rgba(255,255,255,0.5);
+    border-radius: 999px;
+    padding: 2mm 8mm;
+    font-size: 10pt;
+    letter-spacing: 0.15em;
+    margin-bottom: 10mm;
+    color: #cfc8ff;
+  }
+  .cover h1 {
+    font-size: 27pt;
+    line-height: 1.5;
+    font-weight: 800;
+    margin-bottom: 8mm;
+  }
+  /* background-clip:text はPDF印刷で矩形化するため単色にする */
+  .cover h1 .grad { color: #E27FC0; }
+  .cover p.sub { font-size: 12pt; color: #b9b3d6; margin-bottom: 18mm; }
+  .cover .footer-line { font-size: 9.5pt; color: #8e86a6; letter-spacing: 0.1em; }
+
+  /* ===== 本文共通 ===== */
+  .kicker {
+    color: var(--primary);
+    font-size: 9pt;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    margin-bottom: 2mm;
+  }
+  h2 {
+    font-size: 17pt;
+    font-weight: 800;
+    line-height: 1.4;
+    padding-bottom: 3mm;
+    margin-bottom: 6mm;
+    border-bottom: 2.5px solid var(--primary);
+  }
+  h2 .num {
+    display: inline-block;
+    background: linear-gradient(135deg, #6C5CE7, #A78BFA);
+    color: #fff;
+    border-radius: 3mm;
+    font-size: 12pt;
+    padding: 1mm 3.5mm;
+    margin-right: 3.5mm;
+    vertical-align: 2px;
+  }
+  h3 {
+    font-size: 12pt;
+    font-weight: 700;
+    color: var(--primary-dark);
+    margin: 6mm 0 2.5mm;
+  }
+  p { margin-bottom: 3.5mm; }
+  strong { color: var(--primary-dark); }
+  ul, ol { margin: 0 0 4mm 6mm; }
+  li { margin-bottom: 1.5mm; }
+
+  .lead {
+    background: var(--bg-soft);
+    border-left: 4px solid var(--primary);
+    border-radius: 2mm;
+    padding: 4mm 5mm;
+    margin-bottom: 6mm;
+  }
+  .point {
+    background: #fff5f8;
+    border: 1px solid rgba(255,92,138,0.35);
+    border-radius: 3mm;
+    padding: 4mm 5mm;
+    margin: 4mm 0;
+  }
+  .point .pt-label {
+    color: var(--accent);
+    font-weight: 800;
+    font-size: 9.5pt;
+    letter-spacing: 0.1em;
+    display: block;
+    margin-bottom: 1mm;
+  }
+  .note { font-size: 9pt; color: var(--text-sub); }
+
+  table { width: 100%; border-collapse: collapse; margin: 4mm 0; font-size: 10pt; }
+  th {
+    background: var(--primary);
+    color: #fff;
+    padding: 2.5mm 3mm;
+    text-align: left;
+    font-weight: 700;
+  }
+  td { padding: 2.5mm 3mm; border-bottom: 1px solid var(--hairline); vertical-align: top; }
+  tr:nth-child(even) td { background: var(--bg-soft); }
+
+  .check li {
+    list-style: none;
+    padding-left: 7mm;
+    position: relative;
+    margin-bottom: 2mm;
+  }
+  .check li::before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 5mm; height: 5mm;
+    background: linear-gradient(135deg, #6C5CE7, #A78BFA);
+    color: #fff;
+    border-radius: 1.5mm;
+    font-size: 9pt;
+    text-align: center;
+    line-height: 5mm;
+  }
+  .ng li {
+    list-style: none;
+    padding-left: 7mm;
+    position: relative;
+    margin-bottom: 2mm;
+  }
+  .ng li::before {
+    content: "✕";
+    position: absolute;
+    left: 0; top: 0;
+    width: 5mm; height: 5mm;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 1.5mm;
+    font-size: 9pt;
+    text-align: center;
+    line-height: 5mm;
+  }
+
+  .pagefoot {
+    position: absolute;
+    bottom: 8mm;
+    left: 17mm;
+    right: 17mm;
+    display: flex;
+    justify-content: space-between;
+    font-size: 8pt;
+    color: #a49cc0;
+    border-top: 1px solid var(--hairline);
+    padding-top: 2mm;
+  }
+
+  /* ===== 最終ページ ===== */
+  .final {
+    background: #22222a;
+    color: #eceaf6;
+  }
+  .final h2 { color: #fff; border-color: var(--primary-light); }
+  .final h3 { color: var(--primary-light); }
+  .final strong { color: #FF9BB8; }
+  .final .tease {
+    background: rgba(167,139,250,0.12);
+    border: 1px solid rgba(167,139,250,0.4);
+    border-radius: 3mm;
+    padding: 5mm 6mm;
+    margin: 5mm 0;
+  }
+  .final .tease li { margin-bottom: 2mm; }
+  .cta-box {
+    background: linear-gradient(115deg, #6C5CE7 0%, #A78BFA 55%, #FF5C8A 100%);
+    border-radius: 4mm;
+    color: #fff;
+    text-align: center;
+    padding: 8mm 6mm;
+    margin-top: 8mm;
+  }
+  .cta-box .big { font-size: 16pt; font-weight: 800; margin: 2mm 0 3mm; }
+  .cta-box p { margin-bottom: 2mm; }
+</style>
+</head>
+<body>
+
+<!-- ===== P1 表紙 ===== -->
+<div class="page cover">
+  <img class="logo" src="../lp/shared/logo.jpg" alt="TAITAN PRO">
+  <div class="badge">LINE友だち追加特典・非売品</div>
+  <h1>ライバー代理店パートナー<br><span class="grad">スタートガイド</span></h1>
+  <p class="sub">「人を紹介して育てる側」で継続収入をつくる<br>仕事の全体像 → 出会い方 → 伝え方 → 所属後のフォロー<br>営業未経験からでも始められる設計です</p>
+  <p class="footer-line">ライバー事務所 TAITAN PRO（所属200名／提携代理店パートナー11社）</p>
+</div>
+
+<!-- ===== P2 はじめに ===== -->
+<div class="page">
+  <div class="kicker">INTRODUCTION</div>
+  <h2>代理店パートナーという働き方</h2>
+  <div class="lead">
+    <p style="margin-bottom:0">このガイドは、TAITAN PRO代表・たいたん（元Pococha Sランク／ミクチャ8,000人中ミスターコン1位／Pococha歴4年）が、200名のライバーと11の代理店パートナーと一緒に走ってきた中で溜まった<strong>「代理店パートナーの実務」</strong>だけを抜き出したものです。夢の話は書きません。実際に何をして、何でつまずくのかを書きます。</p>
+  </div>
+
+  <h3>ひとことで言うと「スカウトと育成の入口を担う仕事」</h3>
+  <p>代理店パートナーは、配信に興味がある人・事務所を探している人に声をかけ、<strong>TAITAN PROへの所属と初配信までを見届ける役割</strong>です。所属後の配信サポートは事務所のマネージャーと二人三脚で行うので、育成のすべてを一人で背負う必要はありません。</p>
+
+  <h3>物販や店舗ビジネスと決定的に違うところ</h3>
+  <table>
+    <tr><th style="width:34mm">項目</th><th>代理店パートナー</th></tr>
+    <tr><td>初期費用</td><td>0円（加盟金・保証金・月会費・ロイヤリティの前払いなし）</td></tr>
+    <tr><td>在庫・仕入れ</td><td>なし。仕入れも保管も発送も発生しません</td></tr>
+    <tr><td>必要なもの</td><td>スマホと通信環境だけ。PCは必須ではありません</td></tr>
+    <tr><td>収入のかたち</td><td>単発の紹介料ではなく、紹介したライバーが活動を続けている間ずっと積み上がる<strong>継続報酬</strong></td></tr>
+    <tr><td>働く場所・時間</td><td>完全オンライン・全国どこからでも。ノルマはありません</td></tr>
+  </table>
+
+  <h3>このガイドの構成</h3>
+  <ul>
+    <li><strong>STEP 1</strong>　仕事の全体像（3ステップで理解する）</li>
+    <li><strong>STEP 2</strong>　出会い方——「探しに行く」より「見つけてもらう」</li>
+    <li><strong>STEP 3</strong>　話を聞いてもらえる伝え方</li>
+    <li><strong>STEP 4</strong>　所属後のフォローが継続報酬を決める</li>
+    <li><strong>実践編</strong>　収入の積み上がり方／NG集／30日ロードマップ</li>
+  </ul>
+  <p class="note">※成果には個人差があります。収入を保証するものではありません。</p>
+  <div class="pagefoot"><span>ライバー代理店パートナー スタートガイド</span><span>TAITAN PRO — 2</span></div>
+</div>
+
+<!-- ===== P3 STEP1 ===== -->
+<div class="page">
+  <div class="kicker">STEP 1</div>
+  <h2><span class="num">1</span>仕事の全体像は3ステップだけ</h2>
+
+  <h3>① 興味がある人と出会う</h3>
+  <p>SNSでの発信や日常の人間関係の中で、「配信に興味がある」「今の働き方を変えたい」という人と出会います。ここが入口です。<strong>やみくもに数を打つ仕事ではありません</strong>。詳しくは STEP 2 で書きます。</p>
+
+  <h3>② 所属と初配信までを見届ける</h3>
+  <p>話を聞いて、その人に合うアプリ（Pococha・TikTok LIVE・17LIVE）を一緒に選び、所属手続きから初配信までを伴走します。<strong>ここから先は事務所のマネージャーが並走する</strong>ので、配信のノウハウを自分がゼロから教える必要はありません。</p>
+
+  <h3>③ 活動が続いている間、報酬が積み上がる</h3>
+  <p>紹介したライバーが活動を続けている限り、報酬が発生し続けます。だからこの仕事の本質は「紹介して終わり」ではなく、<strong>「続けられる状態をつくること」</strong>にあります。</p>
+
+  <div class="point">
+    <span class="pt-label">いちばん大事な前提</span>
+    紹介した人が3日で辞めたら、継続報酬はそこで止まります。逆に、その人が半年・1年と楽しく配信を続ければ、報酬はずっと積み上がります。つまり<strong>あなたの利益と、紹介した人の幸せが同じ方向を向いている</strong>——これがこの仕事の一番いいところです。
+  </div>
+
+  <h3>1日にかける時間の目安</h3>
+  <p>本業を持ちながら副業で始める方がほとんどです。<strong>発信に30分、やりとりに30分</strong>くらいから始めて、関わるライバーが増えてきたら時間の配分を変えていく——という進め方が現実的です。決まったシフトはありません。</p>
+  <div class="pagefoot"><span>ライバー代理店パートナー スタートガイド</span><span>TAITAN PRO — 3</span></div>
+</div>
+
+<!-- ===== P4 STEP2 ===== -->
+<div class="page">
+  <div class="kicker">STEP 2</div>
+  <h2><span class="num">2</span>出会い方：「探しに行く」より「見つけてもらう」</h2>
+  <div class="lead">
+    <p style="margin-bottom:0">未経験の方がいちばん最初にやりがちなのが、<strong>知らない人へ片っ端からDMを送ること</strong>です。私たち自身もこれを大量にやった時期がありますが、届かないうえに、アカウントを危険にさらすだけでした。<strong>先に「見つけてもらう側」に回るほうが、結果的にずっと早い</strong>です。</p>
+  </div>
+
+  <h3>① 自分の発信を「相談されるもの」にする</h3>
+  <p>SNSで、ライブ配信の現実・始め方・ありがちなつまずきを淡々と書きます。宣伝ではなく<strong>役に立つ話</strong>を積むと、「実はやってみたいんですけど」という相談が向こうから来ます。この1件のほうが、送りつけたDM100件より濃い出会いです。</p>
+  <ul class="check">
+    <li>プロフィールに「何をしている人か」「どんな相談に乗れるか」を明記する</li>
+    <li>週に数本でいいので、配信にまつわる本当の話を書き続ける</li>
+    <li>募集の告知ばかり並べない。読む人は宣伝を避けます</li>
+  </ul>
+
+  <h3>② すでにつながっている人から始める</h3>
+  <p>知り合い、昔の同僚、SNSの相互フォロワー——「配信に興味がありそうな人」は意外と近くにいます。いきなり勧誘するのではなく、<strong>「最近こういうことをやってる」と近況として話す</strong>だけで十分です。興味がある人は自分から聞いてきます。</p>
+
+  <h3>③ 配信を実際に見に行く</h3>
+  <p>アプリの中には、すでに一人で頑張っている無所属のライバーがたくさんいます。まずはリスナーさんとして通い、配信を見て、応援する。関係ができてから初めて話をする——順番を守るだけで、伝わり方がまったく変わります。</p>
+
+  <div class="point">
+    <span class="pt-label">やってはいけない出会い方</span>
+    <strong>面識のない相手への一斉DM、収入額を前面に出した誘い文句、返事がない相手への追撃</strong>。この3つは、相手に嫌われるだけでなく、アカウント停止のリスクを自分で買いに行く行為です。TAITAN PROではこのやり方を推奨していません。
+  </div>
+  <div class="pagefoot"><span>ライバー代理店パートナー スタートガイド</span><span>TAITAN PRO — 4</span></div>
+</div>
+
+<!-- ===== P5 STEP3 ===== -->
+<div class="page">
+  <div class="kicker">STEP 3</div>
+  <h2><span class="num">3</span>話を聞いてもらえる伝え方</h2>
+
+  <h3>相手が知りたいのは「稼げるか」ではなく「自分にできるか」</h3>
+  <p>迷っている人の本音は、だいたい次の3つです。金額の話から入ると、ここが未解決のまま警戒だけが残ります。</p>
+  <ul>
+    <li><strong>顔を出さずにできるのか</strong>（ラジオ配信・アバター配信という選択肢がある）</li>
+    <li><strong>本業や学業と両立できるのか</strong>（ノルマがないこと、短時間でも積み上がること）</li>
+    <li><strong>知り合いや会社にバレないか</strong>（活動名で始められること。税金面は一般論に留め、断定しない）</li>
+  </ul>
+
+  <h3>順番は「聞く → 合うアプリを選ぶ → 事務所の話」</h3>
+  <table>
+    <tr><th style="width:30mm">順番</th><th>やること</th></tr>
+    <tr><td><strong>1. 聞く</strong></td><td>今の生活・使える時間・不安なことを先に聞く。ここを飛ばした提案は刺さりません</td></tr>
+    <tr><td><strong>2. 選ぶ</strong></td><td>コツコツ積み上げたい人はPococha（配信時間が報酬になる時間ダイヤ）、拡散力で伸ばしたい人はTikTok LIVE、イベントで勝負したい人は17LIVE</td></tr>
+    <tr><td><strong>3. 事務所</strong></td><td>ここで初めてTAITAN PROの話。ライバーへの還元率100%+α、初配信はマネージャーが横についてサポート、という事実を淡々と</td></tr>
+  </table>
+
+  <h3>言い切らない。盛らない。</h3>
+  <p>収入を言い切る言い方や「誰でもできる」は、口にした瞬間に信用を失います。使うべきなのは<strong>実際にあった話</strong>です。</p>
+  <ul class="check">
+    <li>フォロワーゼロの大学生が、1日平均4時間をほぼ毎日続けて、デビューから約3ヶ月でS帯のトップライバーになった（むうくん・月収50万円超）</li>
+    <li>会社員をしながら配信を続け、約1年で配信の月収100万円に到達。その後、代理店を並行して合計月150万円超になり独立した人もいる（Sさん）</li>
+  </ul>
+  <p class="note">※ご本人の実データに基づく実例です。成果には個人差があり、同様の結果を保証するものではありません（この但し書きも必ず一緒に伝えること）。</p>
+
+  <p>そして、迷っている人に決断を迫らないこと。<strong>「まず話を聞くだけでいい」で終われる人</strong>のほうが、結果的に長く続くライバーを連れてきます。</p>
+  <div class="pagefoot"><span>ライバー代理店パートナー スタートガイド</span><span>TAITAN PRO — 5</span></div>
+</div>
+
+<!-- ===== P6 STEP4 ===== -->
+<div class="page">
+  <div class="kicker">STEP 4</div>
+  <h2><span class="num">4</span>所属後のフォローが、継続報酬を決める</h2>
+  <div class="lead">
+    <p style="margin-bottom:0">代理店パートナーの成果が分かれるのは、スカウトの上手さではありません。<strong>所属した後の最初の1ヶ月にどれだけ寄り添えたか</strong>です。ここが継続報酬の土台になります。</p>
+  </div>
+
+  <h3>最初の30日にやること</h3>
+  <ul class="check">
+    <li><strong>初配信の日時を一緒に決める</strong>——「そのうち」は永遠に来ません。日付を置くだけで開始率が変わります</li>
+    <li><strong>初配信を見に行く</strong>——誰も来ない枠ほど心が折れます。あなたが1人目のリスナーさんになってください</li>
+    <li><strong>配信時間を固定する提案をする</strong>——「いつ行けば会えるか」が定着の入口です</li>
+    <li><strong>週1回、短く様子を聞く</strong>——長文はいりません。「今週どうだった？」の一言で十分です</li>
+    <li><strong>詰まったらマネージャーに繋ぐ</strong>——自分で全部解こうとしないこと。ここが二人三脚の意味です</li>
+  </ul>
+
+  <h3>伸び悩みの相談が来たら「3つの切り分け」</h3>
+  <ol>
+    <li>そもそも<strong>人が来ない</strong> → 入口（アイコン・配信時間・枠周り）の問題</li>
+    <li>来ても<strong>すぐ抜ける</strong> → 初動対応（挨拶・名前呼び・自己紹介）の問題</li>
+    <li><strong>リピーターにならない</strong> → 関係構築（次回の約束・応援の伝え方）の問題</li>
+  </ol>
+  <p>原因が違えば打ち手も違います。「頑張って」と励ますだけで終わらせず、<strong>どこで詰まっているかを一緒に切り分ける</strong>——これができる代理店パートナーのところに、ライバーは残ります。</p>
+
+  <h3>紹介した人に用意できる「景色」も伝える</h3>
+  <p>TAITAN PROが提携する大型ネットワークを通じて、駅のデジタルサイネージ出演、渋谷の大型ビジョンCM、映画館ロビーのポスター掲載、京都コレクションなどのランウェイイベント、社内最大級のアワードといった機会に挑戦できるチャンスがあります。所属者限定の特典（税理士サポート・荷物転送・美容外科割引など）もあります。</p>
+  <p class="note">※イベントの開催時期・内容は変動します。参加や出演を保証するものではありません。</p>
+  <div class="pagefoot"><span>ライバー代理店パートナー スタートガイド</span><span>TAITAN PRO — 6</span></div>
+</div>
+
+<!-- ===== P7 報酬 ===== -->
+<div class="page">
+  <div class="kicker">HOW IT WORKS</div>
+  <h2><span class="num">¥</span>報酬はどう積み上がるのか</h2>
+
+  <h3>単発ではなく「積み上げ」の構造</h3>
+  <p>報酬は「紹介した人数 × 活動を続けている期間」で決まります。だから最初の1ヶ月は小さく、続けるほど土台が厚くなります。前月に積み上げたものが翌月にゼロに戻らないのが、この仕事の特徴です。</p>
+
+  <table>
+    <tr><th style="width:30mm">時期</th><th>収入の目安</th></tr>
+    <tr><td><strong>1ヶ月目</strong></td><td>月5万円〜。スカウト・所属手続き・初配信サポートが動き出す時期</td></tr>
+    <tr><td><strong>1〜3ヶ月</strong></td><td>月10〜20万円。副業で取り組む方の平均レンジ。継続報酬が積み上がり始めます</td></tr>
+    <tr><td><strong>3〜6ヶ月</strong></td><td>月30〜50万円。本気で取り組む方のレンジ。本業を超えて独立する方も出てきます</td></tr>
+    <tr><td><strong>1年以上</strong></td><td>月100万円超。組織化に成功した方のレンジ。法人化される方が多いです</td></tr>
+  </table>
+  <p class="note">※サポートするライバーの人数・活動状況によって変動します。成果には個人差があり、収入を保証するものではありません。</p>
+
+  <h3>金額より先に見るべき3つの数字</h3>
+  <ul class="check">
+    <li><strong>今月、何人と話せたか</strong>（出会いの母数）</li>
+    <li><strong>そのうち何人が初配信までいったか</strong>（伴走の質）</li>
+    <li><strong>先月紹介した人が、今月も配信しているか</strong>（継続率——これが報酬の本体）</li>
+  </ul>
+  <p>とくに3つ目です。継続率が低いまま人数だけ増やしても、穴の空いたバケツに水を入れているのと同じになります。</p>
+
+  <div class="point">
+    <span class="pt-label">POINT</span>
+    「今月いくらだったか」ではなく<strong>「先月の人がまだ続けているか」</strong>を毎月見てください。この指標だけを追っていれば、収入は後からついてきます。
+  </div>
+  <div class="pagefoot"><span>ライバー代理店パートナー スタートガイド</span><span>TAITAN PRO — 7</span></div>
+</div>
+
+<!-- ===== P8 NG集 ===== -->
+<div class="page">
+  <div class="kicker">DON'T</div>
+  <h2><span class="num">!</span>未経験の人がつまずくNG集</h2>
+  <ul class="ng">
+    <li><strong>知らない人への一斉DM</strong> —— 届かないうえにアカウントが危険にさらされます。まず「見つけてもらう側」に回る（STEP 2）。</li>
+    <li><strong>収入の金額から話し始める</strong> —— 相手が知りたいのは「自分にできるか」。金額を先に出すほど警戒されます。</li>
+    <li><strong>収入を言い切ってしまう</strong> —— 断定は信用を失うだけでなく、後で自分に返ってきます。実例と但し書きで話す。</li>
+    <li><strong>所属させたら放置する</strong> —— 継続報酬が止まる一番の原因がこれです。最初の30日の伴走がすべて。</li>
+    <li><strong>ひとりで全部抱える</strong> —— 配信の技術的な相談はマネージャーに繋いでください。二人三脚が前提の設計です。</li>
+    <li><strong>結果が出ないと1ヶ月でやめる</strong> —— 積み上げ型の仕事なので、序盤は小さく見えます。数字が動き出すのは土台ができてからです。</li>
+    <li><strong>数だけを追いかける</strong> —— 紹介人数は指標のひとつでしかありません。追うべきは継続率です。</li>
+  </ul>
+  <div class="point">
+    <span class="pt-label">これだけは</span>
+    やることはシンプルです。<strong>①役に立つ発信を続ける ②相手の話を先に聞く ③所属後の30日に寄り添う</strong>。この3つを回している人のところに、続くライバーが集まります。
+  </div>
+  <div class="pagefoot"><span>ライバー代理店パートナー スタートガイド</span><span>TAITAN PRO — 8</span></div>
+</div>
+
+<!-- ===== P9 30日ロードマップ ===== -->
+<div class="page">
+  <div class="kicker">ROADMAP</div>
+  <h2><span class="num">30</span>最初の30日ロードマップ</h2>
+  <table>
+    <tr><th style="width:30mm">期間</th><th>やること</th></tr>
+    <tr>
+      <td><strong>Week 1</strong><br>準備</td>
+      <td>
+        ・研修を受けて、報酬の仕組みと契約内容を自分の言葉で説明できるようにする<br>
+        ・管理ツールの使い方をひと通り触る<br>
+        ・SNSのプロフィールを「相談していい人」に整える
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Week 2</strong><br>発信と種まき</td>
+      <td>
+        ・配信にまつわる役に立つ投稿を数本出す（募集の告知は並べない）<br>
+        ・すでにつながっている人に「近況」として話す<br>
+        ・無所属のライバーの配信をリスナーさんとして見に行く
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Week 3</strong><br>はじめての面談</td>
+      <td>
+        ・興味を持ってくれた人の話を聞く（聞く→選ぶ→事務所の順番を守る）<br>
+        ・自分だけで抱えず、必要なら代表・マネージャーに同席してもらう<br>
+        ・その場で結論を迫らない
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Week 4</strong><br>初配信の伴走</td>
+      <td>
+        ・所属手続きと初配信の日時を一緒に決める<br>
+        ・初配信を見に行って、1人目のリスナーさんになる<br>
+        ・週1回の「今週どうだった？」を習慣にする
+      </td>
+    </tr>
+  </table>
+
+  <h3>毎週のチェックリスト</h3>
+  <ul class="check">
+    <li>役に立つ発信を出したか</li>
+    <li>新しく話せた人がいたか</li>
+    <li>先月・先週に紹介した人は、今も配信しているか</li>
+    <li>詰まっている人をマネージャーに繋いだか</li>
+    <li>自分が疲れすぎていないか（続けられるペースか）</li>
+  </ul>
+  <p class="note">※完璧である必要はありません。半分でも、毎週続いていることのほうが結果につながります。</p>
+  <div class="pagefoot"><span>ライバー代理店パートナー スタートガイド</span><span>TAITAN PRO — 9</span></div>
+</div>
+
+<!-- ===== P10 CTA ===== -->
+<div class="page final">
+  <div class="kicker" style="color:#A78BFA">NEXT STEP</div>
+  <h2>ここから先は、あなたの状況に合わせて</h2>
+  <p>ここまで読んでくれたあなたへ、正直に書きます。このガイドに書いたのは<strong>「型」</strong>です。これだけでも最初の一歩は踏み出せますが、実際に成果を出している代理店パートナーは、もっと具体的なところで差をつけています。たとえば——</p>
+  <div class="tease">
+    <ul>
+      <li>相談が向こうから来る<strong>SNSプロフィールと発信の型</strong></li>
+      <li>初回の面談で<strong>何をどの順番で聞くか</strong>のヒアリングシート</li>
+      <li>所属後30日の<strong>フォロー文面と声かけのタイミング</strong></li>
+      <li>紹介したライバーが伸び悩んだときの<strong>原因の切り分け表</strong></li>
+      <li>管理ツールを使った<strong>継続率の見える化</strong></li>
+    </ul>
+  </div>
+  <p>このあたりは相手のいる話なので公開の場には出せません。<strong>TAITAN PROの代理店パートナー向けに、研修と個別サポートで直接共有</strong>しています。</p>
+
+  <h3>TAITAN PROについて</h3>
+  <ul>
+    <li>代表は<strong>元Pococha Sランク</strong>ライバー（ミクチャ8,000人中ミスターコン1位／Pococha歴4年）</li>
+    <li>所属ライバーは<strong>Pococha・TikTok合わせて200名</strong>／<strong>11の代理店パートナーと提携</strong></li>
+    <li>初期費用0円。加盟金・保証金・月会費・ロイヤリティの前払いはありません</li>
+    <li>研修・管理ツールの提供・相談窓口つき。オンラインで全国対応（拠点：石川県金沢市）</li>
+    <li>ライバーへの還元は<strong>還元率100%+α</strong>——だから紹介した人に自信を持って勧められます</li>
+  </ul>
+
+  <div class="cta-box">
+    <p>質問・感想は、このままLINEでどうぞ。</p>
+    <p class="big">「代理店」と送ってください</p>
+    <p>仕組みの説明から、あなたの状況に合った始め方まで、<br>代表が直接お話しします（15〜30分・オンライン）。<br>相談は無料・秘密厳守／無理な勧誘はしません。</p>
+  </div>
+  <p class="note" style="color:#8e86a6; margin-top:5mm">※本ガイドはTAITAN PRO公式LINEの友だち追加特典です。無断転載はご遠慮ください。アプリの仕様・数字は変更される場合があります。成果には個人差があり、収入を保証するものではありません。</p>
+</div>
+
+</body>
+</html>
