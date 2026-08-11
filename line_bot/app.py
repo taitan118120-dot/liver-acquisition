@@ -345,6 +345,33 @@ def handle_admin_command(text):
             + "\n".join(lines)
         )
 
+    if t in ("メニュー確認", "メニュー状態"):
+        # メニューが出ない時の切り分け用。作成済みか／デフォルトになっているか／
+        # 画像が乗っているか／自分に何が出るはずか を一度に見る。
+        menus = rich_menu.list_rich_menus()
+        default_id = rich_menu.get_default_rich_menu()
+        lines = [f"📋 リッチメニュー {len(menus)}件"]
+        if not menus:
+            lines.append("（1件もありません。「メニュー作成」を送ってください）")
+        for m in menus:
+            mark = "★デフォルト" if m["richMenuId"] == default_id else ""
+            img = "画像あり" if rich_menu.has_image(m["richMenuId"]) else "⚠️画像なし＝表示されません"
+            lines.append(f"・{m.get('name')} / {len(m.get('areas', []))}枠 / {img} {mark}")
+        if menus and not default_id:
+            lines.append("\n⚠️ デフォルト未設定です。誰にもメニューが出ません")
+
+        mine = rich_menu.get_user_rich_menu(ADMIN_USER_ID) if ADMIN_USER_ID else None
+        lines.append("")
+        lines.append(f"自分に出るはずのメニュー: {'個別リンクあり' if mine else 'デフォルト'}")
+        lines.append("")
+        lines.append(
+            "これで全部✅なのに表示されないときは、LINE公式アカウントマネージャー側の"
+            "リッチメニュー（ホーム→リッチメニュー）が「表示する」になっていないか確認してください。"
+            "そちらが優先され、APIで作ったメニューが隠れます。"
+            "アプリの再起動（トーク画面を開き直す）でも直ることがあります。"
+        )
+        return "\n".join(lines)
+
     if t in ("メニュー作成", "メニュー更新"):
         # リッチメニューの作り直しをLINEから実行する。
         # 画像はリポジトリにコミット済み（assets/）、トークンは本番の環境変数にあるので、
@@ -490,7 +517,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
         self.end_headers()
-        self.wfile.write(b"TAITAN PRO LINE Bot is running (v15-richmenu-selfsetup)")
+        self.wfile.write(b"TAITAN PRO LINE Bot is running (v16-richmenu-diag)")
 
     def do_POST(self):
         content_length = int(self.headers.get("Content-Length", 0))

@@ -190,6 +190,40 @@ def list_rich_menus():
         return []
 
 
+def get_default_rich_menu():
+    """いま全員に出ているデフォルトメニューのID（未設定なら None）"""
+    req = Request("https://api.line.me/v2/bot/user/all/richmenu", headers=_auth())
+    try:
+        with urlopen(req) as res:
+            return json.loads(res.read().decode()).get("richMenuId")
+    except HTTPError as e:
+        if e.code != 404:  # 404 = デフォルト未設定
+            print(f"エラー: {e.code} {e.read().decode()}")
+        return None
+
+
+def get_user_rich_menu(user_id):
+    """そのユーザーだけに差し替えられているメニューのID（無ければ None）"""
+    req = Request(f"https://api.line.me/v2/bot/user/{user_id}/richmenu", headers=_auth())
+    try:
+        with urlopen(req) as res:
+            return json.loads(res.read().decode()).get("richMenuId")
+    except HTTPError as e:
+        if e.code != 404:  # 404 = 個別リンクなし（＝デフォルトが出ている）
+            print(f"エラー: {e.code} {e.read().decode()}")
+        return None
+
+
+def has_image(rich_menu_id):
+    """画像がアップロード済みか。画像が無いメニューはLINEに表示されない"""
+    url = f"https://api-data.line.me/v2/bot/richmenu/{rich_menu_id}/content"
+    try:
+        with urlopen(Request(url, headers=_auth())) as res:
+            return len(res.read()) > 0
+    except HTTPError:
+        return False
+
+
 def delete_rich_menu(rich_menu_id):
     url = f"https://api.line.me/v2/bot/richmenu/{rich_menu_id}"
     req = Request(url, headers=_auth(), method="DELETE")
