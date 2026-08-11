@@ -20,8 +20,9 @@ from urllib.error import HTTPError
 
 from config import LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN, STEP_DELAYS, ADMIN_USER_ID
 from messages import (
-    STEP_MESSAGES, AUTO_REPLIES, DEFAULT_REPLY, SOURCE_THANKS, find_source,
-    make_meeting_offer, parse_slot_choice, MEETING_BOOKED, MEETING_NUDGE_INTRO,
+    STEP_MESSAGES, AUTO_REPLIES, AGENCY_REPLIES, DEFAULT_REPLY, SOURCE_THANKS,
+    find_source, make_meeting_offer, parse_slot_choice, MEETING_BOOKED,
+    find_intent, INTENT_LABELS, INTENT_REPLIES, meeting_intro, step_text,
 )
 import state_sync
 
@@ -128,8 +129,13 @@ def notify_admin(text):
 SCHEDULE_FILE = os.path.join(DATA_DIR, "step_schedule.json")
 
 
-def _send_step_if_active(user_id, step_name, text):
-    """ステップ送信前にユーザーがまだアクティブか確認"""
+def _send_step_if_active(user_id, step_name):
+    """ステップ送信前にユーザーがまだアクティブか確認
+
+    本文は「送信する直前」に希望の種別（ライバー/代理店）で選び直す。
+    スケジュール時点ではまだ種別を聞けていないため、ここで解決しないと
+    代理店希望の人にライバー向けのフォローが飛ぶ。
+    """
     try:
         users = load_json(USERS_FILE)
         user = users.get(user_id, {})
@@ -160,6 +166,10 @@ def _send_step_if_active(user_id, step_name, text):
         # 再起動やstate復元で同じスケジュールが蘇っても二重送信しない
         if step_name in user.get("step_sent", []):
             print(f"[STEP] Skipped '{step_name}' for {user_id[:8]}... (already sent)")
+            _remove_schedule(user_id, step_name)
+            return
+        text = step_text(step_name, user.get("intent"))
+        if not text:
             _remove_schedule(user_id, step_name)
             return
         send_line_message(user_id, text)
@@ -212,7 +222,7 @@ def schedule_step_messages(user_id):
         })
 
         # Timer もセット（サーバーが落ちなければTimerで送信）
-        t = threading.Timer(delay, _send_step_if_active, args=[user_id, step_name, msg["text"]])
+        t = threading.Timer(delay, _send_step_if_active, args=[user_id, step_name])
         t.daemon = True
         t.start()
         print(f"[STEP] Scheduled '{step_name}' for {user_id[:8]}... at {send_at}")
@@ -240,14 +250,14 @@ def restore_pending_steps():
             # 送信時刻を過ぎている → 即送信
             threading.Thread(
                 target=_send_step_if_active,
-                args=[s["user_id"], s["step"], msg["text"]],
+                args=[s["user_id"], s["step"]],
                 daemon=True,
             ).start()
             immediate += 1
         else:
             # まだ先 → Timerで再スケジュール
             delay = (send_at - now).total_seconds()
-            t = threading.Timer(delay, _send_step_if_active, args=[s["user_id"], s["step"], msg["text"]])
+            t = threading.Timer(delay, _send_step_if_active, args=[s["user_id"], s["step"]])
             t.daemon = True
             t.start()
             restored += 1
@@ -272,10 +282,14 @@ def handle_admin_command(text):
                 status = "⏸手動対応中"
             else:
                 status = "🤖自動対応中"
-            lines.append(f"{uid[:8]} | {u.get('source', '不明')} | {status}")
+            intent = INTENT_LABELS.get(u.get("intent"), "種別不明")
+            lines.append(f"{uid[:8]} | {intent} | {u.get('source', '不明')} | {status}")
         if not lines:
             return "ユーザーはまだいません"
-        return "直近のユーザー（先頭8文字 | 流入元 | 状態）:\n" + "\n".join(lines)
+        return (
+            "直近のユーザー（先頭8文字 | 希望 | 流入元 | 状態）:\n"
+            + "\n".join(lines)
+        )
 
     for cmd, pause in (("停止", True), ("再開", False)):
         if t.startswith(cmd):
@@ -302,20 +316,26 @@ def handle_admin_command(text):
 _URL_RE = re.compile(r"https?://\S+")
 
 
-def find_auto_reply(text):
+def find_auto_reply(text, intent=None):
     """ユーザーメッセージからキーワードを探して自動返信テキストを返す
 
     URL部分はキーワード判定から除外する。プロフィールリンクの共有
     （例: pococha.comのURL）は質問ではないので、URL内の文字列に
     反応して解説を送り返さない。
+
+    代理店希望のユーザーには AGENCY_REPLIES を先に引く。「収入」「始め方」
+    「費用」「副業」「事務所」は両方に存在する語なので、先に引かないと
+    配信者向けの答えが返ってしまう。該当がなければ共通側にフォールバックする。
     """
     text_normalized = _URL_RE.sub(" ", text).strip().lower()
     if not text_normalized:
         # メッセージがURLだけ＝リンク共有。自動応答しない
         return None
-    for keyword, reply in AUTO_REPLIES.items():
-        if keyword.lower() in text_normalized:
-            return reply
+    tables = [AGENCY_REPLIES, AUTO_REPLIES] if intent == "agency" else [AUTO_REPLIES]
+    for table in tables:
+        for keyword, reply in table.items():
+            if keyword.lower() in text_normalized:
+                return reply
     return None
 
 
@@ -362,7 +382,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
         self.end_headers()
-        self.wfile.write(b"TAITAN PRO LINE Bot is running (guide-v12-app-agnostic-pdf)")
+        self.wfile.write(b"TAITAN PRO LINE Bot is running (v13-intent-liver-or-agency)")
 
     def do_POST(self):
         content_length = int(self.headers.get("Content-Length", 0))
@@ -413,6 +433,10 @@ class WebhookHandler(BaseHTTPRequestHandler):
                     "follow_date": datetime.now().isoformat(),
                     "step_sent": ["welcome"],
                     "unfollowed": False,
+                    # welcome で希望の種別（ライバー/代理店）を質問済み、の印。
+                    # このフラグが無いユーザー（この機能より前からの友だち）には
+                    # 種別判定を走らせない＝会話の途中で突然聞き返さない
+                    "intent_asked": True,
                 }
                 save_json(USERS_FILE, users)
 
@@ -430,7 +454,8 @@ class WebhookHandler(BaseHTTPRequestHandler):
                     "🆕 新しい友だちが追加されました\n"
                     f"名前: {name or '(取得失敗)'}\n"
                     f"ID: {user_id[:8]}\n\n"
-                    "welcomeと特典PDFは自動送信済みです。"
+                    "welcomeを送信し、ライバー希望か代理店希望かを質問済みです。\n"
+                    "返答が来たら種別に合った特典PDFを自動で送ります。"
                 )
 
             elif event_type == "message":
@@ -463,6 +488,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
                         "step_sent": ["welcome"],
                         "unfollowed": False,
                         "follow_recovered": True,
+                        "intent_asked": True,
                     }
                     users[user_id] = user_data
                     save_json(USERS_FILE, users)
@@ -474,7 +500,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
                         "🆕 新しい友だちを回収しました（follow未受信→初回メッセージで登録）\n"
                         f"名前: {name or '(取得失敗)'}\n"
                         f"ID: {user_id[:8]}\n\n"
-                        "welcomeと特典PDFは今送信しました。"
+                        "welcomeを今送信しました（ライバー希望か代理店希望かを質問中）。"
                     )
 
                 # 最終受信時刻を記録（フォローアップの「会話中スキップ」判定に使う）
@@ -489,6 +515,28 @@ class WebhookHandler(BaseHTTPRequestHandler):
                 if user_data.get("auto_paused") or user_data.get("meeting_scheduled"):
                     print(f"[PAUSED] {user_id[:8]}... (手動対応中、自動応答スキップ)")
                     continue
+
+                # 希望の種別（ライバー / 代理店パートナー）の記録。
+                # welcome の①②③への返答を判定する。流入元アンケートより必ず先。
+                # 判定できなければ聞き返さず通常処理に流す（いきなり質問から入る人がいるため）。
+                if user_data.get("intent_asked") and not user_data.get("intent"):
+                    intent = find_intent(text)
+                    if intent:
+                        user_data["intent"] = intent
+                        user_data["intent_date"] = datetime.now().isoformat()
+                        users[user_id] = user_data
+                        save_json(USERS_FILE, users)
+                        print(f"[INTENT] {user_id[:8]}... -> {intent}")
+                        reply_line_message(reply_token, INTENT_REPLIES[intent], user_id)
+                        name = get_display_name(user_id)
+                        notify_admin(
+                            "🙋 希望の種別が分かりました\n"
+                            f"名前: {name or '(取得失敗)'}\n"
+                            f"ID: {user_id[:8]}\n"
+                            f"希望: {INTENT_LABELS[intent]}\n\n"
+                            "種別に合わせた特典PDFと案内は自動送信済みです。"
+                        )
+                        continue
 
                 # 流入元の記録（まだ未記録のユーザーのみ。初回返答を判定）
                 if not user_data.get("source"):
@@ -528,6 +576,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
                             f"名前: {name or '(取得失敗)'}\n"
                             f"ID: {user_id[:8]}\n"
                             f"希望日時: {slot}\n"
+                            f"希望: {INTENT_LABELS.get(user_data.get('intent'), '種別不明')}\n"
                             f"流入元: {user_data.get('source', '不明')}\n\n"
                             "このLINEチャットから確定の連絡をしてください。\n"
                             "（この人への自動送信は停止済みです）"
@@ -545,7 +594,9 @@ class WebhookHandler(BaseHTTPRequestHandler):
 
                 # 「面談」キーワード → LINE内で日程候補を提示
                 if "面談" in text or "めんだん" in text:
-                    offer, cands = make_meeting_offer()
+                    offer, cands = make_meeting_offer(
+                        meeting_intro(user_data.get("intent"))
+                    )
                     user_data["awaiting_slot"] = True
                     user_data["slot_candidates"] = cands
                     user_data["meeting_offered"] = True
@@ -555,14 +606,16 @@ class WebhookHandler(BaseHTTPRequestHandler):
                     continue
 
                 # キーワード自動応答
-                auto_reply = find_auto_reply(text)
+                auto_reply = find_auto_reply(text, user_data.get("intent"))
                 if auto_reply:
                     count = user_data.get("auto_reply_count", 0) + 1
                     user_data["auto_reply_count"] = count
                     replies = [auto_reply]
                     # 2つ目の質問に答えたタイミングで日程候補も提示（質問だけで離脱させない）
                     if count >= 2 and not user_data.get("meeting_offered"):
-                        offer, cands = make_meeting_offer(MEETING_NUDGE_INTRO)
+                        offer, cands = make_meeting_offer(
+                            meeting_intro(user_data.get("intent"), nudge=True)
+                        )
                         user_data["awaiting_slot"] = True
                         user_data["slot_candidates"] = cands
                         user_data["meeting_offered"] = True
