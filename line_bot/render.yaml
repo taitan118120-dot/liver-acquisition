@@ -13,7 +13,9 @@ services:
         sync: false
       - key: GITHUB_STATE_TOKEN
         sync: false
-      # 代理店パートナー向けリッチメニューのID（rich_menu.py の出力を貼る）
+      # 代理店パートナー向けリッチメニューのID。
+      # 未設定でよい（app.pyがLINEのメニュー一覧から名前で自動解決する）。
+      # 特定のIDに固定したいときだけRenderの環境変数に入れる。
       - key: RICH_MENU_ID_AGENCY
         sync: false
       - key: PORT

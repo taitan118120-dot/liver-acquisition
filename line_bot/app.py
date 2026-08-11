@@ -27,6 +27,7 @@ from messages import (
     find_source, make_meeting_offer, parse_slot_choice, MEETING_BOOKED,
     find_intent, INTENT_LABELS, INTENT_REPLIES, meeting_intro, step_text,
 )
+import rich_menu
 import state_sync
 
 # --- データ保存 ---
@@ -120,17 +121,41 @@ def get_display_name(user_id):
         return ""
 
 
+_agency_rich_menu_id = None
+
+
+def agency_rich_menu_id(refresh=False):
+    """代理店向けリッチメニューのIDを解決する。
+
+    環境変数 RICH_MENU_ID_AGENCY があればそれを使い、無ければ LINE 側の一覧から
+    名前で引いて記憶する。環境変数を手で入れなくても動かすための仕掛けで、
+    「メニュー作成」で作り直したときは refresh=True で引き直す。
+    """
+    global _agency_rich_menu_id
+    if RICH_MENU_ID_AGENCY:
+        return RICH_MENU_ID_AGENCY
+    if _agency_rich_menu_id and not refresh:
+        return _agency_rich_menu_id
+    try:
+        _agency_rich_menu_id = rich_menu.find_rich_menu_id("agency")
+    except Exception as e:
+        print(f"[ERROR] richmenu lookup failed: {e}")
+        return None
+    return _agency_rich_menu_id
+
+
 def link_agency_rich_menu(user_id):
     """代理店希望者のリッチメニューを代理店向けに差し替える。
 
     デフォルト（ライバー向け）は全員に出ているので、ここでリンクした人だけが
     上書きされる。失敗してもデフォルトが出るだけなので会話は止めない。
     """
-    if not RICH_MENU_ID_AGENCY:
-        print("[RICHMENU] RICH_MENU_ID_AGENCY 未設定のため差し替えをスキップ")
+    menu_id = agency_rich_menu_id()
+    if not menu_id:
+        print("[RICHMENU] 代理店メニューが未作成のため差し替えをスキップ")
         return False
 
-    url = f"https://api.line.me/v2/bot/user/{user_id}/richmenu/{RICH_MENU_ID_AGENCY}"
+    url = f"https://api.line.me/v2/bot/user/{user_id}/richmenu/{menu_id}"
     req = Request(url, headers={"Authorization": f"Bearer {LINE_CHANNEL_ACCESS_TOKEN}"},
                   method="POST")
     try:
@@ -320,11 +345,39 @@ def handle_admin_command(text):
             + "\n".join(lines)
         )
 
+    if t in ("メニュー作成", "メニュー更新"):
+        # リッチメニューの作り直しをLINEから実行する。
+        # 画像はリポジトリにコミット済み（assets/）、トークンは本番の環境変数にあるので、
+        # 手元にトークンが無くてもこのコマンドだけで完結する。
+        # 新しいメニューを作ってデフォルトに切り替えたあとで旧メニューを消す。
+        # 逆順にすると、その隙間だけメニューが消えた状態が見えてしまう。
+        old = [m["richMenuId"] for m in rich_menu.list_rich_menus()]
+        try:
+            created = rich_menu.deploy(["liver", "agency"])
+        except Exception as e:
+            return f"❌ メニュー作成に失敗しました\n{e}"
+        if "liver" not in created or "agency" not in created:
+            return (
+                "❌ 一部しか作成できませんでした\n"
+                f"作成できたもの: {', '.join(created) or 'なし'}\n"
+                "Renderのログを確認してください（旧メニューは消していません）"
+            )
+
+        deleted = sum(1 for rid in old if rich_menu.delete_rich_menu(rid))
+        agency_rich_menu_id(refresh=True)
+        return (
+            "✅ リッチメニューを作り直しました\n"
+            f"ライバー向け（デフォルト）: {created['liver'][-6:]}\n"
+            f"代理店向け: {created['agency'][-6:]}\n"
+            f"古いメニューの削除: {deleted}/{len(old)}件\n\n"
+            "続けて「メニュー同期」を送ると、すでに代理店希望と分かっている人にも反映されます"
+        )
+
     if t in ("メニュー同期", "メニュー"):
         # 代理店メニューを用意する前に intent が付いた人へ後追いで差し替える。
         # 何度打っても差し替え済みは飛ばすので、実行が重複しても害はない。
-        if not RICH_MENU_ID_AGENCY:
-            return "RICH_MENU_ID_AGENCY が未設定です。rich_menu.py で作成したIDを環境変数に入れてください"
+        if not agency_rich_menu_id(refresh=True):
+            return "代理店メニューがまだありません。先に「メニュー作成」を送ってください"
         users = load_json(USERS_FILE)
         done = skipped = failed = 0
         for uid, u in users.items():
@@ -522,7 +575,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
                 log_message(user_id, "receive", text)
                 print(f"[MSG] {user_id[:8]}...: {text[:50]}")
 
-                # 管理者コマンド（一覧 / 停止 <ID> / 再開 <ID> / メニュー同期）
+                # 管理者コマンド（一覧 / 停止 <ID> / 再開 <ID> / メニュー作成 / メニュー同期）
                 if ADMIN_USER_ID and user_id == ADMIN_USER_ID:
                     admin_reply = handle_admin_command(text)
                     if admin_reply:

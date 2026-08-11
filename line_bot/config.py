@@ -12,9 +12,10 @@ LINE_CHANNEL_ACCESS_TOKEN = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN", "")
 # 自分のIDは data/message_log.json か Render のログで確認できる
 ADMIN_USER_ID = os.environ.get("LINE_ADMIN_USER_ID", "")
 
-# 代理店パートナー向けリッチメニューのID（rich_menu.py が作成時に表示する）
-# intent が "agency" と分かった時点で、そのユーザーだけこのメニューに差し替える。
-# 未設定なら差し替えをスキップし、全員デフォルト（ライバー向け）のままになる。
+# 代理店パートナー向けリッチメニューのID。**通常は設定しなくてよい**。
+# 未設定なら app.py が LINE のメニュー一覧から名前で自動的に見つける
+# （rich_menu.py の RICH_MENU_IMAGES["agency"]["name"] と突き合わせる）。
+# 特定のIDに固定したいときだけ、ここを環境変数で上書きする。
 RICH_MENU_ID_AGENCY = os.environ.get("RICH_MENU_ID_AGENCY", "")
 
 # 事務所情報・LPのURLはここに置かない。

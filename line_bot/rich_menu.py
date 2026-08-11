@@ -6,12 +6,15 @@ LINE Developers APIを使ってリッチメニューをプログラムで作成�
   liver  … デフォルト。全員に出る。ライバー向け5枠＋「代理店」への入口1枠
   agency … intent が "agency" のユーザーだけに差し替える代理店パートナー向け
 
-差し替えは app.py の link_rich_menu() が LINE の richmenu/link API を叩いて行う。
-そのために agency のリッチメニューIDを環境変数 RICH_MENU_ID_AGENCY に入れること
-（このスクリプトが作成後に表示する）。
+差し替えは app.py の link_agency_rich_menu() が LINE の richmenu/link API を叩いて行う。
+agency のメニューIDは名前（RICH_MENU_IMAGES["agency"]["name"]）で自動解決するので、
+**環境変数の設定は不要**。名前を変えるときは差し替えが効かなくなる点にだけ注意。
 
-使い方:
-    python3 rich_menu_images.py      # 画像を2枚生成
+いちばん簡単な作り直し方は、**管理者のLINEから「メニュー作成」と送ること**。
+本番（Render）にはトークンがあり画像もコミット済みなので、それだけで完結する。
+手元から実行する場合は LINE_CHANNEL_ACCESS_TOKEN が必要:
+
+    python3 rich_menu_images.py      # 画像を2枚生成（デザインを変えたとき）
     python3 rich_menu.py             # 2枚とも作成＋アップロード＋liverをデフォルト化
     python3 rich_menu.py --list      # 既存のリッチメニュー一覧
     python3 rich_menu.py --delete-old  # 既存を消してから作り直す
@@ -199,11 +202,31 @@ def delete_rich_menu(rich_menu_id):
         return False
 
 
+def find_rich_menu_id(menu):
+    """名前で既存のリッチメニューIDを引く（環境変数を使わずに差し替えるため）"""
+    name = RICH_MENU_IMAGES[menu]["name"]
+    for m in list_rich_menus():
+        if m.get("name") == name:
+            return m["richMenuId"]
+    return None
+
+
 def _ensure_image(menu, rebuild=False):
-    """画像が無ければ生成する（rich_menu_images.py と同じ出力先）"""
+    """画像が無ければ生成する（rich_menu_images.py と同じ出力先）
+
+    画像はリポジトリにコミット済みなので、通常は既存ファイルをそのまま返す。
+    生成が必要なのはローカルでデザインを変えるときだけで、本番（Render）には
+    Pillow が入っていないため、そこで生成に回ると分かるようにしてある。
+    """
     path = os.path.join(ASSETS_DIR, f"rich_menu_{menu}.png")
     if rebuild or not os.path.exists(path):
-        from rich_menu_images import build  # 循環importを避けてここで読む
+        try:
+            from rich_menu_images import build  # 循環importを避けてここで読む
+        except ImportError as e:
+            raise RuntimeError(
+                f"画像 {path} が見つからず、生成もできません（{e}）。"
+                "ローカルで python3 rich_menu_images.py を実行してコミットしてください"
+            )
         path = build(menu)
         print(f"画像を生成しました: {path}")
     return path
@@ -228,9 +251,9 @@ def deploy(menus, rebuild_image=False):
     print()
     if "agency" in created:
         print("=" * 60)
-        print("代理店メニューを有効にするには、Renderの環境変数に次を登録して再デプロイ:")
-        print(f"  RICH_MENU_ID_AGENCY={created['agency']}")
-        print("（未設定のあいだ、代理店希望者にもデフォルトのライバー向けメニューが出る）")
+        print(f"代理店メニュー: {created['agency']}")
+        print("app.py は名前で自動的にこのメニューを見つけるので、環境変数の設定は不要。")
+        print("既存の代理店希望者に反映するには、管理者LINEから「メニュー同期」を送ること。")
         print("=" * 60)
     return created
 
