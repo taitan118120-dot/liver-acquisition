@@ -51,12 +51,16 @@ from datetime import datetime
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 POSTS_FILE = os.path.join(SCRIPT_DIR, "threads_posts.json")
 
-# 割合統計のパターンはリポジトリ直下の facts_patterns.py が正本（媒体共通）。
-# 2026-08-09: Threads のキューは実測で違反ゼロだったが、_violations() 自体には
-# 割合統計の検査が無く、X と同じ事故（「9割の副業ライバーは〜」）を止められない
-# 状態だった。潜在的な穴なので同じ正本に繋いでおく。
+# 確定ファクトの禁止パターンはリポジトリ直下の facts_patterns.py が正本（媒体共通）。
+# 2026-08-09: 割合統計だけをここに繋いだ（Threadsの _violations() には割合統計の
+# 検査が無く、X と同じ事故「9割の副業ライバーは〜」を止められない状態だった）。
+# 2026-08-10: 残りの禁止語も COMMON_NG_PATTERNS に集約した。Threads にしか
+# 無かったルール（オフの日の主語・他社下げ等）と X にしか無かったルール
+# （所属数・還元率・取扱外プラットフォーム等）が両側に溜まっていて、
+# 片方に足すともう片方が素通りする状態が続いていたため。
+# ここに残すのは **Threads でしか意味がないルール** だけ。
 sys.path.insert(0, os.path.dirname(SCRIPT_DIR))
-from facts_patterns import ratio_violations  # noqa: E402
+from facts_patterns import common_violations  # noqa: E402
 
 LP_AGENCY = ("https://taitan-pro-lp.netlify.app/agency/"
              "?utm_source=threads&utm_medium=post&utm_campaign=threads_post")
@@ -201,28 +205,10 @@ PROMPT = """あなたはライバー事務所TAITAN PROの代表の隣で4年間
 """
 
 # ── 機械検品 ───────────────────────────────────────────────
-NG_PATTERNS = [
-    (r"手数料", "禁止語「手数料」"),
-    (r"いつでも退所|違約金|いつでも辞め|契約期間", "退所・契約条件への言及"),
-    (r"絶対稼げ|確実に|必ず月|安定して稼|保証", "断定・保証表現"),
-    (r"不労所得|権利収入", "マルチ的表現"),
-    (r"月[0-9０-９]{1,2}万.{0,4}(から|〜|~|以上)?", None),  # 金額は個別判定
-    (r"数万円|十数万|お小遣い程度", "少額表記"),
-    (r"200名以上|約200名|200人以上", "所属数は「200名」固定"),
-    (r"多数輩出|多くの実績|続々と|数百人|何百人|数千", "根拠なしの実績誇張"),
-    (r"(TAITAN PRO|うち|当事務所|事務所)[^。]{0,16}月\s*4\s*日",
-     "「オフの日」はPocochaの制度。事務所の制度として書かない"),
-    (r"多くの事務所|一般的な事務所|他の事務所(では|は)", "他社を下げる書き方"),
-    (r"カーブアウトパートナー", "使用禁止の呼称"),
-    (r"オンライン無料相談", "CTAはLINE導線に統一"),
-    (r"リスナー(?!さん)", "「リスナーさん」と書く"),
-]
-
-# 「月◯万」で許可されるのは実測レンジのみ
-ALLOWED_MONEY = [
-    r"月20〜30万", r"月20~30万", r"月20-30万", r"20〜30万円", r"20万〜30万",
-    r"15〜20万", r"30〜40万", r"3桁",
-]
+# 確定ファクト系の禁止語は facts_patterns.COMMON_NG_PATTERNS（媒体共通の正本）。
+# ここに書くのは「Threadsに出すときだけ事故になる」ものだけ。
+# 事務所の事実に関するルールをここに足すと X 側が素通りするので、必ず共通側へ。
+THREADS_NG_PATTERNS = []
 
 PROMO_TOKENS = [r"TAITAN PRO", r"還元率", r"所属.{0,3}200", r"マネージャー", r"サポート体制", r"提携"]
 
@@ -244,28 +230,10 @@ def _violations(text, angle):
     if n < 25:
         v.append(f"短すぎ({n}字)")
 
-    for pat, label in NG_PATTERNS:
-        if label is None:
-            continue
-        if re.search(pat, text):
-            v.append(label)
-
-    # 出典なしの割合統計（「9割が挫折」「9割の副業ライバーは〜」型）
-    v += [reason for reason, _hit in ratio_violations(text)]
-
-    # 金額表記：許可レンジ以外の「月◯万」を弾く
-    for m in re.finditer(r"月\s*([0-9０-９]{1,3})\s*万", text):
-        around = text[max(0, m.start() - 4): m.end() + 6]
-        if any(re.search(a, around) for a in ALLOWED_MONEY):
-            continue
-        try:
-            amount = int(m.group(1).translate(str.maketrans("０１２３４５６７８９", "0123456789")))
-        except ValueError:
-            continue
-        if amount < 15:
-            v.append(f"少額表記「月{amount}万」")
-        else:
-            v.append(f"未確定の金額表記「月{amount}万」")
+    # 確定ファクト（禁止語・割合統計・金額・LINEリンク）は共通の正本に委譲。
+    # 金額は strict＝確定レンジ表記以外の「月◯万」も弾く（Threadsだけの運用）。
+    v += [reason for reason, _hit in common_violations(
+        text, extra_patterns=THREADS_NG_PATTERNS, strict_money=True)]
 
     # 宣伝密度
     promo = sum(1 for p in PROMO_TOKENS if re.search(p, text))

@@ -20,10 +20,20 @@ Threads の threads/threads_content.py `_violations()` に相当するものを 
      には検品があるのに、X の投稿本文だけ素通りだった。
 
 このモジュールの位置づけ:
-  - 割合統計・収入レンジの正本パターンは facts_patterns.py（媒体共通）
-  - X投稿本文にだけ当てる禁止語はこのファイルの NG_PATTERNS
+  - 確定ファクトの禁止語・割合統計・収入レンジの正本は facts_patterns.py（媒体共通）
+  - X投稿本文にだけ当てる禁止語はこのファイルの X_NG_PATTERNS
   - cloud_evolve.py が生成時に、cloud_post.py が投稿直前に、両方でこれを通す
     （生成時だけだと既存キュー585本が素通りする。実際に違反が残っていた）
+
+2026-08-10 の共通化:
+  ここにあった禁止語20件を精査したところ、**1件も X 固有ではなかった**
+  （所属数・還元率・取扱外プラットフォーム・リスナーさん…すべて媒体を問わない
+  確定ファクト）。逆に Threads にしか無かったルール（オフの日の主語・他社下げ・
+  「200名以上」・数万円/お小遣い程度）はXでは素通りしていた。
+  そこで全部 facts_patterns.COMMON_NG_PATTERNS に移し、X_NG_PATTERNS は
+  「Xでしか意味がないルール」を入れる枠として空で残してある。
+  NG_PATTERNS は共通＋X固有の合成で、cloud_evolve.check_facts_coverage が
+  ラベル一覧としてこれを読むので、名前と中身（全ラベルを含むこと）は変えない。
 
 使い方:
   python3 x_post_guard.py                     # posts/twitter_posts.json を全走査
@@ -35,54 +45,23 @@ Threads の threads/threads_content.py `_violations()` に相当するものを 
 import argparse
 import json
 import os
-import re
 import sys
 
-from facts_patterns import (
-    line_link_violations,
-    money_violations,
-    ratio_violations,
-)
+from facts_patterns import COMMON_NG_PATTERNS, common_violations
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 POSTS_FILE = os.path.join(BASE_DIR, "posts", "twitter_posts.json")
 RECENT_IDS_FILE = os.path.join(BASE_DIR, "data", "recent_post_ids.txt")
 
-# ── X投稿本文の禁止パターン ───────────────────────────────────
-# 旧値ではなく「フィールド」で組む
-# （2026-07-29 の教訓: `150名` を狙うと `50名` を取りこぼす）
-NG_PATTERNS = [
-    (r"所属(?:ライバー)?\s*(?!200\s*[名人])[0-9]{1,4}\s*[名人]", "所属数が200名以外"),
-    (r"(?:累計|総勢|延べ)\s*[0-9]{1,4}\s*[名人]", "所属数の旧表記（累計/総勢）"),
-    (r"統括|傘下", "代理店の関係が「提携」でない（統括/傘下）"),
-    (r"現役(?:プレイヤー|ライバー)", "代表は「元」Pococha S帯（現役表記はbioと矛盾）"),
-    # [[feedback_no_fee_free_claim]] 報酬は「還元率100%+α」とだけ書く。
-    # 「他社は手数料を引く」という比較も含めて単語ごと使わない。
-    (r"手数料", "禁止語「手数料」"),
-    (r"マージン\s*[0０]\s*[%％]|マージン(?:ゼロ|なし|無し|0円)|ノーマージン",
-     "「マージンゼロ」＝手数料なしの同義語"),
-    # [[feedback_no_free_exit_claim]] 2年契約があるので契約期間自体も書かない
-    (r"違約金(?:なし|無し|[0０])|いつでも(?:解約|退所|辞め|契約解除)|契約期間",
-     "「いつでも退所」「違約金なし」系／契約期間への言及"),
-    (r"還元率\s*100\s*[%％](?!\s*\+\s*α)", "還元率が「100%+α」になっていない"),
-    (r"還元率\s*(?!100)[0-9]{2,3}\s*[%％]", "還元率が確定値でない"),
-    # [[feedback_note_target_platforms]] 取扱は Pococha・TikTok LIVE・17LIVE の3つ
-    (r"IRIAM|イリアム|SHOWROOM|ショールーム|ふわっち|REALITY", "取扱外プラットフォーム"),
-    (r"他アプリ(?:も)?多数", "取扱は Pococha・TikTok LIVE・17LIVE の3つで統一"),
-    # [[feedback_leadmagnet_first]] 導線は特典PDF→LINE登録に統一
-    (r"DM(?:で|を)?(?:ご相談|ください|下さい|お待ち)|お気軽にDM|DMお願い",
-     "CTAがDM誘導（導線は特典PDF→LINE登録に統一）"),
-    (r"オンライン無料相談", "「オンライン無料相談」は使わない"),
-    (r"カーブアウト|ccarveout", "使用禁止ブランド（TAITAN PROで統一）"),
-    (r"Pococha新人期スタートダッシュ", "旧・特典PDF名"),
-    (r"lit\.link", "リンクが lit.link（公式LINEでない）"),
-    # [[feedback_listener_san]] 全文面でリスナーは「リスナーさん」
-    (r"リスナー(?!さん)", "リスナーの呼び捨て"),
-    (r"絶対稼げ|確実に稼|必ず月|保証", "断定・保証表現"),
-    (r"不労所得|権利収入", "マルチ的表現"),
-    # [[feedback_dont_make_up_numbers]]
-    (r"多数輩出|多くの実績|続々と|数百人|何百人|数千", "根拠なしの実績誇張"),
-]
+# ── X固有の禁止パターン ───────────────────────────────────────
+# 「Xに出すときだけ事故になる」ものだけをここに書く。
+# 事務所の確定ファクト（所属数・還元率・取扱プラットフォーム・呼称など）は
+# 媒体を問わないので facts_patterns.COMMON_NG_PATTERNS 側に置くこと。
+# ここに書くと Threads/プロフィール側が素通りする＝この共通化で潰した事故が戻る。
+X_NG_PATTERNS = []
+
+# 外部（cloud_evolve.check_facts_coverage）はこれを「Xで当たる全ラベル」として読む。
+NG_PATTERNS = list(COMMON_NG_PATTERNS) + X_NG_PATTERNS
 
 
 def post_body(post):
@@ -94,40 +73,18 @@ def post_body(post):
 
 def violations(text):
     """投稿1本の違反ラベルのリストを返す。空なら合格。"""
-    if not text:
-        return []
-    # 「9 割」「9　割」のような空白挿入で逃げられないよう、詰めた文字列でも当てる
-    flat = re.sub(r"\s+", "", text)
-    out = []
-
-    for pat, label in NG_PATTERNS:
-        if re.search(pat, text) or re.search(pat, flat):
-            out.append(label)
-
-    for reason, _hit in ratio_violations(text) or ratio_violations(flat):
-        out.append(reason)
-    for reason, _hit in money_violations(text):
-        out.append(reason)
-    for reason, _hit in line_link_violations(text):
-        out.append(reason)
-
-    return out
+    return [reason for reason, _hit in details(text)]
 
 
 def details(text):
-    """違反ラベルと該当箇所の組を返す（監査レポート用）。"""
-    if not text:
-        return []
-    flat = re.sub(r"\s+", "", text)
-    out = []
-    for pat, label in NG_PATTERNS:
-        m = re.search(pat, text) or re.search(pat, flat)
-        if m:
-            out.append((label, m.group(0)[:40]))
-    out += ratio_violations(text) or ratio_violations(flat)
-    out += money_violations(text)
-    out += line_link_violations(text)
-    return out
+    """違反ラベルと該当箇所の組を返す（監査レポート用）。
+
+    空白挿入での回避（「9 割」「手　数　料」）は common_violations 側で塞いである。
+    金額は strict にしない：Xのキューには「月20万稼ぐ」「月100万」のように
+    確定レンジの内側や実績の引用が37本あり、Threads と同じ
+    「確定レンジ表記以外は全部NG」を当てると正常な在庫まで落ちるため。
+    """
+    return common_violations(text, extra_patterns=X_NG_PATTERNS)
 
 
 def _load_recent_ids():

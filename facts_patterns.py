@@ -16,6 +16,21 @@
   Threads・X には反映されなかった）。だから正本はこの1ファイルだけにして、
   各guardはここを import する。
 
+2026-08-10 の拡張:
+  上の「必ずどれか1本が古くなる」が、割合統計だけを共通化したあとも
+  そのまま残っていた。Threads(threads_content.NG_PATTERNS) と
+  X(x_post_guard.NG_PATTERNS) は別々の禁止語リストを持っていて、
+  実際に **片方にしか無いルール** が両側に溜まっていた:
+    - Threads にしか無かった … リスナーさん呼び捨て以外の
+      「オフの日の主語」「他社を下げる書き方」「数万円/お小遣い程度」
+      「200名以上/約200名」
+    - X にしか無かった … 所属数・累計/総勢・統括/傘下・現役表記・
+      マージンゼロ・還元率・取扱外プラットフォーム・DM誘導・
+      旧特典PDF名・lit.link・不労所得/権利収入・実績誇張
+  どちらも媒体と無関係な「確定ファクト」なので COMMON_NG_PATTERNS に集約した。
+  各媒体に残すのは **その媒体でしか意味がないルール** だけ
+  （Threads の文字数上限・宣伝密度・締めの問いかけ等）。
+
 このモジュールは **標準ライブラリのみ** に依存する。
 requests 等を足すと、tweepy しか入っていない auto_post.yml から
 import できなくなる（＝投稿ワークフローが落ちる）ので絶対に足さない。
@@ -40,10 +55,72 @@ RATIO_SUBJECT = re.compile(
 RATIO_WINDOW = 40
 
 # ── 収入レンジ ────────────────────────────────────────────────
-MONEY_LOW = re.compile(r"月\s*([0-9]{1,2})\s*万")
+# 全角数字も拾う（「月１０万」で逃げられないように）。3桁まで見るのは
+# 「月100万」を strict 判定に載せるため。
+MONEY_LOW = re.compile(r"月\s*([0-9０-９]{1,3})\s*万")
+_ZEN2HAN = str.maketrans("０１２３４５６７８９", "0123456789")
 # 確定レンジ（3ヶ月15〜20万 / 6ヶ月30〜40万 / B帯20〜30万）より下は書かない
 # [[feedback_income_figures]]: 月1〜3万等の少額表記は今後全媒体で書かない
 MONEY_FLOOR = 15
+
+# strict モードで「月◯万」の記載を許すレンジ表記。
+# 下限(MONEY_FLOOR)は全媒体共通だが、「確定レンジ以外の金額は一切書かない」
+# という強い縛りは Threads だけの運用なので strict=True で明示的に有効化する。
+# （Xのキューには「月20万稼ぐ」「月100万」等が37本あり、これらは確定レンジの
+#   内側/実績の引用なので、Xまで strict にすると正常な在庫を落としてしまう）
+ALLOWED_MONEY = [
+    r"月20〜30万", r"月20~30万", r"月20-30万", r"20〜30万円", r"20万〜30万",
+    r"15〜20万", r"30〜40万", r"3桁",
+]
+
+# ── 媒体共通の禁止パターン ────────────────────────────────────
+# ここに入れてよいのは「どの媒体に出しても等しく事故になるもの」だけ。
+# 旧値ではなく **フィールド** で組む（2026-07-29 の教訓: `150名` を狙うと
+# `50名` を取りこぼす）。
+# 【重要】ここにルールを足したら cloud_evolve.py の FACTS と FACTS_COVERAGE に
+# 同じ項目を足すこと（`python3 cloud_evolve.py --check-facts` で検査できる）。
+COMMON_NG_PATTERNS = [
+    # ── 所属数（200名固定）──
+    (r"所属(?:ライバー)?\s*(?!200\s*[名人])[0-9]{1,4}\s*[名人]", "所属数が200名以外"),
+    (r"200\s*[名人]\s*以上|約\s*200\s*[名人]", "所属数は「200名」固定（以上/約を付けない）"),
+    (r"(?:累計|総勢|延べ)\s*[0-9]{1,4}\s*[名人]", "所属数の旧表記（累計/総勢）"),
+    # ── 立場・関係の表記 ──
+    (r"統括|傘下", "代理店の関係が「提携」でない（統括/傘下）"),
+    (r"現役(?:プレイヤー|ライバー)", "代表は「元」Pococha S帯（現役表記はbioと矛盾）"),
+    # [[feedback_no_fee_free_claim]] 報酬は「還元率100%+α」とだけ書く。
+    # 「他社は手数料を引く」という比較も含めて単語ごと使わない。
+    (r"手数料", "禁止語「手数料」"),
+    (r"マージン\s*[0０]\s*[%％]|マージン(?:ゼロ|なし|無し|0円)|ノーマージン",
+     "「マージンゼロ」＝手数料なしの同義語"),
+    # [[feedback_no_free_exit_claim]] 2年契約があるので契約期間自体も書かない
+    (r"違約金|いつでも(?:解約|退所|辞め|契約解除)|契約期間",
+     "「いつでも退所」「違約金なし」系／契約期間への言及"),
+    (r"還元率\s*100\s*[%％](?!\s*\+\s*α)", "還元率が「100%+α」になっていない"),
+    (r"還元率\s*(?!100)[0-9]{2,3}\s*[%％]", "還元率が確定値でない"),
+    # [[feedback_note_target_platforms]] 取扱は Pococha・TikTok LIVE・17LIVE の3つ。
+    # 媒体を問わない事務所の確定ファクトなので共通側に置く。
+    (r"IRIAM|イリアム|SHOWROOM|ショールーム|ふわっち|REALITY", "取扱外プラットフォーム"),
+    (r"他アプリ(?:も)?多数", "取扱は Pococha・TikTok LIVE・17LIVE の3つで統一"),
+    # ── 導線 [[feedback_leadmagnet_first]] 特典PDF→LINE登録に統一 ──
+    (r"DM(?:で|を)?(?:ご相談|ください|下さい|お待ち)|お気軽にDM|DMお願い",
+     "CTAがDM誘導（導線は特典PDF→LINE登録に統一）"),
+    (r"オンライン無料相談", "「オンライン無料相談」は使わない"),
+    (r"カーブアウト|ccarveout", "使用禁止ブランド（TAITAN PROで統一）"),
+    (r"Pococha新人期スタートダッシュ", "旧・特典PDF名"),
+    (r"lit\.link", "リンクが lit.link（公式LINEでない）"),
+    # ── 表現 ──
+    # [[feedback_listener_san]] 全文面でリスナーは「リスナーさん」
+    (r"リスナー(?!さん)", "リスナーの呼び捨て"),
+    (r"絶対稼げ|確実に|必ず月|安定して稼|保証", "断定・保証表現"),
+    (r"不労所得|権利収入", "マルチ的表現"),
+    # [[feedback_dont_make_up_numbers]]
+    (r"多数輩出|多くの実績|続々と|数百人|何百人|数千", "根拠なしの実績誇張"),
+    (r"数万円|十数万|お小遣い程度", "少額表記（数万円/お小遣い程度）"),
+    # [[feedback_pococha_off_day]] 「オフの日」はPococha側の制度。主語を間違えない
+    (r"(TAITAN PRO|うち|当事務所|事務所)[^。]{0,16}月\s*4\s*日",
+     "「オフの日」はPocochaの制度。事務所の制度として書かない"),
+    (r"多くの事務所|一般的な事務所|他の事務所(では|は)", "他社を下げる書き方"),
+]
 
 
 def ratio_violations(text):
@@ -65,14 +142,30 @@ def ratio_violations(text):
     return out
 
 
-def money_violations(text):
-    """確定レンジ未満の少額表記を検出して [(reason, hit), ...] を返す。"""
+def money_violations(text, strict=False):
+    """金額表記の違反を検出して [(reason, hit), ...] を返す。
+
+    既定（strict=False）は下限だけを見る＝月15万未満は全媒体で禁止。
+    strict=True では確定レンジ（ALLOWED_MONEY）以外の「月◯万」も弾く。
+    Threads は生成物をレンジ表記だけに寄せたいので strict で運用する。
+    """
     if not text:
         return []
+    out = []
     for m in MONEY_LOW.finditer(text):
-        if int(m.group(1)) < MONEY_FLOOR:
-            return [(f"確定レンジ未満の少額表記（月{MONEY_FLOOR}万が下限）", m.group(0))]
-    return []
+        try:
+            amount = int(m.group(1).translate(_ZEN2HAN))
+        except ValueError:
+            continue
+        if amount < MONEY_FLOOR:
+            out.append((f"確定レンジ未満の少額表記（月{MONEY_FLOOR}万が下限）", m.group(0)))
+            continue
+        if not strict:
+            continue
+        around = text[max(0, m.start() - 4): m.end() + 6]
+        if not any(re.search(a, around) for a in ALLOWED_MONEY):
+            out.append((f"未確定の金額表記「月{amount}万」", m.group(0)))
+    return out
 
 
 def line_link_violations(text):
@@ -81,4 +174,41 @@ def line_link_violations(text):
     for m in re.finditer(r"https?://lin\.ee/\S+", text or ""):
         if m.group(0).rstrip("/。、）)") != LINE_ALLOWED:
             out.append(("許可リスト外のLINEリンク", m.group(0)))
+    return out
+
+
+def ng_violations(text, patterns=None):
+    """禁止パターンを当てて [(reason, hit), ...] を返す。
+
+    生テキストに加えて、空白を全部詰めた文字列にも当てる。
+    「9 割」「手　数　料」のように空白を挟むだけで検品を抜けられるのを塞ぐため
+    （もともとXにしか無かった処理。共通化してThreadsにも効かせる）。
+    """
+    if not text:
+        return []
+    if patterns is None:
+        patterns = COMMON_NG_PATTERNS
+    flat = re.sub(r"\s+", "", text)
+    out = []
+    for pat, label in patterns:
+        m = re.search(pat, text) or re.search(pat, flat)
+        if m:
+            out.append((label, m.group(0)[:40]))
+    return out
+
+
+def common_violations(text, extra_patterns=(), strict_money=False):
+    """媒体共通の確定ファクト検品。[(reason, hit), ...] を返す。
+
+    各媒体の guard はこれを呼び、自分の媒体でしか意味がないルール
+    （文字数上限・宣伝密度など）だけを自前で足す。
+    extra_patterns には媒体固有の (pattern, label) を渡せる。
+    """
+    if not text:
+        return []
+    flat = re.sub(r"\s+", "", text)
+    out = ng_violations(text, list(COMMON_NG_PATTERNS) + list(extra_patterns))
+    out += ratio_violations(text) or ratio_violations(flat)
+    out += money_violations(text, strict=strict_money)
+    out += line_link_violations(text)
     return out
