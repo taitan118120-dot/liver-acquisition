@@ -102,23 +102,25 @@ FRAGMENT_CHECK_DOMAINS = (
 # チェックがあっても**広告のアンカーは1本も見ていなかった**。ここに明示して監視下に置く。
 # 正本は ads/google_ads_設計書.md §5-5「サイトリンク詳細」。
 # サイトリンクを足す・URLを変えるときは、設計書と**この配列の両方**を更新すること。
+# 2026-08-11: 全10本を管理画面で実物照合し、この配列を実値に更新した（推定は残っていない）。
 AD_SITELINK_URLS = [
     # アカウント単位2本（A・C・D に併走配信）
-    # ⚠️ ベースURLは管理画面で未照合（設計書 §5-5 に記録なし）。beginner LP を想定して
-    #    監視している。次に管理画面を開くとき実物を採取し、違っていたらここを直すこと。
-    "https://taitan-pro-lp.netlify.app/beginner/#campaign",
+    # #flow は 2026-08-11 に #campaign から変更した。#campaign は期間限定セクションで
+    # 枠ごと消される運用だったため、常設の FLOW セクションへ移した（設計書 §5-5）。
+    "https://taitan-pro-lp.netlify.app/beginner/#flow",
     "https://taitan-pro-lp.netlify.app/beginner/#network",
     # キャンペーンC単位4本（2026-07-23 に管理画面で実物照合済み）
     "https://taitan-pro-lp.netlify.app/beginner/#cases",
     "https://taitan-pro-lp.netlify.app/beginner/#reward",
     "https://taitan-pro-lp.netlify.app/beginner/#reasons",
     "https://taitan-pro-lp.netlify.app/beginner/#faq",
-    # キャンペーンD単位4本（文言確定・管理画面未登録＝設計書 §0-13「残作業その2」）。
-    # 登録前でも着地先の実在は先に担保しておく。
+    # キャンペーンD単位4本（2026-08-04 登録・稼働中。2026-08-11 に確定案へ揃える上書き修正）
     "https://taitan-pro-lp.netlify.app/agency/#gift",
     "https://taitan-pro-lp.netlify.app/agency/#reward",
     "https://taitan-pro-lp.netlify.app/agency/#reasons",
     "https://taitan-pro-lp.netlify.app/agency/#faq",
+    # ⚠️ #campaign はサイトリンクの着地先ではなくなったが、LP側のセクションは残してある。
+    #    再びサイトリンクを向けるときはここに戻すこと。
 ]
 
 # 読者が踏むリンクではないURL（preconnectヒント・JSON-LDの@context等）
