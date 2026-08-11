@@ -103,6 +103,9 @@ FRAGMENT_CHECK_DOMAINS = (
 # 正本は ads/google_ads_設計書.md §5-5「サイトリンク詳細」。
 # サイトリンクを足す・URLを変えるときは、設計書と**この配列の両方**を更新すること。
 # 2026-08-11: 全10本を管理画面で実物照合し、この配列を実値に更新した（推定は残っていない）。
+# 2026-08-11（同日追記）: キャンペーンA にキャンペーン単位4本を新規登録し、稼働本数は 10→14 本
+#   になった。ただしAの4本はCの4本と**同じURL**（#cases #reward #reasons #faq）なので、
+#   この配列に足す行はない。URLの重複を避けるため、本数ではなく「着地先の集合」を管理している。
 AD_SITELINK_URLS = [
     # アカウント単位2本（A・C・D に併走配信）
     # #flow は 2026-08-11 に #campaign から変更した。#campaign は期間限定セクションで
@@ -110,6 +113,7 @@ AD_SITELINK_URLS = [
     "https://taitan-pro-lp.netlify.app/beginner/#flow",
     "https://taitan-pro-lp.netlify.app/beginner/#network",
     # キャンペーンC単位4本（2026-07-23 に管理画面で実物照合済み）
+    # ＋ キャンペーンA単位4本（2026-08-11 登録。文言は違うが着地先URLはCと同一の4本）
     "https://taitan-pro-lp.netlify.app/beginner/#cases",
     "https://taitan-pro-lp.netlify.app/beginner/#reward",
     "https://taitan-pro-lp.netlify.app/beginner/#reasons",
