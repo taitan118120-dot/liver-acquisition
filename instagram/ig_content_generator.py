@@ -212,7 +212,7 @@ def generate_caption(article, dry_run=False):
 ⑦CTA（固定文）
    - 必ず以下の3行を改行込みで入れる（一字一句変えない）:
      ━━━━━━━━━━━━━━━
-     ✨ {config.OFFICE_NAME}の無料相談はプロフィール（@taitan_pro）のリンクから
+     ✨ {config.OFFICE_NAME}の無料相談はプロフィール（{config.OFFICE_INSTAGRAM}）のリンクから
      ━━━━━━━━━━━━━━━
 
 ⑧保存促進＋ハッシュタグ
@@ -231,7 +231,7 @@ def generate_caption(article, dry_run=False):
 - 絵文字は1ブロックにつき最大1個。フック行と実践リストの先頭以外では使わない。
    許可絵文字のみ: ✨📌✅━ あとは🎯💡のみOK。😌🤗😊💕🚀💰📈🌟など顔文字・装飾系は禁止。
 - URL（https://... lin.ee/... 等）絶対に書かない。リンクは「プロフィールから」のみ。
-- LINE IDや@から始まる識別子は @taitan_pro 以外書かない。
+- LINE IDや@から始まる識別子は {config.OFFICE_INSTAGRAM} 以外書かない。
 - 「絶対稼げる」「必ず儲かる」など断定的な誇大表現を避ける（景表法対策）
 - 「手数料なし」「手数料0円」「手数料ゼロ」は書かない。報酬の話は「還元率100%+α」とだけ書く。
 - 「いつでも退所OK」「違約金なし」「違約金0」「いつでも辞められる」など、退所・契約解除が自由だと示す表現は禁止（契約条件は面談で説明する、とだけ書く）。
@@ -341,11 +341,22 @@ _BANNED_EMOJI_RE = re.compile(
 )
 
 # 必ず入れたい固定CTAブロック（フォロー → 保存 → 無料相談の順）
+# ハンドルは config.OFFICE_INSTAGRAM が正本。ここに直書きすると、事務所公式が
+# @taitan_pro → @taitan_pro7 に変わった 2026-08-08 のように、生成物だけが
+# 未運用アカウントへフォロワーを流し続ける（実際に未投稿キュー10件が汚染された）。
 _REQUIRED_CTA = (
     "━━━━━━━━━━━━━━━\n"
-    "👉 @taitan_pro をフォローして最新情報をチェック\n"
-    f"✨ {config.OFFICE_NAME}の無料相談はプロフィール（@taitan_pro）のリンクから\n"
+    f"👉 {config.OFFICE_INSTAGRAM} をフォローして最新情報をチェック\n"
+    f"✨ {config.OFFICE_NAME}の無料相談はプロフィール（{config.OFFICE_INSTAGRAM}）のリンクから\n"
     "━━━━━━━━━━━━━━━"
+)
+
+# 事務所公式に紛らわしいハンドル（末尾の数字だけ違う @taitan_pro など）を正本へ寄せる。
+# Geminiは旧CTAをそのまま再生産するので、プロンプトの指示だけでは塞げない。
+_OFFICE_HANDLE = config.OFFICE_INSTAGRAM if config.OFFICE_INSTAGRAM.startswith("@") \
+    else "@" + config.OFFICE_INSTAGRAM
+_OFFICE_HANDLE_RE = re.compile(
+    r"@" + re.escape(_OFFICE_HANDLE[1:].rstrip("0123456789")) + r"\d*(?![\w.])"
 )
 
 _SAVE_HINT = "📌 後で見返せるように保存推奨"
@@ -412,6 +423,10 @@ def _polish_caption(text):
             break
     body_part = "\n".join(lines[:tag_start]).rstrip()
     tag_part = "\n".join(lines[tag_start:]).strip()
+
+    # 4.5 事務所ハンドルの表記ゆれを正本へ寄せる（CTA判定より前に通す）
+    body_part = _OFFICE_HANDLE_RE.sub(_OFFICE_HANDLE, body_part)
+    tag_part = _OFFICE_HANDLE_RE.sub(_OFFICE_HANDLE, tag_part)
 
     # 5. CTAが含まれているかチェック。不足/破損していれば差し替え
     has_cta = (
@@ -932,7 +947,8 @@ def _get_font(weight, size):
     return ImageFont.load_default()
 
 
-def _overlay_text_on_image(image_path, title, catchcopy, category="BEGINNER", brand="@taitan_pro"):
+def _overlay_text_on_image(image_path, title, catchcopy, category="BEGINNER",
+                           brand=config.OFFICE_NAME):
     """生成された背景画像にPillowで日本語タイトル＋キャッチコピーを合成。
     Instagramで保存されるカルーセル投稿を意識したバズる構成:
       [カテゴリバッジ] → [HUGEタイトル（マーカーハイライト）] → [区切り] → [キャッチコピー] → [ブランド名]

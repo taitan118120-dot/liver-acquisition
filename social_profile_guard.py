@@ -87,6 +87,21 @@ X_USERNAME = "taitan_LIVER"
 IG_GRAPH = "https://graph.facebook.com/v21.0"
 THREADS_GRAPH = "https://graph.threads.net/v1.0"
 
+# ── 事務所IGハンドルの正本 ────────────────────────────────────
+# config.OFFICE_INSTAGRAM が唯一の正本。番犬側にも期待username を手書きしていたので
+# 一本化した（片方だけ直せる状態そのものが、この番犬が潰すべき欠陥）。
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+import config  # noqa: E402
+
+OFFICE_IG_HANDLE = ("@" + config.OFFICE_INSTAGRAM.lstrip("@"))
+OFFICE_IG_USERNAME = OFFICE_IG_HANDLE[1:]
+# 末尾の数字だけが違う紛らわしいハンドル（@taitan_pro / @taitan_pro77）まで拾う。
+# 「@taitan_pro が無い」ではなく「正本と一致しない事務所ハンドル」を検知したいので、
+# 旧値を直書きせずに正本から機械的に組む（[[feedback_verify_before_asserting]]）。
+OFFICE_HANDLE_LOOKALIKE = re.compile(
+    r"@" + re.escape(OFFICE_IG_USERNAME.rstrip("0123456789")) + r"\d*(?![\w.])")
+
 # ── 禁止パターン ──────────────────────────────────────────────
 # 確定ファクトの「常設grepパターン」を、旧値ではなく **フィールド** で組む
 # （2026-07-29 の教訓: `150名` を狙うと `50名` を取りこぼす）
@@ -366,6 +381,87 @@ def audit_consumers(canon):
     return out
 
 
+# ── 5軸目: 生成側のハンドル検査（2026-08-10 追加）──────────────────
+# 背景: 事務所公式が @taitan_pro7 に確定（2026-08-08）した後も、
+#   instagram/ig_content_generator.py と ig_viral_generator.py は @taitan_pro を
+#   直書きしたままで、キャプションのCTAと画像ウォーターマークが
+#   **未運用の別アカウント** へフォロワーを誘導し続けていた。
+#   未投稿キュー10件（ig_auto_065〜074）は既にその文面で待機していた。
+#   この番犬は「プロフィールと固定ポスト」しか見ていなかったので、
+#   これから公開される投稿が汚染されていても一切鳴かなかった。
+# → 公開テキストを **作る側** も毎日読む。投稿前に直せる場所なので NG（exit 1）扱い。
+GENERATORS = [
+    "instagram/ig_content_generator.py",
+    "instagram/ig_viral_generator.py",
+    "threads/threads_content.py",
+]
+POST_QUEUE = "instagram/ig_posts.json"
+
+
+def _handle_mismatches(text):
+    """テキスト中の「正本と一致しない事務所ハンドル」を返す。"""
+    return [m.group(0) for m in OFFICE_HANDLE_LOOKALIKE.finditer(text or "")
+            if m.group(0) != OFFICE_IG_HANDLE]
+
+
+def audit_generators():
+    out = []
+
+    # (1) 正本ファイルが config と同じアカウントを設計対象にしているか。
+    #     ここがズレると、以降の突合が「別アカウントの正本」との比較になる
+    key = f"ig_{OFFICE_IG_USERNAME}"
+    if key not in EXPECTED_FIELDS:
+        out.append({
+            "where": "config.OFFICE_INSTAGRAM",
+            "reason": f"正本の媒体キー {key} が EXPECTED_FIELDS に無い"
+                      f"（config だけ変えて marketing/social_profiles.md と番犬が取り残されている）",
+            "hit": f"既知の媒体キー: {', '.join(sorted(EXPECTED_FIELDS))}"})
+
+    # (2) 生成スクリプトの直書き。**文字列リテラルだけ** を見るので、
+    #     経緯を説明する `#` コメントや docstring の外の記述は誤検知しない
+    for rel in GENERATORS:
+        path = os.path.join(BASE_DIR, rel)
+        where = f"生成スクリプト {rel}"
+        if not os.path.exists(path):
+            out.append({"where": where, "reason": "ファイルが見つからない（リネーム／削除された？）",
+                        "hit": ""})
+            continue
+        tree = _parse_module(path)
+        if tree is None:
+            out.append({"where": where, "reason": "Pythonとして解析できない（構文エラー？）", "hit": ""})
+            continue
+        for lit in _string_literals(tree):
+            for hit in _handle_mismatches(lit):
+                out.append({
+                    "where": where,
+                    "reason": f"正本でないIGハンドルを直書きしている"
+                              f"（config.OFFICE_INSTAGRAM = {OFFICE_IG_HANDLE} を参照すること）",
+                    "hit": f"{hit} … {lit.strip()[:60]}"})
+
+    # (3) 未投稿キュー。既に投稿済みのキャプションは Graph API で編集できないので
+    #     対象外（main() が過去投稿を warn として別途拾う）。未投稿分は今なら直せる
+    qpath = os.path.join(BASE_DIR, POST_QUEUE)
+    if not os.path.exists(qpath):
+        out.append({"where": f"投稿キュー {POST_QUEUE}", "reason": "ファイルが見つからない", "hit": ""})
+        return out
+    try:
+        queue = json.load(open(qpath, encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        out.append({"where": f"投稿キュー {POST_QUEUE}", "reason": "JSONとして読めない",
+                    "hit": f"{type(e).__name__}: {e}"[:120]})
+        return out
+    for item in queue:
+        if item.get("posted"):
+            continue
+        for hit in _handle_mismatches(item.get("caption", "")):
+            out.append({
+                "where": f"投稿キュー {POST_QUEUE} / {item.get('id', '?')}",
+                "reason": f"未投稿キャプションが正本でないIGハンドルを含む"
+                          f"（このまま投稿されると {hit} へ誘導される）",
+                "hit": f"{hit} … {item.get('title', '')[:40]}"})
+    return out
+
+
 def norm(s):
     return re.sub(r"\s+", "", s or "")
 
@@ -477,6 +573,7 @@ def load_canon():
     canon = parse_canonical(problems=problems)
     problems += audit_canonical(canon)
     problems += audit_consumers(canon)
+    problems += audit_generators()
     return canon, problems
 
 
@@ -492,7 +589,8 @@ def print_canon(canon, problems):
                 continue
             body = v.replace("\n", "\n        ")
             print(f"  [{f}] {len(v)}字\n        {body}")
-    print(f"\n[正本＋反映スクリプトの検査] 問題 {len(problems)} 件")
+    print(f"\n[正本＋反映スクリプト＋生成側の検査] 問題 {len(problems)} 件"
+          f"（事務所IG正本 = {OFFICE_IG_HANDLE}）")
     for p in problems:
         print(f"  ❌ {p['where']}: {p['reason']}" + (f"\n     → {p['hit']}" if p["hit"] else ""))
 
@@ -515,8 +613,10 @@ def main():
         ("Threads @taitanblog", "threads", fetch_threads, "taitanblog",
          ["name", "bio"], ["bio"]),
         # 事務所公式は @taitan_pro7（2026-08-08 ユーザー確定）。
-        # @taitan_pro は投稿が一度も流れていない別アカウントで、運用しない
-        ("IG @taitan_pro7", "ig_taitan_pro7", fetch_ig, "taitan_pro7",
+        # @taitan_pro は投稿が一度も流れていない別アカウントで、運用しない。
+        # 期待username は config.OFFICE_INSTAGRAM から引く（ここに手書きすると
+        # 「configだけ直して番犬が旧アカを見続ける」が起きる）
+        (f"IG {OFFICE_IG_HANDLE}", f"ig_{OFFICE_IG_USERNAME}", fetch_ig, OFFICE_IG_USERNAME,
          ["name", "bio", "link"], ["bio"]),
     ]
 
