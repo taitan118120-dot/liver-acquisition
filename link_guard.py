@@ -75,6 +75,13 @@ CONTENT_GLOBS = [
     # 求人原稿（応募者が踏むリンク。生成済み原稿とテンプレの両方を見る）
     "job_posts/templates/*.txt",
     "job_posts/*/*.md",
+    # ブログ記事（生成側テンプレと生成済み記事の両方）
+    # 2026-08-12: blog/generate_articles.py が実在しないアンカー
+    # https://taitan-pro-lp.netlify.app/#apply を長期間埋め込んでおり（cecb291で解消済み）、
+    # そこから生成された blog/articles/*.md 6本にも波及していたが、どちらも走査対象外
+    # だったため一度も検知できなかった。生成側（正本）と生成物の両方を見る。
+    "blog/generate_articles.py",
+    "blog/articles/*.md",
 ]
 
 # 走査から外すパス（相対パスに含まれていたらスキップ）
