@@ -181,7 +181,14 @@ LINE直リンクは §1-1 のとおり計測できないので、**LPリンク�
 | x_app のDMテンプレ（X） | `x_app/db.py` `_DEFAULT_*_TEMPLATE` | `…/beginner/?utm_source=x&utm_medium=dm&utm_campaign=x_dm` |
 | 公式LINE リッチメニュー（ライバー向け＝デフォルト） | `line_bot/rich_menu.py` | `…/beginner/?utm_source=line&utm_medium=richmenu&utm_campaign=line_richmenu` |
 | 公式LINE リッチメニュー（代理店向け＝intent=agencyの人だけ差し替え） | `line_bot/rich_menu.py` | `…/agency/?utm_source=line&utm_medium=richmenu&utm_campaign=line_richmenu_agency` |
-| 公式LINE `OFFICE_URL`（現在どこからも参照されていない） | `line_bot/config.py` | `…-targets.netlify.app/beginner/?utm_source=line&utm_medium=bot&utm_campaign=line_bot` |
+
+> 🗑️ **`line_bot/config.py` の `OFFICE_URL` / `LP_BEGINNER` / `LP_LIVER` / `LP_SIDEJOB` /
+> `CONTACT_LINE` / `OFFICE_NAME` は 2026-08-11 に削除した。** どこからも参照されていない上に、
+> 誘導先が `-targets.netlify.app`（手動zipデプロイ・`tracking.js` 未反映）を指していて、
+> 実際に配信している `line_bot/rich_menu.py` の `taitan-pro-lp.netlify.app` と食い違っていたため。
+> 公式LINEからLPへ送る導線は**リッチメニューの2本だけ**で、`messages.py` にLPのURLは無い
+> （持っているのは特典PDFのjsDelivr URLのみ）。今後 bot 本文からLPへ送るなら
+> `taitan-pro-lp.netlify.app` 側を使うこと。
 
 > `liver_app` / `x_app` はテンプレ本体を **Fly.io の本番DB** に持つ。`db.py` の `_DEFAULT_*` を
 > 書き換えても既存DBは `INSERT OR IGNORE` で無視されるので、**URL置換マイグレーションを
