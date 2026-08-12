@@ -1,0 +1,74 @@
+{
+ "violations": [],
+ "warn": [
+  {
+   "where": "lead_magnet/agency_starter_guide.html",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5万"
+  },
+  {
+   "where": "lead_magnet/agency_starter_guide.html",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10〜20万"
+  },
+  {
+   "where": "lp/agency/index.html",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5万"
+  },
+  {
+   "where": "lp/agency/index.html",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10〜20万"
+  },
+  {
+   "where": "lp/agency/index.html",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5万"
+  },
+  {
+   "where": "lp/agency/index.html",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10〜20万"
+  },
+  {
+   "where": "lp/beginner/index.html",
+   "reason": "根拠なしの実績誇張",
+   "hit": "何百人"
+  },
+  {
+   "where": "lp/liver/index.html",
+   "reason": "他社を下げる書き方",
+   "hit": "一般的な事務所"
+  },
+  {
+   "where": "lp/sidejob/index.html",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月3〜8万"
+  },
+  {
+   "where": "lp/shared/agency_starter_guide.pdf",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5万"
+  },
+  {
+   "where": "lp/shared/agency_starter_guide.pdf",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10〜20万"
+  }
+ ],
+ "scanned": {
+  "html": [
+   "lead_magnet/agency_starter_guide.html",
+   "lead_magnet/liver_starter_guide.html",
+   "lp/agency/index.html",
+   "lp/beginner/index.html",
+   "lp/liver/index.html",
+   "lp/sidejob/index.html"
+  ],
+  "pdf": [
+   "lp/shared/agency_starter_guide.pdf",
+   "lp/shared/liver_starter_guide.pdf"
+  ]
+ }
+}
