@@ -77,7 +77,8 @@ if BASE_DIR not in sys.path:
 
 # 禁止パターンの正本は facts_patterns.py だけ。ここに再定義すると
 # 「必ずどれか1本が古くなる」に逆戻りする（まさに今回の京都コレクションがそれ）。
-from facts_patterns import AUDIT_WARN_LABELS, common_violations  # noqa: E402
+from facts_patterns import (  # noqa: E402
+    AUDIT_WARN_LABELS, CONTRACT_AXIS_LABEL, common_violations)
 
 REPORT_FILE = os.path.join(BASE_DIR, "data", "content_facts_guard_report.json")
 
@@ -99,6 +100,12 @@ ARTICLE_WARN_LABELS = frozenset({
     # **TAITAN PROについて**「いつでも退所」「違約金なし」と書くこと。
     # 「違約金の有無を契約前に必ず確認しましょう」は読者への正しい助言で、
     # これを消すと事務所選び記事が成立しない。
+    #
+    # ⚠ ただしこのWARNは「語が出たか」しか見ていない。**判断軸が自社と矛盾する**形
+    # （「最低契約期間が1年以上は悪質」＝TAITAN PROは2年なので自分を撃つ）は
+    # facts_patterns.contract_axis_violations が別ラベルで**赤**にする。
+    # そちらをこの集合に足してはいけない。足すと2026-08-12の12箇所が
+    # またWARNの山（64件）に埋もれて、誰も気づけない状態に戻る。
     "「いつでも退所」「違約金なし」系／契約期間への言及",
     # 52箇所。[[feedback_no_fee_free_claim]] が禁じているのは自社の報酬説明で
     # 「手数料なし」と書くこと。記事側の実体は Pococha の振込手数料330円、
@@ -113,6 +120,13 @@ ARTICLE_WARN_LABELS = frozenset({
     # 金額そのものの下限違反（月15万）は共通のWARNラベル側で拾う。
     "少額表記（数万円/お小遣い程度）",
 })
+
+# 判断軸の矛盾だけは、記事でも**赤**のまま通す。
+# 上の集合に足せば番犬はすぐ静かになるが、それは2026-08-12に12箇所が
+# 64件のWARNに埋もれて誰も気づかなかった状態そのものなので、機械で塞いでおく。
+# WARN に落としたい衝動が湧いたら、まず記事の判断軸を直す（長さ→明記・説明）。
+assert CONTRACT_AXIS_LABEL not in (AUDIT_WARN_LABELS | ARTICLE_WARN_LABELS), (
+    f"{CONTRACT_AXIS_LABEL} はWARNに落としてはいけない（赤のまま出す）")
 
 # ── 走査対象 ────────────────────────────────────────────────
 # 「読者・見込み客の目に直接触れる長文」だけを入れる。

@@ -78,11 +78,6 @@
   },
   {
    "where": "blog/articles/liver-income-reality.md",
-   "reason": "断定・保証表現",
-   "hit": "安定して稼"
-  },
-  {
-   "where": "blog/articles/liver-income-reality.md",
    "reason": "確定レンジ未満の少額表記（月15万が下限）",
    "hit": "月3万"
   },
@@ -152,11 +147,6 @@
    "hit": "違約金"
   },
   {
-   "where": "blog/articles_note/08_ライバー事務所フリー比較.md",
-   "reason": "断定・保証表現",
-   "hit": "確実に"
-  },
-  {
    "where": "blog/articles_note/09_顔出しなしライバー.md",
    "reason": "取扱外プラットフォーム",
    "hit": "IRIAM"
@@ -180,11 +170,6 @@
    "where": "blog/articles_note/102_悪質ライバー事務所見分け方やめとけ.md",
    "reason": "断定・保証表現",
    "hit": "絶対稼げ"
-  },
-  {
-   "where": "blog/articles_note/108_頑張るほどリスナーさんが離れていく重い枠の正体.md",
-   "reason": "断定・保証表現",
-   "hit": "確実に"
   },
   {
    "where": "blog/articles_note/10_大学生ライバー.md",
@@ -253,11 +238,6 @@
   },
   {
    "where": "blog/articles_note/133_Pococha新人期間完全攻略.md",
-   "reason": "断定・保証表現",
-   "hit": "確実に"
-  },
-  {
-   "where": "blog/articles_note/133_Pococha新人期間完全攻略.md",
    "reason": "根拠なしの実績誇張",
    "hit": "数千"
   },
@@ -315,11 +295,6 @@
    "where": "blog/articles_note/17_ライバー面接対策.md",
    "reason": "断定・保証表現",
    "hit": "絶対稼げ"
-  },
-  {
-   "where": "blog/articles_note/21_ライバー伸びない原因.md",
-   "reason": "断定・保証表現",
-   "hit": "確実に"
   },
   {
    "where": "blog/articles_note/21_ライバー伸びない原因.md",
@@ -555,11 +530,6 @@
    "where": "blog/articles_note/41_40代50代ライバー始め方.md",
    "reason": "確定レンジ未満の少額表記（月15万が下限）",
    "hit": "月3〜10万"
-  },
-  {
-   "where": "blog/articles_note/42_ライバー代理店スカウト術DM返信率.md",
-   "reason": "断定・保証表現",
-   "hit": "確実に"
   },
   {
    "where": "blog/articles_note/42_ライバー代理店スカウト術DM返信率.md",
@@ -877,11 +847,6 @@
    "hit": "確実に"
   },
   {
-   "where": "blog/articles_note/70_リスナー0人対処法.md",
-   "reason": "断定・保証表現",
-   "hit": "確実に"
-  },
-  {
    "where": "blog/articles_note/72_ライバー雑談ネタ100選.md",
    "reason": "断定・保証表現",
    "hit": "確実に"
@@ -932,11 +897,6 @@
    "hit": "確実に"
   },
   {
-   "where": "blog/articles_note/77_PocochaC帯御新規攻略.md",
-   "reason": "断定・保証表現",
-   "hit": "確実に"
-  },
-  {
    "where": "blog/articles_note/78_ライバー事務所メリットデメリット.md",
    "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
    "hit": "違約金"
@@ -947,17 +907,7 @@
    "hit": "数百人"
   },
   {
-   "where": "blog/articles_note/83_Pocochaコアファン増えない.md",
-   "reason": "断定・保証表現",
-   "hit": "確実に"
-  },
-  {
    "where": "blog/articles_note/84_Pocochaコメント来ない.md",
-   "reason": "断定・保証表現",
-   "hit": "確実に"
-  },
-  {
-   "where": "blog/articles_note/85_Pocochaフォロワー増えない.md",
    "reason": "断定・保証表現",
    "hit": "確実に"
   },
@@ -1012,19 +962,9 @@
    "hit": "数千"
   },
   {
-   "where": "blog/articles_note/94_Pococha御新規コアファン化配信運用完全ガイド.md",
-   "reason": "断定・保証表現",
-   "hit": "確実に"
-  },
-  {
    "where": "blog/articles_note/97_ライバー事務所おすすめ選び方_未経験還元率100.md",
    "reason": "禁止語「手数料」",
    "hit": "手数料"
-  },
-  {
-   "where": "blog/articles_note/99_ライブ配信盛り上げる技術_元ミクチャNo1の枠づくり.md",
-   "reason": "断定・保証表現",
-   "hit": "確実に"
   }
  ],
  "scanned": {
