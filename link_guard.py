@@ -170,10 +170,35 @@ SKIP_EXACT = {
 }
 
 URL_RE = re.compile(r"https?://[^\s\"'<>\\){}\]｝】、。」「『』（）【　]+")
+_URL_CHARS_RE = re.compile(r"[^\s\"'<>\\){}\]｝】、。」「『』（）【　]+")
 
 
 def _clean(url):
     return url.rstrip(".,;:!?*_~`)»›」')")
+
+
+def _find_urls(text):
+    """URL_RE のマッチが `\\.`（正規表現リテラルのエスケープドット）で
+    途切れている場合、その先も繋げて完全なURLとして拾う。
+    例: re.compile(r"https://example\\.com/path") 中のURLが
+    "https://example" で打ち切られてWARNの誤検知になるのを防ぐ。"""
+    urls = []
+    pos = 0
+    while True:
+        m = URL_RE.search(text, pos)
+        if not m:
+            break
+        url = m.group()
+        end = m.end()
+        while text[end:end + 2] == "\\.":
+            nxt = _URL_CHARS_RE.match(text, end + 2)
+            if not nxt:
+                break
+            url += "." + nxt.group()
+            end = nxt.end()
+        urls.append(url)
+        pos = end
+    return urls
 
 
 def extract_repo_urls():
@@ -189,7 +214,7 @@ def extract_repo_urls():
             rel = os.path.relpath(fp, BASE_DIR)
             if any(part in rel for part in EXCLUDE_PATH_PARTS):
                 continue
-            for m in URL_RE.findall(text):
+            for m in _find_urls(text):
                 url = _clean(m)
                 # f-string分割等で途切れた断片は除外（実URLはランタイム構築側で取得）
                 if url.endswith("@") or url in SKIP_EXACT:
@@ -234,7 +259,7 @@ def fetch_note_urls():
         except Exception as e:
             print(f"  [WARN] {k} 本文取得失敗: {e}")
             continue
-        for m in re.findall(r'href="([^"]+)"', body) + URL_RE.findall(body):
+        for m in re.findall(r'href="([^"]+)"', body) + _find_urls(body):
             url = _clean(m)
             if url.startswith("http"):
                 found.setdefault(url, set()).add(f"note:{k}")
