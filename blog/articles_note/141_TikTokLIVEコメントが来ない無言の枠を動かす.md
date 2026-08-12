@@ -129,7 +129,7 @@ TikTok LIVE は人の出入りが激しいので、**同じ説明を何度も繰
 
 - [TikTok LIVE が伸びない本当の原因｜フォロワー増えない・視聴者来ない人へ](https://note.com/taitan_118/n/n20ca338bddb0)
 - [TikTok LIVE 最初の30日間ロードマップ｜初配信から「稼げる枠」の土台づくりまで](https://note.com/taitan_118/n/n9352e15a2091)
-- [配信中リスナー0人の時の対処法｜「枠が枯れる地獄」から抜け出す全テクニック](https://note.com/taitan_118/n/na0a86db07e89)
+- [配信中リスナーさん0人の時の対処法｜「枠が枯れる地獄」から抜け出す全テクニック](https://note.com/taitan_118/n/na0a86db07e89)
 
 ---
 

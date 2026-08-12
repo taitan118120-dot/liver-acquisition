@@ -1,0 +1,1195 @@
+{
+ "violations": [],
+ "warn": [
+  {
+   "where": "lead_magnet/agency_starter_guide.html",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5万"
+  },
+  {
+   "where": "lead_magnet/agency_starter_guide.html",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10〜20万"
+  },
+  {
+   "where": "lp/agency/index.html",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5万"
+  },
+  {
+   "where": "lp/agency/index.html",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10〜20万"
+  },
+  {
+   "where": "lp/agency/index.html",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5万"
+  },
+  {
+   "where": "lp/agency/index.html",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10〜20万"
+  },
+  {
+   "where": "lp/beginner/index.html",
+   "reason": "根拠なしの実績誇張",
+   "hit": "何百人"
+  },
+  {
+   "where": "lp/liver/index.html",
+   "reason": "他社を下げる書き方",
+   "hit": "一般的な事務所"
+  },
+  {
+   "where": "lp/sidejob/index.html",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月3〜8万"
+  },
+  {
+   "where": "lp/shared/agency_starter_guide.pdf",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5万"
+  },
+  {
+   "where": "lp/shared/agency_starter_guide.pdf",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10〜20万"
+  },
+  {
+   "where": "blog/articles/how-to-start-liver.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "IRIAM"
+  },
+  {
+   "where": "blog/articles/liver-agency-guide.md",
+   "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
+   "hit": "違約金"
+  },
+  {
+   "where": "blog/articles/liver-agency-guide.md",
+   "reason": "断定・保証表現",
+   "hit": "絶対稼げ"
+  },
+  {
+   "where": "blog/articles/liver-agency-guide.md",
+   "reason": "他社を下げる書き方",
+   "hit": "他の事務所は"
+  },
+  {
+   "where": "blog/articles/liver-income-reality.md",
+   "reason": "断定・保証表現",
+   "hit": "安定して稼"
+  },
+  {
+   "where": "blog/articles/liver-income-reality.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月3万"
+  },
+  {
+   "where": "blog/articles_note/01_ライバー始め方.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "IRIAM"
+  },
+  {
+   "where": "blog/articles_note/02_Pococha稼げる.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5万"
+  },
+  {
+   "where": "blog/articles_note/03_事務所選び方.md",
+   "reason": "禁止語「手数料」",
+   "hit": "手数料"
+  },
+  {
+   "where": "blog/articles_note/03_事務所選び方.md",
+   "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
+   "hit": "契約期間"
+  },
+  {
+   "where": "blog/articles_note/03_事務所選び方.md",
+   "reason": "断定・保証表現",
+   "hit": "絶対稼げ"
+  },
+  {
+   "where": "blog/articles_note/05_ライバー収入現実.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "IRIAM"
+  },
+  {
+   "where": "blog/articles_note/06_在宅副業おすすめ.md",
+   "reason": "根拠なしの実績誇張",
+   "hit": "数千"
+  },
+  {
+   "where": "blog/articles_note/06_在宅副業おすすめ.md",
+   "reason": "少額表記（数万円/お小遣い程度）",
+   "hit": "お小遣い程度"
+  },
+  {
+   "where": "blog/articles_note/06_在宅副業おすすめ.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月1万"
+  },
+  {
+   "where": "blog/articles_note/06_在宅副業おすすめ.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月1万"
+  },
+  {
+   "where": "blog/articles_note/06_在宅副業おすすめ.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月1〜3万"
+  },
+  {
+   "where": "blog/articles_note/08_ライバー事務所フリー比較.md",
+   "reason": "禁止語「手数料」",
+   "hit": "手数料"
+  },
+  {
+   "where": "blog/articles_note/08_ライバー事務所フリー比較.md",
+   "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
+   "hit": "違約金"
+  },
+  {
+   "where": "blog/articles_note/08_ライバー事務所フリー比較.md",
+   "reason": "断定・保証表現",
+   "hit": "確実に"
+  },
+  {
+   "where": "blog/articles_note/09_顔出しなしライバー.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "IRIAM"
+  },
+  {
+   "where": "blog/articles_note/09_顔出しなしライバー.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月1〜2万"
+  },
+  {
+   "where": "blog/articles_note/09_顔出しなしライバー.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月3〜5万"
+  },
+  {
+   "where": "blog/articles_note/102_悪質ライバー事務所見分け方やめとけ.md",
+   "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
+   "hit": "違約金"
+  },
+  {
+   "where": "blog/articles_note/102_悪質ライバー事務所見分け方やめとけ.md",
+   "reason": "断定・保証表現",
+   "hit": "絶対稼げ"
+  },
+  {
+   "where": "blog/articles_note/108_頑張るほどリスナーさんが離れていく重い枠の正体.md",
+   "reason": "断定・保証表現",
+   "hit": "確実に"
+  },
+  {
+   "where": "blog/articles_note/10_大学生ライバー.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "IRIAM"
+  },
+  {
+   "where": "blog/articles_note/110_副業ライバー収入いつからいくら現実.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10万"
+  },
+  {
+   "where": "blog/articles_note/114_ライバー事務所面談で聞くべき質問10.md",
+   "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
+   "hit": "違約金"
+  },
+  {
+   "where": "blog/articles_note/114_ライバー事務所面談で聞くべき質問10.md",
+   "reason": "断定・保証表現",
+   "hit": "絶対稼げ"
+  },
+  {
+   "where": "blog/articles_note/114_ライバー事務所面談で聞くべき質問10.md",
+   "reason": "少額表記（数万円/お小遣い程度）",
+   "hit": "お小遣い程度"
+  },
+  {
+   "where": "blog/articles_note/117_17LIVE事務所おすすめ選び方.md",
+   "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
+   "hit": "違約金"
+  },
+  {
+   "where": "blog/articles_note/117_17LIVE事務所おすすめ選び方.md",
+   "reason": "断定・保証表現",
+   "hit": "絶対稼げ"
+  },
+  {
+   "where": "blog/articles_note/11_主婦ライバー.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "IRIAM"
+  },
+  {
+   "where": "blog/articles_note/123_配信の頻度と長さの決め方.md",
+   "reason": "断定・保証表現",
+   "hit": "確実に"
+  },
+  {
+   "where": "blog/articles_note/128_配信アプリ掛け持ちはアリかナシか.md",
+   "reason": "断定・保証表現",
+   "hit": "確実に"
+  },
+  {
+   "where": "blog/articles_note/12_ライバー確定申告.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月1万"
+  },
+  {
+   "where": "blog/articles_note/132_40代50代からのTikTokLIVE始め方.md",
+   "reason": "断定・保証表現",
+   "hit": "確実に"
+  },
+  {
+   "where": "blog/articles_note/133_Pococha新人期間完全攻略.md",
+   "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
+   "hit": "違約金"
+  },
+  {
+   "where": "blog/articles_note/133_Pococha新人期間完全攻略.md",
+   "reason": "断定・保証表現",
+   "hit": "確実に"
+  },
+  {
+   "where": "blog/articles_note/133_Pococha新人期間完全攻略.md",
+   "reason": "根拠なしの実績誇張",
+   "hit": "数千"
+  },
+  {
+   "where": "blog/articles_note/134_ライバー事務所の代理店とは.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5〜10万"
+  },
+  {
+   "where": "blog/articles_note/134_ライバー事務所の代理店とは.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10〜30万"
+  },
+  {
+   "where": "blog/articles_note/13_ライバーイベント攻略.md",
+   "reason": "少額表記（数万円/お小遣い程度）",
+   "hit": "数万円"
+  },
+  {
+   "where": "blog/articles_note/14_ライバー辞めたい.md",
+   "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
+   "hit": "違約金"
+  },
+  {
+   "where": "blog/articles_note/14_ライバー辞めたい.md",
+   "reason": "少額表記（数万円/お小遣い程度）",
+   "hit": "数万円"
+  },
+  {
+   "where": "blog/articles_note/16_ライバー事務所還元率の真実.md",
+   "reason": "禁止語「手数料」",
+   "hit": "手数料"
+  },
+  {
+   "where": "blog/articles_note/16_ライバー事務所還元率の真実.md",
+   "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
+   "hit": "違約金"
+  },
+  {
+   "where": "blog/articles_note/16_ライバー事務所還元率の真実.md",
+   "reason": "断定・保証表現",
+   "hit": "確実に"
+  },
+  {
+   "where": "blog/articles_note/16_ライバー事務所還元率の真実.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月6万"
+  },
+  {
+   "where": "blog/articles_note/17_ライバー面接対策.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "IRIAM"
+  },
+  {
+   "where": "blog/articles_note/17_ライバー面接対策.md",
+   "reason": "断定・保証表現",
+   "hit": "絶対稼げ"
+  },
+  {
+   "where": "blog/articles_note/21_ライバー伸びない原因.md",
+   "reason": "断定・保証表現",
+   "hit": "確実に"
+  },
+  {
+   "where": "blog/articles_note/21_ライバー伸びない原因.md",
+   "reason": "根拠なしの実績誇張",
+   "hit": "数百人"
+  },
+  {
+   "where": "blog/articles_note/22_30代ライバー.md",
+   "reason": "断定・保証表現",
+   "hit": "確実に"
+  },
+  {
+   "where": "blog/articles_note/23_ライブ配信市場将来性.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "IRIAM"
+  },
+  {
+   "where": "blog/articles_note/24_ライバー事務所代理店.md",
+   "reason": "根拠なしの実績誇張",
+   "hit": "数千"
+  },
+  {
+   "where": "blog/articles_note/24_ライバー事務所代理店.md",
+   "reason": "少額表記（数万円/お小遣い程度）",
+   "hit": "数万円"
+  },
+  {
+   "where": "blog/articles_note/24_ライバー事務所代理店.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月3〜5万"
+  },
+  {
+   "where": "blog/articles_note/24_ライバー事務所代理店.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10〜20万"
+  },
+  {
+   "where": "blog/articles_note/24_ライバー事務所代理店.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5万"
+  },
+  {
+   "where": "blog/articles_note/25_ライバーマネージャー.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月3〜10万"
+  },
+  {
+   "where": "blog/articles_note/26_ライバー副業バレない.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "IRIAM"
+  },
+  {
+   "where": "blog/articles_note/26_ライバー副業バレない.md",
+   "reason": "断定・保証表現",
+   "hit": "保証"
+  },
+  {
+   "where": "blog/articles_note/27_ライバー事務所おすすめランキング.md",
+   "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
+   "hit": "契約期間"
+  },
+  {
+   "where": "blog/articles_note/27_ライバー事務所おすすめランキング.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "IRIAM"
+  },
+  {
+   "where": "blog/articles_note/27_ライバー事務所おすすめランキング.md",
+   "reason": "断定・保証表現",
+   "hit": "絶対稼げ"
+  },
+  {
+   "where": "blog/articles_note/27_ライバー事務所おすすめランキング.md",
+   "reason": "根拠なしの実績誇張",
+   "hit": "多数輩出"
+  },
+  {
+   "where": "blog/articles_note/29_ライバー事務所怪しい見分け方.md",
+   "reason": "禁止語「手数料」",
+   "hit": "手数料"
+  },
+  {
+   "where": "blog/articles_note/29_ライバー事務所怪しい見分け方.md",
+   "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
+   "hit": "契約期間"
+  },
+  {
+   "where": "blog/articles_note/29_ライバー事務所怪しい見分け方.md",
+   "reason": "断定・保証表現",
+   "hit": "確実に"
+  },
+  {
+   "where": "blog/articles_note/32_ライバー事務所移籍変更方法.md",
+   "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
+   "hit": "契約期間"
+  },
+  {
+   "where": "blog/articles_note/32_ライバー事務所移籍変更方法.md",
+   "reason": "他社を下げる書き方",
+   "hit": "多くの事務所"
+  },
+  {
+   "where": "blog/articles_note/33_ライブ配信アプリ比較.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "IRIAM"
+  },
+  {
+   "where": "blog/articles_note/33_ライブ配信アプリ比較.md",
+   "reason": "少額表記（数万円/お小遣い程度）",
+   "hit": "数万円"
+  },
+  {
+   "where": "blog/articles_note/34_ライバー容姿関係ない.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "IRIAM"
+  },
+  {
+   "where": "blog/articles_note/34_ライバー容姿関係ない.md",
+   "reason": "断定・保証表現",
+   "hit": "安定して稼"
+  },
+  {
+   "where": "blog/articles_note/35_ライバー事務所契約書チェック10項目.md",
+   "reason": "禁止語「手数料」",
+   "hit": "手数料"
+  },
+  {
+   "where": "blog/articles_note/35_ライバー事務所契約書チェック10項目.md",
+   "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
+   "hit": "契約期間"
+  },
+  {
+   "where": "blog/articles_note/35_ライバー事務所契約書チェック10項目.md",
+   "reason": "根拠なしの実績誇張",
+   "hit": "数千"
+  },
+  {
+   "where": "blog/articles_note/38_ライバー代理店副業始め方ステップ.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10万"
+  },
+  {
+   "where": "blog/articles_note/38_ライバー代理店副業始め方ステップ.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10万"
+  },
+  {
+   "where": "blog/articles_note/38_ライバー代理店副業始め方ステップ.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10万"
+  },
+  {
+   "where": "blog/articles_note/38_ライバー代理店副業始め方ステップ.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月3〜5万"
+  },
+  {
+   "where": "blog/articles_note/38_ライバー代理店副業始め方ステップ.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10〜20万"
+  },
+  {
+   "where": "blog/articles_note/38_ライバー代理店副業始め方ステップ.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5〜10万"
+  },
+  {
+   "where": "blog/articles_note/38_ライバー代理店副業始め方ステップ.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5万"
+  },
+  {
+   "where": "blog/articles_note/39_ライバー代理店稼げる収入リアル.md",
+   "reason": "断定・保証表現",
+   "hit": "安定して稼"
+  },
+  {
+   "where": "blog/articles_note/39_ライバー代理店稼げる収入リアル.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月3万"
+  },
+  {
+   "where": "blog/articles_note/39_ライバー代理店稼げる収入リアル.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10万"
+  },
+  {
+   "where": "blog/articles_note/39_ライバー代理店稼げる収入リアル.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5万"
+  },
+  {
+   "where": "blog/articles_note/39_ライバー代理店稼げる収入リアル.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10万"
+  },
+  {
+   "where": "blog/articles_note/39_ライバー代理店稼げる収入リアル.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月3万"
+  },
+  {
+   "where": "blog/articles_note/39_ライバー代理店稼げる収入リアル.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10万"
+  },
+  {
+   "where": "blog/articles_note/40_ライバー事務所の仕組み報酬体系完全図解.md",
+   "reason": "禁止語「手数料」",
+   "hit": "手数料"
+  },
+  {
+   "where": "blog/articles_note/40_ライバー事務所の仕組み報酬体系完全図解.md",
+   "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
+   "hit": "契約期間"
+  },
+  {
+   "where": "blog/articles_note/40_ライバー事務所の仕組み報酬体系完全図解.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "IRIAM"
+  },
+  {
+   "where": "blog/articles_note/40_ライバー事務所の仕組み報酬体系完全図解.md",
+   "reason": "断定・保証表現",
+   "hit": "保証"
+  },
+  {
+   "where": "blog/articles_note/41_40代50代ライバー始め方.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "IRIAM"
+  },
+  {
+   "where": "blog/articles_note/41_40代50代ライバー始め方.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月3〜10万"
+  },
+  {
+   "where": "blog/articles_note/42_ライバー代理店スカウト術DM返信率.md",
+   "reason": "断定・保証表現",
+   "hit": "確実に"
+  },
+  {
+   "where": "blog/articles_note/42_ライバー代理店スカウト術DM返信率.md",
+   "reason": "根拠なしの実績誇張",
+   "hit": "何百人"
+  },
+  {
+   "where": "blog/articles_note/43_ライバー事務所開業方法代理店との違い.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月1〜5万"
+  },
+  {
+   "where": "blog/articles_note/43_ライバー事務所開業方法代理店との違い.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5〜20万"
+  },
+  {
+   "where": "blog/articles_note/43_ライバー事務所開業方法代理店との違い.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月3〜10万"
+  },
+  {
+   "where": "blog/articles_note/43_ライバー事務所開業方法代理店との違い.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月1〜3万"
+  },
+  {
+   "where": "blog/articles_note/44_初配信コツ.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "IRIAM"
+  },
+  {
+   "where": "blog/articles_note/45_ライバー時給.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "IRIAM"
+  },
+  {
+   "where": "blog/articles_note/47_副業月5万在宅.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5万"
+  },
+  {
+   "where": "blog/articles_note/47_副業月5万在宅.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5万"
+  },
+  {
+   "where": "blog/articles_note/47_副業月5万在宅.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5万"
+  },
+  {
+   "where": "blog/articles_note/47_副業月5万在宅.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月1万"
+  },
+  {
+   "where": "blog/articles_note/47_副業月5万在宅.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月3〜4万"
+  },
+  {
+   "where": "blog/articles_note/47_副業月5万在宅.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5万"
+  },
+  {
+   "where": "blog/articles_note/47_副業月5万在宅.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5万"
+  },
+  {
+   "where": "blog/articles_note/47_副業月5万在宅.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5万"
+  },
+  {
+   "where": "blog/articles_note/47_副業月5万在宅.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月7万"
+  },
+  {
+   "where": "blog/articles_note/47_副業月5万在宅.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5万"
+  },
+  {
+   "where": "blog/articles_note/47_副業月5万在宅.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5万"
+  },
+  {
+   "where": "blog/articles_note/47_副業月5万在宅.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5万"
+  },
+  {
+   "where": "blog/articles_note/47_副業月5万在宅.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5万"
+  },
+  {
+   "where": "blog/articles_note/48_Pocochaライバー始め方完全ガイド.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "IRIAM"
+  },
+  {
+   "where": "blog/articles_note/49_Pocochaダイヤ換金完全ガイド.md",
+   "reason": "禁止語「手数料」",
+   "hit": "手数料"
+  },
+  {
+   "where": "blog/articles_note/49_Pocochaダイヤ換金完全ガイド.md",
+   "reason": "根拠なしの実績誇張",
+   "hit": "数千"
+  },
+  {
+   "where": "blog/articles_note/49_Pocochaダイヤ換金完全ガイド.md",
+   "reason": "少額表記（数万円/お小遣い程度）",
+   "hit": "数万円"
+  },
+  {
+   "where": "blog/articles_note/50_TikTokLIVE収益化完全ガイド.md",
+   "reason": "禁止語「手数料」",
+   "hit": "手数料"
+  },
+  {
+   "where": "blog/articles_note/50_TikTokLIVE収益化完全ガイド.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "IRIAM"
+  },
+  {
+   "where": "blog/articles_note/50_TikTokLIVE収益化完全ガイド.md",
+   "reason": "断定・保証表現",
+   "hit": "保証"
+  },
+  {
+   "where": "blog/articles_note/50_TikTokLIVE収益化完全ガイド.md",
+   "reason": "根拠なしの実績誇張",
+   "hit": "数千"
+  },
+  {
+   "where": "blog/articles_note/50_TikTokLIVE収益化完全ガイド.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10万"
+  },
+  {
+   "where": "blog/articles_note/50_TikTokLIVE収益化完全ガイド.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10万"
+  },
+  {
+   "where": "blog/articles_note/50_TikTokLIVE収益化完全ガイド.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10万"
+  },
+  {
+   "where": "blog/articles_note/50_TikTokLIVE収益化完全ガイド.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10万"
+  },
+  {
+   "where": "blog/articles_note/50_TikTokLIVE収益化完全ガイド.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5万"
+  },
+  {
+   "where": "blog/articles_note/50_TikTokLIVE収益化完全ガイド.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10万"
+  },
+  {
+   "where": "blog/articles_note/50_TikTokLIVE収益化完全ガイド.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10〜50万"
+  },
+  {
+   "where": "blog/articles_note/50_TikTokLIVE収益化完全ガイド.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5〜30万"
+  },
+  {
+   "where": "blog/articles_note/51_ライバー経費完全リスト75項目.md",
+   "reason": "禁止語「手数料」",
+   "hit": "手数料"
+  },
+  {
+   "where": "blog/articles_note/51_ライバー経費完全リスト75項目.md",
+   "reason": "根拠なしの実績誇張",
+   "hit": "数千"
+  },
+  {
+   "where": "blog/articles_note/53_顔出しなし配信方法完全比較.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "IRIAM"
+  },
+  {
+   "where": "blog/articles_note/53_顔出しなし配信方法完全比較.md",
+   "reason": "断定・保証表現",
+   "hit": "確実に"
+  },
+  {
+   "where": "blog/articles_note/56_副業ライバーおすすめ.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "IRIAM"
+  },
+  {
+   "where": "blog/articles_note/56_副業ライバーおすすめ.md",
+   "reason": "断定・保証表現",
+   "hit": "安定して稼"
+  },
+  {
+   "where": "blog/articles_note/56_副業ライバーおすすめ.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10万"
+  },
+  {
+   "where": "blog/articles_note/57_ライバーデビュー準備.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "IRIAM"
+  },
+  {
+   "where": "blog/articles_note/57_ライバーデビュー準備.md",
+   "reason": "断定・保証表現",
+   "hit": "安定して稼"
+  },
+  {
+   "where": "blog/articles_note/57_ライバーデビュー準備.md",
+   "reason": "少額表記（数万円/お小遣い程度）",
+   "hit": "数万円"
+  },
+  {
+   "where": "blog/articles_note/59_ライバーなるには.md",
+   "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
+   "hit": "契約期間"
+  },
+  {
+   "where": "blog/articles_note/59_ライバーなるには.md",
+   "reason": "根拠なしの実績誇張",
+   "hit": "何百人"
+  },
+  {
+   "where": "blog/articles_note/60_スカウトDM返信率.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "ふわっち"
+  },
+  {
+   "where": "blog/articles_note/60_スカウトDM返信率.md",
+   "reason": "根拠なしの実績誇張",
+   "hit": "数千"
+  },
+  {
+   "where": "blog/articles_note/61_PocochaTikTokLIVE比較.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "IRIAM"
+  },
+  {
+   "where": "blog/articles_note/62_TikTokLIVE始め方完全ガイド.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "IRIAM"
+  },
+  {
+   "where": "blog/articles_note/62_TikTokLIVE始め方完全ガイド.md",
+   "reason": "断定・保証表現",
+   "hit": "安定して稼"
+  },
+  {
+   "where": "blog/articles_note/62_TikTokLIVE始め方完全ガイド.md",
+   "reason": "根拠なしの実績誇張",
+   "hit": "数百人"
+  },
+  {
+   "where": "blog/articles_note/62_TikTokLIVE始め方完全ガイド.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月3万"
+  },
+  {
+   "where": "blog/articles_note/63_TikTokLIVEフォロワー1000人集め方.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "IRIAM"
+  },
+  {
+   "where": "blog/articles_note/63_TikTokLIVEフォロワー1000人集め方.md",
+   "reason": "根拠なしの実績誇張",
+   "hit": "数百人"
+  },
+  {
+   "where": "blog/articles_note/64_TikTokLIVE稼げない原因.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10万"
+  },
+  {
+   "where": "blog/articles_note/64_TikTokLIVE稼げない原因.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10万"
+  },
+  {
+   "where": "blog/articles_note/65_TikTokライバー事務所選び方.md",
+   "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
+   "hit": "違約金"
+  },
+  {
+   "where": "blog/articles_note/65_TikTokライバー事務所選び方.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "IRIAM"
+  },
+  {
+   "where": "blog/articles_note/65_TikTokライバー事務所選び方.md",
+   "reason": "断定・保証表現",
+   "hit": "保証"
+  },
+  {
+   "where": "blog/articles_note/69_ライバー始める前に知るべき10のこと.md",
+   "reason": "断定・保証表現",
+   "hit": "確実に"
+  },
+  {
+   "where": "blog/articles_note/70_リスナー0人対処法.md",
+   "reason": "断定・保証表現",
+   "hit": "確実に"
+  },
+  {
+   "where": "blog/articles_note/72_ライバー雑談ネタ100選.md",
+   "reason": "断定・保証表現",
+   "hit": "確実に"
+  },
+  {
+   "where": "blog/articles_note/73_顔バレ身バレ対策完全ガイド.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "IRIAM"
+  },
+  {
+   "where": "blog/articles_note/73_顔バレ身バレ対策完全ガイド.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10〜30万"
+  },
+  {
+   "where": "blog/articles_note/74_配信ゴールデンタイム完全ガイド.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "IRIAM"
+  },
+  {
+   "where": "blog/articles_note/75_ライバー親バレ対策完全ガイド.md",
+   "reason": "根拠なしの実績誇張",
+   "hit": "数千"
+  },
+  {
+   "where": "blog/articles_note/75_ライバー親バレ対策完全ガイド.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10万"
+  },
+  {
+   "where": "blog/articles_note/75_ライバー親バレ対策完全ガイド.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月3万"
+  },
+  {
+   "where": "blog/articles_note/75_ライバー親バレ対策完全ガイド.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月3万"
+  },
+  {
+   "where": "blog/articles_note/76_月収100万円ライバー共通点.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "IRIAM"
+  },
+  {
+   "where": "blog/articles_note/76_月収100万円ライバー共通点.md",
+   "reason": "断定・保証表現",
+   "hit": "確実に"
+  },
+  {
+   "where": "blog/articles_note/77_PocochaC帯御新規攻略.md",
+   "reason": "断定・保証表現",
+   "hit": "確実に"
+  },
+  {
+   "where": "blog/articles_note/78_ライバー事務所メリットデメリット.md",
+   "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
+   "hit": "違約金"
+  },
+  {
+   "where": "blog/articles_note/78_ライバー事務所メリットデメリット.md",
+   "reason": "根拠なしの実績誇張",
+   "hit": "数百人"
+  },
+  {
+   "where": "blog/articles_note/83_Pocochaコアファン増えない.md",
+   "reason": "断定・保証表現",
+   "hit": "確実に"
+  },
+  {
+   "where": "blog/articles_note/84_Pocochaコメント来ない.md",
+   "reason": "断定・保証表現",
+   "hit": "確実に"
+  },
+  {
+   "where": "blog/articles_note/85_Pocochaフォロワー増えない.md",
+   "reason": "断定・保証表現",
+   "hit": "確実に"
+  },
+  {
+   "where": "blog/articles_note/86_Pococha始めたばかり人来ない.md",
+   "reason": "断定・保証表現",
+   "hit": "絶対稼げ"
+  },
+  {
+   "where": "blog/articles_note/86_Pococha始めたばかり人来ない.md",
+   "reason": "根拠なしの実績誇張",
+   "hit": "数千"
+  },
+  {
+   "where": "blog/articles_note/86_Pococha始めたばかり人来ない.md",
+   "reason": "少額表記（数万円/お小遣い程度）",
+   "hit": "数万円"
+  },
+  {
+   "where": "blog/articles_note/87_ライバー小規模企業共済.md",
+   "reason": "断定・保証表現",
+   "hit": "安定して稼"
+  },
+  {
+   "where": "blog/articles_note/87_ライバー小規模企業共済.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月7万"
+  },
+  {
+   "where": "blog/articles_note/87_ライバー小規模企業共済.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月3万"
+  },
+  {
+   "where": "blog/articles_note/89_ライバー老後資金小規模企業共済iDeCo比較.md",
+   "reason": "断定・保証表現",
+   "hit": "確実に"
+  },
+  {
+   "where": "blog/articles_note/90_ライバー出口戦略.md",
+   "reason": "根拠なしの実績誇張",
+   "hit": "数千"
+  },
+  {
+   "where": "blog/articles_note/91_ライバーNISA全世界株資産運用.md",
+   "reason": "断定・保証表現",
+   "hit": "保証"
+  },
+  {
+   "where": "blog/articles_note/91_ライバーNISA全世界株資産運用.md",
+   "reason": "根拠なしの実績誇張",
+   "hit": "数千"
+  },
+  {
+   "where": "blog/articles_note/94_Pococha御新規コアファン化配信運用完全ガイド.md",
+   "reason": "断定・保証表現",
+   "hit": "確実に"
+  },
+  {
+   "where": "blog/articles_note/97_ライバー事務所おすすめ選び方_未経験還元率100.md",
+   "reason": "禁止語「手数料」",
+   "hit": "手数料"
+  },
+  {
+   "where": "blog/articles_note/99_ライブ配信盛り上げる技術_元ミクチャNo1の枠づくり.md",
+   "reason": "断定・保証表現",
+   "hit": "確実に"
+  }
+ ],
+ "scanned": {
+  "html": [
+   "lead_magnet/agency_starter_guide.html",
+   "lead_magnet/liver_starter_guide.html",
+   "lp/agency/index.html",
+   "lp/beginner/index.html",
+   "lp/liver/index.html",
+   "lp/sidejob/index.html"
+  ],
+  "pdf": [
+   "lp/shared/agency_starter_guide.pdf",
+   "lp/shared/liver_starter_guide.pdf"
+  ],
+  "article": [
+   "blog/articles/how-to-start-liver.md",
+   "blog/articles/live-streaming-beginner-tips.md",
+   "blog/articles/liver-agency-guide.md",
+   "blog/articles/liver-income-reality.md",
+   "blog/articles/pococha-income.md",
+   "blog/articles/work-from-home-sidejob.md",
+   "blog/articles_note/01_ライバー始め方.md",
+   "blog/articles_note/02_Pococha稼げる.md",
+   "blog/articles_note/03_事務所選び方.md",
+   "blog/articles_note/04_配信初心者コツ.md",
+   "blog/articles_note/05_ライバー収入現実.md",
+   "blog/articles_note/06_在宅副業おすすめ.md",
+   "blog/articles_note/07_Pococha時間ダイヤ完全ガイド.md",
+   "blog/articles_note/08_ライバー事務所フリー比較.md",
+   "blog/articles_note/09_顔出しなしライバー.md",
+   "blog/articles_note/100_ライバー事務所還元率で選ぶ比較.md",
+   "blog/articles_note/101_TikTokLIVE事務所おすすめ選び方未経験.md",
+   "blog/articles_note/102_悪質ライバー事務所見分け方やめとけ.md",
+   "blog/articles_note/103_副業在宅ライバー事務所選び方会社バレ.md",
+   "blog/articles_note/104_主婦ママライバー事務所選び方在宅.md",
+   "blog/articles_note/105_大学生ライバー事務所おすすめ選び方.md",
+   "blog/articles_note/106_顔出しなしノルマなしライバー事務所選び方.md",
+   "blog/articles_note/107_ポコチャ事務所フリーどっち未経験選び方.md",
+   "blog/articles_note/108_頑張るほどリスナーさんが離れていく重い枠の正体.md",
+   "blog/articles_note/109_土日だけ夜だけ副業ライバー始め方.md",
+   "blog/articles_note/10_大学生ライバー.md",
+   "blog/articles_note/110_副業ライバー収入いつからいくら現実.md",
+   "blog/articles_note/111_Pococha新人期間やってはいけないNG7選.md",
+   "blog/articles_note/112_40代50代からのPococha最初の1ヶ月実践ガイド.md",
+   "blog/articles_note/113_主婦ライバーの扶養税金家族の理解.md",
+   "blog/articles_note/114_ライバー事務所面談で聞くべき質問10.md",
+   "blog/articles_note/115_TikTokLIVE最初の30日ロードマップ.md",
+   "blog/articles_note/116_17LIVE稼ぎ方収益の仕組み.md",
+   "blog/articles_note/117_17LIVE事務所おすすめ選び方.md",
+   "blog/articles_note/118_17LIVE_Pococha_TikTokLIVE比較どれが向いてる.md",
+   "blog/articles_note/119_40代50代から17LIVE始め方.md",
+   "blog/articles_note/11_主婦ライバー.md",
+   "blog/articles_note/120_40代50代ライバー続く人辞める人の違い.md",
+   "blog/articles_note/121_Pococha新人期間終わった後31日目の壁の越え方.md",
+   "blog/articles_note/122_TikTokLIVEバトル対戦攻略やり方勝ち方.md",
+   "blog/articles_note/123_配信の頻度と長さの決め方.md",
+   "blog/articles_note/124_ライバー収入の波をならす方法.md",
+   "blog/articles_note/125_ライバーネーム配信名の決め方.md",
+   "blog/articles_note/126_配信の枠タイトルの付け方.md",
+   "blog/articles_note/127_リスナーさんとの距離感トラブル対応.md",
+   "blog/articles_note/128_配信アプリ掛け持ちはアリかナシか.md",
+   "blog/articles_note/129_PocochaB帯からその先へ上の帯を目指す人がやっていること.md",
+   "blog/articles_note/12_ライバー確定申告.md",
+   "blog/articles_note/130_通いたくなる枠の作り方軽さの設計.md",
+   "blog/articles_note/131_TikTokLIVEフォロワー1000人の次にやること.md",
+   "blog/articles_note/132_40代50代からのTikTokLIVE始め方.md",
+   "blog/articles_note/133_Pococha新人期間完全攻略.md",
+   "blog/articles_note/134_ライバー事務所の代理店とは.md",
+   "blog/articles_note/135_40代50代配信で何を話せばいいか雑談テーマ.md",
+   "blog/articles_note/136_TikTokLIVE配信時間帯いつやるべきか.md",
+   "blog/articles_note/137_Pococha新人期間30日の1日の流れ.md",
+   "blog/articles_note/138_配信がしんどい燃え尽きる前の立て直し方.md",
+   "blog/articles_note/139_顔出しなしで応援されるライバーになる方法.md",
+   "blog/articles_note/13_ライバーイベント攻略.md",
+   "blog/articles_note/140_主婦ライバー配信時間の作り方1日の組み方.md",
+   "blog/articles_note/141_TikTokLIVEコメントが来ない無言の枠を動かす.md",
+   "blog/articles_note/142_男性ライバー最初の3ヶ月でやること.md",
+   "blog/articles_note/143_ライバー事務所に入るタイミングいつがベストか.md",
+   "blog/articles_note/144_Pococha何時に配信するのが正解時間帯の選び方.md",
+   "blog/articles_note/145_40代50代顔出しなしでライブ配信を始める方法.md",
+   "blog/articles_note/146_TikTokLIVEショート動画とライブの関係始める順番.md",
+   "blog/articles_note/147_初配信当日にやることチェックリスト.md",
+   "blog/articles_note/148_会社員副業ライバー何時に配信する1日の組み方.md",
+   "blog/articles_note/149_ライバー事務所開業最初の10人が集まるまで.md",
+   "blog/articles_note/14_ライバー辞めたい.md",
+   "blog/articles_note/15_ライバー男性.md",
+   "blog/articles_note/16_ライバー事務所還元率の真実.md",
+   "blog/articles_note/17_ライバー面接対策.md",
+   "blog/articles_note/18_Pocochaランク上げ方.md",
+   "blog/articles_note/19_ライバー機材おすすめ.md",
+   "blog/articles_note/20_ライバー配信ネタ.md",
+   "blog/articles_note/21_ライバー伸びない原因.md",
+   "blog/articles_note/22_30代ライバー.md",
+   "blog/articles_note/23_ライブ配信市場将来性.md",
+   "blog/articles_note/24_ライバー事務所代理店.md",
+   "blog/articles_note/25_ライバーマネージャー.md",
+   "blog/articles_note/26_ライバー副業バレない.md",
+   "blog/articles_note/27_ライバー事務所おすすめランキング.md",
+   "blog/articles_note/28_ライバー1日スケジュール.md",
+   "blog/articles_note/29_ライバー事務所怪しい見分け方.md",
+   "blog/articles_note/30_ライバーファン増やし方.md",
+   "blog/articles_note/31_ライバーメンタルケア.md",
+   "blog/articles_note/32_ライバー事務所移籍変更方法.md",
+   "blog/articles_note/33_ライブ配信アプリ比較.md",
+   "blog/articles_note/34_ライバー容姿関係ない.md",
+   "blog/articles_note/35_ライバー事務所契約書チェック10項目.md",
+   "blog/articles_note/36_ライバーコラボ配信.md",
+   "blog/articles_note/37_ライバー月収平均2026.md",
+   "blog/articles_note/38_ライバー代理店副業始め方ステップ.md",
+   "blog/articles_note/39_ライバー代理店稼げる収入リアル.md",
+   "blog/articles_note/40_ライバー事務所の仕組み報酬体系完全図解.md",
+   "blog/articles_note/41_40代50代ライバー始め方.md",
+   "blog/articles_note/42_ライバー代理店スカウト術DM返信率.md",
+   "blog/articles_note/43_ライバー事務所開業方法代理店との違い.md",
+   "blog/articles_note/44_初配信コツ.md",
+   "blog/articles_note/45_ライバー時給.md",
+   "blog/articles_note/46_ライバー向いてる人.md",
+   "blog/articles_note/47_副業月5万在宅.md",
+   "blog/articles_note/48_Pocochaライバー始め方完全ガイド.md",
+   "blog/articles_note/49_Pocochaダイヤ換金完全ガイド.md",
+   "blog/articles_note/50_TikTokLIVE収益化完全ガイド.md",
+   "blog/articles_note/51_ライバー経費完全リスト75項目.md",
+   "blog/articles_note/53_顔出しなし配信方法完全比較.md",
+   "blog/articles_note/54_ライブ配信緊張克服メンタル術.md",
+   "blog/articles_note/56_副業ライバーおすすめ.md",
+   "blog/articles_note/57_ライバーデビュー準備.md",
+   "blog/articles_note/59_ライバーなるには.md",
+   "blog/articles_note/60_スカウトDM返信率.md",
+   "blog/articles_note/61_PocochaTikTokLIVE比較.md",
+   "blog/articles_note/62_TikTokLIVE始め方完全ガイド.md",
+   "blog/articles_note/63_TikTokLIVEフォロワー1000人集め方.md",
+   "blog/articles_note/64_TikTokLIVE稼げない原因.md",
+   "blog/articles_note/65_TikTokライバー事務所選び方.md",
+   "blog/articles_note/69_ライバー始める前に知るべき10のこと.md",
+   "blog/articles_note/70_リスナー0人対処法.md",
+   "blog/articles_note/71_コアファン作り方完全ガイド.md",
+   "blog/articles_note/72_ライバー雑談ネタ100選.md",
+   "blog/articles_note/73_顔バレ身バレ対策完全ガイド.md",
+   "blog/articles_note/74_配信ゴールデンタイム完全ガイド.md",
+   "blog/articles_note/75_ライバー親バレ対策完全ガイド.md",
+   "blog/articles_note/76_月収100万円ライバー共通点.md",
+   "blog/articles_note/77_PocochaC帯御新規攻略.md",
+   "blog/articles_note/78_ライバー事務所メリットデメリット.md",
+   "blog/articles_note/79_PocochaB帯攻略.md",
+   "blog/articles_note/80_TikTokLIVEギフト増やし方.md",
+   "blog/articles_note/81_Pococha同接増やし方.md",
+   "blog/articles_note/82_TikTokLIVE伸びない原因.md",
+   "blog/articles_note/83_Pocochaコアファン増えない.md",
+   "blog/articles_note/84_Pocochaコメント来ない.md",
+   "blog/articles_note/85_Pocochaフォロワー増えない.md",
+   "blog/articles_note/86_Pococha始めたばかり人来ない.md",
+   "blog/articles_note/87_ライバー小規模企業共済.md",
+   "blog/articles_note/88_小規模企業共済加入条件始め方.md",
+   "blog/articles_note/89_ライバー老後資金小規模企業共済iDeCo比較.md",
+   "blog/articles_note/90_ライバー出口戦略.md",
+   "blog/articles_note/91_ライバーNISA全世界株資産運用.md",
+   "blog/articles_note/92_ライバーセカンドキャリア引退後.md",
+   "blog/articles_note/93_2ヶ月でB3大学生ライバーむうくん.md",
+   "blog/articles_note/94_Pococha御新規コアファン化配信運用完全ガイド.md",
+   "blog/articles_note/95_なぜ人は配信に投げ銭するのか応援される配信者の理由づくり.md",
+   "blog/articles_note/96_長く応援され続けるライバーがやっていること.md",
+   "blog/articles_note/97_ライバー事務所おすすめ選び方_未経験還元率100.md",
+   "blog/articles_note/98_会社員から配信月100万代理店並行150万専業ライバー.md",
+   "blog/articles_note/99_ライブ配信盛り上げる技術_元ミクチャNo1の枠づくり.md"
+  ]
+ }
+}
