@@ -248,11 +248,22 @@ def money_violations(text, strict=False):
     return out
 
 
+# lin.ee の短縮URLで実際に使われる文字だけを拾う。
+# 旧実装は `\S+` で取って末尾を rstrip("/。、）)") していたが、これは
+# **Markdown・HTMLの中では機能しない**（2026-08-12、blog/articles_note に当てて実測）:
+#   - `](https://lin.ee/xchCfdn)**`      → 末尾が `*` なので rstrip の対象外
+#   - `(https://lin.ee/xchCfdn)で無料で…` → 日本語が続くので `\S+` が文ごと飲み込む
+# どちらも正しい公式LINEなのに「許可リスト外」と判定される（記事149本で123件の誤検知）。
+# 末尾を削るのではなく **最初からURLに使える文字しか取らない** ようにして塞ぐ。
+# 別ドメイン・別IDは当然ここにも合致するので、検知力は落ちない。
+LINE_URL = re.compile(r"https?://lin\.ee/[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*")
+
+
 def line_link_violations(text):
     """許可リスト外の公式LINEリンクを検出して [(reason, hit), ...] を返す。"""
     out = []
-    for m in re.finditer(r"https?://lin\.ee/\S+", text or ""):
-        if m.group(0).rstrip("/。、）)") != LINE_ALLOWED:
+    for m in LINE_URL.finditer(text or ""):
+        if m.group(0) != LINE_ALLOWED:
             out.append(("許可リスト外のLINEリンク", m.group(0)))
     return out
 

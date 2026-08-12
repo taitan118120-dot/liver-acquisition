@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""content_facts_guard.py — LP・特典PDFの確定ファクト番犬
-=========================================================
+"""content_facts_guard.py — 公開コンテンツ（LP・特典PDF・記事）の確定ファクト番犬
+==============================================================================
 背景（2026-08-12 に実際に起きた取りこぼし）:
   「京都コレクションは実在しない」と 2026-08-01 に確定していたのに、
   3ヶ所で生き残っていた:
@@ -17,9 +17,23 @@
     - lead_magnet/*.html と lp/shared/*.pdf は **どの番犬のスコープにも入っていなかった**。
       とくにPDFはバイナリなので、普通の grep でも一生ヒットしない
 
+2026-08-12（同日追記）— 記事も同じ死角にあった:
+  上の番犬を立てた直後に、**同じ穴がもう1つ残っている**ことが分かった。
+  blog/articles/*.md と blog/articles_note/*.md（Note公開記事の原稿・149本）は、
+  link_guard.py の CONTENT_GLOBS には入っているが、それは**リンクの生死を見るだけ**で、
+  文面の中身はやはり誰も見ていなかった。実際 blog/articles/work-from-home-sidejob.md に
+  禁止語「挫折率」が生き残っていた（一度も検知されたことがない）。
+  記事は公開コンテンツの中で**最も文量が多く、最も読み返されない**場所なので、
+  ここを外したままだと「LPは緑、記事は野放し」になる。走査対象に加える。
+
+  ただし記事は LP・特典PDF と**判定の物差しが違う**（下の ARTICLE_WARN_LABELS 参照）。
+  事務所選びの解説記事は「違約金の有無を確認しましょう」「『絶対稼げる』と断言する
+  事務所は危険」のように、**禁止語を引用・注意喚起として使うのが記事の中身そのもの**。
+  生成側と同じ物差しで全部赤にすると、番犬が永久に鳴きやまなくなる。
+
 この番犬が見る4軸:
   1. 禁止パターン走査 — 確定ファクト（[[project_taitan_pro_note_facts]] の常設grep）を
-     LP・特典HTML原稿・**配布PDFの抽出テキスト**に当てる。
+     LP・特典HTML原稿・**配布PDFの抽出テキスト**・**Note記事の原稿**に当てる。
      パターンの正本は facts_patterns.py（媒体共通）。ここには一切コピーを置かない。
   2. 原稿HTML ↔ 配布PDF の同期 — PDFは原稿から焼くが、**焼き直しを忘れると中身がズレる**。
      HTMLだけ直して緑になっても、実際に配られているのはPDFなので担保にならない。
@@ -35,13 +49,15 @@
 判定ポリシー:
   - NG   = 禁止パターン検出／HTMLとPDFの乖離／SHA固定のズレ／孤児PDF
            /pdftotext が使えず走査できなかった → exit 1（Actionsが赤くなる）
-  - WARN = facts_patterns.AUDIT_WARN_LABELS のルール（少額表記・実績誇張・他社比較）。
-           主語や文脈で可否が変わり、公開済み長文では人が判断する話なので赤にしない
+  - WARN = 主語や文脈で可否が変わり、公開済み長文では人が判断する話なので赤にしない
            （[[feedback_watchdog_autoclose]] 永久に鳴きやむことのない番犬にしない）
+           LP・特典PDF … facts_patterns.AUDIT_WARN_LABELS（少額表記・実績誇張・他社比較）
+           記事       … 上に ARTICLE_WARN_LABELS を足した集合（下の定義にある理由つき）
 
 使い方:
   python3 content_facts_guard.py              # 全チェック
   python3 content_facts_guard.py --repo-only  # jsDelivr への実アクセスなし（ローカル用）
+  python3 content_facts_guard.py --warn       # WARN の全件を出す（既定は先頭20件）
 
 レポートは data/content_facts_guard_report.json に保存される。
 """
@@ -65,11 +81,51 @@ from facts_patterns import AUDIT_WARN_LABELS, common_violations  # noqa: E402
 
 REPORT_FILE = os.path.join(BASE_DIR, "data", "content_facts_guard_report.json")
 
+# ── 記事だけ「検知はする／赤にはしない」に落とすルール ──────────────
+# 2026-08-12 に blog/ 149本へ当てて実測した結果から決めている。数字は実測の箇所数。
+# 共通のAUDIT_WARN_LABELS（少額表記・実績誇張・他社比較）に、記事特有の4本を足す。
+#
+# 記事は「事務所選びの解説」「アプリ比較」が中身の中心で、禁止語を
+# **悪い例の引用・読者への注意喚起・第三者の事実**として使うのが正しい書き方になる。
+# LP・特典PDFでは同じ語が自社の主張になるので、そちらは赤のまま据え置く。
+# だからこの集合は記事にしか適用しない（LP側に持ち込むと京都コレクションの再来になる）。
+ARTICLE_WARN_LABELS = frozenset({
+    # 68箇所。大半が「『絶対稼げる』と断言する事務所は危険」という**悪質事務所の引用**
+    # （17記事の危険サインチェックリストがこの形）。一方「この通りに走れば
+    # ほぼ確実にC1〜B3に到達できます」のような自社の約束は本物の違反で、
+    # 機械には区別がつかない。人が読んで消す。
+    "断定・保証表現",
+    # 64箇所。[[feedback_no_free_exit_claim]] が禁じているのは
+    # **TAITAN PROについて**「いつでも退所」「違約金なし」と書くこと。
+    # 「違約金の有無を契約前に必ず確認しましょう」は読者への正しい助言で、
+    # これを消すと事務所選び記事が成立しない。
+    "「いつでも退所」「違約金なし」系／契約期間への言及",
+    # 52箇所。[[feedback_no_fee_free_claim]] が禁じているのは自社の報酬説明で
+    # 「手数料なし」と書くこと。記事側の実体は Pococha の振込手数料330円、
+    # 勘定科目の「支払手数料」、源泉徴収との区別など**第三者の事実**が中心。
+    "禁止語「手数料」",
+    # 68箇所。[[feedback_note_target_platforms]] が禁じているのは
+    # SHOWROOM/IRIAM/ふわっちの**単体記事を書くこと**であって、
+    # アプリ比較表や市場俯瞰で名前を挙げること自体ではない。
+    "取扱外プラットフォーム",
+    # 9箇所。「数万円」「お小遣い程度」は、自社の収入目安として書けば違反だが、
+    # 他の副業との対比や「そこで満足しないために」の文脈では成立する。
+    # 金額そのものの下限違反（月15万）は共通のWARNラベル側で拾う。
+    "少額表記（数万円/お小遣い程度）",
+})
+
 # ── 走査対象 ────────────────────────────────────────────────
 # 「読者・見込み客の目に直接触れる長文」だけを入れる。
 CONTENT_GLOBS = [
     "lead_magnet/*.html",   # 特典PDFの原稿
     "lp/**/*.html",         # 公開LP（Netlify配信）
+]
+# 記事（Note公開記事の原稿）。CONTENT_GLOBS と分けているのは走査の有無ではなく
+# **WARN の物差しが違う**から（ARTICLE_WARN_LABELS）。ここに足すだけでは
+# 記事に LP と同じ厳しさが当たってしまい、番犬が鳴きやまなくなる。
+ARTICLE_GLOBS = [
+    "blog/articles/*.md",       # 自社ブログ記事
+    "blog/articles_note/*.md",  # Note公開記事の原稿（108本が note 上で公開中）
 ]
 PDF_GLOB = "lp/shared/*.pdf"          # LINE登録者に実際に配られる配布物
 LEAD_MAGNET_DIR = "lead_magnet"       # 原稿HTMLの置き場（PDFと同名で対応させる）
@@ -151,12 +207,16 @@ def iter_files(patterns):
 
 
 # ── 1. 禁止パターン走査 ──────────────────────────────────────
-def scan_text(text, where):
-    """[(赤にするもの), (報告だけするもの)] を返す。"""
+def scan_text(text, where, warn_labels=AUDIT_WARN_LABELS):
+    """[(赤にするもの), (報告だけするもの)] を返す。
+
+    warn_labels は「検知はするが赤にはしない」ラベルの集合。
+    LP・特典PDFは既定（AUDIT_WARN_LABELS）、記事はそれを広げた集合を渡す。
+    """
     ng, warn = [], []
     for reason, hit in common_violations(text):
         item = {"where": where, "reason": reason, "hit": hit[:80]}
-        (warn if reason in AUDIT_WARN_LABELS else ng).append(item)
+        (warn if reason in warn_labels else ng).append(item)
     return ng, warn
 
 
@@ -352,6 +412,16 @@ def main():
         violations += ng
         warns += wn
 
+    # 1''. 記事（Note公開記事の原稿）。物差しだけ ARTICLE_WARN_LABELS に差し替える。
+    # Markdown はタグを剥がさずそのまま当てる。禁止語は本文中の日本語なので、
+    # 記法（**強調** や表の | ）はパターンの当たりに影響しない。
+    article_files = iter_files(ARTICLE_GLOBS)
+    for p in article_files:
+        ng, wn = scan_text(open(p, encoding="utf-8").read(), rel(p),
+                           warn_labels=AUDIT_WARN_LABELS | ARTICLE_WARN_LABELS)
+        violations += ng
+        warns += wn
+
     # 2. 原稿HTML ↔ 配布PDF
     for p in pdf_files:
         if p not in pdf_texts:
@@ -371,21 +441,35 @@ def main():
     with open(REPORT_FILE, "w", encoding="utf-8") as f:
         json.dump({"violations": violations, "warn": warns,
                    "scanned": {"html": [rel(p) for p in html_files],
-                               "pdf": [rel(p) for p in pdf_files]}},
+                               "pdf": [rel(p) for p in pdf_files],
+                               "article": [rel(p) for p in article_files]}},
                   f, ensure_ascii=False, indent=1)
 
-    print(f"[走査] HTML {len(html_files)}本 / PDF {len(pdf_files)}本")
+    print(f"[走査] HTML {len(html_files)}本 / PDF {len(pdf_files)}本 "
+          f"/ 記事 {len(article_files)}本")
+    # 記事は149本あるので個別には並べない（ログが埋まって肝心の違反が見えなくなる）。
+    # 全件は data/content_facts_guard_report.json の scanned.article に載る。
     for p in html_files + pdf_files:
         print(f"   - {rel(p)}")
     print(f"\n[結果] 違反={len(violations)} 警告(判断保留)={len(warns)} → {rel(REPORT_FILE)}")
     for v in violations:
         print(f"  ❌ {v['where']}: {v['reason']}" + (f"\n     → {v['hit']}" if v["hit"] else ""))
+
+    # WARN は記事を入れて三桁になりうる。既定は要約＋先頭だけ出し、全件は --warn で。
+    show_all_warns = "--warn" in sys.argv
+    by_reason = {}
     for w in warns:
-        print(f"  ⚠️ {w['where']}: {w['reason']}\n     → {w['hit']}")
+        by_reason.setdefault(w["reason"], []).append(w)
+    for reason, items in sorted(by_reason.items(), key=lambda kv: -len(kv[1])):
+        print(f"  ⚠️ [{len(items)}件] {reason}")
+        for w in (items if show_all_warns else items[:3]):
+            print(f"       - {w['where']}: {w['hit']}")
+        if not show_all_warns and len(items) > 3:
+            print(f"       …ほか {len(items) - 3} 件（--warn で全件表示）")
 
     if violations:
         return 1
-    print("\nLP・特典HTML・配布PDFに確定ファクト違反なし ✅")
+    print("\nLP・特典HTML・配布PDF・記事に確定ファクト違反なし ✅")
     return 0
 
 
