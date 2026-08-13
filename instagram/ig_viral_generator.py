@@ -369,12 +369,26 @@ def _validate_content(data):
     # 判定を任せる（ここに書き写すと必ずどちらかが古くなる）。
     # 2026-08-12: プロンプト側だけ直しても、モデルは「怪しい事務所＝長期契約」を
     # 一般知識として持っているので生成時に再発しうる。機械側にも同じ線を引く。
-    from facts_patterns import contract_axis_violations
+    from facts_patterns import (
+        contract_axis_violations, ng_violations, money_violations,
+        ratio_violations, line_link_violations,
+    )
     axis = contract_axis_violations(all_text)
     if axis:
         raise ValueError(f"自社と矛盾する判断軸を検出: {axis[0][1]}")
 
-    # リスナー呼び捨てチェック（「リスナーさん」以外の「リスナー」単独使用を修正）
+    # [[feedback_ai_prompt_teaches_violations]]: _BANNED_PATTERNS はこのファイル内の
+    # 手書き一覧で陳腐化しやすく、少額表記・断定表現・出典なし統計を拾えない。
+    # 正本の共通チェッカーも必ず通す（リスナー呼び捨ては後段の _fix_listener_san で
+    # 自動補正するのでここでは弾かない）。
+    hits = (
+        ng_violations(all_text) + money_violations(all_text)
+        + ratio_violations(all_text) + line_link_violations(all_text)
+    )
+    hits = [h for h in hits if h[0] != "リスナーの呼び捨て"]
+    if hits:
+        raise ValueError(f"品質検品NG: {hits[0]}")
+
     return True
 
 
