@@ -109,9 +109,13 @@ FRAGMENT_CHECK_DOMAINS = (
 # 2026-08-12: アカウント単位の運用をやめた（経緯は下の「⚠️ アカウント単位は使わない」）。
 #   アカウント単位2本を A・C にキャンペーン単位で移設したので稼働本数は 14→16 本。
 #   これもURLの集合は変わらないため、この配列の中身は据え置き。
+# 2026-08-13: D のキャンペーン単位サイトリンクが4本のみでGoogle推奨の6本を下回っていたため、
+#   agency LP実物から採取した代理店向け新規文言2本を追加登録（設計書 §5-5）。
+#   agency/#network は既存アンカーの流用、agency/#steps はこの日 LP に恒久アンカーとして新設。
 AD_SITELINK_URLS = [
-    # 現在は全17本がキャンペーン単位（A 7本 / C 6本 / D 4本）。URLの実体は下の11種。
+    # 現在は全18本がキャンペーン単位（A 7本 / C 6本 / D 6本）。URLの実体は下の13種。
     # 2026-08-12: A に #gift を追加して 16→17 本（設計書 §0-15）。
+    # 2026-08-13: D に #network・#steps を追加して 17→18 本（設計書 §5-5）。
     # ── ライバー向け（/beginner/）: A と C の両方が使う ──
     # #flow は 2026-08-11 に #campaign から変更した。#campaign は期間限定セクションで
     # 枠ごと消される運用だったため、常設の FLOW セクションへ移した（設計書 §5-5）。
@@ -126,12 +130,16 @@ AD_SITELINK_URLS = [
     # A の7本目（2026-08-12 登録＝設計書 §0-15）。LP側に恒久セクション #gift を
     # 新設したうえで着地先にした。既存6本は消していない＝純増。
     "https://taitan-pro-lp.netlify.app/beginner/#gift",
-    # ── 代理店向け（/agency/）: D 単位4本のみ ──
+    # ── 代理店向け（/agency/）: D 単位6本 ──
     # 2026-08-04 登録・稼働中。2026-08-11 に確定案へ揃える上書き修正。
     "https://taitan-pro-lp.netlify.app/agency/#gift",
     "https://taitan-pro-lp.netlify.app/agency/#reward",
     "https://taitan-pro-lp.netlify.app/agency/#reasons",
     "https://taitan-pro-lp.netlify.app/agency/#faq",
+    # D の5・6本目（2026-08-13 追加＝設計書 §5-5）。#steps は当日 agency LP に
+    # 恒久アンカーとして新設したうえで着地先にした。既存4本は消していない＝純増。
+    "https://taitan-pro-lp.netlify.app/agency/#network",
+    "https://taitan-pro-lp.netlify.app/agency/#steps",
     # ⚠️ #campaign はサイトリンクの着地先ではなくなったが、LP側のセクションは残してある。
     #    再びサイトリンクを向けるときはここに戻すこと。
 ]
