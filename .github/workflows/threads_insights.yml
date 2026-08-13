@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       limit:
-        description: '取得する投稿数'
+        description: '取得する投稿数（CSVはmedia_id単位でマージ保存されるので、小さくしても既存行が消えることはない）'
         default: '200'
 
 concurrency:
