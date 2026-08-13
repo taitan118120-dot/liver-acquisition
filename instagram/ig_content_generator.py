@@ -26,6 +26,12 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
+from facts_patterns import (  # noqa: E402
+    ng_violations,
+    money_violations,
+    ratio_violations,
+    line_link_violations,
+)
 
 POSTS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ig_posts.json")
 IMAGES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "images")
@@ -191,8 +197,10 @@ def generate_caption(article, dry_run=False):
    - ふわっとした一般論ではなく、具体的な答えを先出しする
 
 ④根拠と具体例（数字・実体験を必ず1つ以上入れる）
-   - 「事務所所属で平均○％アップ」「Pocochaの時給は最大○円」など具体数値
-   - 元記事に数字があれば必ず拾う。なければ業界の一般値を使う
+   - 元記事に数字があれば必ず拾って使う
+   - 元記事に数字がない場合、収入の話をするなら下記【収入の数字を出すときのルール】の
+     確定レンジのみ使う。それ以外は出典のない数字（「業界平均○％」「9割が」「◯人に1人」
+     などの体感値・統計）を絶対に作らない。数字なしで具体的な行動・場面の描写に置き換える
    - 3〜4行で簡潔に
 
 ⑤実践リスト（保存される最重要パート）
@@ -235,9 +243,17 @@ def generate_caption(article, dry_run=False):
 - 「絶対稼げる」「必ず儲かる」など断定的な誇大表現を避ける（景表法対策）
 - 「手数料なし」「手数料0円」「手数料ゼロ」は書かない。報酬の話は「還元率100%+α」とだけ書く。
 - 「いつでも退所OK」「違約金なし」「違約金0」「いつでも辞められる」など、退所・契約解除が自由だと示す表現は禁止（契約条件は面談で説明する、とだけ書く）。
+- 他社や悪質事務所を語るときも、**契約期間の長さ・違約金の有無そのものを危険サインにしない**。「最低契約期間が1年以上」「2年以上の長期契約は要注意」「契約期間は短期を選べ」「違約金ありは避けろ」はすべて禁止（自社が2年契約なので、その基準で面談に来られると自分に跳ね返る）。判断軸は「契約期間・更新・中途解約の条件が契約書に明記され、面談でも同じ説明が受けられるか」の一点に揃える。
 - 元記事の文章を丸コピーしない。要約・再構成すること。
 - 事務所名は {config.OFFICE_NAME}（混入させる場合もこの表記）。
 - 出力はキャプション本文のみ。前置き「以下に作成しました」等は不要。
+- リスナーは必ず「リスナーさん」と書く（「リスナー」の単独呼び捨ては禁止）。
+
+【収入の数字を出すときのルール】
+- 収入の目安を出すなら「3ヶ月で15〜20万円」「6ヶ月で30〜40万円」「B帯で月20〜30万円」
+  の確定レンジ以外は書かない。月15万円未満の金額（「月3万」「月7万」「お小遣い程度」等）は、
+  稼げていない側の描写でも一切書かない
+- 「安定して稼ぐ」「確実に稼げる」など、断定・保証を含む稼ぎ方の表現は使わない
 
 【IGリスク回避（2026-05-16追加・必ず守る）】
 - 「DMで詳細」「DMください」「LINEで連絡」「公式LINE」など外部誘導/DM誘導の文言は完全禁止。
@@ -301,7 +317,17 @@ def generate_caption(article, dry_run=False):
                     ),
                 )
                 text = response.text.strip()
-                return _polish_caption(text)
+                polished = _polish_caption(text)
+                # プロンプトに従わない生成物を機械側でも検品する（正本は facts_patterns.py）。
+                # [[feedback_ai_prompt_teaches_violations]]: プロンプトを直しても
+                # モデルが指示を無視して再発しうるので、投稿前にもう一段検品を挟む。
+                hits = (
+                    ng_violations(polished) + money_violations(polished)
+                    + ratio_violations(polished) + line_link_violations(polished)
+                )
+                if hits:
+                    raise ValueError(f"キャプション品質検品NG: {hits}")
+                return polished
             except Exception as e:
                 is_server_error = "503" in str(e) or "UNAVAILABLE" in str(e) or "500" in str(e)
                 if attempt < max_retries - 1 and is_server_error:
@@ -374,6 +400,11 @@ def _strip_banned_emojis(text):
         ch = m.group(0)
         return ch if ch in _ALLOWED_EMOJIS else ""
     return _BANNED_EMOJI_RE.sub(_repl, text)
+
+
+def _fix_listener_san(text):
+    """「リスナー」単独表記を「リスナーさん」に補正（[[feedback_listener_san]]）"""
+    return re.sub(r"リスナー(?!さん)", "リスナーさん", text)
 
 
 def _polish_caption(text):
@@ -510,7 +541,7 @@ def _polish_caption(text):
         body_part = body_part[: max(0, len(body_part) - excess - 20)].rstrip()
         polished = body_part + "\n\n" + tag_part.strip()
 
-    return polished
+    return _fix_listener_san(polished)
 
 
 # =====================================================================

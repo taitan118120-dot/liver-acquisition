@@ -73,6 +73,8 @@ import requests
 # ここに再定義すると、X/Threads 側と片方だけ更新されて必ずズレる
 # （2026-08-08 に RATIO_SUBJECT を足したとき、まさにX側が取り残された）。
 from facts_patterns import (
+    AUDIT_WARN_LABELS,
+    COMMON_NG_PATTERNS,
     LINE_ALLOWED,
     line_link_violations,
     money_violations,
@@ -103,34 +105,30 @@ OFFICE_HANDLE_LOOKALIKE = re.compile(
     r"@" + re.escape(OFFICE_IG_USERNAME.rstrip("0123456789")) + r"\d*(?![\w.])")
 
 # ── 禁止パターン ──────────────────────────────────────────────
-# 確定ファクトの「常設grepパターン」を、旧値ではなく **フィールド** で組む
-# （2026-07-29 の教訓: `150名` を狙うと `50名` を取りこぼす）
-NG_PATTERNS = [
-    (r"所属(?:ライバー)?\s*(?!200\s*[名人])[0-9]{1,4}\s*[名人]", "所属数が200名以外"),
-    (r"(?:累計|総勢|延べ)\s*[0-9]{1,4}\s*[名人]", "所属数の旧表記（累計/総勢）"),
+# 【2026-08-12】以前はここに確定ファクトの禁止パターンを**丸ごと自前で持って**いた。
+# facts_patterns.py（媒体共通の正本）と9割が同じ内容の第2のリストで、
+# まさに facts_patterns.py の docstring が「必ずどれか1本が古くなる」と
+# 警告していた形そのものだった。そして実際に古くなっていた:
+#   - ここにしか無かった … `京都コレクション`（実在しないイベント）
+#     → 共通側に無いので LP・特典PDF・記事の検品には一切効かず、
+#       2026-08-01 に確定した禁止が LP2本と**配布中の代理店特典PDF**で生き残った
+#   - 共通側にしか無かった … 契約期間・不労所得・実績誇張・断定/保証・市場規模・
+#     オフの日の主語・他社を下げる書き方・ロイヤリティ・少額表記 ほか多数
+#     → プロフィールと固定ポストはこれらを一度も検査されていなかった
+# → 共通正本を読み込み、**この媒体でしか意味がないものだけ**を足す形に統一した。
+#   新しい確定ファクトは facts_patterns.COMMON_NG_PATTERNS に足せば全媒体に効く。
+PROFILE_EXTRA_PATTERNS = [
+    # プロフィール／固定ポスト特有の言い回し。所属数そのものは共通側が見ている
     (r"[0-9]{1,4}\s*[名人][^。\n]{0,6}(?:集客|育成|抱え)", "所属数を集客/育成実績として表記"),
-    (r"統括|傘下", "代理店の関係が「提携」でない（統括/傘下）"),
-    (r"現役(?:プレイヤー|ライバー)", "代表は「元」Pococha S帯（現役表記はbioと矛盾）"),
-    (r"手数料(?:なし|無し|0円|ゼロ|不要)", "「手数料なし」表記"),
-    (r"マージン\s*[0０]\s*[%％]|マージン(?:ゼロ|なし|無し|0円)|ノーマージン",
-     "「マージンゼロ」＝手数料なしの同義語"),
-    (r"違約金(?:なし|無し|[0０])|いつでも(?:解約|退所|辞め|契約解除)", "「いつでも退所」系"),
-    (r"還元率\s*100\s*[%％](?!\s*\+\s*α)", "還元率が「100%+α」になっていない"),
-    (r"還元率\s*(?!100)[0-9]{2,3}\s*[%％]", "還元率が確定値でない"),
-    (r"IRIAM|イリアム|SHOWROOM|ショールーム|ふわっち|REALITY", "取扱外プラットフォーム"),
-    (r"Pococha新人期スタートダッシュ", "旧・特典PDF名"),
-    (r"DM(?:で|を)?(?:ご相談|ください|下さい|お待ち)|お気軽にDM|DMお願い",
-     "CTAがDM誘導（導線は特典PDF→LINE登録に統一）"),
-    (r"lit\.link", "リンクが lit.link（公式LINEでない）"),
-    (r"オンライン無料相談", "「オンライン無料相談」は使わない"),
-    (r"京都コレクション", "実在しないイベント"),
-    (r"カーブアウト|ccarveout", "使用禁止ブランド"),
-    (r"リスナー(?!さん)", "リスナーの呼び捨て"),
-    (r"他アプリ(?:も)?多数", "取扱は Pococha・TikTok LIVE・17LIVE の3つで統一"),
 ]
+NG_PATTERNS = list(COMMON_NG_PATTERNS) + PROFILE_EXTRA_PATTERNS
 
 def scan(text, where):
-    """1本のテキストに全パターンを当てて violation のリストを返す。"""
+    """1本のテキストに全パターンを当てて violation のリストを返す。
+
+    各要素の "warn" は「検知はするが赤にはしない」印
+    （facts_patterns.AUDIT_WARN_LABELS。主語や文脈で可否が変わるルール）。
+    """
     if not text:
         return []
     flat = re.sub(r"\s+", "", text)
@@ -138,13 +136,21 @@ def scan(text, where):
     for pat, label in NG_PATTERNS:
         m = re.search(pat, text) or re.search(pat, flat)
         if m:
-            out.append({"where": where, "reason": label, "hit": m.group(0)[:40]})
+            out.append({"where": where, "reason": label, "hit": m.group(0)[:40],
+                        "warn": label in AUDIT_WARN_LABELS})
 
     # 割合統計・収入レンジ・LINEリンクは facts_patterns.py（媒体共通の正本）に委譲
     for reason, hit in (ratio_violations(text) + money_violations(text)
                         + line_link_violations(text)):
-        out.append({"where": where, "reason": reason, "hit": hit})
+        out.append({"where": where, "reason": reason, "hit": hit,
+                    "warn": reason in AUDIT_WARN_LABELS})
     return out
+
+
+def split_warn(items):
+    """[(赤にするもの), (報告だけするもの)] に分ける。"""
+    return ([i for i in items if not i.get("warn")],
+            [i for i in items if i.get("warn")])
 
 
 # ── 正本（marketing/social_profiles.md）のパース ───────────────────
@@ -568,16 +574,20 @@ def compare(media_label, live, canon, fields):
 
 
 def load_canon():
-    """正本を読み、同時に正本自体・反映スクリプト側の問題も集める。"""
+    """正本を読み、同時に正本自体・反映スクリプト側の問題も集める。
+
+    戻り値は (canon, 赤にする問題, 報告だけする警告)。
+    警告は AUDIT_WARN_LABELS のルール（主語や文脈で可否が変わるもの）だけ。
+    """
     problems = []
     canon = parse_canonical(problems=problems)
     problems += audit_canonical(canon)
     problems += audit_consumers(canon)
     problems += audit_generators()
-    return canon, problems
+    return (canon, *split_warn(problems))
 
 
-def print_canon(canon, problems):
+def print_canon(canon, problems, warns=()):
     for media, fields in EXPECTED_FIELDS.items():
         print(f"\n== {media} ==")
         for f in ("name", "bio", "link", "pinned"):
@@ -590,21 +600,24 @@ def print_canon(canon, problems):
             body = v.replace("\n", "\n        ")
             print(f"  [{f}] {len(v)}字\n        {body}")
     print(f"\n[正本＋反映スクリプト＋生成側の検査] 問題 {len(problems)} 件"
-          f"（事務所IG正本 = {OFFICE_IG_HANDLE}）")
+          f" / 警告 {len(warns)} 件（事務所IG正本 = {OFFICE_IG_HANDLE}）")
     for p in problems:
         print(f"  ❌ {p['where']}: {p['reason']}" + (f"\n     → {p['hit']}" if p["hit"] else ""))
+    for w in warns:
+        print(f"  ⚠️ (判断保留) {w['where']}: {w['reason']}"
+              + (f"\n     → {w['hit']}" if w["hit"] else ""))
 
 
 def main():
     if "--local" in sys.argv:
-        canon, problems = load_canon()
-        print_canon(canon, problems)
+        canon, problems, canon_warns = load_canon()
+        print_canon(canon, problems, canon_warns)
         if "--json" in sys.argv:
             print(json.dumps(canon, ensure_ascii=False, indent=1))
         return 1 if problems else 0
 
-    canon, canon_problems = load_canon()
-    violations, warns, diffs, skipped = [], [], [], []
+    canon, canon_problems, canon_warns = load_canon()
+    violations, warns, diffs, skipped = [], list(canon_warns), [], []
 
     # (表示名, 正本キー, 取得関数, 期待username, 突合フィールド, 走査フィールド)
     sources = [
@@ -641,7 +654,9 @@ def main():
                 skipped.append({"media": label,
                                 "reason": "固定ポスト本文を取得できなかった（番犬の主目的なので要調査）"})
                 continue
-            violations += scan(live.get(f, ""), f"{label} / {f}")
+            ng, warn = split_warn(scan(live.get(f, ""), f"{label} / {f}"))
+            violations += ng
+            warns += warn
         # 過去投稿のキャプションはAPIで編集できない（＝直せない）。
         # 赤にすると番犬が永久に鳴きやまなくなるので warn 扱いにする。
         for c in live.get("captions", []):

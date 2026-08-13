@@ -416,13 +416,27 @@ def save_queue(raw):
 # =====================================================================
 
 def save_csv(rows):
+    """既存CSVとの和集合をmedia_idキーでマージして書き戻す。
+
+    mode="w"で単純上書きすると、--limitを既定より小さくして実行した回だけ
+    古い投稿の行が消えて二度と復元できない（APIは直近の投稿しか返さないため）。
+    それを防ぐため、必ず既存行を読み込んでから今回分で更新し、和集合を書く。
+    """
     os.makedirs(os.path.dirname(CSV_PATH), exist_ok=True)
+    merged = {}
+    if os.path.exists(CSV_PATH):
+        with open(CSV_PATH, encoding="utf-8", newline="") as f:
+            for r in csv.DictReader(f):
+                if r.get("media_id"):
+                    merged[r["media_id"]] = r
+    for r in rows:
+        merged[r["media_id"]] = r
     with open(CSV_PATH, "w", encoding="utf-8", newline="") as f:
         w = csv.DictWriter(f, fieldnames=FIELDS)
         w.writeheader()
-        for r in sorted(rows, key=lambda x: x["posted_at"], reverse=True):
+        for r in sorted(merged.values(), key=lambda x: x.get("posted_at", ""), reverse=True):
             w.writerow({k: r.get(k, "") for k in FIELDS})
-    print(f"[OK] {CSV_PATH} に {len(rows)} 件保存")
+    print(f"[OK] {CSV_PATH} に今回 {len(rows)} 件取得 / 累計 {len(merged)} 件保存")
 
 
 def load_csv():
