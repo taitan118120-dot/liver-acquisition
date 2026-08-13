@@ -1,6 +1,6 @@
-name: LP・特典PDF番犬
+name: 公開コンテンツ確定ファクト番犬
 
-# LP・特典PDF原稿・**配布中のPDF実体**の確定ファクト違反を毎日検知する番犬。
+# LP・特典PDF原稿・**配布中のPDF実体**・**Note記事の原稿**の確定ファクト違反を毎日検知する番犬。
 #
 # 背景（2026-08-12）: 「京都コレクションは実在しない」と2026-08-01に確定していたのに、
 # lp/beginner・lp/agency の #network カードと lead_magnet/agency_starter_guide.html P6、
@@ -14,8 +14,24 @@ name: LP・特典PDF番犬
 #   - lead_magnet/*.html と lp/shared/*.pdf は **どの番犬のスコープにも無かった**。
 #     PDFはバイナリなので普通の grep でも一生ヒットしない
 #
+# 2026-08-12（同日追記）: 同じ穴が blog/ にも残っていた。記事149本は link_guard の
+# CONTENT_GLOBS に入っているが、あれは**リンクの生死を見るだけ**で文面を見ない。
+# 実際 blog/articles/work-from-home-sidejob.md の禁止語「挫折率」は一度も検知されていなかった。
+# 記事も走査対象に入れた（ただしWARNの物差しは記事用に分けている。下の「警告」節を参照）。
+#
+# 2026-08-12（さらに同日追記）: 上の「記事はWARNどまり」に穴があった。
+# 記事12本が「最低契約期間が1年以上」「2年以上の長期契約は要注意」「違約金ありは危険」を
+# **怪しい事務所の見分け方**として読者に教えていた。TAITAN PRO は2年契約なので、
+# これを読んで面談に来た人には「御社は2年ですよね？」とそのまま跳ね返る。
+# 既存ルールは「違約金・契約期間」という**語の出現**しか見ておらず、しかも記事では
+# WARN（64件）に落としてあったので、中立な「違約金の有無を確認しよう」と
+# 自社を撃つ「最低契約期間が1年以上は悪質」が同じ山に埋もれて区別できなかった。
+# 語ではなく**判断軸**を見る contract_axis_violations を共通正本に足し、
+# これだけは記事でも赤にする（WARNに落とせないよう guard 側で assert している）。
+#
 # 動作: 毎日1回 content_facts_guard.py を実行し、
-#   - LP4本・特典原稿HTML・配布PDF（pdftotextで抽出）に確定ファクトの禁止パターンを当てる
+#   - LP4本・特典原稿HTML・配布PDF（pdftotextで抽出）・記事149本に
+#     確定ファクトの禁止パターンを当てる
 #     （パターンの正本は facts_patterns.py。この番犬はコピーを持たない）
 #   - 原稿HTML と 配布PDF が同期しているか（焼き直し忘れ／別バージョン配布）
 #   - jsDelivr のSHA固定URLが、いま手元にあるPDFと同じ実体を配っているか
@@ -55,7 +71,7 @@ jobs:
           sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils
           pdftotext -v
 
-      - name: LP・特典原稿・配布PDF走査
+      - name: LP・特典原稿・配布PDF・記事走査
         id: guard
         run: python3 content_facts_guard.py
 
@@ -65,24 +81,44 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const title = 'LP・特典PDFに確定ファクト違反（LP・特典PDF番犬）';
-            let report = {violations: [], warn: [], scanned: {html: [], pdf: []}};
+            const title = '公開コンテンツに確定ファクト違反（公開コンテンツ確定ファクト番犬）';
+            let report = {violations: [], warn: [], scanned: {html: [], pdf: [], article: []}};
             try {
               report = JSON.parse(fs.readFileSync('data/content_facts_guard_report.json', 'utf8'));
             } catch (e) {}
             const vLines = (report.violations || []).map(v =>
               `- **${v.where}** — ${v.reason}` + (v.hit ? `\n  - 該当: \`${v.hit}\`` : '')).join('\n');
-            const wLines = (report.warn || []).map(v =>
-              `- ${v.where} — ${v.reason}（\`${v.hit}\`）`).join('\n');
+            // WARN は記事を入れると200件超になる。全部並べると違反本体が埋もれるので、
+            // 理由ごとに件数でたたんで、中身は先頭5件だけ見せる（全件はレポートJSON）。
+            const warnGroups = new Map();
+            for (const v of (report.warn || [])) {
+              if (!warnGroups.has(v.reason)) warnGroups.set(v.reason, []);
+              warnGroups.get(v.reason).push(v);
+            }
+            const wLines = [...warnGroups.entries()]
+              .sort((a, b) => b[1].length - a[1].length)
+              .map(([reason, items]) => {
+                const head = items.slice(0, 5)
+                  .map(v => `  - ${v.where}: \`${v.hit}\``).join('\n');
+                const rest = items.length > 5
+                  ? `\n  - …ほか ${items.length - 5} 件` : '';
+                return `- **[${items.length}件] ${reason}**\n${head}${rest}`;
+              }).join('\n');
+            // 記事は149本あるので個別には並べない（Issueが記事一覧で埋まる）。
+            // 全件は data/content_facts_guard_report.json の scanned.article にある。
             const sLines = [...(report.scanned?.html || []), ...(report.scanned?.pdf || [])]
-              .map(s => `- \`${s}\``).join('\n');
+              .map(s => `- \`${s}\``).join('\n')
+              + `\n- 記事 \`blog/articles/*.md\` + \`blog/articles_note/*.md\` `
+              + `${(report.scanned?.article || []).length} 本`;
             const body = [
-              '## LP・特典PDF番犬 検知',
+              '## 公開コンテンツ確定ファクト番犬 検知',
               '',
-              'LP・特典PDFは**一度書いたら二度と読み返さない場所**です。',
+              'LP・特典PDF・記事は**一度書いたら二度と読み返さない場所**です。',
               'とくに `lp/shared/*.pdf` は**バイナリなので普通の grep に一切引っかからず**、',
               '原稿HTMLだけを直して「直した」と思い込むと、**配られているのは古いPDFのまま**になります。',
               '実際 2026-08-12 に、実在しない「京都コレクション」が配布中の代理店特典PDFに残っていました。',
+              '記事も同じ日まで**どの禁止語番犬のスコープにも入っていません**でした',
+              '（link_guard は記事を見ているがリンクの生死だけ）。',
               '',
               '## 検知された違反',
               vLines || '(レポート読込失敗。ランのログを確認)',
@@ -90,6 +126,17 @@ jobs:
               '## 警告（主語・文脈で可否が変わるので人が判断する。赤にはしない）',
               '少額表記・実績誇張・他社比較は、ライバーの収入目安なのか代理店報酬なのか等、',
               '**主語で可否が変わる**ため自動判定しません（`facts_patterns.AUDIT_WARN_LABELS`）。',
+              '記事はさらに「断定・保証表現」「違約金・契約期間」「手数料」「取扱外プラットフォーム」も',
+              '警告どまりです（`content_facts_guard.ARTICLE_WARN_LABELS`）。',
+              '事務所選びの解説記事では、これらを**悪い例の引用・読者への注意喚起**として書くのが',
+              '正しい形になるため（「『絶対稼げる』と断言する事務所は危険」など）。',
+              '',
+              '**ただし「自社と矛盾する判断軸」だけは警告ではなく赤です。**',
+              '契約期間の**長さ**や違約金の**有無そのもの**を怪しい事務所の基準にすると、',
+              'TAITAN PRO は2年契約なので、それを読んで面談に来た人に',
+              '「御社は2年ですよね？」とそのまま跳ね返ります（記事が自分を撃つ）。',
+              '2026-08-12 に12箇所見つかり、64件の「違約金・契約期間」WARNに埋もれて',
+              '誰も気づいていませんでした。だから別ラベルで分けて赤にしています。',
               '',
               wLines || '(なし)',
               '',
@@ -106,7 +153,18 @@ jobs:
               '     **そのコミットのSHA**へ更新する（jsDelivrはSHA固定配信なので、',
               '     ここを上げないと直したPDFは登録者に届かない）',
               '3. LPは `lp/**/*.html` を直して push（Netlifyが自動デプロイ）',
-              '4. 修正後 `python3 content_facts_guard.py --repo-only` がローカルで緑になることを確認',
+              '4. **記事（`blog/articles_note/*.md`）は .md を直しても note 上は変わらない**。',
+              '   108本が note で公開中なので、原稿を直したら公開側にも反映する:',
+              '   - Actions の「Note記事 一括更新」を実行（`--update` / `--update-all`）',
+              '   - タグとカバーは fetch-PUT で落ちるので、`note_tag_guard` の自己検証まで見る',
+              '   - `blog/articles/*.md`（自社ブログ）は push だけで反映',
+              '5. **「自社と矛盾する判断軸」が出た場合**は、語を消すのではなく**軸を差し替える**。',
+              '   935da09 で全記事を統一した形に合わせる（長さ → 明記・説明されているか）:',
+              '   - ❌「最低契約期間が1年以上」「2年以上の長期契約は要注意」「違約金ありは危険」',
+              '   - ✅「契約期間や違約金の条件が**書面に明記**されているか」',
+              '     「聞いたときに**きちんと説明**してくれるか」',
+              '   中立形（「有無」「明記」「書面」「説明」を含む文）は番犬側で素通りします。',
+              '6. 修正後 `python3 content_facts_guard.py --repo-only` がローカルで緑になることを確認',
               '',
               '直すと次回のランがこのIssueを自動クローズします。',
               '',
@@ -127,7 +185,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const title = 'LP・特典PDFに確定ファクト違反（LP・特典PDF番犬）';
+            const title = '公開コンテンツに確定ファクト違反（公開コンテンツ確定ファクト番犬）';
             const { data: existing } = await github.rest.issues.listForRepo({
               owner: context.repo.owner, repo: context.repo.repo,
               state: 'open', per_page: 100,
