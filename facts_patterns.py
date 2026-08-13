@@ -74,6 +74,24 @@ _ZEN2HAN = str.maketrans("０１２３４５６７８９", "0123456789")
 # [[feedback_income_figures]]: 月1〜3万等の少額表記は今後全媒体で書かない
 MONEY_FLOOR = 15
 
+# 2026-08-12: 15万下限は「ライバー本人の収入」が主語のときの話。
+# **代理店パートナーの報酬**は別軸で、LP `lp/agency/index.html` の
+# 1ヶ月目 月5万円〜 / 1〜3ヶ月 月10〜20万円が確定値（2026-08-02 ユーザー承認）。
+# 下限だけを機械的に当てると、この確定値そのものが毎回警告される
+# （「鳴きやまない番犬」＝ [[feedback_watchdog_autoclose]] 違反）。
+#
+# 主語判定は「その金額より前に『代理店』という語が一度でも出てきたか」で行う
+# （距離の上限は設けない）。理由:
+#   - lp/agency・lead_magnet/agency_starter_guide は**ページ全体が代理店の話**。
+#     FAQ文（「どれくらいで収益化できますか？」）は見出しから1700字以上離れて
+#     いて、固定の窓幅（実測で試した450字）では届かなかった
+#   - 一方 lp/beginner・lp/liver・lp/sidejob は「代理店」という語が
+#     ページ末尾のクロスリンク（他LPへの誘導帯）にしか出てこない
+#     （実測: 本文中の出現位置はどれもページ末尾寄りで、収入セクションより後）。
+#     backward-only（金額より前だけを見る）なので、収入セクションが
+#     クロスリンクより前にある限り誤って免除されることはない
+AGENCY_WORD = re.compile(r"代理店")
+
 # strict モードで「月◯万」の記載を許すレンジ表記。
 # 下限(MONEY_FLOOR)は全媒体共通だが、「確定レンジ以外の金額は一切書かない」
 # という強い縛りは Threads だけの運用なので strict=True で明示的に有効化する。
@@ -242,6 +260,8 @@ def money_violations(text, strict=False):
         except ValueError:
             continue
         if amount < MONEY_FLOOR:
+            if AGENCY_WORD.search(text[:m.start()]):
+                continue  # 代理店パートナーの報酬はライバー本人の収入と別軸（確定値）
             out.append((f"確定レンジ未満の少額表記（月{MONEY_FLOOR}万が下限）", m.group(0)))
             continue
         if not strict:

@@ -2,36 +2,6 @@
  "violations": [],
  "warn": [
   {
-   "where": "lead_magnet/agency_starter_guide.html",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月5万"
-  },
-  {
-   "where": "lead_magnet/agency_starter_guide.html",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月10〜20万"
-  },
-  {
-   "where": "lp/agency/index.html",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月5万"
-  },
-  {
-   "where": "lp/agency/index.html",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月10〜20万"
-  },
-  {
-   "where": "lp/agency/index.html",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月5万"
-  },
-  {
-   "where": "lp/agency/index.html",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月10〜20万"
-  },
-  {
    "where": "lp/beginner/index.html",
    "reason": "根拠なしの実績誇張",
    "hit": "何百人"
@@ -40,21 +10,6 @@
    "where": "lp/liver/index.html",
    "reason": "他社を下げる書き方",
    "hit": "一般的な事務所"
-  },
-  {
-   "where": "lp/sidejob/index.html",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月3〜8万"
-  },
-  {
-   "where": "lp/shared/agency_starter_guide.pdf",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月5万"
-  },
-  {
-   "where": "lp/shared/agency_starter_guide.pdf",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月10〜20万"
   },
   {
    "where": "blog/articles/how-to-start-liver.md",
@@ -242,16 +197,6 @@
    "hit": "数千"
   },
   {
-   "where": "blog/articles_note/134_ライバー事務所の代理店とは.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月5〜10万"
-  },
-  {
-   "where": "blog/articles_note/134_ライバー事務所の代理店とは.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月10〜30万"
-  },
-  {
    "where": "blog/articles_note/13_ライバーイベント攻略.md",
    "reason": "少額表記（数万円/お小遣い程度）",
    "hit": "数万円"
@@ -320,26 +265,6 @@
    "where": "blog/articles_note/24_ライバー事務所代理店.md",
    "reason": "少額表記（数万円/お小遣い程度）",
    "hit": "数万円"
-  },
-  {
-   "where": "blog/articles_note/24_ライバー事務所代理店.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月3〜5万"
-  },
-  {
-   "where": "blog/articles_note/24_ライバー事務所代理店.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月10〜20万"
-  },
-  {
-   "where": "blog/articles_note/24_ライバー事務所代理店.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月5万"
-  },
-  {
-   "where": "blog/articles_note/25_ライバーマネージャー.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月3〜10万"
   },
   {
    "where": "blog/articles_note/26_ライバー副業バレない.md",
@@ -432,74 +357,9 @@
    "hit": "数千"
   },
   {
-   "where": "blog/articles_note/38_ライバー代理店副業始め方ステップ.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月10万"
-  },
-  {
-   "where": "blog/articles_note/38_ライバー代理店副業始め方ステップ.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月10万"
-  },
-  {
-   "where": "blog/articles_note/38_ライバー代理店副業始め方ステップ.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月10万"
-  },
-  {
-   "where": "blog/articles_note/38_ライバー代理店副業始め方ステップ.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月3〜5万"
-  },
-  {
-   "where": "blog/articles_note/38_ライバー代理店副業始め方ステップ.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月10〜20万"
-  },
-  {
-   "where": "blog/articles_note/38_ライバー代理店副業始め方ステップ.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月5〜10万"
-  },
-  {
-   "where": "blog/articles_note/38_ライバー代理店副業始め方ステップ.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月5万"
-  },
-  {
    "where": "blog/articles_note/39_ライバー代理店稼げる収入リアル.md",
    "reason": "断定・保証表現",
    "hit": "安定して稼"
-  },
-  {
-   "where": "blog/articles_note/39_ライバー代理店稼げる収入リアル.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月3万"
-  },
-  {
-   "where": "blog/articles_note/39_ライバー代理店稼げる収入リアル.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月10万"
-  },
-  {
-   "where": "blog/articles_note/39_ライバー代理店稼げる収入リアル.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月5万"
-  },
-  {
-   "where": "blog/articles_note/39_ライバー代理店稼げる収入リアル.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月10万"
-  },
-  {
-   "where": "blog/articles_note/39_ライバー代理店稼げる収入リアル.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月3万"
-  },
-  {
-   "where": "blog/articles_note/39_ライバー代理店稼げる収入リアル.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月10万"
   },
   {
    "where": "blog/articles_note/40_ライバー事務所の仕組み報酬体系完全図解.md",
@@ -537,26 +397,6 @@
    "hit": "何百人"
   },
   {
-   "where": "blog/articles_note/43_ライバー事務所開業方法代理店との違い.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月1〜5万"
-  },
-  {
-   "where": "blog/articles_note/43_ライバー事務所開業方法代理店との違い.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月5〜20万"
-  },
-  {
-   "where": "blog/articles_note/43_ライバー事務所開業方法代理店との違い.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月3〜10万"
-  },
-  {
-   "where": "blog/articles_note/43_ライバー事務所開業方法代理店との違い.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月1〜3万"
-  },
-  {
    "where": "blog/articles_note/44_初配信コツ.md",
    "reason": "取扱外プラットフォーム",
    "hit": "IRIAM"
@@ -565,66 +405,6 @@
    "where": "blog/articles_note/45_ライバー時給.md",
    "reason": "取扱外プラットフォーム",
    "hit": "IRIAM"
-  },
-  {
-   "where": "blog/articles_note/47_副業月5万在宅.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月5万"
-  },
-  {
-   "where": "blog/articles_note/47_副業月5万在宅.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月5万"
-  },
-  {
-   "where": "blog/articles_note/47_副業月5万在宅.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月5万"
-  },
-  {
-   "where": "blog/articles_note/47_副業月5万在宅.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月1万"
-  },
-  {
-   "where": "blog/articles_note/47_副業月5万在宅.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月3〜4万"
-  },
-  {
-   "where": "blog/articles_note/47_副業月5万在宅.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月5万"
-  },
-  {
-   "where": "blog/articles_note/47_副業月5万在宅.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月5万"
-  },
-  {
-   "where": "blog/articles_note/47_副業月5万在宅.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月5万"
-  },
-  {
-   "where": "blog/articles_note/47_副業月5万在宅.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月7万"
-  },
-  {
-   "where": "blog/articles_note/47_副業月5万在宅.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月5万"
-  },
-  {
-   "where": "blog/articles_note/47_副業月5万在宅.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月5万"
-  },
-  {
-   "where": "blog/articles_note/47_副業月5万在宅.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月5万"
   },
   {
    "where": "blog/articles_note/47_副業月5万在宅.md",
