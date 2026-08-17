@@ -26,6 +26,7 @@ from messages import (
     STEP_MESSAGES, AUTO_REPLIES, AGENCY_REPLIES, DEFAULT_REPLY, SOURCE_THANKS,
     find_source, make_meeting_offer, parse_slot_choice, MEETING_BOOKED,
     find_intent, INTENT_LABELS, INTENT_REPLIES, meeting_intro, step_text,
+    slot_reprompt, MANUAL_FOLLOW_REPLY,
 )
 import rich_menu
 import state_sync
@@ -474,26 +475,20 @@ def find_auto_reply(text, intent=None):
     return None
 
 
-def switch_to_manual(user_id, user_data, users, reply_token, text, reason):
-    """自動対応をやめて手動対応に切り替える（以降の自動送信を全停止）"""
-    user_data["awaiting_slot"] = False
-    user_data["auto_paused"] = True
-    users[user_id] = user_data
-    save_json(USERS_FILE, users)
-    cancel_user_steps(user_id)
-    reply_line_message(
-        reply_token,
-        "メッセージありがとうございます！\n"
-        "内容を確認して、担当からこのLINEでご連絡しますね😊",
-        user_id,
-    )
+def notify_manual_needed(user_id, text, reason):
+    """担当の返信が要りそうな内容を管理者に知らせる（自動対応は止めない）
+
+    以前はここで auto_paused を立てて手動対応に切り替えていたが、
+    切り替わったことに担当が気づくまで誰も返事をしない時間ができるため廃止した。
+    手動に切り替えるのは管理コマンド「停止 <ID先頭8文字>」を送ったときだけ。
+    """
     name = get_display_name(user_id)
     notify_admin(
-        f"✋ 手動対応に切り替えました（{reason}）\n"
+        f"💬 直接の返信が要りそうです（{reason}）\n"
         f"名前: {name or '(取得失敗)'}\n"
         f"ID: {user_id[:8]}\n"
         f"内容: {text[:200]}\n\n"
-        "この人への自動送信は停止済みです。直接返信してください。"
+        "自動対応は続いています。止めるなら「停止 " + user_id[:8] + "」を送ってください。"
     )
 
 
@@ -517,7 +512,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
         self.end_headers()
-        self.wfile.write(b"TAITAN PRO LINE Bot is running (v17-agency-pdf-a6ad370)")
+        self.wfile.write(b"TAITAN PRO LINE Bot is running (v18-no-auto-manual)")
 
     def do_POST(self):
         content_length = int(self.headers.get("Content-Length", 0))
@@ -726,14 +721,11 @@ class WebhookHandler(BaseHTTPRequestHandler):
                         )
                         print(f"[MEETING] {user_id[:8]}... -> {slot}")
                         continue
-                    # 日程と判定できない返信は、手動調整の相談や個別の返事。
-                    # キーワード応答に流すと文中の「ポコチャ」等の一語に
-                    # 解説Botが反応してしまうので、必ず手動対応へ切り替える
-                    switch_to_manual(
-                        user_id, user_data, users, reply_token, text,
-                        "日程候補への自由文返信",
-                    )
-                    continue
+                    # 日程と判定できない返信は、手動調整の相談や個別の返事のことが多い。
+                    # 管理者には知らせるが、自動対応は止めずにそのまま続ける
+                    # （勝手に手動へ切り替えると、担当が気づくまで無反応になるため）。
+                    notify_manual_needed(user_id, text, "日程候補への自由文返信")
+                    # → 下のキーワード応答／日程の案内し直しにそのまま流す
 
                 # 「面談」キーワード → LINE内で日程候補を提示
                 if "面談" in text or "めんだん" in text:
@@ -768,12 +760,22 @@ class WebhookHandler(BaseHTTPRequestHandler):
                     reply_line_message(reply_token, replies, user_id)
                 else:
                     # 日程提示後の自由回答（番号でも日時でもキーワードでもない）
-                    # → 個別の相談・返事の可能性が高いので自動対応をやめて手動に切り替える
+                    # → 個別の相談・返事の可能性が高い。担当に知らせたうえで、
+                    #   自動対応は止めずに日程の案内をもう一度だけ添えて返す
                     if user_data.get("awaiting_slot") or user_data.get("meeting_offered"):
-                        switch_to_manual(
-                            user_id, user_data, users, reply_token, text,
-                            "面談フロー中に自由メッセージ",
-                        )
+                        if not user_data.get("awaiting_slot"):
+                            notify_manual_needed(
+                                user_id, text, "面談フロー中に自由メッセージ"
+                            )
+                        count = user_data.get("slot_reprompt_count", 0) + 1
+                        user_data["slot_reprompt_count"] = count
+                        users[user_id] = user_data
+                        save_json(USERS_FILE, users)
+                        if count == 1 and user_data.get("slot_candidates"):
+                            reply = slot_reprompt(user_data["slot_candidates"])
+                        else:
+                            reply = MANUAL_FOLLOW_REPLY
+                        reply_line_message(reply_token, reply, user_id)
                         continue
                     # DEFAULT_REPLY は初回メッセージ時のみ送信
                     if not user_data.get("default_replied"):
