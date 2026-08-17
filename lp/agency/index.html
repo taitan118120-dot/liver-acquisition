@@ -97,17 +97,28 @@
 
   <!-- ============ 1. 固定ヘッダー ============ -->
   <header class="site-header">
-    <a class="brand" href="#top">
-      <img src="../shared/logo.jpg?v=20260720" alt="TAITAN PRO" width="34" height="34">
-      <span>TAITAN PRO</span>
-    </a>
-    <a class="line-btn is-header js-line-cta"
-       href="https://lin.ee/xchCfdn"
-       data-cta-position="header"
-       data-cta-label="まずはLINEで相談してみる">
-      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.5 2 2 5.7 2 10.2c0 4 3.6 7.4 8.4 8.1.3.1.8.2.9.5.1.3.1.7 0 1l-.1.9c0 .3-.2 1 .9.6 1.1-.5 6-3.5 8.2-6C21.6 13.6 22 12 22 10.2 22 5.7 17.5 2 12 2z"/></svg>
-      LINEで相談
-    </a>
+    <div class="header-top">
+      <a class="brand" href="#top">
+        <img src="../shared/logo.jpg?v=20260720" alt="TAITAN PRO" width="34" height="34">
+        <span>TAITAN PRO</span>
+      </a>
+      <a class="line-btn is-header js-line-cta"
+         href="https://lin.ee/xchCfdn"
+         data-cta-position="header"
+         data-cta-label="まずはLINEで相談してみる">
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.5 2 2 5.7 2 10.2c0 4 3.6 7.4 8.4 8.1.3.1.8.2.9.5.1.3.1.7 0 1l-.1.9c0 .3-.2 1 .9.6 1.1-.5 6-3.5 8.2-6C21.6 13.6 22 12 22 10.2 22 5.7 17.5 2 12 2z"/></svg>
+        LINEで相談
+      </a>
+    </div>
+    <nav class="site-nav" aria-label="メインメニュー">
+      <a href="#top">ホーム</a>
+      <a href="#steps">お仕事の流れ</a>
+      <a href="#reward">報酬の仕組み</a>
+      <a href="#reasons">選ばれる理由</a>
+      <a href="#network">ライバー特典</a>
+      <a href="#support">サポート体制</a>
+      <a href="#faq">よくある質問</a>
+    </nav>
   </header>
 
   <!-- ============ 2. ファーストビュー ============ -->
@@ -570,10 +581,30 @@
       <div class="sec-head">
         <span class="sec-label">NETWORK</span>
         <h2 class="sec-title">紹介したライバーに、<br><span class="accent">こんな体験を用意できる</span></h2>
-        <p class="sec-sub">TAITAN PROが提携する大型ネットワークだからこそ届けられる、特別な機会があります。</p>
+        <p class="sec-sub">TAITAN PROが提携する大型ネットワークだからこそ届けられる、特別な機会と後押しがあります。</p>
       </div>
 
       <div class="safety">
+        <div class="safety-item">
+          <div class="s-ico">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 18l5-5 3.5 3.5L20 9"/><path d="M15 9h5v5"/><path d="M3 21h18"/></svg>
+          </div>
+          <div>
+            <h3>C帯達成ボーナス</h3>
+            <p>紹介したライバーがPocochaでC帯に到達すると、達成ボーナスが支給されます。最初の壁を越えた瞬間に、ちゃんと報われる仕組みです。</p>
+          </div>
+        </div>
+
+        <div class="safety-item">
+          <div class="s-ico">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+          </div>
+          <div>
+            <h3>他アプリからの移籍で時給保証<br>（最大 時給5,000円）</h3>
+            <p>別の配信アプリからPocochaへ移る方には、時給保証をご用意しています。金額は実績に応じて決まり、最大で時給5,000円。「移った直後の収入が不安」を先に消せます。</p>
+          </div>
+        </div>
+
         <div class="safety-item">
           <div class="s-ico">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
@@ -637,7 +668,8 @@
 
       <p class="compare-note">
         これだけの体験を用意できることが、あなたの声かけを後押しします。「うちに来れば、こんな景色が見える」——そう伝えられるのは、大きな武器になります。<br>
-        ※ イベントの開催時期・内容は変動します。参加や出演を保証するものではありません。
+        ※ イベントの開催時期・内容は変動します。参加や出演を保証するものではありません。<br>
+        ※ C帯達成ボーナス・時給保証には適用条件があります。金額や対象条件の詳細は個別にご案内します。
       </p>
 
       <div class="cta-block">
@@ -720,7 +752,7 @@
   </section>
 
   <!-- ============ 11. 安心ポイント ============ -->
-  <section class="sec tint-pink">
+  <section class="sec tint-pink" id="support">
     <div class="container reveal">
       <div class="sec-head">
         <span class="sec-label">SAFETY</span>
