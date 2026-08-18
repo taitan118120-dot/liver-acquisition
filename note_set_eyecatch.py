@@ -64,6 +64,27 @@ def load_cookies():
     return pw_cookies
 
 
+def _verify_eyecatch(ctx, note_key, tries=6, wait=5):
+    """draft API（editorと同じデータ源。公開APIより反映が速い）でeyecatchを確認する。
+    editorページ内の相対fetchは editor.note.com に飛んで常に404だったため、
+    cookie共有済みの ctx.request で note.com オリジンへ直接投げる。"""
+    for attempt in range(1, tries + 1):
+        try:
+            r = ctx.request.get(
+                f"https://note.com/api/v3/notes/{note_key}?draft=true&ts={int(time.time()*1000)}",
+                headers={"X-Requested-With": "XMLHttpRequest"}, timeout=20000)
+            data = json.loads(r.text()).get("data", {}) if r.ok else {}
+            ec = data.get("eyecatch") or (data.get("note") or {}).get("eyecatch") or ""
+            if "uploads/images" in ec:
+                print(f"  [PW] draft APIでeyecatch確認OK (attempt {attempt})")
+                return ec
+            print(f"  [PW] draft API eyecatch未反映 (attempt {attempt})")
+        except Exception as e:
+            print(f"  [PW] draft API確認エラー: {str(e)[:80]}")
+        time.sleep(wait)
+    return None
+
+
 def set_eyecatch(article_num, note_key, headless=True):
     """1記事のアイキャッチを設定。
 
@@ -140,31 +161,66 @@ def set_eyecatch(article_num, note_key, headless=True):
         except Exception as e:
             print(f"  [PW] 既存eyecatch削除失敗: {str(e)[:80]}")
 
-        # アイキャッチ「画像を追加」ボタン (aria-label) をクリック → モーダル表示
-        clicked = False
-        try:
-            btn = page.locator('button[aria-label="画像を追加"]').first
-            if btn.count() > 0:
-                btn.click(timeout=5000)
-                clicked = True
-                print(f"  [PW] '画像を追加' ボタン clicked")
-                time.sleep(3)
-        except Exception as e:
-            print(f"  [PW] 画像を追加ボタン失敗: {e}")
+        # アイキャッチ追加ボタンを開く。
+        # 2026-08-13頃のUI変更で button[aria-label="画像を追加"] は消え、
+        # aria-label はボタン内の <svg> 側に移った（＝旧セレクタは何も掴めず
+        # 5日間カバー無しで公開され続けた）。svg から親buttonを辿る。
+        opened = False
+        for sel in ('button:has(svg[aria-label="画像を追加"])',
+                    'button[aria-label="画像を追加"]'):
+            try:
+                btn = page.locator(sel).first
+                if btn.count() > 0:
+                    btn.click(timeout=5000)
+                    opened = True
+                    print(f"  [PW] 見出し画像ボタン clicked ({sel})")
+                    time.sleep(3)
+                    break
+            except Exception as e:
+                print(f"  [PW] {sel} 失敗: {str(e)[:60]}")
+        if not opened:
+            print("  [PW] 見出し画像ボタンが見つからない（UI変更の可能性）")
 
-        # モーダル内の「アップロード」タブ/ボタンをクリック（必要なら）
-        for label in ("アップロード", "ファイルを選択", "画像をアップロード", "アップロードする"):
+        # 新UIはパネル内の「画像をアップロード」を押すとOSのファイル選択が開く。
+        # input[type=file] はDOMに存在しないので expect_file_chooser で受ける。
+        uploaded = False
+        for label in ("画像をアップロード", "アップロード", "ファイルを選択"):
             try:
                 el = page.get_by_text(label, exact=False).first
-                if el.count() > 0 and el.is_visible():
-                    el.click(timeout=2000)
-                    print(f"  [PW] '{label}' クリック")
-                    time.sleep(2)
-                    break
-            except Exception:
-                continue
+                if el.count() == 0 or not el.is_visible():
+                    continue
+                with page.expect_file_chooser(timeout=8000) as fc:
+                    el.click(timeout=4000)
+                fc.value.set_files(image_path)
+                uploaded = True
+                print(f"  [PW] '{label}' → ファイル選択で {os.path.basename(image_path)} を投入")
+                break
+            except Exception as e:
+                print(f"  [PW] '{label}' でのアップロード失敗: {str(e)[:70]}")
 
-        # ファイル入力を探す
+        if uploaded:
+            time.sleep(6)
+            # トリミングモーダルの「保存」（モーダル外の同名ボタンを掴まないこと）
+            for sel in ('.ReactModalPortal button:has-text("保存")',
+                        'div[role="dialog"] button:has-text("保存")',
+                        'button:has-text("保存")'):
+                try:
+                    b = page.locator(sel).first
+                    if b.count() > 0 and b.is_visible():
+                        b.click(timeout=4000)
+                        print(f"  [PW] トリミング保存 clicked ({sel})")
+                        time.sleep(4)
+                        break
+                except Exception:
+                    continue
+            time.sleep(4)
+            eyecatch_url = _verify_eyecatch(ctx, note_key)
+            browser.close()
+            if eyecatch_url:
+                return {"ok": True, "eyecatch_url": eyecatch_url}
+            return {"ok": False, "reason": "アップロード後にeyecatchを確認できず"}
+
+        # ここから下は旧UI（input[type=file]が存在する場合）のフォールバック
         file_inputs = page.locator('input[type="file"]')
         cnt = file_inputs.count()
         print(f"  [PW] file_input候補数: {cnt}")
@@ -229,22 +285,7 @@ def set_eyecatch(article_num, note_key, headless=True):
         # cookie共有済みの ctx.request で note.com オリジンへ直接投げる。
         # 再公開PUT({"status":"published"})は不要（記事は公開済みのまま維持される）で、
         # fetch-PUTはタグ消失の副作用があるため送らない。
-        eyecatch_url = None
-        for attempt in range(1, 7):
-            try:
-                r = ctx.request.get(
-                    f"https://note.com/api/v3/notes/{note_key}?draft=true&ts={int(time.time()*1000)}",
-                    headers={"X-Requested-With": "XMLHttpRequest"}, timeout=20000)
-                data = json.loads(r.text()).get("data", {}) if r.ok else {}
-                ec = data.get("eyecatch") or (data.get("note") or {}).get("eyecatch") or ""
-                if "uploads/images" in ec:
-                    eyecatch_url = ec
-                    print(f"  [PW] draft APIでeyecatch確認OK (attempt {attempt})")
-                    break
-                print(f"  [PW] draft API eyecatch未反映 (attempt {attempt})")
-            except Exception as e:
-                print(f"  [PW] draft API確認エラー: {str(e)[:80]}")
-            time.sleep(5)
+        eyecatch_url = _verify_eyecatch(ctx, note_key)
 
         browser.close()
 

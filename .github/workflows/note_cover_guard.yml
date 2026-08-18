@@ -49,7 +49,13 @@ jobs:
 
       - name: カバー画像の存在を照合
         id: guard
-        run: python3 note_cover_guard.py --json
+        # 毎日のスケジュール実行では note の公開APIも叩き、
+        # 「公開済みなのにアイキャッチが空」の記事も検知する
+        # （2026-08-13〜18、editorのUI変更で自動設定が黙って失敗し
+        #   #137-141 がカバー無しで公開されていたのを見逃していた）。
+        env:
+          PUBLISHED: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '--published' || '' }}
+        run: python3 note_cover_guard.py --json $PUBLISHED
 
       - name: 欠落検知 → Issue通知
         if: failure()
@@ -65,19 +71,27 @@ jobs:
             const lines = (report.missing || []).map(m =>
               `- #${m.num} \`${m.article}\`\n  - 追加先: \`blog/images/${m.num}_*.png\``
             ).join('\n');
+            const pubLines = (report.published_missing || []).map(m =>
+              `- \`${m.key}\` (${m.published_at}) ${m.title}`
+            ).join('\n');
             const body = [
               '## Noteカバー画像 番犬 検知',
               '',
-              '記事(.md)はあるのに **カバー画像(blog/images/{番号}_*.png)が無い** 記事があります。',
-              'このまま放置すると `note_daily_post` が該当記事の投稿時に **exit 3 で失敗** します。',
+              '記事(.md)はあるのに **カバー画像(blog/images/{番号}_*.png)が無い**、',
+              'もしくは **公開済みなのに note 上のアイキャッチが空** の記事があります。',
+              'ローカル欠落を放置すると `note_daily_post` が該当記事の投稿時に **exit 3 で失敗** します。',
               '',
-              '## 欠落している記事',
-              lines || '(レポート読込失敗。ランのログを確認)',
+              '## ローカルにカバー画像が無い記事',
+              lines || '(なし)',
+              '',
+              '## 公開済みだがアイキャッチが空の記事',
+              pubLines || '(なし)',
               '',
               '## 対処',
-              '1. 記事内容に合う画像を `blog/images/{番号}_slug.png` として追加',
-              '   （テキストだけのカードは禁止。テーマの近い既存イラスト素材の流用可）',
-              '2. `python3 note_cover_guard.py` がローカルで緑になることを確認',
+              '1. `python3 note_cover_make.py {番号}` でカバーを作る',
+              '   （写真＋大きな見出しの合成。文字だけのカードは禁止）',
+              '2. 公開済みの記事は `python3 note_set_eyecatch.py {番号} {note_key}` で設定',
+              '3. `python3 note_cover_guard.py --published` がローカルで緑になることを確認',
               '',
               '直すと次回のランがこのIssueを自動クローズします。',
               '',
@@ -89,7 +103,7 @@ jobs:
             const guard = require('./.github/scripts/guard_comment.js');
             await guard.notify({
               github, context, title, body,
-              recomment: `再検知: ${new Date().toISOString()}\n\n${lines}`,
+              recomment: `再検知: ${new Date().toISOString()}\n\n${lines}\n${pubLines}`,
             });
 
       - name: 欠落解消 → Issueを自動クローズ
