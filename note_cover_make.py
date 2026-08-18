@@ -5,8 +5,10 @@ Note記事のアイキャッチ（サムネイル）を「一目で内容が分�
 方針（2026-08-18 決定）:
   絵だけのイラストカバーはタイムライン上で何の記事か分からず素通りされる。
   これからのカバーは必ず
-    実写風の写真背景（人物入り）＋ 大きな見出しテキスト ＋ 黄色ハイライト ＋ TAITAN PROバッジ
+    実写風の写真背景（人物なし・物と部屋だけ）＋ 大きな見出しテキスト
+    ＋ 黄色ハイライト ＋ TAITAN PROバッジ
   の合成にする。文字だけのカード（背景が単色/グラデ）は従来どおり禁止。
+  人物写真は「顔が怖い」というユーザー判断で不採用（AI生成の顔は不気味の谷に落ちる）。
 
 背景画像:
   Pollinations.ai（無料・Google APIの予算を使わない）で1本ずつ生成し
@@ -64,33 +66,31 @@ FONT_CANDIDATES = [
     "/System/Library/Fonts/Hiragino Sans GB.ttc",
 ]
 
-# 背景生成の共通スタイル（LPの実写路線に合わせる。文字は絶対に入れさせない）
-# 手や指の破綻が一番出やすいので、最初から「胸から上・手は映さない」で撮らせる
-# （[[feedback_verify_generated_images]] の検品で毎回引っかかっていたのが手だった）
+# 背景生成の共通スタイル
+# 2026-08-18: 人物ありで作ったところ「顔写真は怖い」とNG。
+# 以降サムネイルの背景に**人物は入れない**（顔・手・人影すべて）。物と部屋だけで撮る。
 BG_STYLE = (
-    "candid lifestyle photography of a real ordinary japanese person, "
-    "natural light, chest-up framing, hands out of frame, hands not visible, "
-    "sharp focus on the face, friendly natural expression, "
-    "casual modest everyday clothes such as a knit sweater, hoodie or shirt, "
-    "realistic ordinary japanese room, blurred background, "
-    "subject placed on the RIGHT side of the frame, "
-    "large empty copy space on the LEFT half, high resolution, "
+    "photorealistic interior still life photography, no people, nobody in frame, "
+    "objects and room only, soft natural light, calm and clean, "
+    "the subject fills the frame and is clearly recognizable, "
+    "shallow depth of field, high resolution, "
     "NO text, NO letters, NO words, NO logos, NO watermark, "
-    "NOT illustration, NOT anime, NOT 3D render, "
-    "NOT glamour, NOT bare shoulders, NOT swimwear"
+    "NO person, NO face, NO hands, NO human, "
+    "NOT illustration, NOT anime, NOT 3D render"
 )
 
 # 記事テーマ→背景プロンプトの手がかり（タイトルに含まれる語で拾う）
 BG_HINTS = [
-    ("新人期間", "pretty japanese woman in her twenties smiling brightly toward a smartphone on a tripod at home, morning light, bright cheerful room"),
-    ("しんどい", "japanese woman in her twenties sitting on a sofa looking down thoughtfully, tired but calm expression, dim cozy evening room"),
-    ("顔出しなし", "japanese woman in her twenties leaning close to a desk microphone with a headset, warm desk lamp, dark cozy room"),
-    ("主婦", "japanese woman in her thirties smiling in a bright kitchen living room, sunlight through the window, daytime"),
-    ("TikTok", "japanese woman in her twenties looking at a smartphone on a tripod, modern room with cool blue ring light"),
-    ("代理店", "japanese man in a shirt working on a laptop at a bright desk, calm confident expression"),
-    ("男性", "japanese man in his twenties doing a live stream with a smartphone on a tripod, modern room, warm light"),
-    ("_default", "pretty japanese woman in her twenties doing a live stream with a smartphone on a tripod at home, warm cozy room"),
+    ("新人期間", "a smartphone on a small tripod on a wooden desk, an open notebook with a pen and a paper calendar beside it, a mug of coffee, morning sunlight through the window"),
+    ("しんどい", "a quiet living room in the evening, a warm mug on a low table, a folded blanket on the sofa, a small lamp glowing softly"),
+    ("顔出しなし", "a desk microphone and headphones on a wooden desk, a smartphone beside them, warm desk lamp light, dark cozy room at night"),
+    ("主婦", "a bright kitchen counter with a smartphone on a stand, a mug and a small plant, laundry basket in the soft background, daytime sunlight"),
+    ("TikTok", "a smartphone on a tripod facing a ring light on a modern desk, cool blue light, clean simple room"),
+    ("代理店", "a laptop, a notebook and a cup of coffee on a bright office desk, documents neatly stacked, morning light"),
+    ("確定申告", "a calculator, receipts and tax documents on a desk with a laptop, tidy and organized, daylight"),
+    ("_default", "a smartphone on a tripod on a wooden desk in a cozy japanese room, a ring light and a mug beside it, warm natural light"),
 ]
+
 
 
 # ── 記事情報 ───────────────────────────────────────────
@@ -263,18 +263,43 @@ def detect_face(img):
     return (x + w_ / 2) / img.width
 
 
-def focus_crop(img, w, h, target=0.74, zoom=1.18):
-    """人物（顔）が右側 target の位置に来るように拡大＋パンして切り出す。"""
-    face = detect_face(img)
+def subject_x(img):
+    """人物なし写真で「主役の物」が横方向のどこにあるかを 0..1 で返す。
+
+    小さくしたグレースケールのエッジ量を列ごとに合計し、その重心を取る。
+    ランプや机の上の小物のように「情報が集中している場所」が主役になる。
+    """
+    from PIL import ImageFilter
+    small = img.convert("L").resize((160, 90), Image.LANCZOS).filter(ImageFilter.FIND_EDGES)
+    cols = [0] * 160
+    px = small.load()
+    for x in range(160):
+        cols[x] = sum(px[x, y] for y in range(90))
+    total = sum(cols)
+    if total == 0:
+        return 0.5
+    return sum(x * v for x, v in enumerate(cols)) / total / 160
+
+
+def focus_crop(img, w, h, target=0.74, zoom=1.06):
+    """主役が右側 target の位置に来るように（必要なら左右反転して）切り出す。
+
+    見出しは左半分に置くので、主役が左にあるとテキストの下敷きになって
+    「机しか写っていないサムネ」になる。静物写真は左右反転しても違和感が無いので、
+    主役が左寄りなら反転させてから右に寄せる。
+    """
+    focus = detect_face(img)
+    if focus is None:
+        focus = subject_x(img)
+        if focus < 0.5:  # 主役が左 → 反転して右へ持ってくる
+            img = img.transpose(Image.FLIP_LEFT_RIGHT)
+            focus = 1.0 - focus
+
     scale = max(w / img.width, h / img.height) * zoom
     sw, sh = int(img.width * scale), int(img.height * scale)
     big = img.resize((sw, sh), Image.LANCZOS)
 
-    if face is None:
-        left = (sw - w) // 2
-    else:
-        left = int(face * sw - target * w)
-    left = max(0, min(sw - w, left))
+    left = max(0, min(sw - w, int(focus * sw - target * w)))
     top = max(0, min(sh - h, int(sh * 0.10)))  # 顔が切れないよう気持ち上寄せ
     return big.crop((left, top, left + w, top + h))
 
