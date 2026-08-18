@@ -17,7 +17,7 @@ GUIDE_URL = (
 
 # 代理店パートナー希望者向けの特典PDF（2026-08-11 追加）。
 # 上のライバー向けと同じ運用ルール：SHAは必ずPDF更新コミットのハッシュに固定する。
-AGENCY_GUIDE_PDF_SHA = "a6ad37059ebf0f0894b838889133c9b27d8e009f"
+AGENCY_GUIDE_PDF_SHA = "e306fab1d9bf167c9e11904b8e7b670c791bfe3c"
 AGENCY_GUIDE_URL = (
     "https://cdn.jsdelivr.net/gh/taitan118120-dot/liver-acquisition@"
     f"{AGENCY_GUIDE_PDF_SHA}/lp/shared/agency_starter_guide.pdf"
