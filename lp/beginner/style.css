@@ -1785,7 +1785,8 @@ html.js .reveal.is-visible { opacity: 1; transform: none; }
   /* 選ばれる理由：3カラム */
   .reasons {
     max-width: none;
-    flex-direction: row;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
     align-items: stretch;
     gap: 26px;
   }
@@ -2071,7 +2072,8 @@ html.js .reveal.is-visible { opacity: 1; transform: none; }
 }
 
 /* カード内に置く「適用条件あり」の注記 */
-.safety-item .cond {
+.safety-item .cond,
+.reason .cond {
   display: block;
   margin-top: 8px;
   padding-top: 8px;
