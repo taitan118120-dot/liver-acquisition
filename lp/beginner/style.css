@@ -30,7 +30,8 @@
   --r-sm: 14px;
   --r-pill: 999px;
 
-  --header-h: 60px;
+  /* モバイルはブランド行＋メニュー行の2段。900px以上で1段（60px）に戻す */
+  --header-h: 100px;
   --dock-h: 78px;
 }
 
@@ -68,14 +69,58 @@ img { max-width: 100%; height: auto; display: block; }
   height: var(--header-h);
   z-index: 100;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 0 12px 0 14px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0;
+  padding: 0;
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
+}
+
+/* 上段：ロゴ＋LINEボタン */
+.site-header .header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 56px;
+  flex-shrink: 0;
+  padding: 0 12px 0 14px;
+}
+
+/* 下段：メニューバー（モバイルは横スクロール） */
+.site-nav {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  height: 43px;
+  padding: 0 14px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-top: 1px solid var(--border);
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.site-nav::-webkit-scrollbar { display: none; }
+
+.site-nav a {
+  color: var(--text);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  padding: 4px 0;
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.site-nav a:hover,
+.site-nav a:focus-visible {
+  color: var(--pink);
+  border-bottom-color: currentColor;
 }
 
 .site-header .brand {
@@ -1639,6 +1684,31 @@ html.js .reveal.is-visible { opacity: 1; transform: none; }
    モバイルは1カラムのまま。900px以上でカード類を横並びにして
    左右の余白を活かすレイアウトに切り替える。 */
 @media (min-width: 900px) {
+  :root { --header-h: 60px; }
+
+  /* ヘッダーは1段：ロゴ左・メニュー中央・LINEボタン右 */
+  .site-header {
+    flex-direction: row;
+    align-items: center;
+    gap: 20px;
+    padding: 0 24px;
+  }
+  .site-header .header-top { display: contents; }
+  .site-header .brand { order: 1; }
+  .site-nav { order: 2; }
+  .site-header .line-btn.is-header { order: 3; }
+
+  .site-nav {
+    flex: 1;
+    justify-content: center;
+    height: auto;
+    padding: 0;
+    border-top: none;
+    gap: 26px;
+    overflow: visible;
+  }
+  .site-nav a { font-size: 14px; }
+
   .container { max-width: 1140px; padding: 0 40px; }
 
   .sec { padding: 92px 0; }
@@ -1952,4 +2022,61 @@ html.js .reveal.is-visible { opacity: 1; transform: none; }
   .crosslink { padding: 34px 16px 4px; }
   .crosslink-card { padding: 22px 18px; }
   .crosslink-card h3 { font-size: 16px; }
+}
+
+/* ==========================================================
+   2026-08-18 カラフル＆可読性チューニング（agency LPと同じ設計）
+   本文のコントラストを上げ、マーカー・アイコン・バッジに
+   ピンク／水色／黄色の差し色を入れてポップさを出す。
+   ========================================================== */
+:root {
+  --sky: #2E93CF;
+  --sky-soft: #E8F5FD;
+  --sky-mid: #C8E7F8;
+  --marker: #FFE27A;
+  --pink-vivid: #E4557E;
+}
+
+/* 本文を濃く・大きく（読み辛さの主因だったので最優先） */
+.sec-sub { color: #564C43; font-size: 15px; }
+.safety-item p { font-size: 14px; color: #564C43; line-height: 1.9; }
+.safety-item h3 { font-size: 15.5px; }
+.compare-note, .mech-box p, .person p, .step-card p, .reason-card p,
+.faq-a, .qa-a, .card p { color: #564C43; }
+
+/* マーカーを黄色に（ピンク地の上でも沈まない） */
+.mk { background: linear-gradient(transparent 60%, var(--marker) 60%); }
+
+/* セクションラベルのチップを交互に色替え */
+.tint-lav .sec-label { background: linear-gradient(120deg, #7C8FD6, #A594B8); box-shadow: 0 4px 12px rgba(124, 143, 214, 0.28); }
+.tint-cream .sec-label { background: linear-gradient(120deg, #E8A33C, #E4867A); box-shadow: 0 4px 12px rgba(232, 163, 60, 0.28); }
+
+/* カード群のアイコンを3色ローテでカラフルに */
+.safety-item:nth-child(3n+1) .s-ico { background: #FDECF1; color: var(--pink-vivid); }
+.safety-item:nth-child(3n+2) .s-ico { background: var(--sky-soft); color: var(--sky); }
+.safety-item:nth-child(3n+3) .s-ico { background: #FFF6DF; color: #C98A12; }
+
+/* ヒーローの丸バッジも色を振る */
+.badge:nth-child(3n+1) { background: var(--pink-mid); }
+.badge:nth-child(3n+2) { background: var(--sky-mid); box-shadow: 0 6px 16px rgba(46, 147, 207, 0.22); }
+.badge:nth-child(3n+3) { background: #FFEFC2; box-shadow: 0 6px 16px rgba(232, 163, 60, 0.22); }
+.badge .b-top { color: #6B6058; }
+
+/* ヒーローのサブキャッチ：2行に折り返すと下線マーカーが2行目だけ帯になって
+   不格好だったので、淡い黄色の箱にして行数に依存しない見え方にする */
+.hero-catch {
+  background: #FFF3D2;
+  border-radius: 10px;
+  padding: 6px 14px;
+}
+
+/* カード内に置く「適用条件あり」の注記 */
+.safety-item .cond {
+  display: block;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(64, 55, 47, 0.14);
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.75;
 }

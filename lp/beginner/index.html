@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260811">
+  <link rel="stylesheet" href="style.css?v=20260818">
   <!-- JSが動く環境でのみ出現アニメを有効化（JS無効時にコンテンツが隠れないようにする） -->
   <script>document.documentElement.className += ' js';</script>
 
@@ -90,18 +90,30 @@
 
   <!-- ============ 1. 固定ヘッダー ============ -->
   <header class="site-header">
-    <a class="brand" href="#top">
-      <!-- 画像差し替え：ロゴ -->
-      <img src="../shared/logo.jpg?v=20260720" alt="TAITAN PRO" width="34" height="34">
-      <span>TAITAN PRO</span>
-    </a>
-    <a class="line-btn is-header js-line-cta"
-       href="https://lin.ee/xchCfdn"
-       data-cta-position="header"
-       data-cta-label="まずはLINEで相談してみる">
-      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.5 2 2 5.7 2 10.2c0 4 3.6 7.4 8.4 8.1.3.1.8.2.9.5.1.3.1.7 0 1l-.1.9c0 .3-.2 1 .9.6 1.1-.5 6-3.5 8.2-6C21.6 13.6 22 12 22 10.2 22 5.7 17.5 2 12 2z"/></svg>
-      LINEで相談
-    </a>
+    <div class="header-top">
+      <a class="brand" href="#top">
+        <!-- 画像差し替え：ロゴ -->
+        <img src="../shared/logo.jpg?v=20260720" alt="TAITAN PRO" width="34" height="34">
+        <span>TAITAN PRO</span>
+      </a>
+      <a class="line-btn is-header js-line-cta"
+         href="https://lin.ee/xchCfdn"
+         data-cta-position="header"
+         data-cta-label="まずはLINEで相談してみる">
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.5 2 2 5.7 2 10.2c0 4 3.6 7.4 8.4 8.1.3.1.8.2.9.5.1.3.1.7 0 1l-.1.9c0 .3-.2 1 .9.6 1.1-.5 6-3.5 8.2-6C21.6 13.6 22 12 22 10.2 22 5.7 17.5 2 12 2z"/></svg>
+        LINEで相談
+      </a>
+    </div>
+    <nav class="site-nav" aria-label="メインメニュー">
+      <a href="#top">ホーム</a>
+      <a href="#campaign">キャンペーン</a>
+      <a href="#reward">報酬の仕組み</a>
+      <a href="#reasons">選ばれる理由</a>
+      <a href="#network">所属特典</a>
+      <a href="#cases">体験談</a>
+      <a href="#flow">始め方</a>
+      <a href="#faq">よくある質問</a>
+    </nav>
   </header>
 
   <!-- ============ 2. ファーストビュー ============ -->
@@ -530,6 +542,16 @@
       </div>
 
       <div class="safety">
+        <div class="safety-item">
+          <div class="s-ico">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 18l5-5 3.5 3.5L20 9"/><path d="M15 9h5v5"/><path d="M3 21h18"/></svg>
+          </div>
+          <div>
+            <h3>C帯達成ボーナス</h3>
+            <p>PocochaでC帯に到達すると、事務所から達成ボーナスが支給されます。最初の壁を越えた瞬間に、ちゃんと報われる仕組みです。<span class="cond">※ 適用条件があります。金額・条件の詳細は個別相談でご案内します。</span></p>
+          </div>
+        </div>
+
         <div class="safety-item">
           <div class="s-ico">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
