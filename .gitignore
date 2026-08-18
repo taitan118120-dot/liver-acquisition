@@ -44,6 +44,10 @@ data/dashboard_data.json
 # こちらは 2026-04-03 で止まった状態が commit され続け実績を誤読させていた。
 data/post_log.csv
 
+# 台帳番犬 note_keys_registry.py --check --json の実行結果。走るたびに書き換わる
+# 一時ファイルで、Issue本文を組み立てる同一ラン内でしか読まれない。
+data/note_keys_guard_report.json
+
 # 生成メディア（動画・音声・レンダー出力。容量が大きく再生成可能）
 *.mp4
 *.mov

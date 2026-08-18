@@ -8,7 +8,13 @@ note_leadmagnet_publish.py --all などの一括処理が全件ループする�
 記事を公開から下ろす処理（note_unpublish_articles.py / note_delete_articles.py）は
 成功時に remove() を呼んで台帳を自動で縮める。手で編集する必要はない。
 
-整合チェック（未ログイン公開APIで全件を実際に叩く）:
+整合チェックは2方向で行う（未ログインの公開APIだけで完結する）:
+  ① 台帳の各キー → /api/v3/notes/{key} が200か（非公開・削除の検知）
+  ② 公開APIの全件列挙 → 台帳に載っているか（公開したのに未登録の検知）
+②は creator contents API を全ページ舐める。以前は note_key_map.json に載っている
+キーの中からしか候補を探しておらず、key_map にも無い記事は検知できなかった。
+
+使い方:
   python3 note_keys_registry.py --check        # 差分を表示するだけ
   python3 note_keys_registry.py --check --json # 加えて data/note_keys_guard_report.json を書く
   python3 note_keys_registry.py --fix          # 差分を台帳に反映する
@@ -26,6 +32,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 KEYS_FILE = os.path.join(BASE_DIR, "data", "published_note_keys.json")
 KEYMAP_FILE = os.path.join(BASE_DIR, "data", "note_key_map.json")
 REPORT_FILE = os.path.join(BASE_DIR, "data", "note_keys_guard_report.json")
+
+NOTE_CREATOR = "taitan_118"
 
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
@@ -102,7 +110,7 @@ def public_status(key, retries=1):
 
 
 def _keymap_keys():
-    """記事番号→key台帳から、公開キー一覧に載っていないキーを拾う。"""
+    """記事番号→key台帳のキー一覧。公開一覧に出ない限定公開記事を拾う補助経路。"""
     if not os.path.exists(KEYMAP_FILE):
         return []
     with open(KEYMAP_FILE, encoding="utf-8") as f:
@@ -110,15 +118,53 @@ def _keymap_keys():
     return list(dict.fromkeys(v["key"] for v in km.values() if v.get("key")))
 
 
+def fetch_published_keys():
+    """公開APIで「いま公開中の全記事キー」を列挙する。戻り値 (keys, error)。
+
+    ここが番犬の要。以前は note_key_map.json に載っているキーの中からしか
+    「台帳に無い公開記事」を探していなかったので、key_map にも載っていない記事
+    （＝自動投稿で公開されたのに一度も台帳登録されなかった24本）は原理的に検知できず、
+    番犬は毎週「ズレなし」で緑のまま素通りしていた（2026-08-18に発覚）。
+    候補を別台帳から借りるのをやめ、note 側の全件列挙を正とする。
+
+    列挙に失敗したら keys=None を返す。呼び出し側は「missing=0」ではなく
+    「判定不能」として扱うこと（取得失敗を緑にすると同じ素通りが再発する）。
+    """
+    keys = []
+    for page in range(1, 60):
+        url = (f"https://note.com/api/v2/creators/{NOTE_CREATOR}/contents"
+               f"?kind=note&page={page}")
+        req = urllib.request.Request(url, headers={"User-Agent": UA})
+        try:
+            with urllib.request.urlopen(req, timeout=25) as r:
+                d = json.loads(r.read().decode("utf-8")).get("data", {})
+        except Exception as e:
+            return None, f"公開一覧の取得に失敗（page={page}）: {type(e).__name__}: {e}"
+        contents = d.get("contents") or []
+        keys.extend(it["key"] for it in contents if it.get("key"))
+        if d.get("isLastPage", True) or not contents:
+            break
+        time.sleep(CHECK_INTERVAL)
+    return list(dict.fromkeys(keys)), None
+
+
 def reconcile(apply=False, report_path=None):
     """台帳と note の実状態を突き合わせる。
 
     - 台帳にあるが公開されていない（404）→ 取り除く候補
-    - note_key_map.json にあり公開中(200)だが台帳に無い → 足す候補
+    - 公開APIの全件列挙にあるが台帳に無い → 足す候補
     - 照会自体が失敗したキー（通信エラー・429・5xx）→ errors。判定不能なので触らない
     """
     keys = load()
     listed = set(keys)
+
+    # 先に note 側の全件を取る。ここが取れないと missing 判定はできない。
+    published, list_err = fetch_published_keys()
+    if list_err:
+        print(f"  ⚠ {list_err}")
+    else:
+        print(f"公開API上の公開中記事: {len(published)}件")
+
     print(f"台帳 {len(keys)}件を公開APIで照会中...")
 
     dead = []
@@ -133,7 +179,9 @@ def reconcile(apply=False, report_path=None):
             print(f"  [{i}/{len(keys)}] {k} http={st}  ← 公開されていない")
         time.sleep(CHECK_INTERVAL)
 
-    candidates = [k for k in _keymap_keys() if k not in listed]
+    # 公開API全件（正）＋ key_map（限定公開など一覧に出ない記事の補助）を候補にする。
+    candidates = list(dict.fromkeys((published or []) + _keymap_keys()))
+    candidates = [k for k in candidates if k not in listed]
     missing = []
     if candidates:
         print(f"\n台帳外のキー {len(candidates)}件を照会中...")
@@ -145,6 +193,8 @@ def reconcile(apply=False, report_path=None):
             time.sleep(CHECK_INTERVAL)
 
     print(f"\n--- 結果 ---")
+    print(f"  公開中(API全件)         : "
+          f"{'取得失敗' if published is None else str(len(published)) + '件'}")
     print(f"  台帳にあるが非公開/削除: {len(dead)}件")
     print(f"  公開中だが台帳に無い    : {len(missing)}件")
     print(f"  照会できず判定不能      : {len(errors)}件")
@@ -152,6 +202,8 @@ def reconcile(apply=False, report_path=None):
     result = {
         "checked_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "total": len(keys),
+        "published_total": None if published is None else len(published),
+        "list_error": list_err,
         "dead": [{"key": k, "status": st} for k, st in dead],
         "missing": missing,
         "errors": [{"key": k, "status": st} for k, st in errors],
@@ -162,7 +214,12 @@ def reconcile(apply=False, report_path=None):
         print(f"  レポート: {report_path}")
 
     if not dead and not missing:
-        print("  ズレなし" if not errors else "  ズレなし（ただし判定不能あり）")
+        if list_err:
+            # 公開一覧が取れていないときの「ズレなし」は「missingを見ていない」の意。
+            # 緑にすると2026-08-18の素通りと同じことになるので必ず判定不能扱いにする。
+            print("  ズレなし（ただし公開一覧が取得できておらず missing は未判定）")
+        else:
+            print("  ズレなし" if not errors else "  ズレなし（ただし判定不能あり）")
         return result
 
     if apply:
@@ -188,7 +245,7 @@ if __name__ == "__main__":
         r = reconcile(apply=False, report_path=REPORT_FILE if want_json else None)
         if r["dead"] or r["missing"]:
             raise SystemExit(1)
-        raise SystemExit(2 if r["errors"] else 0)
+        raise SystemExit(2 if (r["errors"] or r["list_error"]) else 0)
     elif args[0] == "--fix":
         reconcile(apply=True)
     else:

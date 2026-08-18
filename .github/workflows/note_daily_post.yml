@@ -68,7 +68,12 @@ jobs:
           # 先にcommitしてからpullする。ポスターが書き換えたdata/*が未commitのまま
           # pull --rebaseすると "cannot pull with rebase: You have unstaged changes" で
           # 必ず失敗し、古いbase上でcommit→push rejected という詰み方をする（2026-08-05）
-          git add data/note_auto_post_log.csv data/note_keyword_tracker.json 2>/dev/null || true
+          # 公開キー台帳(published_note_keys.json)と番号→key台帳(note_key_map.json)も必ず含める。
+          # ポスターは公開成功時にこの2つへ登録するが、add漏れだとコミットされず、
+          # 「note上は公開済みなのに台帳に無い」記事が毎日1本ずつ積み上がる
+          # （2026-07-24〜08-18の24本がこれ。一括更新スクリプトが黙って飛ばしていた）
+          git add data/note_auto_post_log.csv data/note_keyword_tracker.json \
+                  data/published_note_keys.json data/note_key_map.json 2>/dev/null || true
           git diff --staged --quiet || git commit -m "Note自動投稿ログ $(TZ=Asia/Tokyo date +'%Y-%m-%d %H:%M')"
           # pushの失敗を握り潰すと「投稿済み」記録が消えて次回の重複投稿要因になるためリトライする
           # （それでも失敗した場合はposter側のタイトル重複ガードが最後の砦）

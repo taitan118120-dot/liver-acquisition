@@ -11,8 +11,13 @@ name: 公開キー台帳 番犬
 #
 # 動作: 週1回 note_keys_registry.py --check --json を実行し、
 #   - 台帳にあるが note で404（非公開/削除済み） → dead
-#   - note_key_map.json にあり公開中だが台帳に無い → missing
+#   - 公開APIの全件列挙にあるが台帳に無い → missing
 #   のどちらかがあればランを赤にし、Issueを作成/更新して通知する。
+#
+# 【2026-08-18 修正】missing の探索元が note_key_map.json だった頃は、key_map にも
+# 載っていない記事（自動投稿で公開されたのに一度も台帳登録されなかった24本）を
+# 原理的に検知できず、この番犬は毎週緑のまま素通りしていた。いまは creator contents API を
+# 全ページ舐めて突合する。公開一覧の取得自体に失敗したら緑にせず判定不能(exit 2)にする。
 #
 # ズレが直って緑に戻ったら、そのIssueを自動クローズする。
 #
@@ -73,7 +78,9 @@ jobs:
             const body = [
               '## 公開キー台帳 番犬 検知',
               '',
-              `台帳 \`data/published_note_keys.json\`（${report.total}件）と note の実状態がズレています。`,
+              `台帳 \`data/published_note_keys.json\`（${report.total}件）と note の実状態`
+                + `（公開中 ${report.published_total === null || report.published_total === undefined ? '取得失敗' : report.published_total + '件'}）がズレています。`,
+              report.list_error ? `\n⚠️ 公開一覧の取得に失敗しています: ${report.list_error}\n` : '',
               '**放置すると `note_leadmagnet_publish.py --all` などの一括処理が死にキーを踏み続けます。**',
               '',
               '## ズレ',

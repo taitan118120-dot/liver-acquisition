@@ -40,6 +40,10 @@ from datetime import datetime
 from note_publish_core import (NOTE_API_BASE, NOTE_UA,
                                NotePublishError, editor_browser, publish_via_editor)
 
+# 公開キー台帳 data/published_note_keys.json の読み書き。標準ライブラリだけで動くので
+# GitHub Actions からも import できる（browser_cookie3 等の重い依存を持ち込まない）。
+import note_keys_registry
+
 # ─── パス設定 ─────────────────────────────────────────
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ARTICLES_DIR = os.path.join(BASE_DIR, "blog", "articles_note")
@@ -968,6 +972,42 @@ def save_key_link(article_num, key, title="", how=""):
     return True
 
 
+def _register_published(article_num, key, title="", how="post"):
+    """公開に成功した記事を「番号→key台帳」と「公開キー台帳」の両方へ登録する。
+
+    2026-07-24〜08-18に公開した24本が両台帳から丸ごと抜けていたのは、公開成功パスが
+    ログCSVとtrackerしか書いていなかったため（登録は人が --link / --fix を叩いたときだけ）。
+    台帳に無い記事は note_leadmagnet_publish.py --all などの一括処理が黙って飛ばすので、
+    公開の直後にここで必ず登録する。どちらも冪等なので再実行しても増えない。
+
+    台帳の書き込み失敗で公開そのものを失敗扱いにはしない（記事はもう公開されている）。
+    ただし黙って落とすと今回と同じ取りこぼしになるので、必ずWARNを出す。
+    """
+    if not key:
+        print("  [台帳] ⚠️ keyが取れなかったため登録できません（--link で手当てしてください）")
+        return False
+    ok = True
+    try:
+        save_key_link(article_num, key, title, how=how)
+    except Exception as e:
+        ok = False
+        print(f"  [台帳] ⚠️ note_key_map.json への登録失敗: {e}")
+    try:
+        note_keys_registry.add(key)
+    except Exception as e:
+        ok = False
+        print(f"  [台帳] ⚠️ published_note_keys.json への登録失敗: {e}")
+    if ok:
+        print(f"  [台帳] 登録: #{article_num} → {key}")
+    return ok
+
+
+def _key_from_note_url(url):
+    """https://note.com/<creator>/n/<key> や /notes/<key>/edit から key を取り出す。"""
+    m = re.search(r"/(?:n|notes)/(n[0-9a-zA-Z]+)", url or "")
+    return m.group(1) if m else ""
+
+
 def _normalize_title(t):
     """タイトルのゆれを吸収する。【】等の注釈括弧を落とし、記号・空白・全半角を潰す。
     長音符「ー」は語の一部（ライバー等）なので残す。"""
@@ -1019,15 +1059,18 @@ def resolve_article_key(article_num, title, key_map, accept_fuzzy=False):
         note = (f"台帳のkey={linked['key']}は公開一覧に無い"
                 "（退役/非公開、またはkeyが古い）。タイトル突合に切り替え")
 
+    # key_map は fetch_published_title_key_map()＝公開中の記事しか返さないので、
+    # ここで解決できた key は「いま公開中」が確定している。番号→key台帳だけでなく
+    # 公開キー台帳にも入れて、--update-all が台帳の取りこぼしを自己修復するようにする。
     key = key_map.get((title or "").strip())
     if key:
-        save_key_link(article_num, key, title, how="exact")
+        _register_published(article_num, key, title, how="exact")
         return {"key": key, "how": "exact", "candidates": [], "note": note}
 
     cands = find_title_candidates(title, key_map)
     if cands and accept_fuzzy and (len(cands) == 1 or cands[0]["score"] >= 0.999):
         c = cands[0]
-        save_key_link(article_num, c["key"], c["title"], how=f"fuzzy:{c['how']}")
+        _register_published(article_num, c["key"], c["title"], how=f"fuzzy:{c['how']}")
         return {"key": c["key"], "how": f"fuzzy:{c['how']}",
                 "candidates": cands, "note": note}
     return {"key": None, "how": "", "candidates": cands, "note": note}
@@ -1331,6 +1374,7 @@ def post_article(article_num, dry_run=False):
         print(f"\n  ⚠️ 同タイトルの公開記事が既に存在: {dup_url}")
         print("  → 重複投稿を回避し、既存記事のタグ/カバーを検証・修復します")
         mark_as_published(article_num)
+        _register_published(article_num, _key_from_note_url(dup_url), title, how="dup-guard")
         tags_ok = _guard_tags_after_publish(dup_url, article_num, title)
         eyecatch_ok = _ensure_eyecatch_after_publish(dup_url, article_num)
         log_result(article_num, title, dup_url, True, "重複ガード: 既存記事を再利用")
@@ -1368,6 +1412,9 @@ def post_article(article_num, dry_run=False):
 
         log_result(article_num, title, result["url"], True, via)
         mark_as_published(article_num)
+        _register_published(article_num,
+                            result.get("key") or _key_from_note_url(result["url"]),
+                            title, how="post")
         tags_ok = _guard_tags_after_publish(result["url"], article_num, title)
         eyecatch_ok = _ensure_eyecatch_after_publish(result["url"], article_num)
         return {"success": True, "url": result["url"],
@@ -1399,7 +1446,7 @@ def main():
         num, key = int(args.link[0]), args.link[1].strip()
         fp = get_article_file(num)
         title = parse_article(fp)[0] if fp else ""
-        save_key_link(num, key, title, how="manual")
+        _register_published(num, key, title, how="manual")
         print(f"台帳に登録: #{num} → {key}  ({title[:40]})")
         return
 
