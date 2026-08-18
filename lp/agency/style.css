@@ -2120,3 +2120,14 @@ html.js .reveal.is-visible { opacity: 1; transform: none; }
 /* 矢印の描画域を棒グラフ本体（ラベルより上）に合わせる。
    下端が棒の底、上端が一番高い棒の頂点より少し上にくる位置。 */
 .growth-arrow { bottom: 46px; height: 74%; }
+
+/* カード内に置く「適用条件あり」の注記 */
+.safety-item .cond {
+  display: block;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(64, 55, 47, 0.14);
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.75;
+}
