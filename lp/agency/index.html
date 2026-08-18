@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260818">
+  <link rel="stylesheet" href="style.css?v=20260818b">
   <!-- JSが動く環境でのみ出現アニメを有効化（JS無効時にコンテンツが隠れないようにする） -->
   <script>document.documentElement.className += ' js';</script>
 
@@ -353,6 +353,51 @@
         <div class="mech-result">
           <p class="r-title">あなたの継続報酬</p>
           <p class="r-desc">初期費用・月会費0円／加盟金なし</p>
+        </div>
+
+        <!-- サポート人数が増えるほど積み上がることを示すイメージ図 -->
+        <div class="growth">
+          <p class="growth-title">サポートする人数が増えるほど<br><span class="mk">報酬は積み上がっていく</span></p>
+
+          <div class="growth-chart" role="img"
+               aria-label="サポートするライバーが1人・3人・5人以上と増えるにつれて、継続報酬が段階的に大きくなることを示すイメージ図">
+            <svg class="growth-arrow" viewBox="0 0 300 150" aria-hidden="true">
+              <path d="M16 128 C 90 122, 168 96, 252 30" fill="none" stroke="#E4557E" stroke-width="5" stroke-linecap="round"/>
+              <path d="M283 16 l-30 4 l14 18 z" fill="#E4557E"/>
+            </svg>
+
+            <div class="g-col">
+              <div class="g-people">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3.6"/><path d="M4.5 21c0-4.1 3.4-7 7.5-7s7.5 2.9 7.5 7z"/></svg>
+              </div>
+              <div class="g-bar is-sky" style="height:76px"></div>
+              <span class="g-label">ライバー<b>1人</b></span>
+            </div>
+
+            <div class="g-col">
+              <div class="g-people">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3.6"/><path d="M4.5 21c0-4.1 3.4-7 7.5-7s7.5 2.9 7.5 7z"/></svg>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3.6"/><path d="M4.5 21c0-4.1 3.4-7 7.5-7s7.5 2.9 7.5 7z"/></svg>
+              </div>
+              <div class="g-bar is-gold" style="height:126px"></div>
+              <span class="g-label">ライバー<b>3人</b></span>
+            </div>
+
+            <div class="g-col">
+              <div class="g-people">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3.6"/><path d="M4.5 21c0-4.1 3.4-7 7.5-7s7.5 2.9 7.5 7z"/></svg>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3.6"/><path d="M4.5 21c0-4.1 3.4-7 7.5-7s7.5 2.9 7.5 7z"/></svg>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3.6"/><path d="M4.5 21c0-4.1 3.4-7 7.5-7s7.5 2.9 7.5 7z"/></svg>
+              </div>
+              <div class="g-bar is-pink" style="height:180px"></div>
+              <span class="g-label">ライバー<b>5人以上</b></span>
+            </div>
+          </div>
+
+          <p class="growth-cap">
+            一人ひとりの活動が続く限り報酬が乗り続けるので、<span class="mk-lav">サポートする人数が増えるほど土台が厚くなります</span>。
+          </p>
+          <p class="growth-note">※ 積み上がり方をイメージで表した図です。具体的な金額・倍率を示すものではありません。</p>
         </div>
 
         <p class="mech-note">

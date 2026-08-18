@@ -2005,3 +2005,118 @@ html.js .reveal.is-visible { opacity: 1; transform: none; }
   border-radius: 10px;
   padding: 6px 14px;
 }
+
+/* ==========================================================
+   紹介人数が増えるほど報酬が積み上がる図（#reward）
+   金額は入れない。あくまで「積み上がり方」のイメージ図。
+   ========================================================== */
+.growth {
+  margin-top: 26px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  box-shadow: var(--shadow);
+  padding: 24px 18px 20px;
+  text-align: center;
+}
+
+.growth-title {
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1.65;
+  margin-bottom: 20px;
+}
+
+.growth-chart {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  align-items: end;
+  gap: 10px;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 10px 4px 0;
+  border-bottom: 2px solid rgba(64, 55, 47, 0.12);
+}
+
+/* 背後を斜めに上がっていく矢印 */
+.growth-arrow {
+  position: absolute;
+  left: 0; right: 0; bottom: 12px;
+  width: 100%;
+  height: 78%;
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+.g-col {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* 棒の上に並ぶ人ピクト（人数の多さを視覚化） */
+.g-people {
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  margin-bottom: 6px;
+  min-height: 20px;
+}
+.g-people svg {
+  width: 17px; height: 17px;
+  fill: currentColor;
+}
+.g-col:nth-child(2) .g-people { color: var(--sky); }
+.g-col:nth-child(3) .g-people { color: #D99A16; }
+.g-col:nth-child(4) .g-people { color: var(--pink-vivid); }
+
+.g-bar {
+  width: 100%;
+  max-width: 84px;
+  border-radius: 12px 12px 0 0;
+  box-shadow: inset 0 -6px 14px rgba(255, 255, 255, 0.35);
+}
+.g-bar.is-sky  { background: linear-gradient(180deg, #7CC7EF, #2E93CF); }
+.g-bar.is-gold { background: linear-gradient(180deg, #FFD978, #E8A33C); }
+.g-bar.is-pink { background: linear-gradient(180deg, #F58AAC, #E4557E); }
+
+.g-label {
+  margin-top: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #564C43;
+  line-height: 1.5;
+}
+.g-label b { display: block; font-size: 14.5px; font-weight: 900; color: var(--text); }
+
+.growth-cap {
+  margin-top: 18px;
+  font-size: 14px;
+  color: #564C43;
+  line-height: 1.9;
+}
+
+.growth-note {
+  margin-top: 10px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.75;
+}
+
+@media (min-width: 600px) {
+  .growth { padding: 30px 26px 24px; }
+  .growth-title { font-size: 18px; }
+  .growth-title br { display: none; }
+  .g-people svg { width: 19px; height: 19px; }
+}
+
+/* 矢印は棒の前面に出す（背後だと棒に隠れて右肩上がりが伝わらない） */
+.growth-arrow { z-index: 3; }
+
+/* 矢印の描画域を棒グラフ本体（ラベルより上）に合わせる。
+   下端が棒の底、上端が一番高い棒の頂点より少し上にくる位置。 */
+.growth-arrow { bottom: 46px; height: 74%; }
