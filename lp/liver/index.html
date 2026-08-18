@@ -151,6 +151,219 @@
     .bonus-card p { font-size: 14px; color: var(--text-sub); }
     .bonus-note { font-size: 12px; color: var(--text-muted); text-align: center; margin-top: 18px; line-height: 1.8; }
     @media (min-width: 720px) { .bonus-grid { grid-template-columns: 1fr 1fr; max-width: 760px; } }
+
+    /* ==========================================================
+       カラフル＆可読性チューニング
+       白ベース＋セクションごとの淡色 × ピンク／水色／黄色マーカー。
+       本文はコントラストを上げて長文でも読めるようにする。
+       ========================================================== */
+    :root {
+      --sky: #2E93CF;
+      --sky-soft: #E8F5FD;
+      --pink-strong: #E8407A;
+      --pink-soft: #FFF0F5;
+      --lav-soft: #F2EFFE;
+      --cream: #FFF8E9;
+      --marker: #FFE27A;
+      --text-body: #3B3355;
+    }
+
+    /* 背景：全面グラデをやめ、セクション単位の色分けでリズムを作る */
+    body {
+      background: #FFFFFF;
+      background-attachment: initial;
+      color: var(--text-body);
+    }
+    /* 共通CSSの「偶数セクションは一律ラベンダー」を解除して、tintクラスで明示的に塗る。
+       nth-child の詳細度に勝たせるため section.〜 で当てる */
+    section:nth-child(even) { background: none; }
+    section.tint-pink  { background: var(--pink-soft); }
+    section.tint-sky   { background: var(--sky-soft); }
+    section.tint-lav   { background: var(--lav-soft); }
+    section.tint-cream { background: var(--cream); }
+
+    /* 本文の可読性：色を濃く・字を大きく・行間を広く */
+    .section-sub { color: var(--text-body); font-size: 15.5px; opacity: 0.9; }
+    .pain-list li,
+    .feature-card p,
+    .voice-body,
+    .founder-bio,
+    .bonus-card p,
+    .crosslink-card p { color: var(--text-body); font-size: 15.5px; line-height: 1.95; }
+    .compare-cell { font-size: 14.5px; }
+    .compare-cell:first-child { color: var(--text-body); font-weight: 700; }
+    .stat-label { color: var(--text-body); font-size: 13.5px; font-weight: 700; opacity: 0.85; }
+
+    /* セクションラベル（EYEBROW） */
+    .sec-label {
+      display: block;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.2em;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+    .tint-sky .sec-label { color: var(--sky); }
+    .tint-lav .sec-label { color: var(--primary); }
+    .tint-cream .sec-label { color: #D98A16; }
+
+    /* 見出し：明朝→太ゴシック＋黄色マーカーでポップに */
+    .section-title {
+      font-family: 'Noto Sans JP', -apple-system, sans-serif;
+      font-weight: 800;
+      letter-spacing: 0;
+      line-height: 1.5;
+      font-size: clamp(22px, 5.2vw, 32px);
+    }
+    .section-title::after { height: 4px; width: 56px; }
+    .section-title .mk {
+      background: linear-gradient(transparent 60%, var(--marker) 60%);
+      padding: 0 3px;
+      border-radius: 2px;
+    }
+    .section-title .pk { color: var(--pink-strong); }
+    .section-title .sk { color: var(--sky); }
+
+    /* 悩みリスト：丸バッジ付きの白カードに */
+    .pain-list {
+      background: #fff;
+      border-radius: var(--radius);
+      border: 1px solid var(--card-border);
+      box-shadow: var(--card-shadow);
+      padding: 8px 20px;
+    }
+    .pain-list li { border-bottom: 1px dashed rgba(59, 51, 85, 0.14); align-items: center; }
+    .pain-list li:last-child { border-bottom: none; }
+    .pain-list li::before {
+      content: '✓';
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: var(--pink-strong);
+      color: #fff;
+      font-size: 13px;
+      line-height: 1;
+    }
+
+    /* 比較表：ヘッダーを2色に塗り分けて自社列を目立たせる */
+    .compare-row { grid-template-columns: 0.95fr 1fr 1fr; }
+    .compare-cell { padding: 13px 8px; }
+    .compare-cell:first-child { padding-left: 14px; }
+    .compare-row.header { font-size: 13px; }
+    .compare-row.header .compare-cell:first-child { background: rgba(59, 51, 85, 0.55); }
+    .compare-row.header .compare-cell:nth-child(2) { background: rgba(59, 51, 85, 0.55); }
+    .compare-row.header .compare-cell:nth-child(3) { background: var(--pink-strong); }
+    .compare-row .compare-cell:nth-child(3) { background: rgba(255, 92, 138, 0.06); }
+    .compare-cell.good { color: #E8407A; }
+    .compare-cell.bad { color: #857D9B; }
+
+    /* 数字カード：3枚を別色に */
+    .stat-card:nth-child(1) { background: var(--pink-soft); border-color: rgba(232, 64, 122, 0.22); }
+    .stat-card:nth-child(2) { background: var(--sky-soft); border-color: rgba(46, 147, 207, 0.22); }
+    .stat-card:nth-child(3) { background: var(--lav-soft); border-color: rgba(108, 92, 231, 0.22); }
+    .stat-number {
+      -webkit-text-fill-color: initial;
+      background: none;
+      animation: none;
+      font-family: 'Noto Sans JP', sans-serif;
+      font-weight: 800;
+    }
+    .stat-card:nth-child(1) .stat-number { color: var(--pink-strong); }
+    .stat-card:nth-child(2) .stat-number { color: var(--sky); }
+    .stat-card:nth-child(3) .stat-number { color: var(--primary); }
+    /* 2列表示のときは3枚目を横いっぱいに（1枚だけ余るのを防ぐ） */
+    @media (max-width: 599px) {
+      .stat-card:nth-child(3) { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 14px; padding: 20px 16px; }
+      .stat-card:nth-child(3) .stat-label { margin-top: 0; }
+    }
+
+    /* サポートカードのアイコンを3色に */
+    .feature-card:nth-child(1) .feature-icon { background: linear-gradient(135deg, #FF5C8A, #FF9F45); box-shadow: 0 8px 18px rgba(255, 92, 138, 0.3); }
+    .feature-card:nth-child(2) .feature-icon { background: linear-gradient(135deg, #2E93CF, #7CC7EF); box-shadow: 0 8px 18px rgba(46, 147, 207, 0.3); }
+    .feature-card:nth-child(3) .feature-icon { background: linear-gradient(135deg, #6C5CE7, #A78BFA); box-shadow: 0 8px 18px rgba(108, 92, 231, 0.3); }
+
+    /* 保証・ボーナスカード */
+    .bonus-card:nth-child(1) { background: linear-gradient(180deg, #FFF6FA, #fff 55%); border-color: rgba(232, 64, 122, 0.24); }
+    .bonus-card:nth-child(2) { background: linear-gradient(180deg, #EFF8FE, #fff 55%); border-color: rgba(46, 147, 207, 0.24); }
+    .bonus-card:nth-child(1) .bonus-tag { background: linear-gradient(135deg, #FF5C8A, #FF9F45); }
+    .bonus-card:nth-child(2) .bonus-tag { background: linear-gradient(135deg, #2E93CF, #7CC7EF); }
+    .bonus-card:nth-child(1) .bonus-figure { color: var(--pink-strong); }
+    .bonus-card:nth-child(2) .bonus-figure { color: var(--sky); }
+    .bonus-card h3 { color: var(--text-main); }
+
+    /* FAQ：アコーディオン＋Q/Aバッジ */
+    .qa-list { max-width: 560px; margin: 0 auto; gap: 12px; }
+    .qa-item {
+      background: #fff;
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      box-shadow: var(--card-shadow);
+      padding: 0;
+      overflow: hidden;
+    }
+    .qa-item > summary {
+      list-style: none;
+      cursor: pointer;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 17px 46px 17px 16px;
+      position: relative;
+      font-size: 15.5px;
+      font-weight: 700;
+      color: var(--text-main);
+      line-height: 1.7;
+    }
+    .qa-item > summary::-webkit-details-marker { display: none; }
+    .qa-item > summary .badge-q {
+      display: flex; align-items: center; justify-content: center;
+      width: 26px; height: 26px; flex-shrink: 0;
+      border-radius: 50%;
+      background: var(--pink-strong);
+      color: #fff; font-size: 13px; font-weight: 800;
+      margin-top: 1px;
+    }
+    .qa-item > summary::after {
+      content: '';
+      position: absolute;
+      right: 18px; top: 26px;
+      width: 11px; height: 11px;
+      border-right: 2.4px solid var(--pink-strong);
+      border-bottom: 2.4px solid var(--pink-strong);
+      transform: rotate(45deg);
+      transition: transform 0.25s;
+    }
+    .qa-item[open] > summary::after { transform: rotate(-135deg); top: 30px; }
+    .qa-item .a {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 0 16px 18px;
+      font-size: 15px;
+      color: var(--text-body);
+      line-height: 1.95;
+    }
+    .qa-item .a::before {
+      content: 'A';
+      display: flex; align-items: center; justify-content: center;
+      width: 26px; height: 26px; flex-shrink: 0;
+      border-radius: 50%;
+      background: var(--sky);
+      color: #fff; font-size: 13px; font-weight: 800;
+    }
+
+    /* 代表あいさつ・相互リンクの地色 */
+    .founder, .crosslink-card { background: #fff; }
+
+    @media (min-width: 900px) {
+      .pain-list, .compare-table, .voice, .stats-grid, .qa-list { max-width: 720px; }
+      /* PCはサポートカードを横3枚に */
+      .features { grid-template-columns: repeat(3, 1fr); max-width: 940px; gap: 24px; }
+      .feature-card { padding: 28px 24px; }
+    }
   </style>
 
   <!-- 計測タグ（GA4 / Google広告 / 流入元・CTAクリック）。設定は tracking.js 冒頭に一元化 -->
@@ -225,7 +438,7 @@
       "name": "別のアプリからPocochaに移ると、収入は一度落ちませんか？",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "他アプリからPocochaへ移る方には時給保証をご用意しています。金額は実績に応じて決まり、最大で時給5,000円。さらにC帯到達時には達成ボーナスもあります。適用条件と金額は個別相談でご案内します。"
+        "text": "他アプリからPocochaへ移る方には時給保証をご用意しています。金額は前のアプリでの実績に応じて決まり、最大で時給5,000円。さらにC帯到達時には達成ボーナスもあります。適用条件と金額は個別相談でご案内します。"
       }
     }
   ]
@@ -273,9 +486,10 @@
   </section>
 
   <!-- Pain Points -->
-  <section>
+  <section class="tint-pink">
     <div class="container fade-in">
-      <h2 class="section-title">こんな状況、心当たりない？</h2>
+      <span class="sec-label">WORRIES</span>
+      <h2 class="section-title">こんな状況、<span class="mk">心当たりない？</span></h2>
       <p class="section-sub">一つでも当てはまるなら、環境を変える時かも</p>
       <ul class="pain-list">
         <li>配信してるけど、収入が頭打ちになってる</li>
@@ -290,7 +504,8 @@
   <!-- Compare -->
   <section id="compare">
     <div class="container fade-in">
-      <h2 class="section-title">事務所の違い、比べてみて</h2>
+      <span class="sec-label">COMPARE</span>
+      <h2 class="section-title">事務所の違い、<span class="mk">比べてみて</span></h2>
       <p class="section-sub">サポートの質で収入は大きく変わります</p>
       <div class="compare-table">
         <div class="compare-row header">
@@ -323,16 +538,17 @@
   </section>
 
   <!-- 時給保証・ボーナス -->
-  <section id="bonus">
+  <section id="bonus" class="tint-sky">
     <div class="container fade-in">
-      <h2 class="section-title">移ってくる人への、<br>金銭的な後押しがあります</h2>
+      <span class="sec-label">GUARANTEE &amp; BONUS</span>
+      <h2 class="section-title">移ってくる人への、<br><span class="mk">金銭的な後押し</span>があります</h2>
       <p class="section-sub">「変えたいけど、収入が落ちるのが怖い」を先に解消します</p>
       <div class="bonus-grid">
         <div class="bonus-card">
           <span class="bonus-tag">MIGRATION</span>
           <h3>他アプリからPocochaへ移る方に時給保証</h3>
           <div class="bonus-figure">最大 時給5,000円</div>
-          <p>別の配信アプリからPocochaへ移る方には、時給保証をご用意しています。金額はこれまでの実績に応じて決まり、最大で時給5,000円。移った直後の「ゼロから積み直し」の期間を、収入面で支えます。</p>
+          <p>別の配信アプリからPocochaへ移る方には、時給保証をご用意しています。金額は前のアプリでの実績に応じて決まり、最大で時給5,000円。移った直後の「ゼロから積み直し」の期間を、収入面で支えます。</p>
         </div>
         <div class="bonus-card">
           <span class="bonus-tag">BONUS</span>
@@ -351,7 +567,8 @@
   <!-- Stats -->
   <section>
     <div class="container fade-in">
-      <h2 class="section-title">数字で見るTAITAN PRO</h2>
+      <span class="sec-label">NUMBERS</span>
+      <h2 class="section-title"><span class="mk">数字</span>で見るTAITAN PRO</h2>
       <p class="section-sub">移籍した方を支える環境</p>
       <div class="stats-grid">
         <div class="stat-card">
@@ -372,9 +589,10 @@
   </section>
 
   <!-- Voice / 実例 -->
-  <section id="voice">
+  <section id="voice" class="tint-cream">
     <div class="container fade-in">
-      <h2 class="section-title">サポートが変われば、結果は変わる</h2>
+      <span class="sec-label">VOICE</span>
+      <h2 class="section-title">サポートが変われば、<span class="mk">結果は変わる</span></h2>
       <p class="section-sub">TAITAN PROで最短ルートを走った実例</p>
       <div class="voice">
         <div class="voice-card">
@@ -419,9 +637,10 @@
   </section>
 
   <!-- Features -->
-  <section id="support">
+  <section id="support" class="tint-lav">
     <div class="container fade-in">
-      <h2 class="section-title">TAITAN PROのサポート</h2>
+      <span class="sec-label">SUPPORT</span>
+      <h2 class="section-title">TAITAN PROの<span class="mk">サポート</span></h2>
       <p class="section-sub">配信に集中できる環境を用意します</p>
       <div class="features">
         <div class="feature-card">
@@ -446,37 +665,39 @@
   <!-- Q&A -->
   <section id="faq">
     <div class="container fade-in">
-      <h2 class="section-title">よくある質問</h2>
+      <span class="sec-label">FAQ</span>
+      <h2 class="section-title"><span class="mk">よくある質問</span></h2>
       <p class="section-sub">移籍に関する不安を解消します</p>
       <div class="qa-list">
-        <div class="qa-item">
-          <div class="q">今の事務所にバレませんか？</div>
-          <div class="a">相談段階では一切バレません。移籍を決めた後の手続きも全面サポートします。</div>
-        </div>
-        <div class="qa-item">
-          <div class="q">フリーのまま相談だけでもいい？</div>
-          <div class="a">もちろん。所属するかどうかは相談してから決めてもらえればOKです。</div>
-        </div>
-        <div class="qa-item">
-          <div class="q">今のファンは引き継げる？</div>
-          <div class="a">同じプラットフォームならファンはそのまま。別アプリに移る場合もSNS告知で引き継ぐノウハウがあります。</div>
-        </div>
-        <div class="qa-item">
-          <div class="q">還元率はどれくらい？</div>
-          <div class="a">詳しくは個別相談で。今の条件をお聞きした上で、それを上回るプランを提案します。</div>
-        </div>
-        <div class="qa-item">
-          <div class="q">別のアプリからPocochaに移ると、収入は一度落ちませんか？</div>
-          <div class="a">他アプリからPocochaへ移る方には時給保証をご用意しています。金額は実績に応じて決まり、最大で時給5,000円。さらにC帯到達時には達成ボーナスもあります。適用条件と金額は個別相談でご案内します。</div>
-        </div>
+        <details class="qa-item">
+          <summary><span class="badge-q">Q</span>今の事務所にバレませんか？</summary>
+          <div class="a"><span>相談段階では一切バレません。移籍を決めた後の手続きも全面サポートします。</span></div>
+        </details>
+        <details class="qa-item">
+          <summary><span class="badge-q">Q</span>フリーのまま相談だけでもいい？</summary>
+          <div class="a"><span>もちろん。所属するかどうかは相談してから決めてもらえればOKです。</span></div>
+        </details>
+        <details class="qa-item">
+          <summary><span class="badge-q">Q</span>今のファンは引き継げる？</summary>
+          <div class="a"><span>同じプラットフォームならファンはそのまま。別アプリに移る場合もSNS告知で引き継ぐノウハウがあります。</span></div>
+        </details>
+        <details class="qa-item">
+          <summary><span class="badge-q">Q</span>還元率はどれくらい？</summary>
+          <div class="a"><span>詳しくは個別相談で。今の条件をお聞きした上で、それを上回るプランを提案します。</span></div>
+        </details>
+        <details class="qa-item">
+          <summary><span class="badge-q">Q</span>別のアプリからPocochaに移ると、収入は一度落ちませんか？</summary>
+          <div class="a"><span>他アプリからPocochaへ移る方には時給保証をご用意しています。金額は前のアプリでの実績に応じて決まり、最大で時給5,000円。さらにC帯到達時には達成ボーナスもあります。適用条件と金額は個別相談でご案内します。</span></div>
+        </details>
       </div>
     </div>
   </section>
 
   <!-- 代表プロフィール -->
-  <section>
+  <section class="tint-pink">
     <div class="container fade-in">
-      <h2 class="section-title">代表あいさつ</h2>
+      <span class="sec-label">MESSAGE</span>
+      <h2 class="section-title">代表<span class="mk">あいさつ</span></h2>
       <p class="section-sub">TAITAN PRO を率いる「たいたん」について</p>
       <div class="founder">
         <div class="founder-head">

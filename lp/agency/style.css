@@ -1958,3 +1958,50 @@ html.js .reveal.is-visible { opacity: 1; transform: none; }
     background-position: left -40px top -40px, right -40px bottom -40px, 0 0;
   }
 }
+
+/* ==========================================================
+   2026-08-18 カラフル＆可読性チューニング
+   本文のコントラストを上げ、マーカー・アイコン・バッジに
+   ピンク／水色／黄色の差し色を入れてポップさを出す。
+   （写真の暖色トーンと喧嘩しない範囲で彩度を上げる）
+   ========================================================== */
+:root {
+  --sky: #2E93CF;
+  --sky-soft: #E8F5FD;
+  --sky-mid: #C8E7F8;
+  --marker: #FFE27A;
+  --pink-vivid: #E4557E;
+}
+
+/* 本文を濃く・大きく（読み辛さの主因だったので最優先） */
+.sec-sub { color: #564C43; font-size: 15px; }
+.safety-item p { font-size: 14px; color: #564C43; line-height: 1.9; }
+.safety-item h3 { font-size: 15.5px; }
+.compare-note, .mech-box p, .person p, .step-card p, .reason-card p,
+.faq-a, .qa-a, .card p { color: #564C43; }
+
+/* マーカーを黄色に（ピンク地の上でも沈まない） */
+.mk { background: linear-gradient(transparent 60%, var(--marker) 60%); }
+
+/* セクションラベルのチップを交互に色替え */
+.tint-lav .sec-label { background: linear-gradient(120deg, #7C8FD6, #A594B8); box-shadow: 0 4px 12px rgba(124, 143, 214, 0.28); }
+.tint-cream .sec-label { background: linear-gradient(120deg, #E8A33C, #E4867A); box-shadow: 0 4px 12px rgba(232, 163, 60, 0.28); }
+
+/* 安心ポイント／ライバー特典のアイコンを3色ローテでカラフルに */
+.safety-item:nth-child(3n+1) .s-ico { background: #FDECF1; color: var(--pink-vivid); }
+.safety-item:nth-child(3n+2) .s-ico { background: var(--sky-soft); color: var(--sky); }
+.safety-item:nth-child(3n+3) .s-ico { background: #FFF6DF; color: #C98A12; }
+
+/* ヒーローの丸バッジも色を振る */
+.badge:nth-child(3n+1) { background: var(--pink-mid); }
+.badge:nth-child(3n+2) { background: var(--sky-mid); box-shadow: 0 6px 16px rgba(46, 147, 207, 0.22); }
+.badge:nth-child(3n+3) { background: #FFEFC2; box-shadow: 0 6px 16px rgba(232, 163, 60, 0.22); }
+.badge .b-top { color: #6B6058; }
+
+/* ヒーローのサブキャッチ：2行に折り返すと下線マーカーが2行目だけ帯になって
+   不格好だったので、淡い黄色の箱にして行数に依存しない見え方にする */
+.hero-catch {
+  background: #FFF3D2;
+  border-radius: 10px;
+  padding: 6px 14px;
+}
