@@ -3,6 +3,8 @@ name: 失敗ジョブ自動リトライ
 # GitHub側の一時障害（Runner未割り当て / action download失敗 / Internal server error 等）で
 # ワークフローが失敗したとき、失敗ジョブだけを自動で再実行する。
 # - 1回目の失敗: 原因を問わず再実行
+#   （ただし「Note記事 自動投稿」に限り、exit 3/7（在庫切れ・下書き止まり等の
+#   再実行しても絶対に直らない失敗）のときは1回目でも再実行しない）
 # - 2回目の失敗: エラーがGitHubインフラ起因のときだけ、90秒待ってもう1回だけ再実行
 #   （インフラ障害は数分続くことがあり、即時リトライ1回では同じ障害を踏み直すため）
 # - 3回目以降: 再実行しない（auto_fix.yml のIssue通知に任せる）
@@ -43,15 +45,36 @@ jobs:
           ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
           WF_NAME: ${{ github.event.workflow_run.name }}
         run: |
-          if [ "$ATTEMPT" -ge 2 ]; then
-            # 2回目以降はGitHubインフラ起因の失敗のみ対象（コード起因の失敗をループさせない）
-            infra_regex='Failed to resolve action download info|An error occurred while sending the request|Internal server error|lost communication with the server|received a shutdown signal|did not respond to a cancelation|deprovision'
+          get_failure_messages() {
+            local failed_job_ids messages job_id
             failed_job_ids=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/attempts/$ATTEMPT/jobs" \
               --jq '.jobs[] | select(.conclusion == "failure") | .id')
             messages=""
             for job_id in $failed_job_ids; do
               messages="$messages$(gh api "repos/$GITHUB_REPOSITORY/check-runs/$job_id/annotations" --jq '[.[].message] | join("\n")')"$'\n'
             done
+            echo "$messages"
+          }
+
+          if [ "$ATTEMPT" -eq 1 ] && [ "$WF_NAME" = "Note記事 自動投稿" ]; then
+            # note_auto_poster.py の exit 3（未投稿記事の在庫切れ／カバー画像なし）と
+            # exit 7（下書きのまま終了）は、再実行しても入力状態が変わらない限り
+            # 何度実行しても同じ結果にしかならない。無駄なランを消費しないよう
+            # 1回目でも再実行しない（このワークフローの exit code 意味はこの2つに限る判定なので、
+            # 他のワークフローには適用しない）。
+            messages=$(get_failure_messages)
+            echo "失敗ジョブのエラー内容:"
+            echo "$messages"
+            if echo "$messages" | grep -qE 'Process completed with exit code (3|7)\.'; then
+              echo "exit 3/7（記事在庫切れ・カバー画像なし・下書き止まりなど再実行しても直らない失敗）のため再実行しません（auto_fix.yml のIssue通知に任せます）"
+              exit 0
+            fi
+          fi
+
+          if [ "$ATTEMPT" -ge 2 ]; then
+            # 2回目以降はGitHubインフラ起因の失敗のみ対象（コード起因の失敗をループさせない）
+            infra_regex='Failed to resolve action download info|An error occurred while sending the request|Internal server error|lost communication with the server|received a shutdown signal|did not respond to a cancelation|deprovision'
+            messages=$(get_failure_messages)
             echo "失敗ジョブのエラー内容:"
             echo "$messages"
             if ! echo "$messages" | grep -qiE "$infra_regex"; then
