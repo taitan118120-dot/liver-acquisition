@@ -85,6 +85,30 @@ def _verify_eyecatch(ctx, note_key, tries=6, wait=5):
     return None
 
 
+def _verify_eyecatch_public(note_key, tries=5, wait=10):
+    """公開側APIでeyecatchを確認する（draft APIで拾えなかったときの保険）。
+    アップロード直後は公開APIへの反映に数十秒かかることがあるのでリトライする。"""
+    try:
+        import requests
+    except Exception as e:
+        print(f"  [verify] requests import失敗: {e}")
+        return None
+    for attempt in range(1, tries + 1):
+        time.sleep(wait)
+        try:
+            r = requests.get(f"https://note.com/api/v3/notes/{note_key}",
+                             headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
+            data = r.json().get("data", {}) if r.status_code == 200 else {}
+            ec = data.get("eyecatch") or ""
+            if "uploads/images" in ec:
+                print(f"  [verify] 公開APIでeyecatch確認OK (attempt {attempt})")
+                return ec
+            print(f"  [verify] eyecatch未反映 (attempt {attempt})")
+        except Exception as e:
+            print(f"  [verify] 公開API確認失敗: {str(e)[:80]}")
+    return None
+
+
 def set_eyecatch(article_num, note_key, headless=True):
     """1記事のアイキャッチを設定。
 
@@ -216,6 +240,11 @@ def set_eyecatch(article_num, note_key, headless=True):
             time.sleep(4)
             eyecatch_url = _verify_eyecatch(ctx, note_key)
             browser.close()
+            if not eyecatch_url:
+                # draft APIが未反映でも公開APIには載っていることがある。
+                # ここで諦めると「アップロードは成功しているのに exit 4」という
+                # false-negativeになり、無駄な再実行を1ラン食う。
+                eyecatch_url = _verify_eyecatch_public(note_key)
             if eyecatch_url:
                 return {"ok": True, "eyecatch_url": eyecatch_url}
             return {"ok": False, "reason": "アップロード後にeyecatchを確認できず"}
@@ -290,24 +319,8 @@ def set_eyecatch(article_num, note_key, headless=True):
         browser.close()
 
     # draft APIで確認できなかった場合の保険として、公開側APIでも最終確認する。
-    # アップロード直後は公開APIへの反映に数十秒かかることがあるのでリトライする。
     if not eyecatch_url:
-        try:
-            import requests
-            for attempt in range(1, 6):
-                time.sleep(10)
-                r = requests.get(
-                    f"https://note.com/api/v3/notes/{note_key}",
-                    headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
-                data = r.json().get("data", {}) if r.status_code == 200 else {}
-                ec = data.get("eyecatch") or ""
-                if "uploads/images" in ec:
-                    eyecatch_url = ec
-                    print(f"  [verify] 公開APIでeyecatch確認OK (attempt {attempt})")
-                    break
-                print(f"  [verify] eyecatch未反映 (attempt {attempt})")
-        except Exception as e:
-            print(f"  [verify] 公開API確認失敗: {e}")
+        eyecatch_url = _verify_eyecatch_public(note_key)
 
     if eyecatch_url:
         return {"ok": True, "eyecatch_url": eyecatch_url}

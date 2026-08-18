@@ -1303,32 +1303,67 @@ def _find_published_by_title(title):
     return None
 
 
-def _ensure_eyecatch_after_publish(url, article_num):
+def _eyecatch_already_set(note_key):
+    """公開APIでカバー画像が既に付いているか見る（冪等チェック用）。"""
+    try:
+        import requests
+        r = requests.get(f"https://note.com/api/v3/notes/{note_key}",
+                         headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
+        ec = (r.json().get("data", {}).get("eyecatch") or "") if r.status_code == 200 else ""
+        return "uploads/images" in ec
+    except Exception:
+        return False
+
+
+# 公開直後のカバー設定に使ってよい時間の上限（秒）。
+# ワークフローの timeout-minutes: 15 に対して、投稿本体・依存インストール・
+# ログpushの分を残すためここで頭打ちにする。
+_EYECATCH_BUDGET_SEC = 8 * 60
+
+
+def _ensure_eyecatch_after_publish(url, article_num, attempts=3):
     """公開直後にカバー画像（アイキャッチ）を自動設定する。
-    失敗しても投稿自体は成功扱いのまま。呼び出し元がexit codeで可視化する。"""
+    失敗しても投稿自体は成功扱いのまま。呼び出し元がexit codeで可視化する。
+
+    同一ラン内で複数回リトライする。以前はここが一発勝負だったため、editorの
+    描画遅延やnote側の反映ラグで落ちるたびに exit 4 → auto_retry.yml が
+    ワークフローを丸ごと再実行、という形で毎日2ラン消費していた。
+    先頭の「既に設定済み」チェックが効くので、実際にアップロードが通っていた
+    場合のリトライはHTTP GET 1回で終わる（二重アップロードにならない）。"""
     try:
         m = re.search(r"/n/(n[0-9a-f]+)", url or "")
         if not m:
             print("  [eyecatch] URLからnote_keyを取れずスキップ")
             return False
-        # 既に設定済みなら何もしない（冪等。リトライ実行時の二重アップロード防止）
-        try:
-            import requests
-            r = requests.get(f"https://note.com/api/v3/notes/{m.group(1)}",
-                             headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
-            ec = (r.json().get("data", {}).get("eyecatch") or "") if r.status_code == 200 else ""
-            if "uploads/images" in ec:
-                print("  [eyecatch] 既に設定済み")
-                return True
-        except Exception:
-            pass
+        note_key = m.group(1)
         import note_set_eyecatch
-        time.sleep(5)  # 公開直後はeditorへの反映を少し待つ
-        res = note_set_eyecatch.set_eyecatch(article_num, m.group(1))
-        if res.get("ok") and res.get("eyecatch_url"):
-            print(f"  [eyecatch] 設定OK: {res['eyecatch_url'][:80]}")
+        deadline = time.time() + _EYECATCH_BUDGET_SEC
+        last = None
+        for attempt in range(1, attempts + 1):
+            # 既に設定済みなら何もしない（冪等。リトライ時の二重アップロード防止）
+            if _eyecatch_already_set(note_key):
+                print(f"  [eyecatch] 設定済みを確認（attempt {attempt}）")
+                return True
+            if attempt > 1 and time.time() >= deadline:
+                print(f"  [eyecatch] 時間切れのため打ち切り（attempt {attempt - 1}まで）")
+                break
+            if attempt > 1:
+                print(f"  [eyecatch] リトライ {attempt}/{attempts}")
+            time.sleep(5)  # 公開直後はeditorへの反映を少し待つ
+            try:
+                res = note_set_eyecatch.set_eyecatch(article_num, note_key)
+            except Exception as e:
+                res = {"ok": False, "reason": f"例外: {str(e)[:120]}"}
+            if res.get("ok") and res.get("eyecatch_url"):
+                print(f"  [eyecatch] 設定OK: {res['eyecatch_url'][:80]}")
+                return True
+            last = res.get("reason") or res
+            print(f"  [eyecatch] ⚠️ 設定失敗/未確認 (attempt {attempt}): {last}")
+        # 最後にもう一度だけ公開APIを見る（反映ラグで取りこぼしていないか）
+        if _eyecatch_already_set(note_key):
+            print("  [eyecatch] 最終確認で設定済みを確認")
             return True
-        print(f"  [eyecatch] ⚠️ 設定失敗/未確認: {res.get('reason') or res}")
+        print(f"  [eyecatch] ⚠️ {attempts}回試行しても設定できず: {last}")
         return False
     except Exception as e:
         print(f"  [eyecatch] ⚠️ 例外: {e}")
