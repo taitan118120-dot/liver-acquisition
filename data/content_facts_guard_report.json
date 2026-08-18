@@ -1,11 +1,5 @@
 {
- "violations": [
-  {
-   "where": "配布URL AGENCY_GUIDE_PDF_SHA → lp/shared/agency_starter_guide.pdf",
-   "reason": "配布URLが HTTP 404（コミットが未pushだと登録者にPDFが届かない）",
-   "hit": "https://cdn.jsdelivr.net/gh/taitan118120-dot/liver-acquisition@e306fab1d9bf167c9e11904b8e7b670c791bfe3c/lp/shared/agency_starter_guide.pdf"
-  }
- ],
+ "violations": [],
  "warn": [
   {
    "where": "lp/beginner/index.html",
