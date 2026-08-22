@@ -285,6 +285,7 @@ evo_503
 evo_510
 evo_520
 evo_525
+evo_528
 evo_529
 evo_540
 evo_550
