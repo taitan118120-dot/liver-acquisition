@@ -1,7 +1,6 @@
 """ステップ配信メッセージ定義"""
 
 import re
-from datetime import datetime, timedelta
 
 # 友だち追加特典（リードマグネット）
 # Netlifyはトークン失効でデプロイ不可のため、GitHub公開repoをjsDelivr CDN経由で配信
@@ -229,23 +228,8 @@ INTENT_REPLIES = {
 
 
 # --- 面談予約フロー（LINE内で完結） ---
-WEEKDAYS_JA = ["月", "火", "水", "木", "金", "土", "日"]
-
-
-def make_slot_candidates(now=None):
-    """明日21時 / 明後日22時 / 次の土曜21時 の3候補を生成
-    ※担当が対応できるのは21〜24時のみ。この枠の外の時間を候補に出さないこと"""
-    now = now or datetime.now()
-    slots = [
-        (now + timedelta(days=1)).replace(hour=21, minute=0),
-        (now + timedelta(days=2)).replace(hour=22, minute=0),
-    ]
-    days_to_sat = (5 - now.weekday()) % 7
-    if days_to_sat <= 2:
-        days_to_sat += 7
-    slots.append((now + timedelta(days=days_to_sat)).replace(hour=21, minute=0))
-    return [f"{s.month}/{s.day}({WEEKDAYS_JA[s.weekday()]}) {s.hour}:00〜" for s in slots]
-
+# こちらから日時を3つ指定するのはやめ、相手の都合を聞く方式にした（2026-08-23）。
+# 対応できる時間帯の目安はあるが、その制約は相手に見せず基本は相手に合わせる。
 
 MEETING_OFFER_INTRO = (
     "面談のご希望ありがとうございます！\n\n"
@@ -286,18 +270,14 @@ def meeting_intro(intent=None, nudge=False):
 
 
 def make_meeting_offer(intro=MEETING_OFFER_INTRO):
-    """面談の日程候補メッセージを生成。(テキスト, 候補リスト) を返す"""
-    c = make_slot_candidates()
-    text = (
+    """面談のご希望日時をうかがうメッセージを生成"""
+    return (
         intro + "\n"
-        "ご都合のいい時間を番号で送ってください👇\n"
-        f"① {c[0]}\n"
-        f"② {c[1]}\n"
-        f"③ {c[2]}\n\n"
-        "合う時間がなければ、ご希望の日時をそのまま送ってもらってもOKです！\n"
-        "（例：「金曜の22時」「日曜の21時半」）"
+        "ご都合のいい日時を教えてください👇\n"
+        "（例：「明日の21時」「土曜の夜」「平日の22時ごろ」）\n\n"
+        "いただいた日時に合わせて調整しますので、\n"
+        "ざっくりでも大丈夫です😊"
     )
-    return text, c
 
 
 MEETING_BOOKED = (
@@ -309,17 +289,14 @@ MEETING_BOOKED = (
 )
 
 # 日程の返事として読み取れなかったときの案内。
-# 自動対応は止めないので、会話を続けたまま番号選択の入口だけ残す。
-def slot_reprompt(candidates):
-    c = list(candidates) + ["", "", ""]
+# 自動対応は止めないので、会話を続けたまま日程の入口だけ残す。
+def slot_reprompt():
     return (
         "メッセージありがとうございます！\n"
         "内容は担当にも共有しました。必要なら直接お返事しますね😊\n\n"
-        "日程だけ先に押さえることもできます👇\n"
-        f"① {c[0]}\n"
-        f"② {c[1]}\n"
-        f"③ {c[2]}\n\n"
-        "番号でも、ご希望の日時をそのまま送ってもらってもOKです！"
+        "面談の日程だけ先に押さえることもできます。\n"
+        "ご都合のいい日時を送ってください👇\n"
+        "（例：「明日の21時」「土曜の夜」「平日の22時ごろ」）"
     )
 
 
@@ -329,27 +306,18 @@ MANUAL_FOLLOW_REPLY = (
     "内容を確認して、担当からこのLINEでご連絡しますね😊"
 )
 
-_SLOT_NUMBERS = {"①": 0, "②": 1, "③": 2, "1": 0, "2": 1, "3": 2}
-_SLOT_TAIL_CHARS = "番でがはにのをおねよ！!。 　"
 _DATETIME_PATTERN = re.compile(
-    r"\d{1,2}時|\d{1,2}:\d{2}|明日|あした|あさって|明後日|今日|今週|来週|週末|"
-    r"[月火水木金土日]曜|午前|午後|夜|昼|朝"
+    r"\d{1,2}時|\d{1,2}:\d{2}|\d{1,2}/\d{1,2}|\d{1,2}月\d{1,2}日|\d{1,2}日|"
+    r"明日|あした|あさって|明後日|今日|今晩|今夜|今週|来週|再来週|週末|平日|土日|"
+    r"[月火水木金土日]曜|午前|午後|夜|昼|朝|夕方|深夜|いつでも|何時でも"
 )
 
 
-def parse_slot_choice(text, candidates):
-    """日程候補への返答を判定。候補の文字列 or 自由入力の希望日時 or None"""
+def parse_slot_choice(text):
+    """希望日時の返答を判定。読み取れたらその文字列、なければ None"""
     t = text.strip()
-    for key, idx in _SLOT_NUMBERS.items():
-        if t == key or (
-            t.startswith(key)
-            and len(t) > len(key)
-            and t[len(key)] in _SLOT_TAIL_CHARS
-        ):
-            if idx < len(candidates):
-                return candidates[idx]
     if _DATETIME_PATTERN.search(t):
-        return t  # 自由入力の希望日時としてそのまま記録
+        return t  # 希望日時としてそのまま記録
     return None
 
 # 流入元の選択肢（番号・キーワード → 記録ラベル）

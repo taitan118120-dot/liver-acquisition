@@ -512,7 +512,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
         self.end_headers()
-        self.wfile.write(b"TAITAN PRO LINE Bot is running (v19-muu-week4)")
+        self.wfile.write(b"TAITAN PRO LINE Bot is running (v20-ask-their-time)")
 
     def do_POST(self):
         content_length = int(self.headers.get("Content-Length", 0))
@@ -697,7 +697,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
 
                 # 面談の日程候補への返答待ち
                 if user_data.get("awaiting_slot"):
-                    slot = parse_slot_choice(text, user_data.get("slot_candidates", []))
+                    slot = parse_slot_choice(text)
                     if slot:
                         user_data["awaiting_slot"] = False
                         user_data["meeting_scheduled"] = True
@@ -724,16 +724,15 @@ class WebhookHandler(BaseHTTPRequestHandler):
                     # 日程と判定できない返信は、手動調整の相談や個別の返事のことが多い。
                     # 管理者には知らせるが、自動対応は止めずにそのまま続ける
                     # （勝手に手動へ切り替えると、担当が気づくまで無反応になるため）。
-                    notify_manual_needed(user_id, text, "日程候補への自由文返信")
+                    notify_manual_needed(user_id, text, "日程の質問への自由文返信")
                     # → 下のキーワード応答／日程の案内し直しにそのまま流す
 
-                # 「面談」キーワード → LINE内で日程候補を提示
+                # 「面談」キーワード → LINE内でご希望の日時をうかがう
                 if "面談" in text or "めんだん" in text:
-                    offer, cands = make_meeting_offer(
+                    offer = make_meeting_offer(
                         meeting_intro(user_data.get("intent"))
                     )
                     user_data["awaiting_slot"] = True
-                    user_data["slot_candidates"] = cands
                     user_data["meeting_offered"] = True
                     users[user_id] = user_data
                     save_json(USERS_FILE, users)
@@ -746,20 +745,19 @@ class WebhookHandler(BaseHTTPRequestHandler):
                     count = user_data.get("auto_reply_count", 0) + 1
                     user_data["auto_reply_count"] = count
                     replies = [auto_reply]
-                    # 2つ目の質問に答えたタイミングで日程候補も提示（質問だけで離脱させない）
+                    # 2つ目の質問に答えたタイミングで日程も打診（質問だけで離脱させない）
                     if count >= 2 and not user_data.get("meeting_offered"):
-                        offer, cands = make_meeting_offer(
+                        offer = make_meeting_offer(
                             meeting_intro(user_data.get("intent"), nudge=True)
                         )
                         user_data["awaiting_slot"] = True
-                        user_data["slot_candidates"] = cands
                         user_data["meeting_offered"] = True
                         replies.append(offer)
                     users[user_id] = user_data
                     save_json(USERS_FILE, users)
                     reply_line_message(reply_token, replies, user_id)
                 else:
-                    # 日程提示後の自由回答（番号でも日時でもキーワードでもない）
+                    # 日程を聞いたあとの自由回答（日時でもキーワードでもない）
                     # → 個別の相談・返事の可能性が高い。担当に知らせたうえで、
                     #   自動対応は止めずに日程の案内をもう一度だけ添えて返す
                     if user_data.get("awaiting_slot") or user_data.get("meeting_offered"):
@@ -771,8 +769,8 @@ class WebhookHandler(BaseHTTPRequestHandler):
                         user_data["slot_reprompt_count"] = count
                         users[user_id] = user_data
                         save_json(USERS_FILE, users)
-                        if count == 1 and user_data.get("slot_candidates"):
-                            reply = slot_reprompt(user_data["slot_candidates"])
+                        if count == 1:
+                            reply = slot_reprompt()
                         else:
                             reply = MANUAL_FOLLOW_REPLY
                         reply_line_message(reply_token, reply, user_id)
