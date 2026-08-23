@@ -1,0 +1,136 @@
+name: Note記事 在庫番犬
+
+# 毎日1本のNote自動投稿が「在庫切れで止まる前」に鳴く番犬。
+#
+# 背景: 2026-08-23、未投稿記事が0本になり note_daily_post が exit 3 で失敗した。
+#   poster 側の「残り3本」警告は**投稿ジョブのログの中**にしか出ないので、
+#   実際には赤くなって初めて＝もう1本も残っていない状態でしか気づけなかった。
+#   記事の書き溜めには時間がかかるため、切れてから気づいたのでは間に合わない。
+#
+# 動作: 投稿できる記事（未投稿かつカバー画像あり）の本数を数え、
+#   1週間分（7本）を切ったら赤くして Issue で通知する。
+#   記事が補充されて緑に戻ったら、その Issue を自動クローズする
+#   （「鳴く」だけでなく「鳴きやむ」までが番犬）。
+
+on:
+  schedule:
+    - cron: '40 0 * * *'   # JST 9:40（8:03の投稿が終わった直後の残数を見る）
+  push:
+    paths:
+      - 'blog/articles_note/**'
+      - 'note_stock_guard.py'
+  workflow_dispatch:
+    inputs:
+      min_days:
+        description: 'しきい値（残り日数）'
+        required: false
+        default: '7'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  stock-guard:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # 在庫の数え方は note_auto_poster が正本（import して使う）。
+      # そのモジュールが requests を import するのでここで入れる。
+      - name: 依存パッケージインストール
+        run: pip install requests
+
+      - name: 在庫日数を数える
+        id: guard
+        run: python3 note_stock_guard.py --json --min-days ${{ github.event.inputs.min_days || 7 }}
+
+      - name: 在庫僅少 → Issue通知
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const title = 'Note記事の在庫が残りわずか（在庫番犬）';
+            let report = {days_left: 0, min_days: 7, postable: [], no_cover: []};
+            try {
+              report = JSON.parse(fs.readFileSync('data/note_stock_guard_report.json', 'utf8'));
+            } catch (e) {}
+            const stock = (report.postable || []).map(a => `- #${a.num} ${a.title}`).join('\n');
+            const noCover = (report.no_cover || []).map(a => `- #${a.num} ${a.title}`).join('\n');
+            const body = [
+              '## Note記事 在庫番犬 検知',
+              '',
+              `投稿できる記事が **${report.days_left}日分**（しきい値 ${report.min_days}日）まで減りました。`,
+              '0本になると `note_daily_post` が exit 3 で失敗し、その日の投稿が飛びます。',
+              '',
+              '## 残っている在庫（投稿される順）',
+              stock || '(なし＝すでに在庫切れ)',
+              '',
+              '## カバー画像が無くて在庫に数えていない記事',
+              noCover || '(なし)',
+              '',
+              '## 対処',
+              '1. `blog/articles_note/{番号}_{slug}.md` に記事を追加する',
+              '   （確定ファクトは `facts_patterns.py` / `project_taitan_pro_note_facts` が正本）',
+              '2. `python3 note_cover_make.py {番号}` でカバー画像を作る',
+              '3. `python3 note_stock_guard.py` がローカルで緑になることを確認',
+              '',
+              '補充すると次回のランがこのIssueを自動クローズします。',
+              '',
+              '---',
+              '_このIssueは `.github/workflows/note_stock_guard.yml` により自動生成されました。_',
+            ].join('\n');
+            // 在庫が減り続けるあいだ毎日同じ内容を貼ると通知が形骸化するので、
+            // 内容（残日数・在庫の顔ぶれ）が変わったときだけ鳴く。赤は維持される。
+            const guard = require('./.github/scripts/guard_comment.js');
+            await guard.notify({
+              github, context, title, body,
+              recomment: `再検知: ${new Date().toISOString()}\n残り${report.days_left}日分\n\n${stock}`,
+            });
+
+      - name: 在庫回復 → Issueを自動クローズ
+        # note_stock_guard.py は「現在の在庫全部」を毎回数え直すので、
+        # 緑＝しきい値以上あることが確定する。
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const title = 'Note記事の在庫が残りわずか（在庫番犬）';
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const match = existing.find(i => i.title === title);
+            if (!match) return;
+            let days = null;
+            try {
+              days = JSON.parse(
+                fs.readFileSync('data/note_stock_guard_report.json', 'utf8')
+              ).days_left;
+            } catch (e) {}
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: match.number,
+              body: [
+                `補充を確認: ${new Date().toISOString()} のランで在庫は${days === null ? 'しきい値以上' : `${days}日分`}ありました。自動クローズします。`,
+                '',
+                `- ラン: ${runUrl}`,
+              ].join('\n'),
+            });
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: match.number,
+              state: 'closed',
+            });

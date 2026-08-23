@@ -88,6 +88,16 @@ BG_HINTS = [
     ("TikTok", "a smartphone on a tripod facing a ring light on a modern desk, cool blue light, clean simple room"),
     ("代理店", "a laptop, a notebook and a cup of coffee on a bright office desk, documents neatly stacked, morning light"),
     ("確定申告", "a calculator, receipts and tax documents on a desk with a laptop, tidy and organized, daylight"),
+    ("SNS運用", "a smartphone lying on a wooden desk next to a laptop and a small notepad, a cup of coffee, warm afternoon light through a window"),
+    ("17LIVE", "a smartphone on a tripod in a tidy bedroom corner, a soft ring light and a small plant beside it, warm evening light"),
+    ("続ける仕組み", "a paper weekly planner open on a desk with a pen, a smartphone on a stand behind it, a mug of tea, calm morning light"),
+    ("振り返り", "an open notebook with a pen resting on it beside a smartphone on a wooden desk, a small desk lamp, quiet night light"),
+    ("お礼", "a small wrapped gift box and a handwritten letter on a wooden table next to a smartphone, soft warm light"),
+    ("休むとき", "a closed notebook and a warm mug on a low table in a dim quiet living room, a folded blanket nearby, soft lamp light"),
+    ("コメント", "a smartphone on a stand on a desk seen from a low angle, a mug and a notepad beside it, cozy room in the evening"),
+    ("聞き取りやすい声", "a close-up of a desk microphone on a wooden desk, headphones beside it, soft warm light, dark quiet room"),
+    ("大学生", "a student desk with textbooks, a notebook, a laptop and a smartphone on a stand, a canvas backpack on the chair, daylight"),
+    ("専業", "a tidy home office desk with a laptop, a calculator, a paper calendar and a mug, morning light through the window"),
     ("_default", "a smartphone on a tripod on a wooden desk in a cozy japanese room, a ring light and a mug beside it, warm natural light"),
 ]
 
