@@ -388,6 +388,11 @@
   },
   {
    "where": "blog/articles_note/42_ライバー代理店スカウト術DM返信率.md",
+   "reason": "自社導線は「LINE通話で相談」（オンライン面談は使わない）",
+   "hit": "オンライン面談"
+  },
+  {
+   "where": "blog/articles_note/42_ライバー代理店スカウト術DM返信率.md",
    "reason": "根拠なしの実績誇張",
    "hit": "何百人"
   },
@@ -595,6 +600,11 @@
    "where": "blog/articles_note/65_TikTokライバー事務所選び方.md",
    "reason": "取扱外プラットフォーム",
    "hit": "IRIAM"
+  },
+  {
+   "where": "blog/articles_note/65_TikTokライバー事務所選び方.md",
+   "reason": "自社導線は「LINE通話で相談」（オンライン面談は使わない）",
+   "hit": "オンライン面談"
   },
   {
    "where": "blog/articles_note/65_TikTokライバー事務所選び方.md",
