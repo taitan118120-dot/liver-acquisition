@@ -36,12 +36,26 @@
            トークンが別アカウントを指している → exit 1（Actionsが赤くなる）
   - WARN = 過去投稿のキャプションの違反 → 報告のみ。**Graph API でキャプションは編集できない**ので
            赤にすると番犬が永久に鳴きやまなくなる（[[feedback_watchdog_autoclose]]）
-  - SKIP = 取得に必要なトークンが無い媒体（ローカル実行時など）→ 報告のみ
+  - SKIP = 取得に必要なトークンが無い／固定ポスト本文が取れなかった媒体
+           （ローカル実行時など）→ 既定では報告のみで exit 0。
+           ただし SKIP が1件でもある回は、その実行が言えるのは
+           **「取得できた媒体には違反が無かった」だけ**で、未取得の媒体については
+           何も検査していない。だから SKIP があるとき最後のサマリに
+           「違反なし ✅」とは書かない（2026-08-24: トークンの無いローカルで
+           3媒体すべて SKIP なのに緑＋「違反なし ✅」で終わり、
+           IG @taitan_pro7 の bio が確定ファクト違反を含んだままなのを
+           「ローカルで緑になったから直った」と誤読した）。
+           --require-live（または環境変数 PROFILE_GUARD_REQUIRE_LIVE=1）を付けると
+           1媒体でも取得できなかった時点で exit 1 にする。
+           **CI は Secrets が揃っている前提なので必ず付ける**
+           ＝ Secrets 切れ・トークン失効で番犬が「緑のまま何も見ていない」状態に
+           なるのを防ぐ。ローカルはトークンが無いのが普通なので既定は SKIP のまま。
   - 手動 = IG @taitanblog は個人アカウントで Graph API が使えない。
            自動取得できないので毎回チェック項目として出力するだけ（赤にはしない）
 
 使い方:
-  python3 social_profile_guard.py          # 全媒体
+  python3 social_profile_guard.py          # 全媒体（取得できない媒体は SKIP）
+  python3 social_profile_guard.py --require-live  # 1媒体でも取得できなければ exit 1（CI用）
   python3 social_profile_guard.py --local  # 正本＋反映スクリプトの自己テストのみ（ネット不要／問題があれば exit 1）
   python3 social_profile_guard.py --local --json  # 上に加えてパース結果を生JSONで出す
 
@@ -608,6 +622,19 @@ def print_canon(canon, problems, warns=()):
               + (f"\n     → {w['hit']}" if w["hit"] else ""))
 
 
+def require_live_enabled(argv=None):
+    """--require-live / PROFILE_GUARD_REQUIRE_LIVE が有効か。
+
+    有効なら「1媒体でも取得できなかった＝検査していない媒体がある」時点で赤にする。
+    CI は Secrets が揃っている前提なので必ず有効にする（Secrets切れ・トークン失効で
+    番犬が緑のまま何も見ていない状態になるのを防ぐ）。
+    """
+    if "--require-live" in (sys.argv if argv is None else argv):
+        return True
+    return os.environ.get("PROFILE_GUARD_REQUIRE_LIVE", "").strip().lower() \
+        not in ("", "0", "false", "no")
+
+
 def main():
     if "--local" in sys.argv:
         canon, problems, canon_warns = load_canon()
@@ -616,6 +643,7 @@ def main():
             print(json.dumps(canon, ensure_ascii=False, indent=1))
         return 1 if problems else 0
 
+    require_live = require_live_enabled()
     canon, canon_problems, canon_warns = load_canon()
     violations, warns, diffs, skipped = [], list(canon_warns), [], []
 
@@ -637,7 +665,8 @@ def main():
         live, err = fetch()
         if err:
             skipped.append({"media": label, "reason": err})
-            print(f"  ⏭  {label}: {err}")
+            print(f"  {'❌' if require_live else '⏭ '} {label}: {err}"
+                  + ("（--require-live なので赤にします）" if require_live else ""))
             continue
 
         # トークンが別アカウントを指していたら、以降の検査は全部無意味になる
@@ -675,10 +704,16 @@ def main():
         "X / Threads の「固定」状態そのもの（固定APIが存在しないため自動判定不可）",
     ]
 
+    # 同じ媒体が「トークン無し」と「固定ポストが取れない」で二重に入りうるので、
+    # 「未取得 N媒体」は媒体単位で数える
+    skipped_media = sorted({s["media"] for s in skipped})
+
     os.makedirs(os.path.dirname(REPORT_FILE), exist_ok=True)
     with open(REPORT_FILE, "w", encoding="utf-8") as f:
         json.dump({"violations": violations, "warn": warns, "diffs": diffs,
-                   "canon": canon_problems, "skipped": skipped, "manual": manual},
+                   "canon": canon_problems, "skipped": skipped,
+                   "skipped_media": skipped_media, "require_live": require_live,
+                   "manual": manual},
                   f, ensure_ascii=False, indent=1)
 
     print(f"\n[結果] 禁止パターン={len(violations)} 正本との乖離={len(diffs)} "
@@ -694,12 +729,35 @@ def main():
         print(f"  ⚠️ {d['where']} が正本と不一致")
         print(f"     正本: {d['canonical'][:80]!r}")
         print(f"     実物: {d['live'][:80]!r}")
+    if skipped:
+        print(f"\n[取得できなかった媒体 {len(skipped_media)}件]"
+              "（この回はここを一切検査していない）")
+        for s in skipped:
+            print(f"  {'❌' if require_live else '⏭ '} {s['media']}: {s['reason']}")
     print("\n[手動確認]")
     for m in manual:
         print(f"  - {m}")
 
-    if violations or diffs or canon_problems:
+    # --require-live のときは「未取得＝検査していない」を赤にする。
+    # Secrets 切れ・トークン失効で番犬が緑のまま何も見ていない状態を防ぐのが目的。
+    live_missing = require_live and bool(skipped)
+    if live_missing:
+        print(f"\n❌ --require-live: {len(skipped_media)}媒体を取得できませんでした"
+              f"（{', '.join(skipped_media)}）"
+              "\n   トークン／Secrets を確認してください。取得できていない媒体は"
+              "「違反が無い」ではなく「見ていない」です。")
+
+    if violations or diffs or canon_problems or live_missing:
         sys.exit(1)
+
+    if skipped:
+        # 「ローカルで緑になったから直った」の誤読を生まないための文言。
+        # 全媒体を取得できた回だけが「違反なし ✅」と言える（2026-08-24）
+        print(f"\n取得できた媒体には違反なし（未取得 {len(skipped_media)}媒体: "
+              f"{', '.join(skipped_media)}）⚠️")
+        print("   → 未取得の媒体は検査していません。全媒体を検査するには"
+              " トークンを設定して --require-live を付けて実行してください。")
+        return 0
     print("\nプロフィール・固定ポストに違反なし ✅")
     return 0
 

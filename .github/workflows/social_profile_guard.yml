@@ -30,6 +30,11 @@ name: プロフィール番犬
 #     上に置くとそれが値として読まれ、しかも pinned は突合対象外で誰も気づけなかった。
 #   - 違反/乖離があればランを赤にし、Issueを作成/更新して通知
 #   - 直って0件に戻ったら、そのIssueを自動クローズする（link_guard と同じ型）
+#
+# --require-live（2026-08-24追加）:
+#   以前はトークンが取れない媒体を SKIP して exit 0 にしていたので、
+#   Secrets 切れ・トークン失効で全媒体 SKIP になっても番犬は緑のまま＝何も見ていなかった。
+#   CI は Secrets が揃っている前提なので、1媒体でも取得できなければ赤にする。
 
 on:
   schedule:
@@ -61,7 +66,10 @@ jobs:
           THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
           INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
           INSTAGRAM_BUSINESS_ID: ${{ secrets.INSTAGRAM_BUSINESS_ID }}
-        run: python3 social_profile_guard.py
+        # --require-live: 1媒体でも取得できなかったら赤にする。
+        # CI は Secrets が揃っている前提なので、取得できない＝Secrets切れ／トークン失効。
+        # これが無いと全媒体 SKIP でも exit 0 で、番犬が「緑のまま何も見ていない」状態になる。
+        run: python3 social_profile_guard.py --require-live
 
       - name: 検知 → Issue通知
         if: failure()
@@ -122,7 +130,11 @@ jobs:
               '## 警告（過去投稿のキャプション。Graph APIでは編集できないので手動 or 放置判断）',
               wLines || '(なし)',
               '',
-              '## 取得できなかった媒体',
+              '## 取得できなかった媒体（`--require-live` によりここが埋まるだけで赤）',
+              '取得できなかった媒体は「違反が無い」のではなく **一切検査していない** 媒体です。',
+              'Secrets 切れ・トークン失効でここが埋まると、番犬は何も見ないまま緑で終わってしまうため、',
+              'CI では `--require-live` を付けて赤にしています。該当する Secret を更新してください。',
+              '',
               sLines || '(なし)',
               '',
               '## 自動判定できない項目（毎回目視）',
@@ -148,7 +160,7 @@ jobs:
             const guard = require('./.github/scripts/guard_comment.js');
             await guard.notify({
               github, context, title, body,
-              recomment: `再検知: ${new Date().toISOString()}\n\n${vLines}\n\n${dLines}\n\n${cLines}`,
+              recomment: `再検知: ${new Date().toISOString()}\n\n${vLines}\n\n${dLines}\n\n${cLines}\n\n${sLines}`,
             });
 
       - name: 違反0件 → Issueを自動クローズ
@@ -167,7 +179,7 @@ jobs:
             await github.rest.issues.createComment({
               owner: context.repo.owner, repo: context.repo.repo,
               issue_number: match.number,
-              body: `復旧を確認: ${new Date().toISOString()} のランで違反0件・正本との乖離0件でした。自動クローズします。`,
+              body: `復旧を確認: ${new Date().toISOString()} のランで全媒体を取得でき、違反0件・正本との乖離0件でした。自動クローズします。`,
             });
             await github.rest.issues.update({
               owner: context.repo.owner, repo: context.repo.repo,
