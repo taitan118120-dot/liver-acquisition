@@ -23,7 +23,7 @@ from config import (
     RICH_MENU_ID_AGENCY,
 )
 from messages import (
-    STEP_MESSAGES, AUTO_REPLIES, AGENCY_REPLIES, DEFAULT_REPLY, SOURCE_THANKS,
+    STEP_MESSAGES, AUTO_REPLIES, AGENCY_REPLIES, DEFAULT_REPLY, source_thanks,
     find_source, make_meeting_offer, parse_slot_choice, MEETING_BOOKED,
     find_intent, INTENT_LABELS, INTENT_REPLIES, meeting_intro, step_text,
     slot_reprompt, MANUAL_FOLLOW_REPLY,
@@ -512,7 +512,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
         self.end_headers()
-        self.wfile.write(b"TAITAN PRO LINE Bot is running (v21-line-call-wording)")
+        self.wfile.write(b"TAITAN PRO LINE Bot is running (v22-offer-after-survey)")
 
     def do_POST(self):
         content_length = int(self.headers.get("Content-Length", 0))
@@ -682,16 +682,36 @@ class WebhookHandler(BaseHTTPRequestHandler):
                     if source:
                         user_data["source"] = source
                         user_data["source_date"] = datetime.now().isoformat()
+                        print(f"[SOURCE] {user_id[:8]}... -> {source}")
+
+                        intent = user_data.get("intent")
+                        replies = [source_thanks(intent)]
+                        # アンケート（種別→流入元）に最後まで答えてくれた直後が一番温度が高い。
+                        # ここで打診しないと、案内どおり素直に番号で答えた人ほど
+                        # 面談の話を一度もされないまま終わる（2026-08-27 実データで判明。
+                        # 26人中オファー到達は7人、うち4人が日程を出していた＝打診不足）。
+                        # intent/source の回答は auto_reply_count に入らないため、
+                        # 「キーワード2回」の既存トリガーでは永久に発火しない。
+                        offered_now = False
+                        if not user_data.get("meeting_offered") and not user_data.get("meeting_scheduled"):
+                            replies.append(
+                                make_meeting_offer(meeting_intro(intent, nudge=True))
+                            )
+                            user_data["awaiting_slot"] = True
+                            user_data["meeting_offered"] = True
+                            offered_now = True
+
                         users[user_id] = user_data
                         save_json(USERS_FILE, users)
-                        print(f"[SOURCE] {user_id[:8]}... -> {source}")
-                        reply_line_message(reply_token, SOURCE_THANKS, user_id)
+                        reply_line_message(reply_token, replies, user_id)
                         name = get_display_name(user_id)
                         notify_admin(
                             "📍 流入元が分かりました\n"
                             f"名前: {name or '(取得失敗)'}\n"
                             f"ID: {user_id[:8]}\n"
                             f"流入元: {source}"
+                            + ("\n\n続けてLINE通話の日程を打診しました（返答待ち）。"
+                               if offered_now else "")
                         )
                         continue
 
@@ -724,7 +744,11 @@ class WebhookHandler(BaseHTTPRequestHandler):
                     # 日程と判定できない返信は、手動調整の相談や個別の返事のことが多い。
                     # 管理者には知らせるが、自動対応は止めずにそのまま続ける
                     # （勝手に手動へ切り替えると、担当が気づくまで無反応になるため）。
-                    notify_manual_needed(user_id, text, "日程の質問への自由文返信")
+                    # ただし「収入」等のキーワード質問はBotがそのまま答えられるので通知しない。
+                    # （アンケート直後に日程を打診するようになり awaiting_slot の期間が
+                    #   長くなったため、これが無いと質問のたびに管理者通知が飛ぶ）
+                    if not find_auto_reply(text, user_data.get("intent")):
+                        notify_manual_needed(user_id, text, "日程の質問への自由文返信")
                     # → 下のキーワード応答／日程の案内し直しにそのまま流す
 
                 # 「面談」キーワード → LINE内でご希望の日時をうかがう
