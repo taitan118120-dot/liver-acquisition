@@ -25,7 +25,13 @@ RICH_MENU_ID_AGENCY = os.environ.get("RICH_MENU_ID_AGENCY", "")
 # ドメインが食い違ったまま放置されるため、2026-08-11 に未参照定数ごと削除した。
 
 # ステップ配信スケジュール（秒）
+# ※ slot_reminder だけは友だち追加時ではなく「面談を打診した時点」から数える。
+#    app.py の schedule_slot_reminder() が個別にスケジュールする。
 STEP_DELAYS = {
     "welcome": 0,               # 即時
     "followup_1day": 24 * 3600,  # 24時間後に1回だけ軽くフォロー（面談確定者には送らない）
+    "slot_reminder": 2 * 24 * 3600,  # 面談打診の2日後に1回だけ日程を聞き直す
 }
+
+# 友だち追加時にはスケジュールしないステップ（起点が follow ではないもの）
+STEP_NOT_ON_FOLLOW = ("slot_reminder",)
