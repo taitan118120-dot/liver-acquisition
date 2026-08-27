@@ -20,7 +20,7 @@ from urllib.error import HTTPError
 
 from config import (
     LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN, STEP_DELAYS, ADMIN_USER_ID,
-    RICH_MENU_ID_AGENCY,
+    RICH_MENU_ID_AGENCY, STEP_NOT_ON_FOLLOW,
 )
 from messages import (
     STEP_MESSAGES, AUTO_REPLIES, AGENCY_REPLIES, DEFAULT_REPLY, source_thanks,
@@ -183,6 +183,10 @@ def notify_admin(text):
 # --- ステップ配信（永続化対応）---
 SCHEDULE_FILE = os.path.join(DATA_DIR, "step_schedule.json")
 
+# 日程の聞き直し。他のステップと送信条件が逆で、
+# 「面談を打診したのに日程が返ってきていない人」だけに送る。
+SLOT_REMINDER_STEP = "slot_reminder"
+
 
 def _send_step_if_active(user_id, step_name):
     """ステップ送信前にユーザーがまだアクティブか確認
@@ -199,10 +203,18 @@ def _send_step_if_active(user_id, step_name):
             print(f"[STEP] Skipped '{step_name}' for {user_id[:8]}... ({reason})")
             _remove_schedule(user_id, step_name)
             return
+        if step_name == SLOT_REMINDER_STEP:
+            # 日程の聞き直しは逆に「面談フローに入ったまま止まっている人」が対象。
+            # 打診が取り消された（管理者が状態を直した等）なら送らない。
+            # 面談確定・auto_paused・ブロックは上の共通ガードで既に弾いている。
+            if not user.get("meeting_offered"):
+                print(f"[STEP] Skipped '{step_name}' for {user_id[:8]}... (not offered)")
+                _remove_schedule(user_id, step_name)
+                return
         # 面談フローに入った人（日程提示済み）には送らない。
         # 番号選択を通らずチャット手動調整→LINE通話で面談済みになるケースがあり、
         # その場合 auto_paused が立たないまま「その後いかがですか？」が飛んでしまう
-        if user.get("meeting_offered") or user.get("awaiting_slot"):
+        elif user.get("meeting_offered") or user.get("awaiting_slot"):
             print(f"[STEP] Skipped '{step_name}' for {user_id[:8]}... (meeting flow)")
             _remove_schedule(user_id, step_name)
             return
@@ -233,6 +245,10 @@ def _send_step_if_active(user_id, step_name):
             sent = users[user_id].get("step_sent", [])
             sent.append(step_name)
             users[user_id]["step_sent"] = sent
+            if step_name == SLOT_REMINDER_STEP:
+                # 聞き直した以上、返ってきた日時をちゃんと拾えるようにしておく
+                # （手動対応中の人はここまで来ないので、勝手に自動へは戻らない）
+                users[user_id]["awaiting_slot"] = True
             save_json(USERS_FILE, users)
         _remove_schedule(user_id, step_name)
     except Exception as e:
@@ -265,6 +281,8 @@ def schedule_step_messages(user_id):
     for step_name, delay in STEP_DELAYS.items():
         if step_name == "welcome":
             continue  # welcomeはfollow eventで即送信
+        if step_name in STEP_NOT_ON_FOLLOW:
+            continue  # 起点がfollowではないステップ（面談打診の2日後など）
         msg = STEP_MESSAGES.get(step_name)
         if not msg:
             continue
@@ -283,6 +301,35 @@ def schedule_step_messages(user_id):
         print(f"[STEP] Scheduled '{step_name}' for {user_id[:8]}... at {send_at}")
 
     save_json(SCHEDULE_FILE, schedules)
+
+
+def schedule_slot_reminder(user_id):
+    """面談を打診した時点から2日後に、日程の聞き直しを1回だけ予約する。
+
+    起点が友だち追加ではないので schedule_step_messages とは別立てにしている。
+    「面談」と何度送られても、送信済み・予約済みなら積まない（追客は1回だけ）。
+    """
+    users = load_json(USERS_FILE)
+    if SLOT_REMINDER_STEP in users.get(user_id, {}).get("step_sent", []):
+        return
+
+    schedules = load_json(SCHEDULE_FILE, [])
+    if any(s["user_id"] == user_id and s["step"] == SLOT_REMINDER_STEP for s in schedules):
+        return
+
+    delay = STEP_DELAYS[SLOT_REMINDER_STEP]
+    send_at = (datetime.now() + timedelta(seconds=delay)).isoformat()
+    schedules.append({
+        "user_id": user_id,
+        "step": SLOT_REMINDER_STEP,
+        "send_at": send_at,
+    })
+    save_json(SCHEDULE_FILE, schedules)
+
+    t = threading.Timer(delay, _send_step_if_active, args=[user_id, SLOT_REMINDER_STEP])
+    t.daemon = True
+    t.start()
+    print(f"[STEP] Scheduled '{SLOT_REMINDER_STEP}' for {user_id[:8]}... at {send_at}")
 
 
 def restore_pending_steps():
@@ -512,7 +559,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
         self.end_headers()
-        self.wfile.write(b"TAITAN PRO LINE Bot is running (v23-step-3day-7day)")
+        self.wfile.write(b"TAITAN PRO LINE Bot is running (v24-slot-reminder+step-3day-7day)")
 
     def do_POST(self):
         content_length = int(self.headers.get("Content-Length", 0))
@@ -703,6 +750,8 @@ class WebhookHandler(BaseHTTPRequestHandler):
 
                         users[user_id] = user_data
                         save_json(USERS_FILE, users)
+                        if offered_now:
+                            schedule_slot_reminder(user_id)
                         reply_line_message(reply_token, replies, user_id)
                         name = get_display_name(user_id)
                         notify_admin(
@@ -760,6 +809,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
                     user_data["meeting_offered"] = True
                     users[user_id] = user_data
                     save_json(USERS_FILE, users)
+                    schedule_slot_reminder(user_id)
                     reply_line_message(reply_token, offer, user_id)
                     continue
 
@@ -770,6 +820,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
                     user_data["auto_reply_count"] = count
                     replies = [auto_reply]
                     # 2つ目の質問に答えたタイミングで日程も打診（質問だけで離脱させない）
+                    offered_now = False
                     if count >= 2 and not user_data.get("meeting_offered"):
                         offer = make_meeting_offer(
                             meeting_intro(user_data.get("intent"), nudge=True)
@@ -777,8 +828,11 @@ class WebhookHandler(BaseHTTPRequestHandler):
                         user_data["awaiting_slot"] = True
                         user_data["meeting_offered"] = True
                         replies.append(offer)
+                        offered_now = True
                     users[user_id] = user_data
                     save_json(USERS_FILE, users)
+                    if offered_now:
+                        schedule_slot_reminder(user_id)
                     reply_line_message(reply_token, replies, user_id)
                 else:
                     # 日程を聞いたあとの自由回答（日時でもキーワードでもない）

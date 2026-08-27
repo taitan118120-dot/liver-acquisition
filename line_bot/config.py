@@ -26,14 +26,21 @@ RICH_MENU_ID_AGENCY = os.environ.get("RICH_MENU_ID_AGENCY", "")
 
 # ステップ配信スケジュール（秒）
 # 2026-08-27まで welcome と followup_1day の2通で打ち切りだった。本番stateを見たところ
-# 友だち26人中9人が一度も返信しておらず、この層は2通で音信不通になっていたため3日後・7日後を追加。
+# 友だち27人中9人が一度も返信しておらず、この層は2通で音信不通になっていたため3日後・7日後を追加。
 # _send_step_if_active のガード（unfollowed / auto_paused / meeting_scheduled /
-# meeting_offered / awaiting_slot / 直近12時間の会話）は全ステップに等しく効くので、
+# meeting_offered / awaiting_slot / 直近12時間の会話）は followup_* に等しく効くので、
 # 面談フローに入った人・会話が生きている人には届かない。増やしても追い打ちにはならない。
-# ここから先は足さないこと（7日後の文面が「最後に一度だけ」と明言している）。
+# followup_* はここから先を足さないこと（7日後の文面が「これで最後」と明言している）。
+# ※ slot_reminder だけは友だち追加時ではなく「面談を打診した時点」から数え、
+#    送信条件も逆（打診済みで日程が返ってきていない人だけ）。
+#    app.py の schedule_slot_reminder() が個別にスケジュールする。
 STEP_DELAYS = {
     "welcome": 0,                    # 即時
     "followup_1day": 24 * 3600,      # 24時間後：特典PDFの感想うかがい＋小さな質問の呼び水
     "followup_3day": 3 * 24 * 3600,  # 3日後：PDFの中身に触れて具体的な質問を促す
     "followup_7day": 7 * 24 * 3600,  # 7日後：「今は迷い中でも大丈夫」で軽く締める（最終）
+    "slot_reminder": 2 * 24 * 3600,  # 面談打診の2日後に1回だけ日程を聞き直す
 }
+
+# 友だち追加時にはスケジュールしないステップ（起点が follow ではないもの）
+STEP_NOT_ON_FOLLOW = ("slot_reminder",)
