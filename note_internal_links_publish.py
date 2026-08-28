@@ -131,6 +131,54 @@ def build_catalog(session):
     return catalog
 
 
+def build_catalog_light(session):
+    """本文を持たない軽量カタログ。pick_related / related_html はこれで足りる。
+
+    build_catalog は公開判定のために記事1本ごとに GET するので、公開140本で2分以上
+    かかる。毎日の自動投稿（note_auto_poster）から呼ぶには重すぎるうえ、公開直後の
+    記事は PV API にまだ現れず catalog から丸ごと落ちることがある。こちらは
+      ・公開判定 … creators/contents（＝公開中しか返さない公開API）
+      ・PV      … stats/pv。取れなければ0扱いで続行（クラスタとタイトル類似だけで選ぶ）
+    にして、本文はカタログに載せない。
+
+    pick_related は catalog[key]["body"] を「対象記事が既にリンク済みの記事」の
+    除外にしか使わないので、対象記事だけ add_entry で本文ごと入れれば足りる。
+    """
+    from note_tag_guard import list_published
+
+    pv = {}
+    try:
+        pv = fetch_pv(session, "all")
+    except Exception as e:
+        print(f"  [links] PV取得に失敗（PVなしで関連記事を選ぶ）: {type(e).__name__}: {e}")
+
+    catalog = {}
+    for n in list_published(session):
+        key, title = n.get("key"), n.get("name") or ""
+        if not key:
+            continue
+        catalog[key] = {"title": title, "pv_all": pv.get(key, (0, ""))[0],
+                        "pv_month": 0, "clusters": clusters_of(title), "body": ""}
+    return catalog
+
+
+# まだ key を持たない記事（＝これから新規公開する記事）を pick_related に渡すための仮key。
+PENDING_KEY = "__pending__"
+
+
+def add_entry(catalog, title, body, key=None):
+    """記事1本をカタログへ載せて key を返す。
+
+    新規公開の記事はまだ note 上に存在せず、公開直後の記事も公開一覧APIへの反映が
+    遅れることがある。pick_related は catalog[key] を必ず引くので、対象記事は
+    こちらで明示的に入れてから呼ぶ（自分自身は候補から外れる）。
+    """
+    key = key or PENDING_KEY
+    catalog[key] = {"title": title, "pv_all": 0, "pv_month": 0,
+                    "clusters": clusters_of(title), "body": body or ""}
+    return key
+
+
 # ─── 代理店ブリッジ ──────────────────────────────────────
 # 2026-08-28 の実測: 全期間PV上位30本（＝全PVの63%）が持つ内部リンク67本のうち、
 # 代理店（＝事務所を"作る側"）記事へのリンクは **4本** しかなかった。

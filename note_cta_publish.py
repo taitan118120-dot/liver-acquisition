@@ -8,13 +8,26 @@
         python3 note_cta_publish.py --verify <key>   # 検証のみ(GET)
 """
 import sys, json, time, re
-import requests, browser_cookie3
+import requests
 from note_cta_transform import transform
 from note_publish_core import (NOTE_API_BASE as NOTE_API, NOTE_UA as UA,
                                RECAPTCHA_SITEKEY, editor_browser, publish_via_editor)
 
 
 def chrome_cookies():
+    """note.com のログインcookie（Playwright の add_cookies 形式）。
+
+    ローカルは Chrome から直接読む。CI には browser_cookie3 が入っていないので
+    NOTE_COOKIES_JSON Secret へ落とす（読み取り口は note_tag_guard が正本）。
+    browser_cookie3 を module 直下で import していると、このモジュールを経由する
+    施策スクリプト（内部リンク・冒頭CTA・boost）を GitHub Actions から一切
+    import できない。note_auto_poster が公開の一部として内部リンクを入れられるよう、
+    cookie の入手経路をここで吸収する。
+    """
+    from note_tag_guard import _env_cookies, _load_pw_cookies
+    if _env_cookies() is not None:
+        return _load_pw_cookies()
+    import browser_cookie3
     cks = []
     for c in browser_cookie3.chrome(domain_name="note.com"):
         cks.append({"name": c.name, "value": c.value,

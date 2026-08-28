@@ -1160,6 +1160,11 @@ def update_article(article_num, key_map=None, dry_run=False, accept_fuzzy=False)
         if not note_id:
             return {"success": False, "error": "note_id_not_found", "key": key}
 
+        # ローカルMarkdownには「あわせて読みたい」が無いので、そのまま上書きすると
+        # 公開側に入っていたブロックを毎回消してしまう（2026-08-28の実測で、
+        # boost済み17本がこの経路の一括更新で剥がれていた）。更新時も組み直す。
+        body_html, _related_keys = _with_internal_links(title, body_html, key=key)
+
         _inplace_update_note(key, note_id, title, body_html)
         url = f"https://note.com/{NOTE_CREATOR}/n/{key}"
         print(f"  更新成功（in-place）: {url}")
@@ -1270,6 +1275,173 @@ def _guard_tags_after_publish(url, article_num=None, title=None):
             return False
     except Exception as e:
         print(f"  [tag-guard] スキップ（例外）: {e}")
+        return False
+
+
+# ─── 内部リンク「あわせて読みたい」 ─────────────────────
+# 2026-08-28まで、このブロックを入れるのは note_boost_publish.py の手動実行だけだった。
+# poster は入れないので、公開した新記事は必ず内部リンク0で世に出て、次に誰かが boost を
+# 回すまで行き止まりのまま残っていた（実測: 8/8以降に公開した23本が全部リンク0。
+# 全期間PV1位のTikTokLIVE記事も代理店1位のスカウト術も繋がっていなかった。
+# data/note_pv_analysis_20260828.md §4）。公開の一部としてここで入れる。
+#
+# 選定（クラスタ＋タイトル類似＋代理店ブリッジ）・HTML組み立て・挿入位置の判定は
+# note_internal_links_publish / note_boost_publish が正本。ここでは呼ぶだけにする。
+
+def _links_modules():
+    """内部リンク挿入に要る関数一式。import 自体が失敗しても投稿は止めない。"""
+    from note_boost_publish import has_related_block, insert_related
+    from note_cta_publish import req_session
+    from note_internal_links_publish import (RELATED_MARK, add_entry,
+                                             build_catalog_light, find_insert_pos,
+                                             pick_related)
+    return dict(has_related_block=has_related_block, insert_related=insert_related,
+                req_session=req_session, RELATED_MARK=RELATED_MARK, add_entry=add_entry,
+                build_catalog_light=build_catalog_light, find_insert_pos=find_insert_pos,
+                pick_related=pick_related)
+
+
+_links_catalog_cache = None
+
+
+def _links_catalog(m):
+    """公開記事カタログ。プロセス内で1回だけ構築し、以後はコピーを配る。
+
+    --update-all は100本以上を回すので、記事ごとに作り直すと公開一覧とPVのGETだけで
+    ワークフローの制限時間を食い潰す。呼び出し側は自分の記事を足したり同タイトルを
+    落としたりするので、共有ベースを壊さないよう毎回シャローコピーを返す
+    （中の dict は読むだけ）。構築に失敗したら空を覚えて、記事ごとの再試行で
+    時間を溶かさない（抜けは note_funnel_guard.py が拾う）。
+    """
+    global _links_catalog_cache
+    if _links_catalog_cache is None:
+        try:
+            _links_catalog_cache = m["build_catalog_light"](m["req_session"]())
+            print(f"  [links] 公開記事カタログ {len(_links_catalog_cache)}本")
+        except Exception as e:
+            print(f"  [links] カタログ構築に失敗（このランでは内部リンクを入れません）: "
+                  f"{type(e).__name__}: {e}")
+            _links_catalog_cache = {}
+    return dict(_links_catalog_cache)
+
+
+def _with_internal_links(title, body_html, key=None):
+    """公開/更新する本文HTMLに「あわせて読みたい」を差し込んで返す。
+
+    key: 更新時は対象記事の key（自分自身を関連記事に選ばないために渡す）。
+         新規公開はまだ key が無いので None。
+    戻り値: (body_html, 選んだkeyのリスト)。失敗時は本文をそのまま返す
+    （公開・更新自体は止めない。抜けは _ensure_internal_links_after_publish と
+     note_funnel_guard.py が拾う）。
+    """
+    try:
+        m = _links_modules()
+    except Exception as e:
+        print(f"  [links] モジュール読み込み失敗のためスキップ: {type(e).__name__}: {e}")
+        return body_html, []
+
+    if m["has_related_block"](body_html):
+        return body_html, []
+    try:
+        catalog = _links_catalog(m)
+        # 新規公開（key=None）では自分自身がまだカタログに無いはずだが、ログの
+        # push漏れ等で同タイトルが既に公開されていると自分へのリンクを選んでしまう。
+        # 重複ガードの後段なので実際には来ないが、念のためタイトルでも弾く。
+        for k in [k for k, v in catalog.items()
+                  if _normalize_title(v["title"]) == _normalize_title(title)]:
+            del catalog[k]
+        me = m["add_entry"](catalog, title, body_html, key)
+        rel = m["pick_related"](me, catalog)
+        if not rel:
+            print("  [links] 関連記事の候補が無くスキップ（公開記事が取れていない可能性）")
+            return body_html, []
+        out = m["insert_related"](rel, catalog, me, body_html)
+        if out is None:
+            return body_html, []
+        print(f"  [links] あわせて読みたい {len(rel)}本を挿入:")
+        for k in rel:
+            print(f"      → {catalog[k]['title'][:46]}")
+        return out, rel
+    except Exception as e:
+        print(f"  [links] 挿入に失敗（公開は続行）: {type(e).__name__}: {e}")
+        return body_html, []
+
+
+def _published_body(note_key, attempts=2):
+    """公開中の本文を非ログインAPIで読む（番犬が見るのと同じ経路）。"""
+    body = ""
+    for i in range(attempts):
+        if i:
+            time.sleep(5)  # 公開直後は反映ラグがあるので一度だけ待って読み直す
+        try:
+            r = requests.get(f"{NOTE_API_BASE}/v3/notes/{note_key}",
+                             headers={"User-Agent": NOTE_UA, "Accept": "application/json",
+                                      "Cache-Control": "no-cache"}, timeout=25)
+            if r.status_code == 200:
+                body = r.json().get("data", {}).get("body", "") or ""
+                if body:
+                    return body
+        except Exception as e:
+            print(f"  [links] 本文の確認に失敗（試行{i + 1}）: {type(e).__name__}: {e}")
+    return body
+
+
+def _ensure_internal_links_after_publish(url, title):
+    """公開後に「あわせて読みたい」が本文にあるか確認し、無ければ再公開で入れ直す。
+
+    通常は公開前に _with_internal_links が入れているので GET 1〜2回で終わる。
+    ここが効くのは (a) カタログが取れず入れられなかったとき (b) 重複ガードで
+    既存記事を再利用したとき (c) note側が本文から落としたとき。
+    再公開は note_leadmagnet_publish.publish_one に任せる（公開PUTがタグを0にする
+    既知問題の復元込み。本文検証が失敗してもタグ復元は必ず走る実装）。
+    投稿自体は成功扱いのまま。呼び出し元が exit code で可視化する。
+    """
+    try:
+        mm = re.search(r"/n/(n[0-9a-f]+)", url or "")
+        if not mm:
+            print("  [links] URLからnote_keyを取れずスキップ")
+            return False
+        key = mm.group(1)
+        m = _links_modules()
+
+        body = _published_body(key)
+        if not body:
+            print("  [links] ⚠️ 公開本文を取得できず確認できませんでした")
+            return False
+        if m["has_related_block"](body):
+            print("  [links] あわせて読みたいブロックを確認")
+            return True
+        if m["find_insert_pos"](body) is None:
+            print("  [links] ⚠️ 挿入位置（TAITAN PRO見出し/特典段落）が本文に無く入れられません")
+            return False
+
+        print("  [links] ブロックが無いので再公開で入れ直します")
+        catalog = _links_catalog(m)
+        # 公開直後は公開一覧APIにまだ載っていないことがあるので必ず自分で入れる。
+        # 本文を渡すと pick_related が「本文に既にリンク済みの記事」を候補から外す。
+        m["add_entry"](catalog, title, body, key)
+        rel = m["pick_related"](key, catalog)
+        if not rel:
+            print("  [links] ⚠️ 関連記事の候補が見つかりませんでした")
+            return False
+
+        from note_leadmagnet_publish import publish_one
+        res = publish_one(key, lambda k, html: m["insert_related"](rel, catalog, k, html),
+                          expect_marker=m["RELATED_MARK"])
+        if res == "ok":
+            print("  [links] 再公開で挿入しました")
+            return True
+        if res == "skip":
+            # publish_one は「本文に既にブロックがある」ときも skip を返す。
+            # 公開APIの反映ラグでこちらが見落としていただけなら正常なので、
+            # skip を即失敗にはせず本文をもう一度読んで判定する。
+            if m["has_related_block"](_published_body(key)):
+                print("  [links] 既に入っていました（公開APIの反映ラグ）")
+                return True
+        print(f"  [links] ⚠️ 再公開の結果が ok ではありません: {res}")
+        return False
+    except Exception as e:
+        print(f"  [links] ⚠️ 例外: {type(e).__name__}: {e}")
         return False
 
 
@@ -1412,9 +1584,17 @@ def post_article(article_num, dry_run=False):
         _register_published(article_num, _key_from_note_url(dup_url), title, how="dup-guard")
         tags_ok = _guard_tags_after_publish(dup_url, article_num, title)
         eyecatch_ok = _ensure_eyecatch_after_publish(dup_url, article_num)
+        links_ok = _ensure_internal_links_after_publish(dup_url, title)
         log_result(article_num, title, dup_url, True, "重複ガード: 既存記事を再利用")
         return {"success": True, "url": dup_url, "tags_ok": tags_ok,
-                "eyecatch_ok": eyecatch_ok, "duplicate_skipped": True}
+                "eyecatch_ok": eyecatch_ok, "links_ok": links_ok,
+                "duplicate_skipped": True}
+
+    # 内部リンクは「公開してから後付け」ではなく、公開する本文そのものに入れる。
+    # 後付けにすると記事が一度リンク0で世に出るうえ、PUTが1回増える。
+    # カバー・重複ガードを抜けた＝実際に投稿する時点まで来てから組む
+    # （dry-run や公開中止のためにPV APIを叩かない）。
+    body_html, _related_keys = _with_internal_links(title, body_html)
 
     email, password = get_credentials()
 
@@ -1452,8 +1632,12 @@ def post_article(article_num, dry_run=False):
                             title, how="post")
         tags_ok = _guard_tags_after_publish(result["url"], article_num, title)
         eyecatch_ok = _ensure_eyecatch_after_publish(result["url"], article_num)
-        return {"success": True, "url": result["url"],
-                "tags_ok": tags_ok, "eyecatch_ok": eyecatch_ok}
+        # 本文に入れたブロックが実際に公開側へ載っているかを見る（載っていなければ再公開）。
+        # タグ復元より後に置く: 再公開のPUTはタグを0にするので、復元済みのタグを
+        # publish_one が読み取って戻せる状態になっている必要がある。
+        links_ok = _ensure_internal_links_after_publish(result["url"], title)
+        return {"success": True, "url": result["url"], "tags_ok": tags_ok,
+                "eyecatch_ok": eyecatch_ok, "links_ok": links_ok}
 
     except Exception as e:
         error_msg = str(e)
@@ -1571,6 +1755,13 @@ def main():
             # 記事は公開済み。auto_retryの再実行が重複ガード経由でタグを再付与する
             print("⚠️ タグ自動付与に失敗（記事は公開済み）。再実行で修復されます。")
             sys.exit(5)
+        if not args.dry_run and not result.get("links_ok", True):
+            # 記事は公開済みだが「あわせて読みたい」が入っていない＝回遊の行き止まり。
+            # 黙って緑にすると、まさに2026-08-28まで23本溜めた穴が再発する。
+            # auto_retryの再実行が重複ガード経由で入れ直す。
+            print("⚠️ 内部リンク（あわせて読みたい）の挿入に失敗（記事は公開済み）。"
+                  "再実行で修復されます。手動なら python3 note_boost_publish.py <key>")
+            sys.exit(8)
         if skipped_no_cover:
             # 投稿自体は成功。カバー無し記事の放置に気づけるようexit 3で赤くする
             sys.exit(3)
