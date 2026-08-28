@@ -24,7 +24,7 @@ import re
 import sys
 import time
 
-from note_early_cta_publish import EARLY_HTML, EARLY_MARK
+from note_early_cta_publish import EARLY_HTML, EARLY_MARK, early_html_for
 from note_internal_links_publish import (RELATED_MARK, build_catalog,
                                          find_insert_pos, pick_related,
                                          related_html)
@@ -90,8 +90,11 @@ def _strip_early(html):
     return html[:s] + html[e + 4:]
 
 
-def early_or_fallback(key, html):
+def early_or_fallback(key, html, title=""):
     """冒頭CTAを本文の冒頭に入れる（既に末尾寄りに入っていれば入れ直す）。
+
+    title を渡すと代理店記事には代理店向けの特典を出す（early_html_for）。
+    渡さないとライバー向けが入るので、**呼び出し側は必ずタイトルを渡すこと**。
 
     note_early_cta_publish.transform_early は「最初の <h1-4> の直前」に入れるが、
     これは2通りに外れる。どちらも実測で踏んだ:
@@ -117,7 +120,7 @@ def early_or_fallback(key, html):
             print(f"  skip（見出しも <p> も無い key={key}）")
             return None
         pos = starts[2] if len(starts) > 2 else starts[-1]
-    return html[:pos] + EARLY_HTML + html[pos:]
+    return html[:pos] + early_html_for(title) + html[pos:]
 
 
 def insert_related(rel_keys, catalog, key, html):
@@ -141,7 +144,7 @@ def make_combined(need_early, rel_keys, catalog):
     def _t(key, html):
         out = html
         if need_early:
-            r = early_or_fallback(key, out)
+            r = early_or_fallback(key, out, catalog.get(key, {}).get("title", ""))
             if r is not None:
                 out = r
         if rel_keys:

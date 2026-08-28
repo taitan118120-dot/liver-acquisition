@@ -190,23 +190,42 @@ def add_entry(catalog, title, body, key=None):
 # 代理店記事に予約する。事務所の還元率・契約・仕組みを読んでいる人は
 # "作る側" から最も近い層で、話題としても地続き。
 # ライバーの配信テクや新人期間の記事には**入れない**（読者がまるで違う）。
-_AGENCY_BRIDGE_FROM = ["事務所", "還元率", "マージン", "契約", "マネージャー", "スカウト"]
-_AGENCY_TARGET = ["代理店", "開業", "スカウト術", "スカウトDM", "マネージャーとは"]
-# 事務所"選び"の記事は読者がライバー志望なので、それ自体は代理店記事ではない
-_AGENCY_TARGET_EXCLUDE = ["選び方", "口コミ", "評判", "入るべき", "やめとけ", "見分け方",
-                          "メリット", "デメリット"]
+# 「代理店」「開業」は"作る側"であることが単語だけで確定する強いしるし。
+# 「事務所」「マネージャー」「スカウト」は弱く、"選ぶ側"の記事にも出るので
+# 除外語と突き合わせて判定する（例:「事務所に入るメリット・デメリット」は選ぶ側）。
+_AGENCY_STRONG = ["代理店", "開業"]
+_AGENCY_WEAK = ["スカウト術", "スカウトDM", "マネージャーとは", "事務所を作"]
+_AGENCY_WEAK_EXCLUDE = ["選び方", "口コミ", "評判", "入るべき", "やめとけ", "見分け方",
+                        "メリット", "デメリット"]
+
+# ブリッジを差し込む側＝「事務所という仕組みそのものを調べている読者」。
+# 事務所という語が出るだけでは足りない（「事務所に入って変わったこと」のような
+# ライバーの体験談まで拾ってしまう）ので、仕組み・条件を調べている語との
+# 同時出現を条件にする。
+_BRIDGE_TOPIC = ["仕組み", "還元率", "マージン", "契約", "移籍", "選び方", "フリー",
+                 "メリット", "デメリット", "入るべき", "見分け方", "違約金", "マネージャー"]
 
 
 def is_agency_article(title):
-    if any(w in title for w in _AGENCY_TARGET_EXCLUDE):
+    for b in _BYLINE:
+        title = title.replace(b, "")
+    if any(w in title for w in _AGENCY_STRONG):
+        return True
+    if any(w in title for w in _AGENCY_WEAK_EXCLUDE):
         return False
-    return any(w in title for w in _AGENCY_TARGET)
+    return any(w in title for w in _AGENCY_WEAK)
 
 
 def wants_agency_bridge(title):
+    # 「〜を現役マネージャーが解説」の肩書きで顔出しなし記事まで拾っていた。
+    # clusters_of と同じく肩書きを先に落とす。
+    for b in _BYLINE:
+        title = title.replace(b, "")
     if is_agency_article(title):
         return False  # 代理店記事どうしは通常のスコアリングで十分近い
-    return any(w in title for w in _AGENCY_BRIDGE_FROM)
+    if "事務所" not in title and "マネージャー" not in title:
+        return False
+    return any(w in title for w in _BRIDGE_TOPIC)
 
 
 def pick_related(key, catalog, n=3):

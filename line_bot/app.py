@@ -20,7 +20,7 @@ from urllib.error import HTTPError
 
 from config import (
     LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN, STEP_DELAYS, ADMIN_USER_ID,
-    RICH_MENU_ID_AGENCY, STEP_NOT_ON_FOLLOW,
+    RICH_MENU_ID_AGENCY, STEP_NOT_ON_FOLLOW, RESUME_FIRST_DELAY, OFFER_STALE_DAYS,
 )
 from messages import (
     STEP_MESSAGES, AUTO_REPLIES, AGENCY_REPLIES, DEFAULT_REPLY, source_thanks,
@@ -187,6 +187,95 @@ SCHEDULE_FILE = os.path.join(DATA_DIR, "step_schedule.json")
 # 「面談を打診したのに日程が返ってきていない人」だけに送る。
 SLOT_REMINDER_STEP = "slot_reminder"
 
+# 面談フラグの解除。何も送らず、状態だけを通常配信に戻す「無音のステップ」。
+# meeting_offered / awaiting_slot は一度立つと自分では下りず、そのあいだ
+# followup_* が全部スキップされるため、打診に返事をしなかった人が永久に無音になっていた。
+SLOT_RELEASE_STEP = "slot_release"
+
+# 解除後に組み直す対象。STEP_DELAYS の順序ではなく、遅い順に並べ替えて使う。
+FOLLOWUP_STEPS = sorted(
+    (s for s in STEP_DELAYS if s.startswith("followup_")),
+    key=lambda s: STEP_DELAYS[s],
+)
+
+
+def _rearm_followups(user_id, user):
+    """未送信のフォローアップを、今から24時間以上あけて組み直す。
+
+    面談フロー中に来たフォローアップは _send_step_if_active に弾かれ、
+    スケジュールごと消えている。フラグを下ろしただけでは配信予定が空なので、
+    ここで積み直さないと「通常配信に戻した」ことにならない。
+
+    間隔は元の設計（1日→3日→7日）をそのまま平行移動させる。先頭を必ず
+    24時間後に置くので、解除した瞬間に過去分がまとめて飛ぶことはない。
+    戻り値は [(ステップ名, 送信予定日時), ...]。
+    """
+    sent = set(user.get("step_sent", []))
+    pending = [s for s in FOLLOWUP_STEPS if s not in sent]
+    if not pending:
+        return []
+
+    schedules = load_json(SCHEDULE_FILE, [])
+    # 同じステップの古い予約は捨てる（残すと二重予約になる）
+    schedules = [
+        s for s in schedules
+        if not (s["user_id"] == user_id and s["step"] in pending)
+    ]
+
+    now = datetime.now()
+    base = now + timedelta(seconds=RESUME_FIRST_DELAY - STEP_DELAYS[pending[0]])
+    armed = []
+    for step in pending:
+        send_at = base + timedelta(seconds=STEP_DELAYS[step])
+        schedules.append({
+            "user_id": user_id,
+            "step": step,
+            "send_at": send_at.isoformat(),
+        })
+        t = threading.Timer(
+            (send_at - now).total_seconds(), _send_step_if_active, args=[user_id, step]
+        )
+        t.daemon = True
+        t.start()
+        armed.append((step, send_at))
+
+    save_json(SCHEDULE_FILE, schedules)
+    return armed
+
+
+def release_meeting_flow(user_id, reason, mark_step=None):
+    """面談の打診フラグを下ろして、通常のステップ配信に戻す。
+
+    追客のメッセージは送らない。打診＋聞き直しの2通で十分に声はかけており、
+    3通目を足すのは data/line_interview_script.md の「1回だけ・深追いしない」に反する。
+    ここでやるのは「止まった状態を元に戻す」ことだけで、その後は普段どおりの
+    フォローアップ（PDFの感想うかがい → 最後のご挨拶）が流れる。
+
+    戻り値は (解除したか, 組み直したステップ)。
+    """
+    users = load_json(USERS_FILE)
+    user = users.get(user_id)
+    if not user:
+        return False, []
+
+    user["awaiting_slot"] = False
+    user["meeting_offered"] = False
+    user["slot_reprompt_count"] = 0
+    user["meeting_offer_released_at"] = datetime.now().isoformat()
+    user["meeting_offer_release_reason"] = reason
+    if mark_step and mark_step not in user.get("step_sent", []):
+        user["step_sent"] = user.get("step_sent", []) + [mark_step]
+    users[user_id] = user
+    save_json(USERS_FILE, users)
+
+    # 面談確定済み・ブロック済みの人には配信を組み直さない（フラグだけ整える）
+    if user.get("meeting_scheduled") or user.get("unfollowed"):
+        return True, []
+
+    armed = _rearm_followups(user_id, user)
+    print(f"[RELEASE] {user_id[:8]}... ({reason}) rearmed={[a[0] for a in armed]}")
+    return True, armed
+
 
 def _send_step_if_active(user_id, step_name):
     """ステップ送信前にユーザーがまだアクティブか確認
@@ -198,10 +287,44 @@ def _send_step_if_active(user_id, step_name):
     try:
         users = load_json(USERS_FILE)
         user = users.get(user_id, {})
+        # 予定が後ろにずらされた場合（_rearm_followups）、古い Timer が生き残っている。
+        # 予定時刻よりだいぶ早く起こされたら、何もせずに帰る（新しい Timer が後で起こす）。
+        row = next(
+            (s for s in load_json(SCHEDULE_FILE, [])
+             if s["user_id"] == user_id and s["step"] == step_name),
+            None,
+        )
+        if row:
+            try:
+                if datetime.fromisoformat(row["send_at"]) - datetime.now() > timedelta(minutes=5):
+                    print(f"[STEP] Deferred '{step_name}' for {user_id[:8]}... (rescheduled)")
+                    return
+            except ValueError:
+                pass
         if user.get("unfollowed") or user.get("auto_paused") or user.get("meeting_scheduled"):
             reason = "unfollowed" if user.get("unfollowed") else "auto_paused"
             print(f"[STEP] Skipped '{step_name}' for {user_id[:8]}... ({reason})")
             _remove_schedule(user_id, step_name)
+            return
+        if step_name == SLOT_RELEASE_STEP:
+            # 何も送らない。打診したまま返事が無い人のフラグを下ろして、
+            # 残りのフォローアップを組み直すだけ。
+            # 直近12時間の会話ガードより前に置くこと。ここで弾いてしまうと
+            # フラグが下りないまま予約も消え、また永久に無音に戻ってしまう。
+            _remove_schedule(user_id, step_name)
+            if not user.get("meeting_offered") and not user.get("awaiting_slot"):
+                print(f"[STEP] Skipped '{step_name}' for {user_id[:8]}... (already released)")
+                return
+            _, armed = release_meeting_flow(
+                user_id, "no_reply_after_reminder", mark_step=SLOT_RELEASE_STEP
+            )
+            notify_admin(
+                "🕗 打診から1週間、日程のお返事がありません\n"
+                f"ID: {user_id[:8]}\n\n"
+                "面談の打診状態を解除して、通常のフォロー配信に戻しました。\n"
+                + _armed_summary(armed) + "\n\n"
+                "個別に声をかけるなら、このLINEチャットからどうぞ。"
+            )
             return
         if step_name == SLOT_REMINDER_STEP:
             # 日程の聞き直しは逆に「面談フローに入ったまま止まっている人」が対象。
@@ -249,8 +372,15 @@ def _send_step_if_active(user_id, step_name):
                 # 聞き直した以上、返ってきた日時をちゃんと拾えるようにしておく
                 # （手動対応中の人はここまで来ないので、勝手に自動へは戻らない）
                 users[user_id]["awaiting_slot"] = True
+                # 解除までの猶予はここから数える（掃除が先走らないように）
+                users[user_id]["slot_reminder_at"] = datetime.now().isoformat()
             save_json(USERS_FILE, users)
         _remove_schedule(user_id, step_name)
+        if step_name == SLOT_REMINDER_STEP:
+            # 聞き直しにも返事が無ければ、面談フラグを下ろす予約をここで入れる。
+            # 打診した時点ではなく「聞き直しを実際に送れた時点」から数えるので、
+            # 送信が遅れた人の解除だけが先に来ることはない。
+            schedule_slot_release(user_id)
     except Exception as e:
         print(f"[ERROR] Step '{step_name}' failed for {user_id[:8]}...: {e}")
 
@@ -311,6 +441,10 @@ def schedule_slot_reminder(user_id):
     """
     users = load_json(USERS_FILE)
     if SLOT_REMINDER_STEP in users.get(user_id, {}).get("step_sent", []):
+        # 聞き直しは一人一回だけ。ただし一度解除された人が自分から「面談」と
+        # 送り直した場合、ここで帰るだけだと解除の予約が無いまま
+        # meeting_offered が立ち、また永久に無音になる。解除だけは積み直す。
+        schedule_slot_release(user_id)
         return
 
     schedules = load_json(SCHEDULE_FILE, [])
@@ -332,6 +466,94 @@ def schedule_slot_reminder(user_id):
     print(f"[STEP] Scheduled '{SLOT_REMINDER_STEP}' for {user_id[:8]}... at {send_at}")
 
 
+def schedule_slot_release(user_id, delay=None):
+    """日程の聞き直しから一定日数後に、面談フラグを下ろす予約を1回だけ入れる。
+
+    これが無いと meeting_offered / awaiting_slot は誰にも下ろされず、
+    以降 followup_* が全部スキップされて連絡が完全に止まる。
+    delay を渡すと猶予を上書きできる（起動時の掃除が残り時間で積むときに使う）。
+    """
+    if any(
+        s["user_id"] == user_id and s["step"] == SLOT_RELEASE_STEP
+        for s in load_json(SCHEDULE_FILE, [])
+    ):
+        return
+
+    if delay is None:
+        delay = STEP_DELAYS[SLOT_RELEASE_STEP]
+    send_at = (datetime.now() + timedelta(seconds=delay)).isoformat()
+    schedules = load_json(SCHEDULE_FILE, [])
+    schedules.append({
+        "user_id": user_id,
+        "step": SLOT_RELEASE_STEP,
+        "send_at": send_at,
+    })
+    save_json(SCHEDULE_FILE, schedules)
+
+    t = threading.Timer(delay, _send_step_if_active, args=[user_id, SLOT_RELEASE_STEP])
+    t.daemon = True
+    t.start()
+    print(f"[STEP] Scheduled '{SLOT_RELEASE_STEP}' for {user_id[:8]}... at {send_at}")
+
+
+def sweep_stale_meeting_offers():
+    """打診したまま何日も止まっている人を拾って、通常のステップ配信に戻す。
+
+    slot_release の予約はこの機能より後の打診にしか入らないので、それ以前から
+    meeting_offered が立ちっぱなしの人はここで回収する（本番stateでは1人）。
+    解除するだけでメッセージは送らず、組み直したフォローアップも24時間以上先なので、
+    起動のたびに過去分がまとめて飛ぶことはない。
+    """
+    users = load_json(USERS_FILE)
+    schedules = load_json(SCHEDULE_FILE, [])
+    waiting = {
+        s["user_id"] for s in schedules
+        if s["step"] in (SLOT_REMINDER_STEP, SLOT_RELEASE_STEP)
+    }
+    now = datetime.now()
+    released = []
+
+    for uid, u in users.items():
+        if not (u.get("meeting_offered") or u.get("awaiting_slot")):
+            continue
+        if u.get("unfollowed") or u.get("auto_paused") or u.get("meeting_scheduled"):
+            continue
+        if uid in waiting:
+            continue  # 聞き直し・解除の予約が生きている＝まだ待つ段階
+        # 打診・聞き直しの時刻は meeting_offered_at / slot_reminder_at に入る。
+        # それ以前のユーザーには無いので、分かっている中でいちばん新しい時刻で
+        # 代用する（＝放置期間をいちばん短く見積もる＝先走って解除しない）
+        stamps = []
+        for key in ("slot_reminder_at", "meeting_offered_at", "last_user_message_at",
+                    "source_date", "intent_date", "follow_date"):
+            try:
+                stamps.append(datetime.fromisoformat(u[key]))
+            except (KeyError, TypeError, ValueError):
+                continue
+        if not stamps:
+            continue
+        due = max(stamps) + timedelta(days=OFFER_STALE_DAYS)
+        if due > now:
+            # まだ待つ段階。ここで帰るだけだと解除する人がいなくなるので、
+            # 残り時間ぶんの予約を必ず置いていく
+            schedule_slot_release(uid, delay=(due - now).total_seconds())
+            continue
+        ok, armed = release_meeting_flow(uid, "stale_offer_sweep")
+        if ok:
+            released.append((uid, len(armed)))
+
+    if not released:
+        print("[SWEEP] 打診したまま止まっているユーザーはいません")
+        return
+
+    print(f"[SWEEP] Released {len(released)} stale meeting offers")
+    notify_admin(
+        "🧹 打診したまま止まっていた方を通常配信に戻しました\n"
+        + "\n".join(f"・{uid[:8]}（このあと{n}通）" for uid, n in released)
+        + "\n\n面談の打診フラグが下りたので、フォロー配信が再開します。"
+    )
+
+
 def restore_pending_steps():
     """サーバー起動時に未送信のステップ配信を復元"""
     schedules = load_json(SCHEDULE_FILE, [])
@@ -344,8 +566,8 @@ def restore_pending_steps():
 
     for s in schedules:
         send_at = datetime.fromisoformat(s["send_at"])
-        msg = STEP_MESSAGES.get(s["step"])
-        if not msg:
+        # slot_release は本文を持たない（状態を戻すだけ）ので STEP_MESSAGES では判定しない
+        if s["step"] not in STEP_DELAYS:
             continue
 
         if send_at <= now:
@@ -382,6 +604,9 @@ def handle_admin_command(text):
                 status = f"📅面談: {u.get('meeting_slot', '?')}"
             elif u.get("auto_paused"):
                 status = "⏸手動対応中"
+            elif u.get("meeting_offered") or u.get("awaiting_slot"):
+                # この状態のあいだフォロー配信は止まる。長引くなら「解除 <ID>」
+                status = "📨打診中(日程まち)"
             else:
                 status = "🤖自動対応中"
             intent = INTENT_LABELS.get(u.get("intent"), "種別不明")
@@ -474,25 +699,64 @@ def handle_admin_command(text):
             f"失敗: {failed}人"
         )
 
+    if t.startswith("解除"):
+        # 「📨打診中(日程まち)」のまま止まっている人を、手で通常配信に戻す。
+        # slot_release の自動解除を待たずに動かしたいときだけ使う。
+        prefix = t[len("解除"):].strip()
+        if not prefix:
+            return "使い方: 解除 <ユーザーIDの先頭8文字>\n（「一覧」でID確認できます）"
+        uid = _resolve_user(prefix)
+        if not uid:
+            return "該当ユーザーが1件に絞れません。「一覧」でIDを確認してください"
+        users = load_json(USERS_FILE)
+        if not (users[uid].get("meeting_offered") or users[uid].get("awaiting_slot")):
+            return f"{uid[:8]}... は面談の打診中ではありません（すでに通常配信です）"
+        _, armed = release_meeting_flow(uid, "admin")
+        return (
+            f"✅ {uid[:8]}... の面談打診を解除して通常配信に戻しました\n"
+            + _armed_summary(armed)
+        )
+
     for cmd, pause in (("停止", True), ("再開", False)):
         if t.startswith(cmd):
             prefix = t[len(cmd):].strip()
             if not prefix:
                 return f"使い方: {cmd} <ユーザーIDの先頭8文字>\n（「一覧」でID確認できます）"
+            uid = _resolve_user(prefix)
+            if not uid:
+                return "該当ユーザーが1件に絞れません。「一覧」でIDを確認してください"
             users = load_json(USERS_FILE)
-            matches = [uid for uid in users if uid.startswith(prefix)]
-            if len(matches) != 1:
-                return f"該当ユーザーが{len(matches)}件です。「一覧」でIDを確認してください"
-            uid = matches[0]
             users[uid]["auto_paused"] = pause
             users[uid]["awaiting_slot"] = False
             save_json(USERS_FILE, users)
             if pause:
                 cancel_user_steps(uid)
                 return f"✅ {uid[:8]}... への自動送信を停止しました（手動対応モード）"
-            return f"✅ {uid[:8]}... への自動送信を再開しました"
+            # 再開のときは面談の打診フラグも一緒に下ろす。ここを残したままだと
+            # フォロー配信が全部スキップされ、「再開」したのに何も届かない。
+            _, armed = release_meeting_flow(uid, "admin_resume")
+            return (
+                f"✅ {uid[:8]}... への自動送信を再開しました\n"
+                + _armed_summary(armed)
+            )
 
     return None
+
+
+def _resolve_user(prefix):
+    """ID先頭一致でユーザーを1人に特定する（1件に絞れなければ None）"""
+    users = load_json(USERS_FILE)
+    matches = [uid for uid in users if uid.startswith(prefix)]
+    return matches[0] if len(matches) == 1 else None
+
+
+def _armed_summary(armed):
+    """組み直したフォローアップの予定を、管理者に読める形で並べる"""
+    if not armed:
+        return "（送る予定のフォローアップは残っていません）"
+    return "このあとの予定:\n" + "\n".join(
+        f"・{step} → {send_at.strftime('%-m/%-d %H:%M')}" for step, send_at in armed
+    )
 
 
 # --- キーワード応答 ---
@@ -559,7 +823,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
         self.end_headers()
-        self.wfile.write(b"TAITAN PRO LINE Bot is running (v24-slot-reminder+step-3day-7day)")
+        self.wfile.write(b"TAITAN PRO LINE Bot is running (v26-nudge+slot-release)")
 
     def do_POST(self):
         content_length = int(self.headers.get("Content-Length", 0))
@@ -644,7 +908,8 @@ class WebhookHandler(BaseHTTPRequestHandler):
                 log_message(user_id, "receive", text)
                 print(f"[MSG] {user_id[:8]}...: {text[:50]}")
 
-                # 管理者コマンド（一覧 / 停止 <ID> / 再開 <ID> / メニュー作成 / メニュー同期）
+                # 管理者コマンド
+                # （一覧 / 停止 <ID> / 再開 <ID> / 解除 <ID> / メニュー作成 / メニュー同期）
                 if ADMIN_USER_ID and user_id == ADMIN_USER_ID:
                     admin_reply = handle_admin_command(text)
                     if admin_reply:
@@ -746,6 +1011,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
                             )
                             user_data["awaiting_slot"] = True
                             user_data["meeting_offered"] = True
+                            user_data["meeting_offered_at"] = datetime.now().isoformat()
                             offered_now = True
 
                         users[user_id] = user_data
@@ -807,6 +1073,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
                     )
                     user_data["awaiting_slot"] = True
                     user_data["meeting_offered"] = True
+                    user_data["meeting_offered_at"] = datetime.now().isoformat()
                     users[user_id] = user_data
                     save_json(USERS_FILE, users)
                     schedule_slot_reminder(user_id)
@@ -827,6 +1094,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
                         )
                         user_data["awaiting_slot"] = True
                         user_data["meeting_offered"] = True
+                        user_data["meeting_offered_at"] = datetime.now().isoformat()
                         replies.append(offer)
                         offered_now = True
                     users[user_id] = user_data
@@ -918,6 +1186,9 @@ def main():
 
     # 未送信のステップ配信を復元
     restore_pending_steps()
+
+    # 打診したまま止まっている人を通常配信に戻す（レガシー救済。復元の後に置くこと）
+    sweep_stale_meeting_offers()
 
     # スリープ防止の自己ping
     start_self_keepalive()

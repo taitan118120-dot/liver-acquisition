@@ -23,6 +23,24 @@ EARLY_HTML = (
     '<a href="https://lin.ee/xchCfdn">公式LINEの友だち追加</a>で無料でお渡ししています。</p>'
 )
 
+# 代理店（＝事務所を"作る側"）記事にライバー向けの特典を出さない。
+# 2026-08-28まで代理店記事14本すべてがライバー向け特典を提示していて、
+# 「会社員をしながら代理店をやる1週間の組み方」の読者に「新人ライバーの最初の30日」PDFを
+# 渡していた。公式LINEは代理店希望者に別のPDFを配る作りになっている（line_bot/messages.py）。
+# ⚠️ ここを直さないと、note_agency_cta_publish で貼り替えた記事に boost が
+#    ライバー向けの冒頭CTAを入れ直してしまう。
+EARLY_HTML_AGENCY = (
+    "<p>🎁 <strong>先に特典だけ受け取るのもOK</strong>：代理店パートナーが"
+    "何から手をつけるかをまとめた非売品PDF『ライバー代理店パートナー スタートガイド』を、"
+    '<a href="https://lin.ee/xchCfdn">公式LINEの友だち追加</a>で無料でお渡ししています。</p>'
+)
+
+
+def early_html_for(title):
+    """記事タイトルに合った冒頭CTAを返す。判定は note_internal_links_publish が正本。"""
+    from note_internal_links_publish import is_agency_article
+    return EARLY_HTML_AGENCY if is_agency_article(title or "") else EARLY_HTML
+
 
 def transform_early(key, html):
     if EARLY_MARK in html:
