@@ -8,7 +8,7 @@ LINE_CHANNEL_ACCESS_TOKEN = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN", "")
 
 # 管理者（自分）のLINEユーザーID。設定すると:
 # - 面談希望が入ったとき通知が届く
-# - 「一覧」「停止 <ID先頭8文字>」「再開 <ID先頭8文字>」コマンドが使える
+# - 「一覧」「停止 <ID先頭8文字>」「再開 <ID先頭8文字>」「解除 <ID先頭8文字>」コマンドが使える
 # 自分のIDは data/message_log.json か Render のログで確認できる
 ADMIN_USER_ID = os.environ.get("LINE_ADMIN_USER_ID", "")
 
@@ -31,16 +31,28 @@ RICH_MENU_ID_AGENCY = os.environ.get("RICH_MENU_ID_AGENCY", "")
 # meeting_offered / awaiting_slot / 直近12時間の会話）は followup_* に等しく効くので、
 # 面談フローに入った人・会話が生きている人には届かない。増やしても追い打ちにはならない。
 # followup_* はここから先を足さないこと（7日後の文面が「これで最後」と明言している）。
-# ※ slot_reminder だけは友だち追加時ではなく「面談を打診した時点」から数え、
+# ※ slot_reminder / slot_release だけは友だち追加時ではなく「面談を打診した時点」から数え、
 #    送信条件も逆（打診済みで日程が返ってきていない人だけ）。
-#    app.py の schedule_slot_reminder() が個別にスケジュールする。
+#    app.py の schedule_slot_reminder() / schedule_slot_release() が個別にスケジュールする。
+#    面談フローで飛ばされた followup_* は slot_release のときに組み直されるので、
+#    打診に返事をしなかった人もここの3通を（1日ずつ後ろにずれた形で）受け取る。
 STEP_DELAYS = {
     "welcome": 0,                    # 即時
     "followup_1day": 24 * 3600,      # 24時間後：特典PDFの感想うかがい＋小さな質問の呼び水
     "followup_3day": 3 * 24 * 3600,  # 3日後：PDFの中身に触れて具体的な質問を促す
     "followup_7day": 7 * 24 * 3600,  # 7日後：「今は迷い中でも大丈夫」で軽く締める（最終）
     "slot_reminder": 2 * 24 * 3600,  # 面談打診の2日後に1回だけ日程を聞き直す
+    "slot_release": 5 * 24 * 3600,   # 聞き直しの5日後（＝打診の7日後）に面談フラグを下ろす
 }
 
 # 友だち追加時にはスケジュールしないステップ（起点が follow ではないもの）
-STEP_NOT_ON_FOLLOW = ("slot_reminder",)
+STEP_NOT_ON_FOLLOW = ("slot_reminder", "slot_release")
+
+# 面談フラグを下ろしたあと、最初のフォローアップを送るまでに空ける時間（秒）。
+# 「打診 → 聞き直し」の直後に別の連絡が続くと追い打ちになるので、必ず1日は空ける。
+RESUME_FIRST_DELAY = 24 * 3600
+
+# 打診が何日放置されていたら、起動時の掃除で面談フラグを下ろしてよいか。
+# slot_release の予約はこの機能より後の打診にしか入らないため、
+# それ以前から止まったままの人を app.py の sweep_stale_meeting_offers() が拾う。
+OFFER_STALE_DAYS = 7
