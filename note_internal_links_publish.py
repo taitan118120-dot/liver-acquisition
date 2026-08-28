@@ -266,18 +266,34 @@ def related_html(keys, catalog):
     return f"<h3>{RELATED_MARK}</h3><ul>{items}</ul>"
 
 
+# 関連記事ブロックは「末尾CTAの直前」に置きたい。この割合より前に出たアンカーは
+# 末尾CTAではないと判断する。
+_TAIL_MIN_PCT = 40
+
+
 def find_insert_pos(html):
-    """「TAITAN PROについて」見出しの直前 → 無ければ特典段落の直前。"""
+    """「TAITAN PROについて」見出しの直前 → 無ければ末尾CTA（特典段落）の直前。
+
+    ⚠️ アンカーが本文の前半に出たら採用しない。冒頭CTAにも lin.ee のリンクが
+    入っているので、末尾に特典段落を持たない記事（公開HTMLから復元した記事や、
+    末尾が「話を聞きに来てください」で終わる記事）では rfind が**冒頭CTAを掴む**。
+    実測 n8e088d985eab は 27,127文字の記事で pos=1634＝6%地点が返っていて、
+    そのまま入れると「あわせて読みたい」が導入直後に出る。
+    有効な末尾アンカーが無ければ本文の最後に付ける（前半に置くよりは正しい）。
+    """
     m = re.search(r"<h[1-4][^>]*>[^<]*TAITAN\s*PRO(について|とは)", html)
     if m:
         return m.start()
-    pos = html.rfind("友だち追加特典")
-    if pos == -1:
-        pos = html.rfind("lin.ee/xchCfdn")
-    if pos == -1:
-        return None
-    p_start = html.rfind("<p", 0, pos)
-    return p_start if p_start != -1 else None
+    for needle in ("友だち追加特典", "lin.ee/xchCfdn"):
+        pos = html.rfind(needle)
+        if pos == -1:
+            continue
+        if pos / max(1, len(html)) * 100 < _TAIL_MIN_PCT:
+            continue  # 冒頭CTAを掴んでいる
+        p_start = html.rfind("<p", 0, pos)
+        if p_start != -1:
+            return p_start
+    return len(html)
 
 
 def make_transform(keys, catalog):
