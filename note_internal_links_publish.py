@@ -23,6 +23,7 @@ import re
 import sys
 import time
 
+from facts_patterns import common_violations
 from note_cta_publish import get_note, req_session
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -259,6 +260,21 @@ def pick_related(key, catalog, n=3):
 
 
 def related_html(keys, catalog):
+    """関連記事ブロックのHTML。**他記事のタイトルを本文へコピーする**点に注意。
+
+    タイトルが確定ファクト違反だと、この関数がそれを他記事の本文へ増殖させる。
+    2026-08-29 に実際に起きた: 「初見リスナーを常連化する」等の呼び捨てタイトル3本が
+    「あわせて読みたい」経由で他記事の本文に入っていた（実測 n3eef71e830e8）。
+    本文だけ直しても、次にこのブロックを入れ直した時点で戻る。
+    そこで、貼る前にタイトル自体を検品して鳴らす（貼るのは止めない。
+    note_boost_publish の長時間バッチを1本のタイトルで落とすほうが害が大きい。
+    公開後の検出は note_live_facts_guard が毎日やる）。
+    """
+    for k in keys:
+        for reason, hit in common_violations(catalog[k].get("title", "")):
+            print(f"  [WARN] リンク先タイトルが確定ファクト違反: {k} {reason}: {hit}\n"
+                  f"         先にタイトルを直すこと（本文だけ直しても再発する）。"
+                  f"note_listener_facts_fix_20260828.py の title_fn を参照")
     items = "".join(
         f'<li><a href="https://note.com/taitan_118/n/{k}" target="_blank" rel="noopener">'
         f'{catalog[k]["title"]}</a></li>'
