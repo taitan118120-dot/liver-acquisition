@@ -372,6 +372,8 @@ def _send_step_if_active(user_id, step_name):
                 # 聞き直した以上、返ってきた日時をちゃんと拾えるようにしておく
                 # （手動対応中の人はここまで来ないので、勝手に自動へは戻らない）
                 users[user_id]["awaiting_slot"] = True
+                # 解除までの猶予はここから数える（掃除が先走らないように）
+                users[user_id]["slot_reminder_at"] = datetime.now().isoformat()
             save_json(USERS_FILE, users)
         _remove_schedule(user_id, step_name)
         if step_name == SLOT_REMINDER_STEP:
@@ -464,11 +466,12 @@ def schedule_slot_reminder(user_id):
     print(f"[STEP] Scheduled '{SLOT_REMINDER_STEP}' for {user_id[:8]}... at {send_at}")
 
 
-def schedule_slot_release(user_id):
+def schedule_slot_release(user_id, delay=None):
     """日程の聞き直しから一定日数後に、面談フラグを下ろす予約を1回だけ入れる。
 
     これが無いと meeting_offered / awaiting_slot は誰にも下ろされず、
     以降 followup_* が全部スキップされて連絡が完全に止まる。
+    delay を渡すと猶予を上書きできる（起動時の掃除が残り時間で積むときに使う）。
     """
     if any(
         s["user_id"] == user_id and s["step"] == SLOT_RELEASE_STEP
@@ -476,7 +479,8 @@ def schedule_slot_release(user_id):
     ):
         return
 
-    delay = STEP_DELAYS[SLOT_RELEASE_STEP]
+    if delay is None:
+        delay = STEP_DELAYS[SLOT_RELEASE_STEP]
     send_at = (datetime.now() + timedelta(seconds=delay)).isoformat()
     schedules = load_json(SCHEDULE_FILE, [])
     schedules.append({
@@ -516,18 +520,23 @@ def sweep_stale_meeting_offers():
             continue
         if uid in waiting:
             continue  # 聞き直し・解除の予約が生きている＝まだ待つ段階
-        # 打診時刻は meeting_offered_at に入る。それ以前のユーザーには無いので、
-        # 分かっている中でいちばん新しい活動時刻で代用する（＝いちばん短く見積もる）
+        # 打診・聞き直しの時刻は meeting_offered_at / slot_reminder_at に入る。
+        # それ以前のユーザーには無いので、分かっている中でいちばん新しい時刻で
+        # 代用する（＝放置期間をいちばん短く見積もる＝先走って解除しない）
         stamps = []
-        for key in ("meeting_offered_at", "last_user_message_at", "source_date",
-                    "intent_date", "follow_date"):
+        for key in ("slot_reminder_at", "meeting_offered_at", "last_user_message_at",
+                    "source_date", "intent_date", "follow_date"):
             try:
                 stamps.append(datetime.fromisoformat(u[key]))
             except (KeyError, TypeError, ValueError):
                 continue
         if not stamps:
             continue
-        if now - max(stamps) < timedelta(days=OFFER_STALE_DAYS):
+        due = max(stamps) + timedelta(days=OFFER_STALE_DAYS)
+        if due > now:
+            # まだ待つ段階。ここで帰るだけだと解除する人がいなくなるので、
+            # 残り時間ぶんの予約を必ず置いていく
+            schedule_slot_release(uid, delay=(due - now).total_seconds())
             continue
         ok, armed = release_meeting_flow(uid, "stale_offer_sweep")
         if ok:
