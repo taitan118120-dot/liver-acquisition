@@ -131,8 +131,42 @@ def build_catalog(session):
     return catalog
 
 
+# ─── 代理店ブリッジ ──────────────────────────────────────
+# 2026-08-28 の実測: 全期間PV上位30本（＝全PVの63%）が持つ内部リンク67本のうち、
+# 代理店（＝事務所を"作る側"）記事へのリンクは **4本** しかなかった。
+# pick_related はクラスタの重なりとタイトル類似で選ぶので、ライバー向け記事から
+# 代理店記事へは構造上ぜったいに繋がらない。月3,300PVの本体が代理店funnelに
+# 一滴も流れていない状態だった（data/note_pv_analysis_20260828.md §3）。
+#
+# そこで「事務所そのものを調べている読者」の記事に限り、関連3本のうち1枠を
+# 代理店記事に予約する。事務所の還元率・契約・仕組みを読んでいる人は
+# "作る側" から最も近い層で、話題としても地続き。
+# ライバーの配信テクや新人期間の記事には**入れない**（読者がまるで違う）。
+_AGENCY_BRIDGE_FROM = ["事務所", "還元率", "マージン", "契約", "マネージャー", "スカウト"]
+_AGENCY_TARGET = ["代理店", "開業", "スカウト術", "スカウトDM", "マネージャーとは"]
+# 事務所"選び"の記事は読者がライバー志望なので、それ自体は代理店記事ではない
+_AGENCY_TARGET_EXCLUDE = ["選び方", "口コミ", "評判", "入るべき", "やめとけ", "見分け方",
+                          "メリット", "デメリット"]
+
+
+def is_agency_article(title):
+    if any(w in title for w in _AGENCY_TARGET_EXCLUDE):
+        return False
+    return any(w in title for w in _AGENCY_TARGET)
+
+
+def wants_agency_bridge(title):
+    if is_agency_article(title):
+        return False  # 代理店記事どうしは通常のスコアリングで十分近い
+    return any(w in title for w in _AGENCY_BRIDGE_FROM)
+
+
 def pick_related(key, catalog, n=3):
-    """同クラスタ優先＋タイトルbigramの近さで加点し、同点はPVの高い順。"""
+    """同クラスタ優先＋タイトルbigramの近さで加点し、同点はPVの高い順。
+
+    事務所まわりを読んでいる記事だけは、3本のうち1本を代理店記事に予約する
+    （_AGENCY_BRIDGE_FROM 参照）。
+    """
     me = catalog[key]
     my_cl = set(me["clusters"])
     my_tok = tokens_of(me["title"])
@@ -146,7 +180,15 @@ def pick_related(key, catalog, n=3):
         overlap = len(my_cl & set(m["clusters"]))
         scored.append((overlap * 10 + round(jaccard * 40), m["pv_all"], k))
     scored.sort(reverse=True)
-    return [k for _, _, k in scored[:n]]
+    picked = [k for _, _, k in scored[:n]]
+
+    if n >= 2 and wants_agency_bridge(me["title"]) \
+            and not any(is_agency_article(catalog[k]["title"]) for k in picked):
+        bridge = next((k for _, _, k in sorted(scored, key=lambda t: -t[1])
+                       if is_agency_article(catalog[k]["title"])), None)
+        if bridge:
+            picked[-1] = bridge  # いちばん弱い1本を代理店記事に差し替える
+    return picked
 
 
 def related_html(keys, catalog):

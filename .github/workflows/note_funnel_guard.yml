@@ -1,0 +1,133 @@
+name: Note導線 番犬
+
+# 公開中のNote記事から「導線」が剥がれていないかを毎日見る番犬。
+#
+# 背景: 2026-08-28、公開140本を全件走査したら「あわせて読みたい」ブロックが
+#   40本で消えていた（合計2,541PV＝全PVの29%）。うち17本は
+#   data/note_boost_log.json 上「実施済み(ok)」なのに本文から消えている＝回帰で、
+#   残り23本は8/8以降に note_auto_poster が公開した新記事（poster は内部リンクを入れない）。
+#   どちらも **PUTは成功していてログは緑**なので、ログを見ても永久に気づけない。
+#   実際、全期間PV1位（TikTokLIVE収益化）と代理店1位（スカウト術）が
+#   どこにも繋がらない行き止まりのまま数ヶ月放置されていた。
+#
+# 動作: 非ログインの公開APIで全記事の本文を読み、冒頭CTA／あわせて読みたい／
+#   公式LINEリンク／（代理店記事なら）代理店LPと代理店向け特典の有無を確認する。
+#   欠けがあれば赤くして Issue で通知し、直って緑に戻ったらそのIssueを自動クローズする。
+
+on:
+  schedule:
+    - cron: '10 1 * * *'   # JST 10:10（8:03の自動投稿が終わり、新記事が公開された後に見る）
+  push:
+    paths:
+      - 'note_funnel_guard.py'
+      - '.github/workflows/note_funnel_guard.yml'
+  workflow_dispatch:
+    inputs:
+      max_missing:
+        description: '許容する違反本数'
+        required: false
+        default: '0'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  funnel-guard:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 依存パッケージインストール
+        run: pip install requests
+
+      # 非ログインの公開APIしか叩かないので secret は不要。
+      - name: 公開記事の導線を確認
+        id: guard
+        run: python3 note_funnel_guard.py --json --max-missing ${{ github.event.inputs.max_missing || 0 }}
+
+      - name: 導線に欠け → Issue通知
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const title = 'Note記事の導線が剥がれています（導線番犬）';
+            let report = {checked: 0, bad: 0, agency_bad: 0, items: []};
+            try {
+              report = JSON.parse(fs.readFileSync('data/note_funnel_guard_report.json', 'utf8'));
+            } catch (e) {}
+            const items = (report.items || []).slice(0, 40).map(
+              a => `- [${a.title}](https://note.com/taitan_118/n/${a.key})\n  - ${a.problems.join(' / ')}`
+            ).join('\n');
+            const more = (report.items || []).length > 40
+              ? `\n\n…ほか ${(report.items || []).length - 40}本` : '';
+            const body = [
+              '## Note導線 番犬 検知',
+              '',
+              `公開 **${report.checked}本** のうち **${report.bad}本** で導線が欠けています`,
+              `（うち代理店記事 ${report.agency_bad}本）。`,
+              '',
+              'PUT自体は成功しログも緑のままなので、`data/note_boost_log.json` を見ても気づけません。',
+              '一括修正スクリプトが本文を書き戻すと静かに剥がれます。',
+              '',
+              '## 対象',
+              items || '(なし)',
+              more,
+              '',
+              '## 対処',
+              '- 冒頭CTA／あわせて読みたい欠け → `python3 note_boost_publish.py --plan` で対象を確認して実行',
+              '  - ログに `ok` が残っていると skip されるので、回帰した記事は',
+              '    `data/note_boost_log.json` から該当キーを消してから回す',
+              '- 代理店記事の導線ずれ → `python3 note_agency_cta_publish.py --plan`',
+              '- 背景と実測: `data/note_pv_analysis_20260828.md`',
+              '',
+              '直すと次回のランがこのIssueを自動クローズします。',
+              '',
+              '---',
+              '_このIssueは `.github/workflows/note_funnel_guard.yml` により自動生成されました。_',
+            ].join('\n');
+            const guard = require('./.github/scripts/guard_comment.js');
+            await guard.notify({
+              github, context, title, body,
+              recomment: `再検知: ${new Date().toISOString()}\n欠け ${report.bad}本（代理店 ${report.agency_bad}本）`,
+            });
+
+      - name: 導線が回復 → Issueを自動クローズ
+        # note_funnel_guard.py は毎回**公開記事を全件**読み直すので、
+        # 緑＝欠けが1本も無いことが確定する（差分ではない）。
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'Note記事の導線が剥がれています（導線番犬）';
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const match = existing.find(i => i.title === title);
+            if (!match) return;
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: match.number,
+              body: [
+                `復旧を確認: ${new Date().toISOString()} のランで全記事の導線が揃っていました。自動クローズします。`,
+                '',
+                `- ラン: ${runUrl}`,
+              ].join('\n'),
+            });
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: match.number,
+              state: 'closed',
+            });

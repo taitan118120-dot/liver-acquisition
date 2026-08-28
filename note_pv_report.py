@@ -241,6 +241,12 @@ def agg_table(label, groups, min_n=2):
 
 
 def analyze(rows):
+    # build_rows は clusters を "A|B" の文字列で持つ（CSV用）。そのまま渡されると
+    # 多ラベル集計が1文字ずつのグループになるので、ここで必ずリストに揃える。
+    for r in rows:
+        if isinstance(r["clusters"], str):
+            r["clusters"] = [c for c in r["clusters"].split("|") if c]
+
     mature = [r for r in rows if r["days_since"] >= MIN_AGE_DAYS]
     young = [r for r in rows if r["days_since"] < MIN_AGE_DAYS]
 
