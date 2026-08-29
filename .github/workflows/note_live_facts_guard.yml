@@ -1,0 +1,152 @@
+name: note公開本文 確定ファクト番犬
+
+# **note が実際に配信している本文**（公開API）に確定ファクト違反が無いかを毎日見る番犬。
+#
+# 既存の「公開コンテンツ確定ファクト番犬」(content_facts_guard.yml) との違いは
+# 走査対象の1点だけ。あちらは blog/articles_note/*.md（ローカル原稿）を読む。
+# ところが note 記事は **原稿と公開本文が両方向にズレる**:
+#   - 原稿を直しても note 側は変わらない（.md を直して終わりにした修正が過去にある）
+#   - 逆に原稿を通さない書き換えが日常的に走る
+#     （note_cta_publish / note_leadmagnet_publish / note_boost_publish /
+#       note_internal_links_publish は公開本文を直接 fetch→PUT する）
+#
+# 2026-08-28 に実測したズレ（発見時点）:
+#   - 公開140本のうち **69箇所** が公開側にだけ在る違反だった
+#     （「リスナー」呼び捨て44本、出典なしの割合統計、「現役ライバー」「傘下」など）
+#   - ローカル原稿は既に全部「リスナーさん」に直っていて、
+#     content_facts_guard は**構造上ずっと緑**。読者が読む側だけが違反していた
+#   - タイトルも同様（原稿は「1年続くライバーに共通する」、公開は「9割が持っている」）。
+#     再公開スクリプトは title に**現在の公開タイトル**を渡すので、原稿を直しても
+#     タイトルは永久に更新されない
+#
+# 認証は不要。**ログアウト状態の公開API**を叩くので、読者に見えているものと同じものを見る
+# （cookie付きGETは下書きを混ぜて返すことがあり担保にならない）。だからCIでそのまま動く。
+
+on:
+  schedule:
+    - cron: '0 2 * * *'   # 毎日 JST 11:00（content_facts_guard の1時間後）
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  note-live-facts-guard:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 依存パッケージインストール
+        run: pip install requests
+
+      - name: 公開本文140本を走査
+        run: python3 note_live_facts_guard.py
+
+      - name: 検知 → Issue通知
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const title = 'note公開本文に確定ファクト違反（note公開本文 確定ファクト番犬）';
+            let report = {scanned: 0, violations: [], warn: [], drift_violations: [],
+                          fetch_failed: []};
+            try {
+              report = JSON.parse(fs.readFileSync('data/note_live_facts_report.json', 'utf8'));
+            } catch (e) {}
+            const mark = (v) => v.drift === true ? ' **【原稿には無い＝公開側だけ】**'
+                              : v.drift === null ? ' （原稿を特定できず）' : '';
+            const vLines = (report.violations || []).map(v =>
+              `- **${v.where}** — ${v.reason}${mark(v)}`
+              + (v.hit ? `\n  - 該当: \`${v.hit}\`` : '')).join('\n');
+            const warnGroups = new Map();
+            for (const v of (report.warn || [])) {
+              if (!warnGroups.has(v.reason)) warnGroups.set(v.reason, []);
+              warnGroups.get(v.reason).push(v);
+            }
+            const wLines = [...warnGroups.entries()]
+              .sort((a, b) => b[1].length - a[1].length)
+              .map(([reason, items]) => {
+                const drift = items.filter(i => i.drift === true).length;
+                const head = items.slice(0, 5).map(v => `  - ${v.where}: \`${v.hit}\``).join('\n');
+                const rest = items.length > 5 ? `\n  - …ほか ${items.length - 5} 件` : '';
+                return `- **[${items.length}件${drift ? `／うち公開側だけ ${drift}件` : ''}] `
+                     + `${reason}**\n${head}${rest}`;
+              }).join('\n');
+            const body = [
+              '## note公開本文 確定ファクト番犬 検知',
+              '',
+              `走査: 公開記事 ${report.scanned} 本（ログアウト状態の公開API）`,
+              `違反 ${(report.violations || []).length} 件`
+              + `（うち**公開側にだけ在る** ${(report.drift_violations || []).length} 件）`,
+              '',
+              '**「公開側にだけ在る」が最重要です。**',
+              'ローカル原稿(`blog/articles_note/*.md`)は直っているのに note 側が古いままで、',
+              '`content_facts_guard.py` からは**構造上ずっと緑に見える**箇所です。',
+              '読者が読んでいるのは note 側なので、原稿の緑は担保になりません。',
+              '',
+              '## 検知された違反',
+              vLines || '(レポート読込失敗。ランのログを確認)',
+              '',
+              '## 警告（主語・文脈で可否が変わるので人が判断する。赤にはしない）',
+              '物差しは `facts_patterns.AUDIT_WARN_LABELS` と',
+              '`content_facts_guard.ARTICLE_WARN_LABELS` をそのまま借りています',
+              '（この番犬は禁止パターンのコピーを持ちません）。',
+              '',
+              wLines || '(なし)',
+              '',
+              '## 対処',
+              '1. **原稿(.md)を直しても note 上は変わりません。** 公開本文を書き換えて再公開する:',
+              '   - 少数なら `note_facts_fix_YYYYMMDD.py` 形式の一発スクリプトを起こす',
+              '     （`note_leadmagnet_publish.publish_one(key, transform, expect_marker=…)` に',
+              '     公開の3段とタグ復元を任せるのが定型。`note_facts_fix_20260828.py` が直近の例）',
+              '   - 公開PUTは **hashtags を無視してタグを0にする**ので、',
+              '     `note_tag_guard.ensure_tags` を**検証が例外を投げても必ず**通すこと',
+              '   - 本文の引き当てに `<h3>あわせて読みたい` のような**タグ込みの固定文字列を使わない**。',
+              '     note は保存のたびに見出し・段落へ name/id 属性を振り直すので必ず外れる',
+              '2. **原稿側も同じ表現になっていないか確認する。** 片方だけ直すとまたズレる',
+              '   （`python3 content_facts_guard.py --repo-only` で原稿側を見る）',
+              '3. **タイトルの違反は本文の再公開では直りません。** 再公開スクリプトは',
+              '   title に「現在の公開タイトル」を渡すので、タイトルだけは別に更新が要ります',
+              '4. 直したら `python3 note_live_facts_guard.py <key>` で個別に緑を確認する',
+              '   （検証は必ずログアウト状態の公開APIで。エディタ画面は下書きを混ぜる）',
+              '',
+              '直すと次回のランがこのIssueを自動クローズします。',
+              '',
+              '---',
+              '_このIssueは `.github/workflows/note_live_facts_guard.yml` により自動生成されました。_',
+            ].join('\n');
+            const guard = require('./.github/scripts/guard_comment.js');
+            await guard.notify({
+              github, context, title, body,
+              recomment: `再検知: ${new Date().toISOString()}\n\n${vLines}`,
+            });
+
+      - name: 違反0件 → Issueを自動クローズ
+        # 鳴くだけでなく鳴きやむところまでが仕組み [[feedback_watchdog_autoclose]]
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'note公開本文に確定ファクト違反（note公開本文 確定ファクト番犬）';
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open', per_page: 100,
+            });
+            const match = existing.find(i => i.title === title);
+            if (!match) return;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: match.number,
+              body: `復旧を確認: ${new Date().toISOString()} のランで違反0件でした。自動クローズします。`,
+            });
+            await github.rest.issues.update({
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: match.number, state: 'closed',
+            });

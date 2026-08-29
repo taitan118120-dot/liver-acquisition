@@ -53,11 +53,18 @@ def verify(key, marker=LM_MARK):
     return d
 
 
-def publish_one(key, transform_fn=None, expect_marker=LM_MARK):
+def publish_one(key, transform_fn=None, expect_marker=LM_MARK, title_fn=None):
     """記事本文を transform_fn で書き換えて再公開する。
 
     expect_marker: 反映確認に使う文字列。transform_fn を差し替える呼び出し側は
         自分が挿入したマーカーを渡すこと（None で本文チェックを省略）。
+    title_fn: タイトルも書き換えたいときに (key, title) -> 新タイトル or None を渡す。
+        既定（None）では**現在のタイトルをそのまま通す**ので、本文だけを直す
+        従来の呼び出しは何も変わらない。
+        タイトルを直す必要が実際にある: 2026-08-28 に「初見リスナーを常連化する」
+        のような呼び捨てが3本のタイトルに残っていた。しかもタイトルは
+        note_internal_links_publish.related_html がリンク文言として**他記事の本文へ
+        コピーする**ので、直さないと違反が他記事へ増殖し続ける。
     """
     s = req_session()
     d = get_note(s, key, draft=False)
@@ -65,9 +72,17 @@ def publish_one(key, transform_fn=None, expect_marker=LM_MARK):
     title = d["name"]
     old_body = d["body"]
     new_body = (transform_fn or transform)(key, old_body)
-    if new_body is None:
+    new_title = title_fn(key, title) if title_fn else None
+    # 本文・タイトルのどちらかが変われば公開しなおす。
+    # 「本文は既に直っているがタイトルだけ違反」を skip で落とさないための順序。
+    if new_body is None and (not new_title or new_title == title):
         print("  skip（済み or CTAなし）")
         return "skip"
+    if new_body is None:
+        new_body = old_body
+    if new_title and new_title != title:
+        print(f"  title 変更: {title[:34]} -> {new_title[:34]}")
+        title = new_title
     tags = [h["hashtag"]["name"].lstrip("#") for h in d.get("hashtag_notes", [])][:10]
     print(f"  id={note_id} title={title[:24]}")
     print(f"  body {len(old_body)} -> {len(new_body)}  tags={len(tags)}")
