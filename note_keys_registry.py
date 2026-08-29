@@ -8,18 +8,21 @@ note_leadmagnet_publish.py --all などの一括処理が全件ループする�
 記事を公開から下ろす処理（note_unpublish_articles.py / note_delete_articles.py）は
 成功時に remove() を呼んで台帳を自動で縮める。手で編集する必要はない。
 
-整合チェックは2方向で行う（未ログインの公開APIだけで完結する）:
+整合チェックは3方向で行う（未ログインの公開APIだけで完結する）:
   ① 台帳の各キー → /api/v3/notes/{key} が200か（非公開・削除の検知）
   ② 公開APIの全件列挙 → 台帳に載っているか（公開したのに未登録の検知）
+  ③ 公開APIの data.name → note_key_map.json の title と一致するか（台帳タイトルの腐り検知）
 ②は creator contents API を全ページ舐める。以前は note_key_map.json に載っている
 キーの中からしか候補を探しておらず、key_map にも無い記事は検知できなかった。
+③は note_live_facts_guard.py など複数のツールが所見のラベルに台帳タイトルを使うため、
+台帳が古いと「もう直っている違反」を指して人が探し回ることになる（2026-08-29 に21件のズレを実測）。
 
 使い方:
   python3 note_keys_registry.py --check        # 差分を表示するだけ
   python3 note_keys_registry.py --check --json # 加えて data/note_keys_guard_report.json を書く
-  python3 note_keys_registry.py --fix          # 差分を台帳に反映する
+  python3 note_keys_registry.py --fix          # 差分を台帳に反映する（タイトルのズレは note_key_map.json を更新）
 
---check の終了コード: 0=ズレなし / 1=ズレあり / 2=照会できなかったキーがある（判定不能）
+--check の終了コード: 0=ズレなし / 1=ズレあり（dead/missing/タイトル） / 2=照会できなかったキーがある（判定不能）
 """
 import json
 import os
@@ -85,37 +88,88 @@ def add(keys):
 
 
 def public_status(key, retries=1):
-    """未ログインの公開APIで記事の到達性を見る。200=公開中 / 404=非公開or削除。
+    """未ログインの公開APIで記事の到達性と現在のタイトルを見る。
+
+    戻り値は (status, name)。
+      status : 200=公開中 / 404など=非公開or削除 / "ERR ..." 文字列=照会失敗
+      name   : status==200 のときだけ data.name（いま読者に出ているタイトル）。
+               それ以外は None。
 
     通信エラーや 429/5xx は note 側・回線側の都合であって「非公開」ではないので、
     数秒あけて retries 回まで引き直す。それでも駄目なら "ERR ..." を返し、
     呼び出し側で dead と切り分ける（誤って生きているキーを台帳から消さないため）。
+
+    公開APIはCDN越しなので Cache-Control: no-cache を付けないと直後は旧値が返る
+    （note_live_facts_guard.py の PUBLIC_HEADERS と同じ理由）。
     """
     req = urllib.request.Request(
-        f"https://note.com/api/v3/notes/{key}", headers={"User-Agent": UA})
+        f"https://note.com/api/v3/notes/{key}",
+        headers={"User-Agent": UA, "Cache-Control": "no-cache", "Pragma": "no-cache"})
     for attempt in range(retries + 1):
         try:
             with urllib.request.urlopen(req, timeout=25) as r:
-                return r.status
+                if r.status == 200:
+                    try:
+                        d = json.loads(r.read().decode("utf-8")).get("data", {})
+                        return 200, d.get("name")
+                    except Exception:
+                        return 200, None
+                return r.status, None
         except urllib.error.HTTPError as e:
             if e.code == 429 or e.code >= 500:
                 last = f"ERR HTTP{e.code}"
             else:
-                return e.code
+                return e.code, None
         except Exception as e:
             last = f"ERR {type(e).__name__}"
         if attempt < retries:
             time.sleep(5)
-    return last
+    return last, None
+
+
+def _load_keymap():
+    if not os.path.exists(KEYMAP_FILE):
+        return {}
+    with open(KEYMAP_FILE, encoding="utf-8") as f:
+        return json.load(f)
 
 
 def _keymap_keys():
     """記事番号→key台帳のキー一覧。公開一覧に出ない限定公開記事を拾う補助経路。"""
-    if not os.path.exists(KEYMAP_FILE):
-        return []
-    with open(KEYMAP_FILE, encoding="utf-8") as f:
-        km = json.load(f)
-    return list(dict.fromkeys(v["key"] for v in km.values() if v.get("key")))
+    return list(dict.fromkeys(
+        v["key"] for v in _load_keymap().values() if v.get("key")))
+
+
+def _keymap_titles():
+    """key -> {"num": 記事番号, "title": 台帳タイトル}。タイトルのズレ照合に使う。"""
+    out = {}
+    for num, rec in _load_keymap().items():
+        key = rec.get("key")
+        if key:
+            out[key] = {"num": num, "title": rec.get("title", "")}
+    return out
+
+
+def save_keymap_titles(updates):
+    """note_key_map.json の title だけを差し替える（key/linked_at/linked_by は温存）。
+
+    updates: [{"num": 記事番号, "live": 新タイトル}, ...]
+    書き出し形式は note_auto_poster.save_key_link() に合わせる（番号昇順・indent=2・末尾改行）。
+    """
+    km = _load_keymap()
+    changed = 0
+    for u in updates:
+        rec = km.get(u["num"])
+        if rec is not None and rec.get("title", "") != u["live"]:
+            rec["title"] = u["live"]
+            changed += 1
+    if changed:
+        ordered = {str(n): v for n, v in
+                   sorted(km.items(), key=lambda kv: int(kv[0]))}
+        with open(KEYMAP_FILE, "w", encoding="utf-8") as f:
+            json.dump(ordered, f, ensure_ascii=False, indent=2)
+            f.write("\n")
+    return changed
 
 
 def fetch_published_keys():
@@ -153,10 +207,12 @@ def reconcile(apply=False, report_path=None):
 
     - 台帳にあるが公開されていない（404）→ 取り除く候補
     - 公開APIの全件列挙にあるが台帳に無い → 足す候補
+    - 公開APIの data.name が note_key_map.json の title と違う → title_drift（台帳を更新する候補）
     - 照会自体が失敗したキー（通信エラー・429・5xx）→ errors。判定不能なので触らない
     """
     keys = load()
     listed = set(keys)
+    km_titles = _keymap_titles()
 
     # 先に note 側の全件を取る。ここが取れないと missing 判定はできない。
     published, list_err = fetch_published_keys()
@@ -169,14 +225,23 @@ def reconcile(apply=False, report_path=None):
 
     dead = []
     errors = []
+    title_drift = []
     for i, k in enumerate(keys, 1):
-        st = public_status(k)
+        st, name = public_status(k)
         if isinstance(st, str):
             errors.append((k, st))
             print(f"  [{i}/{len(keys)}] {k} {st}  ← 照会失敗（判定不能）")
         elif st != 200:
             dead.append((k, st))
             print(f"  [{i}/{len(keys)}] {k} http={st}  ← 公開されていない")
+        elif k in km_titles and name and name != km_titles[k]["title"]:
+            num = km_titles[k]["num"]
+            title_drift.append(
+                {"key": k, "num": num,
+                 "ledger": km_titles[k]["title"], "live": name})
+            print(f"  [{i}/{len(keys)}] {k} #{num} タイトルのズレ")
+            print(f"        台帳 : {km_titles[k]['title']}")
+            print(f"        ライブ: {name}")
         time.sleep(CHECK_INTERVAL)
 
     # 公開API全件（正）＋ key_map（限定公開など一覧に出ない記事の補助）を候補にする。
@@ -186,7 +251,7 @@ def reconcile(apply=False, report_path=None):
     if candidates:
         print(f"\n台帳外のキー {len(candidates)}件を照会中...")
         for k in candidates:
-            st = public_status(k)
+            st, _ = public_status(k)
             if st == 200:
                 missing.append(k)
                 print(f"  {k} http=200  ← 公開中だが台帳に無い")
@@ -197,6 +262,7 @@ def reconcile(apply=False, report_path=None):
           f"{'取得失敗' if published is None else str(len(published)) + '件'}")
     print(f"  台帳にあるが非公開/削除: {len(dead)}件")
     print(f"  公開中だが台帳に無い    : {len(missing)}件")
+    print(f"  タイトルが台帳とズレ    : {len(title_drift)}件")
     print(f"  照会できず判定不能      : {len(errors)}件")
 
     result = {
@@ -206,6 +272,7 @@ def reconcile(apply=False, report_path=None):
         "list_error": list_err,
         "dead": [{"key": k, "status": st} for k, st in dead],
         "missing": missing,
+        "title_drift": title_drift,
         "errors": [{"key": k, "status": st} for k, st in errors],
     }
     if report_path:
@@ -213,7 +280,7 @@ def reconcile(apply=False, report_path=None):
             json.dump(result, f, ensure_ascii=False, indent=2)
         print(f"  レポート: {report_path}")
 
-    if not dead and not missing:
+    if not dead and not missing and not title_drift:
         if list_err:
             # 公開一覧が取れていないときの「ズレなし」は「missingを見ていない」の意。
             # 緑にすると2026-08-18の素通りと同じことになるので必ず判定不能扱いにする。
@@ -228,6 +295,9 @@ def reconcile(apply=False, report_path=None):
             remove([k for k, _ in dead], reason="reconcile")
         if missing:
             add(missing)
+        if title_drift:
+            n = save_keymap_titles(title_drift)
+            print(f"  note_key_map.json のタイトル更新: {n}件")
         print(f"  → 反映後 {len(load())}件")
     else:
         print("  （--fix で台帳に反映）")
@@ -243,7 +313,7 @@ if __name__ == "__main__":
     if args[0] == "--check":
         want_json = "--json" in args[1:]
         r = reconcile(apply=False, report_path=REPORT_FILE if want_json else None)
-        if r["dead"] or r["missing"]:
+        if r["dead"] or r["missing"] or r["title_drift"]:
             raise SystemExit(1)
         raise SystemExit(2 if (r["errors"] or r["list_error"]) else 0)
     elif args[0] == "--fix":

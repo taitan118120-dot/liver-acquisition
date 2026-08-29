@@ -12,12 +12,19 @@ name: 公開キー台帳 番犬
 # 動作: 週1回 note_keys_registry.py --check --json を実行し、
 #   - 台帳にあるが note で404（非公開/削除済み） → dead
 #   - 公開APIの全件列挙にあるが台帳に無い → missing
-#   のどちらかがあればランを赤にし、Issueを作成/更新して通知する。
+#   - 公開APIの data.name が note_key_map.json の title と違う → title_drift
+#   のいずれかがあればランを赤にし、Issueを作成/更新して通知する。
 #
 # 【2026-08-18 修正】missing の探索元が note_key_map.json だった頃は、key_map にも
 # 載っていない記事（自動投稿で公開されたのに一度も台帳登録されなかった24本）を
 # 原理的に検知できず、この番犬は毎週緑のまま素通りしていた。いまは creator contents API を
 # 全ページ舐めて突合する。公開一覧の取得自体に失敗したら緑にせず判定不能(exit 2)にする。
+#
+# 【2026-08-29 追加】title_drift。note_live_facts_guard.py など複数のツールが所見の
+# ラベルに note_key_map.json の title を使うので、台帳タイトルが古いと「もう直っている
+# 違反」を指して人が探し回る。実測21件（例: #46 の「9割が持っている」→「共通する」、
+# 「リスナー」→「リスナーさん」）がズレたままだった。--fix は note_key_map.json の
+# title だけ差し替える（key/linked_at/linked_by は温存）。
 #
 # ズレが直って緑に戻ったら、そのIssueを自動クローズする。
 #
@@ -60,7 +67,7 @@ jobs:
           script: |
             const fs = require('fs');
             const title = '公開キー台帳のズレ検知（台帳番犬）';
-            let report = {total: 0, dead: [], missing: [], errors: []};
+            let report = {total: 0, dead: [], missing: [], title_drift: [], errors: []};
             try {
               report = JSON.parse(fs.readFileSync('data/note_keys_guard_report.json', 'utf8'));
             } catch (e) {}
@@ -70,10 +77,13 @@ jobs:
             const missing = (report.missing || []).map(k =>
               `- \`${k}\` ← 公開中だが台帳に無い`
             ).join('\n');
+            const drift = (report.title_drift || []).map(d =>
+              `- \`${d.key}\` #${d.num}\n  - 台帳 : ${d.ledger}\n  - ライブ: ${d.live}`
+            ).join('\n');
             const errors = (report.errors || []).map(e =>
               `- \`${e.key}\` ${e.status}`
             ).join('\n');
-            const lines = [dead, missing].filter(Boolean).join('\n')
+            const lines = [dead, missing, drift].filter(Boolean).join('\n')
               || '(ズレ無し。照会失敗のみ)';
             const body = [
               '## 公開キー台帳 番犬 検知',
@@ -82,14 +92,21 @@ jobs:
                 + `（公開中 ${report.published_total === null || report.published_total === undefined ? '取得失敗' : report.published_total + '件'}）がズレています。`,
               report.list_error ? `\n⚠️ 公開一覧の取得に失敗しています: ${report.list_error}\n` : '',
               '**放置すると `note_leadmagnet_publish.py --all` などの一括処理が死にキーを踏み続けます。**',
+              (report.title_drift || []).length
+                ? '**タイトルのズレは `note_live_facts_guard.py` など複数のツールの所見ラベルを狂わせ、直っている違反を人が探し回る原因になります。**'
+                : '',
               '',
               '## ズレ',
-              lines,
+              dead ? ['### 台帳にあるが非公開/削除', dead, ''].join('\n') : '',
+              missing ? ['### 公開中だが台帳に無い', missing, ''].join('\n') : '',
+              drift ? ['### タイトルが台帳とズレ（`note_key_map.json`）', drift, ''].join('\n') : '',
+              (dead || missing || drift) ? '' : lines,
               '',
               errors ? ['## 照会できなかったキー（判定不能・触っていない）', errors, ''].join('\n') : '',
               '## 対処',
               '1. まず巻き戻しでないか疑う（古いブランチのマージで台帳だけ戻っていないか）',
-              '2. 内容を確認したうえで `python3 note_keys_registry.py --fix` で台帳に反映',
+              '2. 内容を確認したうえで `python3 note_keys_registry.py --fix` で反映'
+                + '（dead は台帳から除去 / missing は追加 / タイトルのズレは `note_key_map.json` の title を差し替え）',
               '3. `python3 note_keys_registry.py --check` が緑になることを確認してコミット',
               '',
               '直すと次回のランがこのIssueを自動クローズします。',
@@ -138,7 +155,7 @@ jobs:
               repo: context.repo.repo,
               issue_number: match.number,
               body: [
-                `復旧を確認: ${new Date().toISOString()} のランで ${scope} が一致しました（dead=0 / missing=0）。自動クローズします。`,
+                `復旧を確認: ${new Date().toISOString()} のランで ${scope} が一致しました（dead=0 / missing=0 / title_drift=0）。自動クローズします。`,
                 '',
                 `- ラン: ${runUrl}`,
               ].join('\n'),
