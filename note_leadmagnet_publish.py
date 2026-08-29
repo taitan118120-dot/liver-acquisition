@@ -12,6 +12,7 @@
 """
 import json
 import os
+import re
 import sys
 import time
 
@@ -145,10 +146,36 @@ def transform_fix_dead_link(key, html):
     return out if out is not None else html
 
 
+# 特典段落が「末尾に」あるかで判定する。本文のどこかに LM_MARK があれば済み、では
+# note_early_cta_publish が全記事に入れた冒頭CTA（同じ『…スタートダッシュガイド』を
+# 名指しする）に引っかかり、末尾に登録導線が1つも無い記事まで skip してしまう。
+# 冒頭CTAが行き渡ったあと、この関数は事実上どの記事にも効かなくなっていた。
+# 実測 n8e088d985eab（御新規さん→コアファン・27,127文字）は末尾が
+# 「一度話を聞きに来てください」で終わっていて、特典段落もLINEリンクも無いのに
+# 触れなかった。note_internal_links_publish.find_insert_pos の _TAIL_MIN_PCT と
+# 同じ考え方で、本文の後半に出たものだけを末尾CTAとみなす。
+_TAIL_MIN_PCT = 40
+
+# 末尾の注記（「*この記事は、…をもとに再構成したものです*」）があれば、その手前に置く。
+# 注記は読み終えたあとの但し書きなので、CTAがその後ろに来ると流れが切れる。
+_DISCLAIMER_RE = re.compile(r"<p[^>]*>\s*\*この記事は、")
+
+
+def has_tail_gift(html):
+    """末尾CTAの特典段落を持っているか（冒頭CTAは数えない）。"""
+    pos = html.rfind(LM_MARK)
+    if pos == -1:
+        return False
+    return pos / max(1, len(html)) * 100 >= _TAIL_MIN_PCT
+
+
 def transform_append_cta(key, html):
     """LINE CTAが無い記事の末尾に特典段落＋LINEリンクを追加"""
-    if LM_MARK in html:
+    if has_tail_gift(html):
         return None
+    m = _DISCLAIMER_RE.search(html)
+    if m:
+        return html[:m.start()] + CTA_TAIL_HTML + html[m.start():]
     return html + CTA_TAIL_HTML
 
 
