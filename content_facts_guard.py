@@ -151,6 +151,11 @@ ARTICLE_GLOBS = [
     "blog/articles/*.md",       # 自社ブログ記事
     "blog/articles_note/*.md",  # Note公開記事の原稿（108本が note 上で公開中）
 ]
+# Note公開記事の原稿だけを対象にする構造チェック用（本文インライン #タグ）。
+# ARTICLE_GLOBS には自社ブログ（blog/articles/*.md）も入っているが、そちらは
+# note に載らないので「本文に # を書くと勝手にタグ化する」問題は起きない。
+NOTE_ARTICLE_GLOB = "blog/articles_note/*.md"
+
 PDF_GLOB = "lp/shared/*.pdf"          # LINE登録者に実際に配られる配布物
 LEAD_MAGNET_DIR = "lead_magnet"       # 原稿HTMLの置き場（PDFと同名で対応させる）
 
@@ -242,6 +247,52 @@ def scan_text(text, where, warn_labels=AUDIT_WARN_LABELS):
         item = {"where": where, "reason": reason, "hit": hit[:80]}
         (warn if reason in warn_labels else ng).append(item)
     return ng, warn
+
+
+# ── 1'''. Note記事 本文インライン #タグ（publish画面が記事タグへ勝手に昇格させる）──
+# editor.note.com の publish バンドルは、本文中の「空白 or 行頭の直後に来る半角 #語」を
+# 記事のハッシュタグ（hashtag_notes）へ自動マージする。
+# 2026-08-28 実測（公開記事のライブなタグと本文の突合）:
+#   - 記事#42「代理店スカウト術」本文の  `#在宅ワーク #ライバー気になる`（半角スペース直後）
+#       → 記事の中身（代理店向け）と無関係なのにタグとして混入していた
+#   - 同じ行の `：#副業探し`（全角コロン直後＝直前が非空白）は昇格しなかった
+#   - 記事#127 の `（#9110`（全角括弧直後）も昇格しなかった
+#   ⇒ 昇格条件は「半角 # かつ 直前が 空白/全角空白/行頭」。全角＃や『：#』は拾われない。
+# 末尾に1行だけ置くタグ行（記事78-93・98・108 の運用）はこの仕組みを意図的に使うものなので
+# 許容する。それ以外の場所に出てきたら「意図しないタグ混入」としてNG（exit 1）。
+# タグ本体に使える文字＝「空白でも区切り記号でもない字」の連なり。
+# note が語の切れ目とみなす記号（和欧の約物・スラッシュ・コロン等）で止める。
+_TAG_BODY = r"[^\s#＃、。，．・…！!?？「」『』（）()\[\]【】／/:：;；|｜=＝＊*＋<>＜＞\"'’”“～〜]+"
+_INLINE_HASHTAG = re.compile(r"(?:^|(?<=\s))#(?=" + _TAG_BODY + r")" + _TAG_BODY)
+
+
+def _is_dedicated_tagline(line):
+    """行全体が `#タグ #タグ …`（4個以上）だけで構成されているか。"""
+    toks = line.strip().split()
+    return len(toks) >= 4 and all(
+        re.fullmatch(r"#" + _TAG_BODY, t) for t in toks
+    )
+
+
+def scan_note_inline_hashtags(path):
+    """Note記事の原稿から、記事タグへ勝手に昇格する本文インライン #語 を拾う。"""
+    out = []
+    lines = open(path, encoding="utf-8").read().split("\n")
+    nonempty = [i for i, l in enumerate(lines) if l.strip()]
+    # 末尾の非空行が「専用タグ行」なら、その1行だけは意図的な運用として除外する
+    allowed = set()
+    if nonempty and _is_dedicated_tagline(lines[nonempty[-1]]):
+        allowed.add(nonempty[-1])
+    for i, line in enumerate(lines):
+        if i in allowed:
+            continue
+        for m in _INLINE_HASHTAG.finditer(line):
+            out.append({
+                "where": f"{rel(path)}:{i + 1}",
+                "reason": "本文インライン #タグ（note が記事タグへ勝手に昇格させる）",
+                "hit": (m.group(0) + "  ← 行: " + line.strip())[:80],
+            })
+    return out
 
 
 # ── 2. 原稿HTML ↔ 配布PDF の同期 ─────────────────────────────
@@ -445,6 +496,11 @@ def main():
                            warn_labels=AUDIT_WARN_LABELS | ARTICLE_WARN_LABELS)
         violations += ng
         warns += wn
+
+    # 1'''. Note記事の本文インライン #タグ（publish画面が記事タグへ勝手に昇格させる）
+    note_article_files = iter_files([NOTE_ARTICLE_GLOB])
+    for p in note_article_files:
+        violations += scan_note_inline_hashtags(p)
 
     # 2. 原稿HTML ↔ 配布PDF
     for p in pdf_files:
