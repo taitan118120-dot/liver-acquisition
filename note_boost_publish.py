@@ -9,9 +9,8 @@
 
 - 冒頭CTA: 最初の <h1-4> の直前。見出しが無い/末尾寄りの記事は導入直後（early_or_fallback）
 - 関連記事: 「TAITAN PROについて」見出し or 特典段落の直前（note_internal_links_publish と同一）
-- 冪等: 既に入っているものは入れない。両方入っていればそのままskip
-- 進捗は data/note_boost_log.json。既存の
-  data/internal_links_log.json も読んで「内部リンク済み」を尊重する
+- 冪等: 入っているかどうかは**毎回いまの本文を見て**決める（needs）
+- 進捗は data/note_boost_log.json に残すが、対象の判定には使わない（main 参照）
 
 使い方:
   python3 note_boost_publish.py --plan             # 対象と挿入内容を出すだけ（GETのみ）
@@ -32,7 +31,6 @@ from note_cta_publish import req_session
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_FILE = os.path.join(BASE_DIR, "data", "note_boost_log.json")
-LINKS_LOG = os.path.join(BASE_DIR, "data", "internal_links_log.json")
 
 # note側の連投検知を避けるため、BATCH本ごとに BATCH_SLEEP 秒あける
 BATCH = 8
@@ -168,20 +166,21 @@ def main():
     catalog = build_catalog(s)
     print(f"  公開記事 {len(catalog)} 本")
 
+    # ログは「過去に何をしたか」の記録であって、「いま本文がどうなっているか」では
+    # ない。2026-08-28 の実測では、ログ上 ok の17本から「あわせて読みたい」が消えて
+    # いた（8/8以降に本文へPUTを打つ一括修正スクリプトが書き戻した際に落ちた）。
+    # 以前はここで log.get(key)=="ok" と internal_links_log.json を見て対象から
+    # 外していたため、番犬が欠落を見つけても このスクリプトでは永久に拾えず、
+    # ログを手で削って再処理させるしかなかった（key を明示指定しても外された）。
+    # 要否の判定は needs()＝いまの本文だけで行い、ログは進捗の記録に徹する。
     log = _load(LOG_FILE)
-    links_done = {k for k, v in _load(LINKS_LOG).items() if v == "ok"}
 
     order = explicit or sorted(catalog, key=lambda k: -catalog[k]["pv_month"])
     todo = []
     for key in order:
         if key not in catalog:
             continue
-        if log.get(key) == "ok":
-            continue
-        body = catalog[key]["body"]
-        need_early, need_rel = needs(body)
-        if key in links_done:
-            need_rel = False
+        need_early, need_rel = needs(catalog[key]["body"])
         if not (need_early or need_rel):
             continue
         todo.append((key, need_early, need_rel))

@@ -56,6 +56,12 @@ LIVER_GIFT = "ライバー新人期スタートダッシュガイド"
 RELATED_RE = re.compile(r"<h[1-6][^>]*>\s*(?:📖\s*)?あわせて読みたい")
 INTERNAL_RE = re.compile(r"note\.com/" + URLNAME + r"/n/n[0-9a-f]+")
 
+# 位置のしきい値。冒頭CTAはこれより前、関連ブロックはこれより後ろに無いとおかしい。
+# 2026-08-29 の全141本の実測は 冒頭CTA 2〜10% / 関連ブロック 60〜99% で、
+# どちらも余裕をもってこの内側にある。
+POS_MAX_PCT = 40   # 冒頭CTAの上限
+POS_MIN_PCT = 40   # 関連ブロックの下限
+
 # 代理店（＝作る側）記事の判定。note_agency_cta_publish と同じ規則。
 AGENCY_WORDS = ["代理店", "開業", "スカウト術", "スカウトDM", "マネージャーとは", "スカウト"]
 AGENCY_EXCLUDE = ["選び方", "口コミ", "評判", "入るべき", "やめとけ", "見分け方"]
@@ -94,13 +100,30 @@ def check(session, key, title):
     if d.get("status") != "published":
         return None
     body = d.get("body", "") or ""
+    n = max(1, len(body))
     problems = []
-    if EARLY_MARK not in body:
+
+    # 「有る」だけでなく「正しい場所に有る」まで見る。どちらも実測で外れた:
+    #  ・冒頭CTAが74〜83%地点＝ほぼ末尾（見出しの無い記事に関連ブロックを先に入れると、
+    #    その <h3> が「最初の見出し」になりCTAがその直前に入る）
+    #  ・関連ブロックが6%地点＝導入直後（find_insert_pos の最後の手当てが
+    #    rfind("lin.ee/…") で、末尾に特典段落を持たない記事では冒頭CTAを掴む。
+    #    実測 n8e088d985eab は27,127文字の記事で pos=1634 が返っていた）
+    i = body.find(EARLY_MARK)
+    if i < 0:
         problems.append("冒頭CTAなし")
-    if not RELATED_RE.search(body):
+    elif i / n * 100 > POS_MAX_PCT:
+        problems.append(f"冒頭CTAが末尾寄り（{i / n * 100:.0f}%地点）")
+
+    m = RELATED_RE.search(body)
+    if not m:
         problems.append("あわせて読みたいブロックなし")
-    elif len(set(INTERNAL_RE.findall(body))) < 3:
-        problems.append("内部リンクが3本未満")
+    else:
+        if len(set(INTERNAL_RE.findall(body))) < 3:
+            problems.append("内部リンクが3本未満")
+        if m.start() / n * 100 < POS_MIN_PCT:
+            problems.append(f"あわせて読みたいが前半（{m.start() / n * 100:.0f}%地点）")
+
     if LINE_URL not in body:
         problems.append("公式LINEリンクなし")
     if is_agency(title):
