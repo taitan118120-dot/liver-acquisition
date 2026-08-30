@@ -9,6 +9,7 @@ SEOキーワードリストからカテゴリローテーションで
   python3 note_article_generator.py --generate       # 1記事生成
   python3 note_article_generator.py --generate -n 3   # 3記事生成
   python3 note_article_generator.py --dry-run         # 生成せず確認
+  python3 note_article_generator.py --generate -n 6 --category agency  # 代理店だけ6本
   python3 note_article_generator.py --list-unused     # 未使用キーワード一覧
   python3 note_article_generator.py --stats           # 統計情報
 
@@ -87,6 +88,28 @@ GENERAL_NOTE_TAGS = [
     "副業", "お金の勉強", "仕事について話そう", "自己紹介", "今こんな気分",
     "最近の学び", "毎日note", "ビジネス", "働き方", "キャリア", "スキルアップ",
 ]
+
+# タイトルの型。**記事ごとに1つだけ渡す**（プロンプトに4つ並べて「選べ」と書くと、
+# モデルは毎回いちばん強く見える1つを選ぶ）。
+# 2026-08-30、agency 6本を生成したら6本とも D型の例文
+# 「○○を知らないまま始めると、最初の1ヶ月で心が折れます」を丸写しにしていた。
+# 6日連続で同じ形のタイトルが並ぶのはCTRにも効かないし、明らかに機械が書いた顔になる。
+# 例文は「そのまま使える完成文」ではなく**言い回しの説明**にして、模倣先を潰す。
+# [[feedback-ai-prompt-teaches-violations]] と同じ構図（模倣される位置に置いたものは真似される）。
+TITLE_PATTERNS = [
+    "数量提示型: 読者がこれから踏む手順の数や期間を示す（「5つ」「最初の3日」など）。"
+    "**自分の実績を数量で語らないこと**——送ったDMの通数、支えた人数、返信率、達成率は"
+    "どれも裏が取れないので書かない。使ってよい数字は【確定ファクト】に載っているものだけ",
+    "逆説・本音型: 世間で言われている常識を先に否定し、そのあとに本音を置く。"
+    "「実は」「正直に言うと」で始めない（使い古されている）",
+    "失敗談型: 主語を「私」または「担当したライバーさん」にして、"
+    "うまくいかなかった事実から入り、そこで何を変えたかを副題に置く",
+    "問いかけ型: 読者がいま抱えている迷いをそのまま疑問文にする。"
+    "答えを副題で先に少しだけ見せる",
+    "断言型: これから何が起きるかを言い切る。**割合や人数では断言しない**"
+    "（「9割が」型は禁止）。起きる出来事そのもので言い切ること",
+]
+
 
 # ─── SEO キーワードリスト（10カテゴリ） ────────────────
 # 各キーワードの "p" は優先度で、2026-08-10 の公開124本のPV実測に基づく
@@ -326,12 +349,9 @@ ARTICLE_PROMPT = """あなたはNote.comで月間10万PVを出すライバー/�
 【文体】親しみやすい「です・ます」調。たまに体言止め・改行を使い、読みやすくリズムを作る。
 
 【タイトル（1行目・必須）】
-以下の4パターンから「読者の心が動く」ものを1つ選び、SEOキーワードを自然に含める:
-  A. 数字インパクト型:「# ○○で月収30万円が現実になる3つの理由」
-  B. 逆説・本音型:「# 正直に言います。ライバー事務所は『○○』じゃないと続きません」
-  C. 失敗談型:「# ライバーを1年で辞めた私が、それでも『○○』を勧める理由」
-  D. 断言型:「# ○○を知らないまま始めると、最初の1ヶ月で心が折れます」
-     ※断言は「割合」ではなく「何が起きるか」で作る
+**{title_pattern}**
+SEOキーワードを自然に含めること。
+※例文の言い回しをそのまま流用しないこと。**型だけ借りて、言葉は毎回変える**。
 ※「｜」で副題を区切り、末尾に【2026年版】を付ける。
 ※「完全ガイド」「徹底解説」など教科書ワードは絶対に使わない。
 
@@ -406,6 +426,49 @@ AIが「答えとして切り出せる形」で置くこと。以下は必須:
 記事本文のみをMarkdownで出力。前置き・メタ情報・コードフェンス不要。"""
 
 
+# 代理店（＝事務所を"作る側"）記事のときだけ本文プロンプトに足すブロック。
+#
+# 2026-08-30、agency カテゴリで6本生成したら5本が確定ファクト違反だった（計36件）。
+# 内訳は「手数料」「月3〜10万」「月1〜5万」「契約期間」「現役ライバー」「確実に」。
+# ARTICLE_PROMPT には**これら全部の禁止が既に書いてあった**のに破られている。
+#
+# 原因は禁止が足りないことではなく、**プロンプトがライバー視点だけで書かれていること**。
+# 確定ファクトの金額は「3ヶ月15〜20万 / 6ヶ月30〜40万 / B帯 月20〜30万」＝すべて
+# ライバー本人の収入で、代理店側の収入・マージンには承認された数字が1つも無い。
+# 「ライバー事務所の開業手順」を書けと言われたモデルは、報酬構造に触れざるを得ず、
+# 埋める数字が無いので捏造する。禁止語を増やしても、穴が空いている限り埋めにくる。
+#
+# なので**穴そのものを塞ぐ**: 代理店側のお金は「書かない」が正解だと明示し、
+# 代わりに何を書けばいいのか（実務の手順・時間の使い方）を与える。
+# [[feedback-dont-make-up-numbers]] / [[feedback-ai-prompt-teaches-violations]]
+AGENCY_PROMPT_EXTRA = """
+
+【この記事は「代理店・事務所を"作る側"」向け（最重要）】
+読者はライバー本人ではなく、**紹介して育てる側**になろうとしている人です。
+「代理店とは何か」の制度説明ではなく、**実務でつまずく場所**を書いてください。
+
+- **代理店側・事務所側のお金の話は数字を一切書かない**。報酬率・マージン・取り分・
+  月商・利益・初期費用・損益分岐、どれも承認された数字が無いので**書けません**。
+  「収入の話は人によって条件が変わるので、LINEで個別に説明しています」と逃がすこと。
+  上の【確定ファクト】の金額は**ライバー本人の収入**であって、代理店の収入ではない。
+  代理店の収入として転用しない
+- **「手数料」「マージン」「取り分」「中抜き」という単語を使わない**。報酬に触れる必要が
+  あるときは「還元率100%+α」とだけ書く
+- 契約期間・違約金・退所条件には触れない（「条件は面談で説明します」で止める）
+- たいたんは**元**Pococha Sランクで、いまは事務所の代表。「現役ライバー」と書かない
+- 「確実に」「安定して稼げる」「必ず伸びる」は禁止（育成の話で出やすい）
+- ライバー本人の視点に戻らないこと。「あなたの枠」「あなたの配信」ではなく
+  「担当するライバーさんの枠」と書く
+
+代わりに厚く書くのはこちら（読まれているのはここ）:
+  - 声をかけてから所属が決まるまでに実際にやりとりする順番
+  - 1日・1週間のうち、どこに時間が溶けるのか
+  - 続く人と辞める人で、最初の1ヶ月の動き方がどう違うか
+  - 会社員と兼ねる場合、どの作業を夜に寄せられてどれが寄せられないか
+  - 自分のSNSから相談が来る状態をどう作るか
+"""
+
+
 # ─── ユーティリティ ───────────────────────────────────
 
 def get_gemini_api_key():
@@ -449,19 +512,32 @@ def get_used_keywords(tracker):
     return out
 
 
-def get_next_keyword(tracker):
+def get_next_keyword(tracker, only_category=None):
     """重み付き抽選で次のキーワードを選ぶ。
 
     確率は「カテゴリ重み × キーワード優先度 p」。どちらも 2026-08-10 の
     PV実測（data/note_pv_20260810.csv）に基づく。直近カテゴリは連続を
     避けるため重みを半減させる。
+
+    only_category を渡すとそのカテゴリだけから選ぶ（連続回避の半減もしない）。
+    特定テーマを意図的に補充したいときに使う。2026-08-28 に代理店パートナー
+    獲得を強化したときは、抽選任せだと agency（重み3・9キーワード）が
+    まとまって出てこないので、このオプションで6本まとめて生成した。
     """
     used = get_used_keywords(tracker)
     last_category = tracker.get("last_category", None)
 
+    if only_category:
+        if only_category not in SEO_KEYWORDS:
+            raise ValueError(
+                f"未知のカテゴリ {only_category!r}（有効: {', '.join(CATEGORIES)}）")
+        last_category = None  # 指定時は連続回避を効かせない
+
     # 未使用キーワードを「カテゴリ重み × p」の回数だけ抽選箱に入れる
     candidates = []
     for cat in CATEGORIES:
+        if only_category and cat != only_category:
+            continue
         unused = [kw for kw in SEO_KEYWORDS[cat] if kw["keyword"] not in used]
         if not unused:
             continue
@@ -525,6 +601,105 @@ def post_process_article(body):
     return body.strip()
 
 
+# タイトル行だけに効く後始末と検査。
+# 2026-08-30 の実測で、本文の検品を通ったタイトルにこれらが出た:
+#   「**100組の新規ライバーさんを支えて気づいた**、…**トラブル**を**未然に防ぐ**5つの秘訣」
+#     → 見出し行に ** が散らばる（noteのタイトルはMarkdownを解釈しないので記号がそのまま出る）
+#   「私が送ったスカウトメール、99通で撃沈した話｜返信率0%から」
+#     → 送信数・返信率はどれも裏が取れない（プロンプトから一度消したはずの捏造が別の顔で戻った）
+#   「未経験から月間200名のライバーさんを抱えるまでに」
+#     → 200名は所属の総数であって「月間」ではない。確定ファクトの誤用
+_TITLE_BAD = [
+    (re.compile(r"\d+\s*(?:通|組|人|名)(?:の|を|に|で|送)"), "実績を数量で語っている（裏が取れない）"),
+    (re.compile(r"返信率\s*\d"), "返信率の具体数字（裏が取れない）"),
+    (re.compile(r"月間\s*200\s*名"), "所属200名は総数であって月間ではない"),
+    (re.compile(r"\d+\s*%"), "割合の具体数字（還元率100%を除き裏が取れない）"),
+]
+
+
+def clean_title_line(body):
+    """1行目の見出しから装飾記号を落とす。noteはタイトルのMarkdownを解釈しない。"""
+    lines = body.split("\n")
+    for i, ln in enumerate(lines):
+        if not ln.strip():
+            continue
+        t = ln.lstrip("#").strip()
+        t = re.sub(r"\*\*(.+?)\*\*", r"\1", t)   # **強調** を外す
+        t = t.replace("**", "").replace("__", "").strip()
+        lines[i] = "# " + t
+        break
+    return "\n".join(lines)
+
+
+def title_violations(body):
+    """タイトル行だけを見た違反。本文用の facts_patterns では拾えない型を補う。"""
+    for ln in body.split("\n"):
+        if ln.strip():
+            title = ln.lstrip("#").strip()
+            break
+    else:
+        return []
+    out = []
+    for rx, label in _TITLE_BAD:
+        m = rx.search(title)
+        if m:
+            if "還元率" in title and m.group(0).strip() == "100%":
+                continue
+            out.append((label, m.group(0)))
+    return out
+
+
+def facts_violations(text):
+    """確定ファクト違反を (ラベル, 該当語) のリストで返す。正本は facts_patterns。"""
+    import facts_patterns as fp
+    out = []
+    for fn in (fp.common_violations, fp.money_violations, fp.ng_violations,
+               fp.ratio_violations, fp.contract_axis_violations,
+               fp.line_link_violations):
+        try:
+            out += list(fn(text) or [])
+        except TypeError:
+            pass  # 引数の形が違う検査は飛ばす
+    # 同じ違反が何度も出るので畳む
+    seen, uniq = set(), []
+    for v in out:
+        k = str(v)
+        if k not in seen:
+            seen.add(k)
+            uniq.append(v)
+    return uniq
+
+
+def repair_article(api_key, keyword_info, body, violations):
+    """検出した違反だけを指摘して直させる。本文の構成は変えさせない。"""
+    from google import genai
+    lines = "\n".join(f"- 「{v[1]}」… {v[0]}" for v in violations)
+    prompt = (
+        "以下はNote記事の本文です。**書いてはいけない表現**が含まれています。\n"
+        "該当箇所だけを自然な日本語に直し、それ以外は1文字も変えないでください。\n"
+        "構成・見出し・文字数は保つこと。記事本文のみを出力し、説明は書かないこと。\n\n"
+        "【直す対象】\n" + lines + "\n\n"
+        "【直し方】\n"
+        "- 金額は、承認された数字（3ヶ月15〜20万 / 6ヶ月30〜40万 / Pococha B帯 月20〜30万）"
+        "以外は**その文ごと消すか、数字を使わない言い方に変える**。別の数字に置き換えない\n"
+        "- 「手数料」「マージン」「取り分」は報酬の話ごと削り、必要なら「還元率100%+α」とだけ書く\n"
+        "- 契約期間・違約金・退所条件の話は「条件は面談で説明します」に置き換える\n"
+        "- 「リスナー」単独は「リスナーさん」に開く\n"
+        "- 「確実に」「安定して稼げる」などの断定は「〜しやすい」「〜する人が多い」に緩める\n"
+        "- 「現役ライバー」は「元Pococha Sランク」または「事務所の代表」に直す\n"
+        "- **「オンライン面談」は「LINE通話でお話し」に直す**（『面談』単独は残してよい）\n"
+        "- 所属ライバー数は「200名」固定。「約200名」「200名以上」「累計」は付けない\n"
+        "- 指摘された語が**1つも残らない**ようにする。言い換えではなく、"
+        "その語を含む文ごと書き直してよい\n"
+        "- タイトル（1行目）の指摘なら、**タイトルごと作り直す**。"
+        "自分の実績を数量（通数・人数・返信率・割合）で語らない形にすること\n\n"
+        "【本文】\n" + body
+    )
+    client = genai.Client(api_key=api_key)
+    r = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
+    return r.text
+
+
 def generate_article(api_key, keyword_info):
     """Gemini APIで記事を生成（503/429エラー時は自動リトライ＋フォールバックモデル）"""
     import time
@@ -532,7 +707,13 @@ def generate_article(api_key, keyword_info):
 
     client = genai.Client(api_key=api_key)
 
-    prompt = ARTICLE_PROMPT.format(keyword=keyword_info["keyword"])
+    # 型は記事番号で順送りにする。ランダムだと同じ型が続くことがあり、
+    # モデル任せだと全部同じ型になる（実測: 6本中6本がD型）。
+    pattern = TITLE_PATTERNS[keyword_info.get("article_number", 0) % len(TITLE_PATTERNS)]
+    prompt = ARTICLE_PROMPT.format(keyword=keyword_info["keyword"],
+                                   title_pattern=pattern)
+    if keyword_info.get("category") == "agency":
+        prompt += AGENCY_PROMPT_EXTRA
 
     # 複数モデルを順に試行（503/429エラー時はフォールバック）
     models = ["gemini-2.5-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash"]
@@ -579,14 +760,23 @@ def save_article(number, slug, content):
 
 # ─── メイン処理 ───────────────────────────────────────
 
-def generate_one(api_key, dry_run=False):
+# generate_one の戻り値。None は「確定ファクト検品で落ちた（次のキーワードへ）」、
+# EXHAUSTED は「もう選べるキーワードが無い（ループを止める）」。
+# 2026-08-30 まで両方 None で、検品を入れた途端に**1本落ちるとバッチ全体が止まって
+# いた**（5本頼んで2本目で停止、生成は1本）。呼び出し側が区別できる必要がある。
+EXHAUSTED = "__exhausted__"
+
+
+def generate_one(api_key, dry_run=False, only_category=None):
     """1記事を生成"""
     tracker = load_tracker()
-    keyword_info = get_next_keyword(tracker)
+    keyword_info = get_next_keyword(tracker, only_category=only_category)
 
     if keyword_info is None:
-        print("  全キーワードを使い切りました。")
-        return None
+        msg = (f"  カテゴリ {only_category} の未使用キーワードがありません。"
+               if only_category else "  全キーワードを使い切りました。")
+        print(msg)
+        return EXHAUSTED
 
     article_num = get_next_article_number()
 
@@ -599,11 +789,36 @@ def generate_one(api_key, dry_run=False):
         print("  [dry-run] 生成スキップ")
         return {"number": article_num, "keyword": keyword_info, "dry_run": True}
 
-    # Gemini で記事生成
+    # Gemini で記事生成（タイトル型のローテーションに記事番号を使う）
+    keyword_info["article_number"] = article_num
     raw_article = generate_article(api_key, keyword_info)
 
     # 後処理
     processed = post_process_article(raw_article)
+
+    # 確定ファクト検品。ここまで検品が一切なく、違反したままの記事が投稿キューに
+    # 入っていた（2026-08-30、agency 6本中5本・計36件）。content_facts_guard は
+    # 毎日走るが、その前に note_auto_poster が公開してしまえば手遅れになる。
+    # 違反があれば該当箇所だけ直させ、それでも消えなければ**保存しない**。
+    processed = clean_title_line(processed)
+    v = facts_violations(processed) + title_violations(processed)
+    if v:
+        print(f"  確定ファクト違反 {len(v)}件 → 修正を試みます")
+        for lab, word in v:
+            print(f"    - 「{word}」 {lab}")
+        try:
+            processed = post_process_article(
+                repair_article(api_key, keyword_info, processed, v))
+        except Exception as e:
+            print(f"  !! 修正に失敗: {type(e).__name__}: {e}")
+        processed = clean_title_line(processed)
+        v = facts_violations(processed) + title_violations(processed)
+        if v:
+            print(f"  !! 違反が {len(v)}件 残ったので保存しません（キーワードは未使用のまま）")
+            for lab, word in v:
+                print(f"    - 「{word}」 {lab}")
+            return None
+        print("  修正後は違反0件")
 
     # CTA追加（カテゴリで出し分ける。agency は代理店LP＋代理店向け特典へ）
     final_content = processed + cta_block_for(keyword_info["category"])
@@ -689,6 +904,7 @@ def main():
     parser.add_argument("--generate", action="store_true", help="記事を生成")
     parser.add_argument("-n", type=int, default=1, help="生成する記事数（デフォルト: 1）")
     parser.add_argument("--dry-run", action="store_true", help="生成せずにキーワード選択のみ確認")
+    parser.add_argument("--category", help="このカテゴリだけから選ぶ（例: agency）")
     parser.add_argument("--list-unused", action="store_true", help="未使用キーワード一覧")
     parser.add_argument("--stats", action="store_true", help="統計情報")
 
@@ -715,13 +931,23 @@ def main():
         print("=" * 50)
 
         results = []
-        for i in range(args.n):
-            result = generate_one(api_key, dry_run=args.dry_run)
-            if result is None:
+        rejected = 0
+        # 検品落ちは「その1本を捨てて次のキーワードへ」。ただし全部落ち続けると
+        # APIを叩き続けるので、連続で落ちた回数に上限を置く。
+        attempts = 0
+        while len(results) < args.n and attempts < args.n * 3:
+            attempts += 1
+            result = generate_one(api_key, dry_run=args.dry_run,
+                                  only_category=args.category)
+            if result == EXHAUSTED:
                 break
+            if result is None:
+                rejected += 1
+                continue
             results.append(result)
 
-        print(f"\n生成完了: {len(results)}記事")
+        print(f"\n生成完了: {len(results)}記事"
+              + (f"（確定ファクト検品で不合格 {rejected}本）" if rejected else ""))
         return
 
     parser.print_help()

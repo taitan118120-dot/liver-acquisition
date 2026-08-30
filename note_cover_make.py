@@ -56,6 +56,7 @@ ACCENTS = {                 # kicker チップの色（プラットフォーム�
     "Pococha": (255, 92, 138),
     "TikTok LIVE": (0, 224, 196),
     "17LIVE": (255, 140, 60),
+    "代理店": (167, 139, 250),
     "_default": (79, 195, 247),
 }
 
@@ -145,29 +146,63 @@ def guess_kicker(title):
     return "ライブ配信"
 
 
+# 代理店（＝事務所を"作る側"）の記事に「ライブ配信」と貼ると、読者がライバー志望向けの
+# 記事だと思って素通りする。ただしタイトルだけでは判別しきれない（「事務所運営の
+# トラブル対応」「事務所の立ち上げ」は is_agency_article の強いしるしに当たらないし、
+# そこを緩めると「事務所の選び方」＝ライバー志望向けまで代理店扱いになる）。
+# 本文のCTAは note_article_generator が**カテゴリで**出し分けているので、
+# 代理店向け特典が入っているかを見るのがいちばん確実。
+_AGENCY_CTA_MARK = "ライバー代理店パートナー スタートガイド"
+
+
+def is_agency_article_file(num):
+    path = article_path(num)
+    if not path:
+        return False
+    try:
+        with open(path, encoding="utf-8") as f:
+            return _AGENCY_CTA_MARK in f.read()
+    except OSError:
+        return False
+
+
 def auto_lines(title, max_chars=11, max_lines=3):
-    """タイトルから見出し2〜3行を組む。句読点・記号で折る。"""
+    """タイトルから見出し2〜3行を組む。句読点・記号で折る。
+
+    最後に lines[:max_lines] で切ると、**入りきらなかった行が文の途中で消える**。
+    実測（#167「初めての担当ライバーが初配信で号泣。あの夜から私が変えた、事務所運営の
+    「トラブル対応」」）では3行目が「ら私が変えた、」になり、単語の途中から始まって
+    読点で終わる断片が、よりによって黄色ハイライトの位置に来ていた。
+
+    なので**入りきる「かたまり」だけを積む**。次のかたまりが丸ごと入らないなら
+    そこで打ち切る（途中から始めない）。最後に句読点で終わっていれば落とす。
+    """
     head = title.split("｜")[0]
     head = re.sub(r"【[^】]*】", "", head).strip()
-    head = head.replace("、", "、\n").replace("？", "？\n").replace("！", "！\n")
+    for mark in ("、", "。", "？", "！"):
+        head = head.replace(mark, mark + "\n")
     chunks = [c for c in (s.strip() for s in head.split("\n")) if c]
 
-    lines, cur = [], ""
+    lines = []
     for c in chunks:
-        while len(c) > max_chars:  # 長いかたまりは機械的に折る
-            if cur:
-                lines.append(cur)
-                cur = ""
-            lines.append(c[:max_chars])
-            c = c[max_chars:]
-        if len(cur) + len(c) <= max_chars:
-            cur += c
-        else:
-            if cur:
-                lines.append(cur)
-            cur = c
-    if cur:
-        lines.append(cur)
+        # このかたまりを積むのに要る行数
+        need = -(-len(c) // max_chars)
+        if len(lines) + need > max_lines:
+            break  # 丸ごと入らないなら手を付けない
+        piece = [c[i:i + max_chars] for i in range(0, len(c), max_chars)]
+        # 端数が1〜2文字だと「…のスカウ / ト」のように1文字だけ行に取り残される。
+        # そのぶんは前の行にあふれさせる（多少はみ出しても孤立文字よりは読める）。
+        if len(piece) > 1 and len(piece[-1]) <= 2:
+            piece[-2] += piece[-1]
+            piece.pop()
+        lines.extend(piece)
+    if not lines:  # 1かたまりも入らないほど長い場合だけ機械的に折る
+        flat = "".join(chunks)
+        lines = [flat[i:i + max_chars] for i in range(0, len(flat), max_chars)][:max_lines]
+    while lines and lines[-1] and lines[-1][-1] in "、。・「（":
+        lines[-1] = lines[-1][:-1]
+        if not lines[-1]:
+            lines.pop()
     return lines[:max_lines]
 
 
@@ -175,13 +210,16 @@ def resolve_text(num):
     """(kicker, lines, highlight_index) を返す。"""
     title = article_title(num)
     spec = load_text_map().get(str(num))
+    default_kicker = guess_kicker(title)
+    if default_kicker == "ライブ配信" and is_agency_article_file(num):
+        default_kicker = "代理店"
     if spec:
         lines = spec["lines"]
-        kicker = spec.get("kicker") or guess_kicker(title)
+        kicker = spec.get("kicker") or default_kicker
         hi = spec.get("highlight", len(lines) - 1)
     else:
         lines = auto_lines(title)
-        kicker = guess_kicker(title)
+        kicker = default_kicker
         hi = len(lines) - 1
     return kicker, lines, hi
 

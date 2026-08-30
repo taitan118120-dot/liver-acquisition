@@ -80,9 +80,57 @@
       "generated_at": "2026-04-26T23:22:23.287573",
       "published": true,
       "published_at": "2026-04-26T23:30:32.695507"
+    },
+    {
+      "keyword": "ライバー代理店 SNS 集客 方法",
+      "category": "agency",
+      "slug": "代理店SNS集客",
+      "article_number": 165,
+      "generated_at": "2026-08-30T22:23:26.835369",
+      "published": false
+    },
+    {
+      "keyword": "ライバー代理店 スカウト 返信率 コツ",
+      "category": "agency",
+      "slug": "代理店スカウト返信率",
+      "article_number": 166,
+      "generated_at": "2026-08-30T22:24:13.162182",
+      "published": false
+    },
+    {
+      "keyword": "ライバー事務所 運営 トラブル 対応",
+      "category": "agency",
+      "slug": "事務所運営トラブル",
+      "article_number": 167,
+      "generated_at": "2026-08-30T22:25:46.191069",
+      "published": false
+    },
+    {
+      "keyword": "ライバー事務所 立ち上げ 集客",
+      "category": "agency",
+      "slug": "事務所立ち上げ集客",
+      "article_number": 168,
+      "generated_at": "2026-08-30T22:31:39.256115",
+      "published": false
+    },
+    {
+      "keyword": "ライバー事務所 開業 準備 手順",
+      "category": "agency",
+      "slug": "事務所開業準備手順",
+      "article_number": 169,
+      "generated_at": "2026-08-30T22:37:54.858635",
+      "published": false
+    },
+    {
+      "keyword": "会社員 ライバー代理店 両立",
+      "category": "agency",
+      "slug": "会社員代理店両立",
+      "article_number": 170,
+      "generated_at": "2026-08-30T22:41:22.080365",
+      "published": false
     }
   ],
-  "last_category": "beginner",
+  "last_category": "agency",
   "retired": [
     {
       "keyword": "IRIAM 稼げる Vtuber",
