@@ -70,6 +70,26 @@ RATIO_WINDOW = 40
 # レンジの下限側だけを見れば足りるので、区切り文字を挟む形も許して先頭を取る。
 MONEY_LOW = re.compile(r"月\s*([0-9０-９]{1,3})\s*(?:[〜~\-–ー－][0-9０-９]{1,3}\s*)?万")
 _ZEN2HAN = str.maketrans("０１２３４５６７８９", "0123456789")
+
+# 2026-09-04: MONEY_LOW は「月」が数字の**直前**にある形しか拾わない。
+# ところが記事の中でいちばん目立つ場所——比較表・一覧——は「ラベル: 値」の形なので、
+# 「月」と数字が離れて素通りする。公開記事で実測した素通り例:
+#   ・活動期間: 〜3ヶ月 ／ 月収の目安: 5,000円〜3万円   （全期間PV2位・445PV の記事）
+#   ・月収の目安: 3万円〜10万円
+#   ・月収目標 5万円以下（副業ライバー）              （256PV の記事）
+# この記事は同じ本文の後半で「3ヶ月目で月15〜20万円」と書いていて、
+# **表と地の文で数字が矛盾**していた。表のほうが検索・AIに引かれやすいので害が大きい。
+# 「月収」ラベルの直後（数字を挟まない8字以内）に来る最初の金額だけを見る。
+# 「最高月収は3桁」「月収の現実」のように単位が万/円で終わらないものには当たらない。
+# `(?!益)` が必要: 「初月収益はほぼ0円が普通」は "初月" + "収益" であって月収の話ではない
+# のに、`月収` が部分文字列として当たって 0円=下限未満と誤検知した（実測1本）。
+MONEY_LABELED = re.compile(r"月収(?!益)[^0-9０-９\n]{0,8}([0-9０-９,]{1,7})\s*(万|円)")
+
+
+def _to_man(value, unit):
+    """「5,000円」→ 0.5、「3万」→ 3。万円単位に正規化する。"""
+    n = int(value.translate(_ZEN2HAN).replace(",", ""))
+    return n if unit == "万" else n / 10000
 # 確定レンジ（3ヶ月15〜20万 / 6ヶ月30〜40万 / B帯20〜30万）より下は書かない
 # [[feedback_income_figures]]: 月1〜3万等の少額表記は今後全媒体で書かない
 MONEY_FLOOR = 15
@@ -287,6 +307,20 @@ def money_violations(text, strict=False):
         around = text[max(0, m.start() - 4): m.end() + 6]
         if not any(re.search(a, around) for a in ALLOWED_MONEY):
             out.append((f"未確定の金額表記「月{amount}万」", m.group(0)))
+
+    # 「月収の目安: 5,000円〜3万円」のようにラベルと数字が離れている形（MONEY_LABELED）。
+    # 既に MONEY_LOW で同じ箇所を報告しているものは重ねない。
+    seen = {hit for _, hit in out}
+    for m in MONEY_LABELED.finditer(text):
+        man = _to_man(m.group(1), m.group(2))
+        if man >= MONEY_FLOOR:
+            continue
+        if AGENCY_WORD.search(text[:m.start()]):
+            continue  # 代理店パートナーの報酬は別軸（確定値）
+        hit = m.group(0)
+        if any(hit in s or s in hit for s in seen):
+            continue
+        out.append((f"確定レンジ未満の少額表記（月{MONEY_FLOOR}万が下限）", hit))
     return out
 
 

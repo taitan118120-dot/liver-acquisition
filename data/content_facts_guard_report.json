@@ -482,6 +482,11 @@
    "hit": "月5〜30万"
   },
   {
+   "where": "blog/articles_note/50_TikTokLIVE収益化完全ガイド.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月収10万"
+  },
+  {
    "where": "blog/articles_note/51_ライバー経費完全リスト75項目.md",
    "reason": "禁止語「手数料」",
    "hit": "手数料"
@@ -530,6 +535,11 @@
    "where": "blog/articles_note/57_ライバーデビュー準備.md",
    "reason": "少額表記（数万円/お小遣い程度）",
    "hit": "数万円"
+  },
+  {
+   "where": "blog/articles_note/57_ライバーデビュー準備.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月収は**5万"
   },
   {
    "where": "blog/articles_note/59_ライバーなるには.md",
@@ -627,6 +637,11 @@
    "hit": "IRIAM"
   },
   {
+   "where": "blog/articles_note/74_配信ゴールデンタイム完全ガイド.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月収目標 5万"
+  },
+  {
    "where": "blog/articles_note/75_ライバー親バレ対策完全ガイド.md",
    "reason": "根拠なしの実績誇張",
    "hit": "数千"
@@ -645,6 +660,11 @@
    "where": "blog/articles_note/75_ライバー親バレ対策完全ガイド.md",
    "reason": "確定レンジ未満の少額表記（月15万が下限）",
    "hit": "月3万"
+  },
+  {
+   "where": "blog/articles_note/75_ライバー親バレ対策完全ガイド.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月収10万"
   },
   {
    "where": "blog/articles_note/76_月収100万円ライバー共通点.md",
@@ -827,7 +847,13 @@
    "blog/articles_note/162_会社員をしながら代理店をやる1週間の組み方.md",
    "blog/articles_note/163_代理店に向いている人向いていない人.md",
    "blog/articles_note/164_代理店の1日の仕事内容時間の使い方.md",
+   "blog/articles_note/165_代理店SNS集客.md",
+   "blog/articles_note/166_代理店スカウト返信率.md",
+   "blog/articles_note/167_事務所運営トラブル.md",
+   "blog/articles_note/168_事務所立ち上げ集客.md",
+   "blog/articles_note/169_事務所開業準備手順.md",
    "blog/articles_note/16_ライバー事務所還元率の真実.md",
+   "blog/articles_note/170_会社員代理店両立.md",
    "blog/articles_note/17_ライバー面接対策.md",
    "blog/articles_note/18_Pocochaランク上げ方.md",
    "blog/articles_note/19_ライバー機材おすすめ.md",
