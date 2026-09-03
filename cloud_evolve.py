@@ -77,6 +77,31 @@ EXPERIENCE_THEMES = [
     "『顔出ししたくない』人が実際にどう配信を組み立てているか",
 ]
 
+# --- 代理店パートナー向けテーマ（2026-09-04 追加）---
+# それまで phase=="agency" の在庫は2026-08-11に手で書いた21本きりで、
+# cloud_evolve は growth しか作っていなかった＝代理店棚だけ補充されない状態だった。
+# 代理店を主軸にする方針（[[project_agency_shift]]）に合わせて生成対象に入れる。
+#
+# 切り口は**実務だけ**にする。Noteの実測（2026-08-28、公開140本の月間PV）で
+# 実務型14本の合計253PVに対し募集型は29PVと約9倍の差があり、検索して来るのは
+# 「もう始める気がある人」で、その人の困りごとはスカウトの返信率や立ち上げ方だと
+# 分かっている（[[feedback_agency_content_practical_not_recruiting]]）。
+# 「代理店とは」「メリット」「なる方法」「稼げるのか」はここに置かない。
+AGENCY_THEMES = [
+    "スカウトの返信が来ないときに、文面のどこを変えると返ってくるようになるか",
+    "声をかけた人との初回のやりとりで、金額の話より先に聞いていること",
+    "配信を始める前日までに渡しておくと、初配信で心が折れにくくなるもの",
+    "「考えます」で止まった相手を追わない代わりに、何をして待つか",
+    "会社員と兼業しながら、関わるライバーを持つときの現実的な時間の使い方",
+    "代理店を始めて最初の数人をどこから見つけたか（発信を先にした順番の話）",
+    "辞めそうなライバーが出すサインと、そのとき最初にやること",
+    "伸び悩んでいる子への声のかけ方。数字の話から入らない理由",
+    "自分で全部教えようとして詰んだ話と、事務所のマネージャーに投げる線引き",
+    "関わる人数が増えたときに最初に崩れるもの（連絡の粒度）と、その直し方",
+    "所属したあとの最初の1ヶ月に、代理店側が具体的に何をしているか",
+    "知らない人への一斉DMをやり切って分かったこと（届かない・アカウントが危ない）",
+]
+
 # 両プロンプトの末尾に差し込む確定ファクト制約（[[project_taitan_pro_note_facts]]）。
 # 2026-08-09 追加。これが無かった頃のプロンプトは「フリーで稼げる人は1割、
 # 残り9割は事務所入った方が早い」を**勝ちパターンの手本として提示していた**ため、
@@ -133,6 +158,7 @@ FACTS = """【割合統計の禁止（最優先・違反したら投稿は破棄
   旧名の「Pococha新人期スタートダッシュ〜」は書かない
 - CTAをDM誘導にしない（「DMで相談」「お気軽にDM」「DMして」「気になる人はDMで」等）。
   導線は特典PDF→LINE登録に統一。「オンライン無料相談」という言い方もしない。
+  「オンライン面談」「オンライン個別面談」「無料面談」も使わない（言うなら「LINE通話で相談」）。
   ※そもそもこの投稿にURL・リンク（lin.ee / lit.link 等）は入れない
 - 業界の市場規模・成長率（「市場規模は毎年130%成長」等）を裏取りなく書かない
 - 代理店の費用条件はLPが正本（加盟金・保証金・月会費・ロイヤリティの前払いなし）。
@@ -162,6 +188,10 @@ FACTS_COVERAGE = {
     "取扱は Pococha・TikTok LIVE・17LIVE の3つで統一": "他アプリも多数",
     "CTAがDM誘導（導線は特典PDF→LINE登録に統一）": "DMで相談",
     "「オンライン無料相談」は使わない": "オンライン無料相談",
+    # facts_patterns 由来（2026-09-04 追加）。検品にはあったのにFACTSに無く、
+    # AIは「オンライン面談」を安全だと思って書いて毎回捨てられていた。
+    "自社導線は「LINE通話で相談」（オンライン面談は使わない）": "オンライン面談",
+    "「無料面談」は使わない（CTAはLINE誘導に統一）": "無料面談",
     "使用禁止ブランド（TAITAN PROで統一）": "カーブアウト",
     "実在しないイベント": "京都コレクション",
     "出典なしの「上位N%」": "上位10%",
@@ -311,6 +341,46 @@ EXPERIENCE_PROMPT_TEMPLATE = """あなたはX(Twitter)でライブ配信・ラ�
 """
 
 
+AGENCY_PROMPT_TEMPLATE = """あなたはX(Twitter)でライブ配信について発信しているアカウントの「中の人」です。
+このアカウントの人物像：**Pococha歴4年。ライバー事務所TAITAN PROの代表で、ライバーを紹介して育てる側（代理店パートナー）の仕事も日々やっている。**
+今回書くのは、**代理店パートナーの「実務」の話**です。読み手は「人を紹介して育てる側に興味がある人／もう始めている人」。
+
+【この型で絶対に外してはいけない前提】
+- **募集・制度説明を書いたら失敗**。「代理店とは」「メリット」「なる方法」「稼げるのか」「在庫なし・初期費用0円」は書かない。
+  実測で、この手の説明型は実務型の1/9しか読まれていない。
+- 書くのは**手を動かしている場面**。声をかける／返信が来ない／初配信に付き添う／辞めそうな子に連絡する、といった具体的な場面から入る。
+- 条件・報酬の話をしたくなったら書かない。この投稿の役目は「この人は現場を知っている」と思わせることだけ。
+
+【守るべきルール】
+1. 出力は **必ずJSON配列**。各要素は **2〜4ツイートのスレッド配列**
+2. 1ツイート目は具体的な場面から入る。煽りフック（「99%が知らない」等）は禁止
+   良い例:「スカウトの返信率が上がったのは、文面を変えたからじゃなくて最初の一文で相手の話を先に聞くようにしてから」
+   悪い例:「ライバー代理店のメリット5選↓」(←説明型。今回は禁止)
+3. 2ツイート目以降は、実際にやっている手順・声のかけ方・判断基準を具体的に書く。精神論で終わらせない
+4. **数字は確実に言える範囲でだけ。盛らない・でっち上げない。** 代理店の報酬額・還元率の話は書かない
+   （還元率100%+αはライバーへの還元条件なので、代理店の報酬として書くと誤読される）
+5. ライバー本人の月収実例も、代理店の収入と誤読されるのでこの型では書かない
+6. タメ口・自然な語り口。先輩が後輩に共有するくらいの温度。絵文字は0〜1個
+7. 宣伝臭・URL・事務所名・「募集中」は入れない（CTAは投稿後の返信で別途出す）
+8. 「不労所得」「権利収入」「働かなくても入る」系の言い換えは一切禁止（マルチ的表現）
+9. 毎回ちがう入り方・ちがう締めにする
+
+{facts}
+
+テーマ: {theme}
+
+{top_posts_context}
+
+上記テーマで、3スレッド分の投稿案をJSONで出力してください。
+出力フォーマット（**これ以外の文字を出力しない**、コードブロックも不要、純粋なJSONのみ）:
+[
+  ["1ツイート目", "2ツイート目", "3ツイート目"],
+  ["1ツイート目", "2ツイート目"],
+  ["1ツイート目", "2ツイート目", "3ツイート目", "4ツイート目"]
+]
+"""
+
+
 def analyze_tweets():
     """過去の投稿を分析して伸びたパターンを特定する"""
     try:
@@ -377,6 +447,7 @@ def _extract_json_array(text):
 def generate_with_gemini(theme, top_posts, style="debate"):
     """Gemini AIでスレッド投稿を生成。返り値は List[List[str]]
     style: "debate"=対立軸・煽り型 / "experience"=経験・一次情報型
+           / "agency"=代理店パートナー向けの実務型
     """
     if not HAS_GEMINI or not GEMINI_API_KEY:
         print("[WARN] Gemini API未設定。スキップ。")
@@ -389,7 +460,10 @@ def generate_with_gemini(theme, top_posts, style="debate"):
             text_preview = p["text"][:80].replace("\n", " ")
             top_posts_context += f"{i}. {text_preview}...\n"
 
-    template = EXPERIENCE_PROMPT_TEMPLATE if style == "experience" else PROMPT_TEMPLATE
+    template = {
+        "experience": EXPERIENCE_PROMPT_TEMPLATE,
+        "agency": AGENCY_PROMPT_TEMPLATE,
+    }.get(style, PROMPT_TEMPLATE)
     prompt = template.format(
         theme=theme,
         top_posts_context=top_posts_context,
@@ -510,15 +584,23 @@ def main():
     # 3. テーマ選定: 経験型を多めに(2)、対立軸を控えめに(2)。
     #    人間化改修(2026-06-15): 以前は対立軸4テーマ=全投稿が煽りテンプレでbot臭かった。
     #    経験・一次情報型を半分入れて「中の人」感を出す。
-    exp_themes = [("experience", t) for t in random.sample(EXPERIENCE_THEMES, 2)]
-    deb_themes = [("debate", t) for t in random.sample(THEMES, 2)]
-    selected = exp_themes + deb_themes
+    # 2026-09-04: 代理店テーマを2枠追加（experience 2 + debate 2 → 1 + 1 + agency 2）。
+    #   growth棚は359本の在庫があるのに対し agency棚は21本しかなく、
+    #   AGENCY_POST_RATE=0.40 で出すと代理店だけ先に枯れて growth に落ちてしまう。
+    #   在庫が薄い棚を厚く作る。
+    exp_themes = [("experience", t) for t in random.sample(EXPERIENCE_THEMES, 1)]
+    deb_themes = [("debate", t) for t in random.sample(THEMES, 1)]
+    agn_themes = [("agency", t) for t in random.sample(AGENCY_THEMES, 2)]
+    selected = exp_themes + deb_themes + agn_themes
     random.shuffle(selected)
     selected_themes = [t for _, t in selected]  # レポート用
 
     for style, theme in selected:
         print(f"\n[{style}] テーマ: {theme}")
-        threads = generate_with_gemini(theme, top_posts, style=style)
+        # 代理店型に「伸びた過去の投稿」を見せない。トップは全部growthの煽り型なので、
+        # 手本として渡すと代理店投稿まで煽り・説明型に引き戻される。
+        threads = generate_with_gemini(
+            theme, [] if style == "agency" else top_posts, style=style)
 
         for thread in threads:
             head = thread[0][:30]
@@ -528,7 +610,9 @@ def main():
 
             existing.append({
                 "id": f"evo_{next_id:03d}",
-                "phase": "growth",
+                # cloud_post.py はこの phase で「今回どの棚から引くか」を決める。
+                # agency を growth のまま入れると代理店棚が永久に補充されない。
+                "phase": "agency" if style == "agency" else "growth",
                 "style": style,
                 "thread": thread,
             })
