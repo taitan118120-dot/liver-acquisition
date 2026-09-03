@@ -2001,8 +2001,10 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
-    "created_at": "2026-08-30T17:16:38"
+    "posted": true,
+    "created_at": "2026-08-30T17:16:38",
+    "posted_at": "2026-09-03T02:15:07",
+    "media_id": "18075239765399234"
   },
   {
     "text": "配信枠を閉じた後の静寂は、配信者にしか分からない。\nさっきまで賑やかだった画面が、急に真っ暗になるあの瞬間。\n感情の起伏が激しいからこそ、メンタルケアは本当に大事だ。\nみんな頑張りすぎないでほしい。",
@@ -2070,7 +2072,9 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
-    "created_at": "2026-08-30T17:16:38"
+    "posted": true,
+    "created_at": "2026-08-30T17:16:38",
+    "posted_at": "2026-09-02T17:04:35",
+    "media_id": "17988844863045110"
   }
 ]
