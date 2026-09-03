@@ -37,6 +37,26 @@
    "hit": "月3万"
   },
   {
+   "where": "blog/articles/work-from-home-sidejob.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月収目安 | 1〜10万"
+  },
+  {
+   "where": "blog/articles/work-from-home-sidejob.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月収目安 | 3〜15万"
+  },
+  {
+   "where": "blog/articles/work-from-home-sidejob.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月収目安 | 3〜20万"
+  },
+  {
+   "where": "blog/articles/work-from-home-sidejob.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月収目安 | 0〜50万"
+  },
+  {
    "where": "blog/articles_note/01_ライバー始め方.md",
    "reason": "取扱外プラットフォーム",
    "hit": "IRIAM"
@@ -295,6 +315,11 @@
    "where": "blog/articles_note/27_ライバー事務所おすすめランキング.md",
    "reason": "根拠なしの実績誇張",
    "hit": "多数輩出"
+  },
+  {
+   "where": "blog/articles_note/28_ライバー1日スケジュール.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月収5〜15万"
   },
   {
    "where": "blog/articles_note/29_ライバー事務所怪しい見分け方.md",
@@ -640,6 +665,11 @@
    "where": "blog/articles_note/74_配信ゴールデンタイム完全ガイド.md",
    "reason": "確定レンジ未満の少額表記（月15万が下限）",
    "hit": "月収目標 5万"
+  },
+  {
+   "where": "blog/articles_note/74_配信ゴールデンタイム完全ガイド.md",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月収目標 10〜20万"
   },
   {
    "where": "blog/articles_note/75_ライバー親バレ対策完全ガイド.md",

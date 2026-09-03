@@ -84,6 +84,14 @@ _ZEN2HAN = str.maketrans("０１２３４５６７８９", "0123456789")
 # `(?!益)` が必要: 「初月収益はほぼ0円が普通」は "初月" + "収益" であって月収の話ではない
 # のに、`月収` が部分文字列として当たって 0円=下限未満と誤検知した（実測1本）。
 MONEY_LABELED = re.compile(r"月収(?!益)[^0-9０-９\n]{0,8}([0-9０-９,]{1,7})\s*(万|円)")
+# レンジで**単位が後ろの数字にしか付かない**形。「月収5〜15万円」は上のパターンだと
+# 「5」の直後が「〜」なので当たらず、MONEY_LOW も「月」の直後が「収」なので当たらない。
+# 実測: 139PV の記事の見出し「副業ライバーの1日スケジュール（月収5〜15万円）」が
+# 両方をすり抜けていた。下限側だけ見れば足りるので先頭の数字を取る。
+# 「5,000円〜3万円」のように**前の数字に単位が付いている**形は上のパターンが先に拾うので、
+# こちらが 5,000〜3万＝5000万 と読んでも下限判定には引っかからず害はない。
+MONEY_LABELED_RANGE = re.compile(
+    r"月収(?!益)[^0-9０-９\n]{0,8}([0-9０-９,]{1,7})\s*[〜~\-–ー－]\s*[0-9０-９,]{1,7}\s*(万|円)")
 
 
 def _to_man(value, unit):
@@ -311,16 +319,18 @@ def money_violations(text, strict=False):
     # 「月収の目安: 5,000円〜3万円」のようにラベルと数字が離れている形（MONEY_LABELED）。
     # 既に MONEY_LOW で同じ箇所を報告しているものは重ねない。
     seen = {hit for _, hit in out}
-    for m in MONEY_LABELED.finditer(text):
-        man = _to_man(m.group(1), m.group(2))
-        if man >= MONEY_FLOOR:
-            continue
-        if AGENCY_WORD.search(text[:m.start()]):
-            continue  # 代理店パートナーの報酬は別軸（確定値）
-        hit = m.group(0)
-        if any(hit in s or s in hit for s in seen):
-            continue
-        out.append((f"確定レンジ未満の少額表記（月{MONEY_FLOOR}万が下限）", hit))
+    for rx in (MONEY_LABELED, MONEY_LABELED_RANGE):
+        for m in rx.finditer(text):
+            man = _to_man(m.group(1), m.group(2))
+            if man >= MONEY_FLOOR:
+                continue
+            if AGENCY_WORD.search(text[:m.start()]):
+                continue  # 代理店パートナーの報酬は別軸（確定値）
+            hit = m.group(0)
+            if any(hit in s or s in hit for s in seen):
+                continue
+            seen.add(hit)
+            out.append((f"確定レンジ未満の少額表記（月{MONEY_FLOOR}万が下限）", hit))
     return out
 
 
