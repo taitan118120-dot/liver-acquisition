@@ -61,6 +61,11 @@
    "hit": "150人以上の所属"
   },
   {
+   "where": "instagram/ig_posts.json:ig_auto_012",
+   "reason": "出典なしの割合統計（割合が主語の後ろ）",
+   "hit": "ochaでイベント入賞を経験したライバーの約70%が「初心者の頃に初入賞した」と回答していま"
+  },
+  {
    "where": "instagram/ig_posts.json:ig_auto_013",
    "reason": "「いつでも退所」「違約金なし」の完成形（自社主張）",
    "hit": "違約金なし"
@@ -69,6 +74,16 @@
    "where": "instagram/ig_posts.json:ig_auto_013",
    "reason": "出典なしの割合統計（離脱/成功率）",
    "hit": "乗り越えるための具体的な改善策や、新しい道が必ずあります。\n\n実は、ライバーの約60%が開始3ヶ月以内に「辞めたい」と感"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_013",
+   "reason": "出典なしの割合統計（割合が主語の後ろ）",
+   "hit": "しい道が必ずあります。\n\n実は、ライバーの約60%が開始3ヶ月以内に「辞めたい」と感じた経験"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_014",
+   "reason": "出典なしの割合統計（他と比べた増減）",
+   "hit": "がける\n　男性ライバーはリスナー定着率が女性より約20%高い傾向。一度ついたファンを大切"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_015",
@@ -116,6 +131,16 @@
    "hit": "市場は2026年現在、日本国内だけで約1,500億円"
   },
   {
+   "where": "instagram/ig_posts.json:ig_auto_021",
+   "reason": "出典なしの割合統計（他と比べた増減）",
+   "hit": "35歳で、30代ライバーの月収中央値は20代より約20%も高いというデータも。リスナー側も"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_021",
+   "reason": "出典なしの割合統計（割合が主語の後ろ）",
+   "hit": "00億円規模に成長。Pococha利用者の約40%は25〜35歳で、30代ライバーの月収中央"
+  },
+  {
    "where": "instagram/ig_posts.json:ig_auto_022",
    "reason": "根拠のない市場規模・成長率",
    "hit": "市場は、2026年には約1,500億円"
@@ -161,6 +186,11 @@
    "hit": "150名以上のライバー"
   },
   {
+   "where": "instagram/ig_posts.json:ig_auto_031",
+   "reason": "出典なしの割合統計（割合が主語の後ろ）",
+   "hit": "RO調べでは、ライバーが移籍を考える理由の35%が「サポート不足」、25%が「還元率への不"
+  },
+  {
    "where": "instagram/ig_posts.json:ig_auto_032",
    "reason": "取扱外プラットフォーム",
    "hit": "IRIAM"
@@ -196,9 +226,19 @@
    "hit": "に辞めてしまうケースは少なくありませんでした。\n1年続き、安定して稼ぐライバーの9割が共通して持っていたのは、「昨日と少"
   },
   {
+   "where": "instagram/ig_posts.json:ig_auto_038",
+   "reason": "出典なしの割合統計（割合が主語の後ろ）",
+   "hit": "器にコアファンを育てる\n当事務所の上位層の43%が、面談時に人見知りを自称していました。明"
+  },
+  {
    "where": "instagram/ig_posts.json:ig_auto_040",
    "reason": "出典なしの割合統計（離脱/成功率）",
    "hit": "ライブ配信で挫折する人、理由の9割はこれです。最初の1ヶ月が運命を分けます。\n\n「『誰も見てくれない配信、これ続け"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_049",
+   "reason": "出典なしの割合統計（割合が主語の後ろ）",
+   "hit": "のデータでは、3ヶ月以上継続したライバーの約70%が月収5万円以上を達成しています。特に、毎"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_050",
@@ -263,11 +303,6 @@
    "hit": "一般的な事務所"
   },
   {
-   "where": "blog/articles/how-to-start-liver.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
-  },
-  {
    "where": "blog/articles/liver-agency-guide.md",
    "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
    "hit": "違約金"
@@ -276,11 +311,6 @@
    "where": "blog/articles/liver-agency-guide.md",
    "reason": "他社を下げる書き方",
    "hit": "他の事務所は"
-  },
-  {
-   "where": "blog/articles/liver-income-reality.md",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月3万"
   },
   {
    "where": "blog/articles/work-from-home-sidejob.md",
@@ -303,11 +333,6 @@
    "hit": "月収目安 | 0〜50万"
   },
   {
-   "where": "blog/articles_note/01_ライバー始め方.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
-  },
-  {
    "where": "blog/articles_note/02_Pococha稼げる.md",
    "reason": "確定レンジ未満の少額表記（月15万が下限）",
    "hit": "月5万"
@@ -321,11 +346,6 @@
    "where": "blog/articles_note/03_事務所選び方.md",
    "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
    "hit": "契約期間"
-  },
-  {
-   "where": "blog/articles_note/05_ライバー収入現実.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
   },
   {
    "where": "blog/articles_note/06_在宅副業おすすめ.md",
@@ -383,11 +403,6 @@
    "hit": "違約金"
   },
   {
-   "where": "blog/articles_note/10_大学生ライバー.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
-  },
-  {
    "where": "blog/articles_note/110_副業ライバー収入いつからいくら現実.md",
    "reason": "確定レンジ未満の少額表記（月15万が下限）",
    "hit": "月10万"
@@ -416,11 +431,6 @@
    "where": "blog/articles_note/117_17LIVE事務所おすすめ選び方.md",
    "reason": "断定・保証表現",
    "hit": "絶対稼げ"
-  },
-  {
-   "where": "blog/articles_note/11_主婦ライバー.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
   },
   {
    "where": "blog/articles_note/123_配信の頻度と長さの決め方.md",
@@ -488,11 +498,6 @@
    "hit": "月6万"
   },
   {
-   "where": "blog/articles_note/17_ライバー面接対策.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
-  },
-  {
    "where": "blog/articles_note/21_ライバー伸びない原因.md",
    "reason": "根拠なしの実績誇張",
    "hit": "数百人"
@@ -519,11 +524,6 @@
   },
   {
    "where": "blog/articles_note/26_ライバー副業バレない.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
-  },
-  {
-   "where": "blog/articles_note/26_ライバー副業バレない.md",
    "reason": "断定・保証表現",
    "hit": "保証"
   },
@@ -531,11 +531,6 @@
    "where": "blog/articles_note/27_ライバー事務所おすすめランキング.md",
    "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
    "hit": "契約期間"
-  },
-  {
-   "where": "blog/articles_note/27_ライバー事務所おすすめランキング.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
   },
   {
    "where": "blog/articles_note/27_ライバー事務所おすすめランキング.md",
@@ -584,11 +579,6 @@
   },
   {
    "where": "blog/articles_note/34_ライバー容姿関係ない.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
-  },
-  {
-   "where": "blog/articles_note/34_ライバー容姿関係ない.md",
    "reason": "断定・保証表現",
    "hit": "安定して稼"
   },
@@ -629,23 +619,8 @@
   },
   {
    "where": "blog/articles_note/41_40代50代ライバー始め方.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
-  },
-  {
-   "where": "blog/articles_note/41_40代50代ライバー始め方.md",
    "reason": "確定レンジ未満の少額表記（月15万が下限）",
    "hit": "月3〜10万"
-  },
-  {
-   "where": "blog/articles_note/44_初配信コツ.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
-  },
-  {
-   "where": "blog/articles_note/45_ライバー時給.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
   },
   {
    "where": "blog/articles_note/47_副業月5万在宅.md",
@@ -759,23 +734,8 @@
   },
   {
    "where": "blog/articles_note/56_副業ライバーおすすめ.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
-  },
-  {
-   "where": "blog/articles_note/56_副業ライバーおすすめ.md",
-   "reason": "断定・保証表現",
-   "hit": "安定して稼"
-  },
-  {
-   "where": "blog/articles_note/56_副業ライバーおすすめ.md",
    "reason": "確定レンジ未満の少額表記（月15万が下限）",
    "hit": "月10万"
-  },
-  {
-   "where": "blog/articles_note/57_ライバーデビュー準備.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
   },
   {
    "where": "blog/articles_note/57_ライバーデビュー準備.md",
@@ -819,11 +779,6 @@
   },
   {
    "where": "blog/articles_note/62_TikTokLIVE始め方完全ガイド.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
-  },
-  {
-   "where": "blog/articles_note/62_TikTokLIVE始め方完全ガイド.md",
    "reason": "根拠なしの実績誇張",
    "hit": "数百人"
   },
@@ -849,11 +804,6 @@
   },
   {
    "where": "blog/articles_note/65_TikTokライバー事務所選び方.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
-  },
-  {
-   "where": "blog/articles_note/65_TikTokライバー事務所選び方.md",
    "reason": "断定・保証表現",
    "hit": "保証"
   },
@@ -869,18 +819,8 @@
   },
   {
    "where": "blog/articles_note/73_顔バレ身バレ対策完全ガイド.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
-  },
-  {
-   "where": "blog/articles_note/73_顔バレ身バレ対策完全ガイド.md",
    "reason": "確定レンジ未満の少額表記（月15万が下限）",
    "hit": "月10〜30万"
-  },
-  {
-   "where": "blog/articles_note/74_配信ゴールデンタイム完全ガイド.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
   },
   {
    "where": "blog/articles_note/74_配信ゴールデンタイム完全ガイド.md",
@@ -911,11 +851,6 @@
    "where": "blog/articles_note/75_ライバー親バレ対策完全ガイド.md",
    "reason": "確定レンジ未満の少額表記（月15万が下限）",
    "hit": "月収10万"
-  },
-  {
-   "where": "blog/articles_note/76_月収100万円ライバー共通点.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
   },
   {
    "where": "blog/articles_note/76_月収100万円ライバー共通点.md",
@@ -1703,6 +1638,6 @@
    "blog/articles_note/98_会社員から配信月100万代理店並行150万専業ライバー.md",
    "blog/articles_note/99_ライブ配信盛り上げる技術_元ミクチャNo1の枠づくり.md"
   ],
-  "ig_posted": 88
+  "ig_posted": 89
  }
 }
