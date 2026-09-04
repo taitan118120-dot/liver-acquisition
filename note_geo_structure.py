@@ -14,7 +14,7 @@
   （引用にしたかったが素のテキストで入っている）。
 
 やること:
-  1. 連続する「・」段落 → `<ul><li>`
+  1. 連続する「・」段落と「* 」段落 → `<ul><li>`（記号は BULLET_RE 参照。`*` は空白必須）
   2. 連続する「&gt;」段落 → `<blockquote>`（読者に見えている「> 」の記号も消える）
 
 ⚠️ **note は `<table>` を保存時に捨てる**（2026-09-04 に n944fb192d459 で実測）。
@@ -93,7 +93,7 @@ def norm(html):
     """文言の同一性を見るための正規化。記号と空白を全部落とす。"""
     t = strip_tags(detable(html))
     t = t.replace("&nbsp;", "").replace("：", ":")
-    for ch in "・／/|>＞ \t\n\r　":
+    for ch in "・*＊／/|>＞ \t\n\r　":
         t = t.replace(ch, "")
     t = t.replace("&gt;", "")
     return t
@@ -112,6 +112,15 @@ def tokenize(body):
     return out
 
 
+# 箇条書きの記号は「・」だけではない。「*」で書かれた段落が上位60本中9本・72個あった
+# （実測 2026-09-04）。ただし `*` は**後ろに空白があるかどうかで意味が変わる**:
+#   「* 朝7時：通勤・通学中の電車内視聴ピーク」 → 箇条書き
+#   「*この記事は、TAITAN PRO所属ライバーの…」 → 注釈（箇条書きではない）
+# 空白を要求しないと注釈まで <li> に押し込んでしまうので、空白必須にする。
+BULLET_RE = re.compile(r"^(?:・|[*＊][ 　\t])")
+QUOTE_RE = re.compile(r"^(?:&gt;|>|＞)")
+
+
 def kind(tok):
     """要素の種類を返す: bullet / quote / spacer / other / raw"""
     if tok[0] == "raw":
@@ -122,9 +131,9 @@ def kind(tok):
     text = strip_tags(inner).strip().replace("&nbsp;", "").replace("　", " ").strip()
     if not text:
         return "spacer"
-    if text.startswith("・"):
+    if BULLET_RE.match(text):
         return "bullet"
-    if text.startswith("&gt;") or text.startswith(">") or text.startswith("＞"):
+    if QUOTE_RE.match(text):
         return "quote"
     return "other"
 
@@ -142,7 +151,7 @@ def _drop_marker(inner, markers):
 
 def table_row(inner):
     """「ラベル: 値 ／ ラベル: 値」を [(label, value), ...] にする。表にできなければ None。"""
-    text = _drop_marker(inner, ["・"])
+    text = _drop_marker(inner, ["・", "* ", "*　", "＊ ", "＊　"])
     text = strip_tags(text).replace("&nbsp;", " ").strip()
     parts = [p.strip() for p in re.split(r"[／/]", text) if p.strip()]
     if len(parts) < 2:
@@ -171,7 +180,8 @@ def build_table(rows):
 
 
 def build_ul(items):
-    lis = "".join(f"<li>{_drop_marker(i, ['・']).strip()}</li>" for i in items)
+    lis = "".join(f"<li>{_drop_marker(i, ['・', '* ', '*　', '＊ ', '＊　']).strip()}</li>"
+                  for i in items)
     return f"<ul>{lis}</ul>"
 
 
@@ -349,12 +359,12 @@ def verify(top):
         tb = len(re.findall(r"<table", b))
         bq = len(re.findall(r"<blockquote", b))
         naka = len([t for t in re.findall(r"<p[^>]*>(.*?)</p>", b, re.S)
-                    if strip_tags(t).strip().startswith("・")])
+                    if BULLET_RE.match(strip_tags(t).strip())])
         bad = []
         if naka:
-            bad.append(f"「・」段落が{naka}個 残り")
-        if ul <= 1:
-            bad.append("本文の箇条書きが無い")
+            bad.append(f"箇条書き段落が{naka}個 残り")
+        # ul<=1 だけでは NG にしない。地の文だけで書かれていて箇条書きが元から
+        # 無い記事が実在する（n60d572c717f5 は「・」段落0）。残存があるかどうかで見る。
         if not d.get("eyecatch"):
             bad.append("eyecatchなし")
         if len(d.get("hashtag_notes") or []) < 10:
