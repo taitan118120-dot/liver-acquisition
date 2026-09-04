@@ -67,6 +67,14 @@ RATIO_PREDICATE = re.compile(r"[1-9]\s*割\s*(?:は|が|も|以上が|近くが)
 RATIO_COMPARISON = re.compile(
     r"(?<![0-9０-９])[0-9０-９]{1,2}\s*[%％]\s*(?:も|ほど|近く)?\s*(?:高|低|多|少|増|伸)")
 
+# ⑤ 割合が主語の**後ろ**に来る形 …「Pococha利用者の約40%は25〜35歳」型。
+#    ②RATIO_SUBJECT は `N%の(ライバー|人|…)` しか見ない＝語順が逆だと当たらない。
+#    2026-09-04、投稿済みIG ig_auto_021 の本文がこの形で素通りしていた。
+#    `[0-9]{1,2}` に限るのは「還元率の100%は」を巻き込まないため（3桁は当たらない）。
+#    「の」を必須にすることで「50%以上」のような単独の割合表記とは切り分ける。
+RATIO_POSTFIX = re.compile(
+    r"の\s*(?:約|およそ)?\s*(?<![0-9０-９])[0-9０-９]{1,2}\s*[%％]\s*(?:は|が|も)")
+
 # 近接判定の窓幅（前後の文字数）
 RATIO_WINDOW = 40
 
@@ -318,6 +326,11 @@ def ratio_violations(text):
     if m:
         out.append(("出典なしの割合統計（他と比べた増減）",
                     text[max(0, m.start() - 25): m.end() + 15].strip()[:60]))
+
+    m = RATIO_POSTFIX.search(text)
+    if m:
+        out.append(("出典なしの割合統計（割合が主語の後ろ）",
+                    text[max(0, m.start() - 20): m.end() + 20].strip()[:60]))
     return out
 
 
