@@ -78,9 +78,13 @@ if BASE_DIR not in sys.path:
 # 禁止パターンの正本は facts_patterns.py だけ。ここに再定義すると
 # 「必ずどれか1本が古くなる」に逆戻りする（まさに今回の京都コレクションがそれ）。
 from facts_patterns import (  # noqa: E402
-    AUDIT_WARN_LABELS, CONTRACT_AXIS_LABEL, common_violations)
+    AUDIT_WARN_LABELS, CONTRACT_AXIS_LABEL, EXIT_CLAIM_LABEL, MONEY_FLOOR,
+    common_violations)
 
 REPORT_FILE = os.path.join(BASE_DIR, "data", "content_facts_guard_report.json")
+
+# 投稿済みInstagramキャプションの記録（instagram/ig_poster.py が posted を立てる）
+IG_POSTS_FILE = os.path.join(BASE_DIR, "instagram", "ig_posts.json")
 
 # ── 記事だけ「検知はする／赤にはしない」に落とすルール ──────────────
 # 2026-08-12 に blog/ 149本へ当てて実測した結果から決めている。数字は実測の箇所数。
@@ -131,12 +135,51 @@ ARTICLE_WARN_LABELS = frozenset({
     "自社導線は「LINE通話で相談」（オンライン面談は使わない）",
 })
 
-# 判断軸の矛盾だけは、記事でも**赤**のまま通す。
-# 上の集合に足せば番犬はすぐ静かになるが、それは2026-08-12に12箇所が
+# ── 投稿済みInstagramキャプションの物差し（2026-09-04 追加）───────────
+# 背景: instagram/ig_posts.json の posted 分（88本）を見ている番犬が**1本も無かった**。
+#   content_facts_guard … LP / 特典PDF / 記事
+#   social_profile_guard … プロフィール・固定ポスト
+#   queue_facts_guard   … X / Threads の**未投稿**キュー
+# どれも投稿済みIGを見ていないので、2026-08以降に確定したファクト
+# （還元率100%+α・取扱3アプリ・特典PDF改名・契約期間に触れない）が
+# 公開済みのIG投稿に一切反映されないまま4ヶ月以上放置されていた。
+#
+# 物差しは記事とも LP とも違う。IGキャプションは短文の自社発信で、
+# 「事務所選びの注意点」という記事的な中身も持つという二面性がある。
+#   - 自社の条件・導線・取扱アプリを名乗る形 → 赤（記事のように第三者の事実へ逃げられない）
+#   - 少額表記・割合フック・リスナー呼び捨て  → WARN（件数が多く、直す価値の判断が人の仕事）
+#
+# ⚠ 公開済みキャプションは Graph API で更新できない（更新エンドポイントが無い）。
+#   赤が出たらInstagramアプリからの手編集になる。だからこの番犬は
+#   「直す計画とセット」でしか意味を持たない（[[feedback_watchdog_autoclose]]）。
+IG_POSTED_WARN_LABELS = frozenset({
+    # 32箇所。ユーザー判断で「自社矛盾のみ直す」と決めた分（2026-09-04）。
+    # 直す対象から外れているものを赤にすると番犬が鳴きやまない。
+    f"確定レンジ未満の少額表記（月{MONEY_FLOOR}万が下限）",
+    "少額表記（数万円/お小遣い程度）",
+    # 38箇所。[[feedback_listener_san]] のトーン規則で、自社ファクトとの矛盾ではない。
+    "リスナーの呼び捨て",
+    # 15箇所。ほぼ全部が【9割が知らない】という**クリックベイトのフック**で、
+    # ライバーの離脱率のような事実主張ではない。離脱/成功率のほうは赤のまま。
+    "出典なしの割合統計（割合がそのまま述語）",
+    # 11箇所。記事と同じ理由（「違約金の有無を契約前に確認しましょう」は正しい助言）。
+    # ⚠ 完成形の自社主張（EXIT_CLAIM_LABEL）は別ラベルで赤にしてある。
+    "「いつでも退所」「違約金なし」系／契約期間への言及",
+    # 8箇所。記事と同じく「『絶対稼げる』と断言する事務所は危険」の引用が混ざる。
+    # 引用形は facts_patterns 側で免除済みだが、「安定して稼ぐ」のような
+    # 自社の約束かどうかは文脈次第なので人が読んで消す。
+    "断定・保証表現",
+})
+
+# 判断軸の矛盾と「違約金なし」の完成形だけは、どの媒体でも**赤**のまま通す。
+# WARN 集合に足せば番犬はすぐ静かになるが、それは2026-08-12に12箇所が
 # 64件のWARNに埋もれて誰も気づかなかった状態そのものなので、機械で塞いでおく。
-# WARN に落としたい衝動が湧いたら、まず記事の判断軸を直す（長さ→明記・説明）。
-assert CONTRACT_AXIS_LABEL not in (AUDIT_WARN_LABELS | ARTICLE_WARN_LABELS), (
-    f"{CONTRACT_AXIS_LABEL} はWARNに落としてはいけない（赤のまま出す）")
+# WARN に落としたい衝動が湧いたら、まず中身の判断軸を直す（長さ→明記・説明）。
+_ALWAYS_RED = (CONTRACT_AXIS_LABEL, EXIT_CLAIM_LABEL)
+for _label in _ALWAYS_RED:
+    assert _label not in (
+        AUDIT_WARN_LABELS | ARTICLE_WARN_LABELS | IG_POSTED_WARN_LABELS), (
+        f"{_label} はWARNに落としてはいけない（赤のまま出す）")
 
 # ── 走査対象 ────────────────────────────────────────────────
 # 「読者・見込み客の目に直接触れる長文」だけを入れる。
@@ -463,6 +506,31 @@ def check_orphans(pdf_paths):
     return out
 
 
+def scan_ig_posted():
+    """投稿済みInstagramキャプションを走査して (violations, warns, 本数) を返す。
+
+    posted が真のものだけを見る。未投稿キューは queue_facts_guard.py の担当で、
+    そちらは「直せば消える」問題、こちらは「Instagramアプリで手編集するしかない」
+    問題なので、報告を混ぜない。
+    """
+    if not os.path.exists(IG_POSTS_FILE):
+        return [], [], 0
+    with open(IG_POSTS_FILE, encoding="utf-8") as f:
+        posts = json.load(f)
+    ng, wn = [], []
+    scanned = 0
+    for p in posts:
+        if not p.get("posted"):
+            continue
+        scanned += 1
+        a, b = scan_text(p.get("caption", ""),
+                         f"instagram/ig_posts.json:{p.get('id', '?')}",
+                         warn_labels=AUDIT_WARN_LABELS | IG_POSTED_WARN_LABELS)
+        ng += a
+        wn += b
+    return ng, wn, scanned
+
+
 def main():
     repo_only = "--repo-only" in sys.argv
     violations, warns = [], []
@@ -502,6 +570,11 @@ def main():
     for p in note_article_files:
         violations += scan_note_inline_hashtags(p)
 
+    # 1''''. 投稿済みInstagramキャプション（Graph APIでは直せないので手編集用の一覧）
+    ig_ng, ig_wn, ig_scanned = scan_ig_posted()
+    violations += ig_ng
+    warns += ig_wn
+
     # 2. 原稿HTML ↔ 配布PDF
     for p in pdf_files:
         if p not in pdf_texts:
@@ -522,11 +595,12 @@ def main():
         json.dump({"violations": violations, "warn": warns,
                    "scanned": {"html": [rel(p) for p in html_files],
                                "pdf": [rel(p) for p in pdf_files],
-                               "article": [rel(p) for p in article_files]}},
+                               "article": [rel(p) for p in article_files],
+                               "ig_posted": ig_scanned}},
                   f, ensure_ascii=False, indent=1)
 
     print(f"[走査] HTML {len(html_files)}本 / PDF {len(pdf_files)}本 "
-          f"/ 記事 {len(article_files)}本")
+          f"/ 記事 {len(article_files)}本 / 投稿済みIG {ig_scanned}本")
     # 記事は149本あるので個別には並べない（ログが埋まって肝心の違反が見えなくなる）。
     # 全件は data/content_facts_guard_report.json の scanned.article に載る。
     for p in html_files + pdf_files:
@@ -548,8 +622,13 @@ def main():
             print(f"       …ほか {len(items) - 3} 件（--warn で全件表示）")
 
     if violations:
+        if ig_ng:
+            print(f"\n※ うち {len(ig_ng)}件は**投稿済みInstagram**。Graph APIに公開済み"
+                  f"キャプションの更新エンドポイントが無いので、Instagramアプリからの"
+                  f"手編集になる。貼り付け用の全文は "
+                  f"instagram/ig_facts_fix_20260904.py --show で出せる。")
         return 1
-    print("\nLP・特典HTML・配布PDF・記事に確定ファクト違反なし ✅")
+    print("\nLP・特典HTML・配布PDF・記事・投稿済みIGに確定ファクト違反なし ✅")
     return 0
 
 
