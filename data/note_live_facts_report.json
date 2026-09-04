@@ -1,10 +1,10 @@
 {
- "scanned": 141,
+ "scanned": 147,
  "fetch_failed": [],
  "violations": [],
  "warn": [
   {
-   "where": "note:n0ea2fd9bfb9d（#97 【2026年最新】未経験向けライバー事務所の選び方｜還元率100%・）",
+   "where": "note:n0ea2fd9bfb9d（#97 【2026年最新】未経験向けライバー事務所の選び方｜還元率100%+）",
    "reason": "禁止語「手数料」",
    "hit": "手数料",
    "drift": false,
@@ -130,28 +130,7 @@
    "md": "blog/articles_note/75_ライバー親バレ対策完全ガイド.md"
   },
   {
-   "where": "note:n60d572c717f5（#75 ライバー親バレ対策完全ガイド｜元Sランクが「家族に知られず安全に稼ぐ）",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月10万",
-   "drift": false,
-   "md": "blog/articles_note/75_ライバー親バレ対策完全ガイド.md"
-  },
-  {
-   "where": "note:n60d572c717f5（#75 ライバー親バレ対策完全ガイド｜元Sランクが「家族に知られず安全に稼ぐ）",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月3万",
-   "drift": false,
-   "md": "blog/articles_note/75_ライバー親バレ対策完全ガイド.md"
-  },
-  {
-   "where": "note:n60d572c717f5（#75 ライバー親バレ対策完全ガイド｜元Sランクが「家族に知られず安全に稼ぐ）",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月3万",
-   "drift": false,
-   "md": "blog/articles_note/75_ライバー親バレ対策完全ガイド.md"
-  },
-  {
-   "where": "note:ne31d02263e2f（#74 ライブ配信のゴールデンタイム完全ガイド｜元Sランクが「リスナーが集ま）",
+   "where": "note:ne31d02263e2f（#74 ライブ配信のゴールデンタイム完全ガイド｜元Sランクが「リスナーさんが）",
    "reason": "取扱外プラットフォーム",
    "hit": "IRIAM",
    "drift": false,
@@ -161,13 +140,6 @@
    "where": "note:n2b77c40294ef（#73 ライバー顔バレ・身バレ対策完全ガイド｜元Sランクが「安全に稼ぐ」全テ）",
    "reason": "取扱外プラットフォーム",
    "hit": "IRIAM",
-   "drift": false,
-   "md": "blog/articles_note/73_顔バレ身バレ対策完全ガイド.md"
-  },
-  {
-   "where": "note:n2b77c40294ef（#73 ライバー顔バレ・身バレ対策完全ガイド｜元Sランクが「安全に稼ぐ」全テ）",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月10〜30万",
    "drift": false,
    "md": "blog/articles_note/73_顔バレ身バレ対策完全ガイド.md"
   },
@@ -186,49 +158,28 @@
    "md": "blog/articles_note/69_ライバー始める前に知るべき10のこと.md"
   },
   {
-   "where": "note:n6006676b8d6e（#65 TikTok ライバー事務所の選び方完全ガイド｜還元率・違約金・サポ）",
+   "where": "note:n6006676b8d6e（#65 TikTok ライバー事務所の選び方完全ガイド｜違約金・契約条件・サ）",
    "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
    "hit": "違約金",
    "drift": false,
    "md": "blog/articles_note/65_TikTokライバー事務所選び方.md"
   },
   {
-   "where": "note:n6006676b8d6e（#65 TikTok ライバー事務所の選び方完全ガイド｜還元率・違約金・サポ）",
+   "where": "note:n6006676b8d6e（#65 TikTok ライバー事務所の選び方完全ガイド｜違約金・契約条件・サ）",
    "reason": "取扱外プラットフォーム",
    "hit": "IRIAM",
    "drift": false,
    "md": "blog/articles_note/65_TikTokライバー事務所選び方.md"
   },
   {
-   "where": "note:n6006676b8d6e（#65 TikTok ライバー事務所の選び方完全ガイド｜還元率・違約金・サポ）",
-   "reason": "自社導線は「LINE通話で相談」（オンライン面談は使わない）",
-   "hit": "オンライン面談",
-   "drift": false,
-   "md": "blog/articles_note/65_TikTokライバー事務所選び方.md"
-  },
-  {
-   "where": "note:n6006676b8d6e（#65 TikTok ライバー事務所の選び方完全ガイド｜還元率・違約金・サポ）",
+   "where": "note:n6006676b8d6e（#65 TikTok ライバー事務所の選び方完全ガイド｜違約金・契約条件・サ）",
    "reason": "断定・保証表現",
    "hit": "保証",
    "drift": false,
    "md": "blog/articles_note/65_TikTokライバー事務所選び方.md"
   },
   {
-   "where": "note:n71c820dc9e48（#64 TikTok LIVE で稼げない7つの原因｜元Sランクが「月0円→）",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月10万",
-   "drift": false,
-   "md": "blog/articles_note/64_TikTokLIVE稼げない原因.md"
-  },
-  {
-   "where": "note:n71c820dc9e48（#64 TikTok LIVE で稼げない7つの原因｜元Sランクが「月0円→）",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月10万",
-   "drift": false,
-   "md": "blog/articles_note/64_TikTokLIVE稼げない原因.md"
-  },
-  {
-   "where": "note:ndc2f493ebdde（#63 TikTok LIVE フォロワー1000人を集める方法｜事務所20）",
+   "where": "note:ndc2f493ebdde（#63 TikTok LIVE フォロワー1000人を集める方法｜TikTo）",
    "reason": "根拠なしの実績誇張",
    "hit": "数百人",
    "drift": false,
@@ -270,35 +221,35 @@
    "md": "blog/articles_note/60_スカウトDM返信率.md"
   },
   {
-   "where": "note:n0144caabbb73（#59 ライバーになる条件を知らないまま始めると、9割の人が半年で消える｜夢）",
+   "where": "note:n0144caabbb73（#59 ライバーになる条件を知らないまま始めると続かない｜夢を諦めないための）",
    "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
    "hit": "契約期間",
    "drift": false,
    "md": "blog/articles_note/59_ライバーなるには.md"
   },
   {
-   "where": "note:n0144caabbb73（#59 ライバーになる条件を知らないまま始めると、9割の人が半年で消える｜夢）",
+   "where": "note:n0144caabbb73（#59 ライバーになる条件を知らないまま始めると続かない｜夢を諦めないための）",
    "reason": "根拠なしの実績誇張",
    "hit": "何百人",
    "drift": false,
    "md": "blog/articles_note/59_ライバーなるには.md"
   },
   {
-   "where": "note:n576132a999ab（#57 ライバーデビューの\"ある準備\"を知らないまま始めると、9割の人が半年）",
+   "where": "note:n576132a999ab（#57 ライバーデビューの\"ある準備\"を知らないまま始めると続かない｜稼ぎ続）",
    "reason": "取扱外プラットフォーム",
    "hit": "IRIAM",
    "drift": false,
    "md": "blog/articles_note/57_ライバーデビュー準備.md"
   },
   {
-   "where": "note:n576132a999ab（#57 ライバーデビューの\"ある準備\"を知らないまま始めると、9割の人が半年）",
+   "where": "note:n576132a999ab（#57 ライバーデビューの\"ある準備\"を知らないまま始めると続かない｜稼ぎ続）",
    "reason": "断定・保証表現",
    "hit": "安定して稼",
    "drift": false,
    "md": "blog/articles_note/57_ライバーデビュー準備.md"
   },
   {
-   "where": "note:n576132a999ab（#57 ライバーデビューの\"ある準備\"を知らないまま始めると、9割の人が半年）",
+   "where": "note:n576132a999ab（#57 ライバーデビューの\"ある準備\"を知らないまま始めると続かない｜稼ぎ続）",
    "reason": "少額表記（数万円/お小遣い程度）",
    "hit": "数万円",
    "drift": false,
@@ -315,13 +266,6 @@
    "where": "note:ndce8a9117fa4（#56 副業ライバーを1年で辞めた私が、それでも『今』あなたに勧める3つの理）",
    "reason": "断定・保証表現",
    "hit": "安定して稼",
-   "drift": false,
-   "md": "blog/articles_note/56_副業ライバーおすすめ.md"
-  },
-  {
-   "where": "note:ndce8a9117fa4（#56 副業ライバーを1年で辞めた私が、それでも『今』あなたに勧める3つの理）",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月10万",
    "drift": false,
    "md": "blog/articles_note/56_副業ライバーおすすめ.md"
   },
@@ -403,62 +347,6 @@
    "md": "blog/articles_note/50_TikTokLIVE収益化完全ガイド.md"
   },
   {
-   "where": "note:nadf7bf475ea9（#50 【2026年最新】TikTokLIVE 収益化完全ガイド｜条件・ギフ）",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月10万",
-   "drift": false,
-   "md": "blog/articles_note/50_TikTokLIVE収益化完全ガイド.md"
-  },
-  {
-   "where": "note:nadf7bf475ea9（#50 【2026年最新】TikTokLIVE 収益化完全ガイド｜条件・ギフ）",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月10万",
-   "drift": false,
-   "md": "blog/articles_note/50_TikTokLIVE収益化完全ガイド.md"
-  },
-  {
-   "where": "note:nadf7bf475ea9（#50 【2026年最新】TikTokLIVE 収益化完全ガイド｜条件・ギフ）",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月10万",
-   "drift": false,
-   "md": "blog/articles_note/50_TikTokLIVE収益化完全ガイド.md"
-  },
-  {
-   "where": "note:nadf7bf475ea9（#50 【2026年最新】TikTokLIVE 収益化完全ガイド｜条件・ギフ）",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月10万",
-   "drift": false,
-   "md": "blog/articles_note/50_TikTokLIVE収益化完全ガイド.md"
-  },
-  {
-   "where": "note:nadf7bf475ea9（#50 【2026年最新】TikTokLIVE 収益化完全ガイド｜条件・ギフ）",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月5万",
-   "drift": false,
-   "md": "blog/articles_note/50_TikTokLIVE収益化完全ガイド.md"
-  },
-  {
-   "where": "note:nadf7bf475ea9（#50 【2026年最新】TikTokLIVE 収益化完全ガイド｜条件・ギフ）",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月10万",
-   "drift": false,
-   "md": "blog/articles_note/50_TikTokLIVE収益化完全ガイド.md"
-  },
-  {
-   "where": "note:nadf7bf475ea9（#50 【2026年最新】TikTokLIVE 収益化完全ガイド｜条件・ギフ）",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月10〜50万",
-   "drift": false,
-   "md": "blog/articles_note/50_TikTokLIVE収益化完全ガイド.md"
-  },
-  {
-   "where": "note:nadf7bf475ea9（#50 【2026年最新】TikTokLIVE 収益化完全ガイド｜条件・ギフ）",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月5〜30万",
-   "drift": false,
-   "md": "blog/articles_note/50_TikTokLIVE収益化完全ガイド.md"
-  },
-  {
    "where": "note:n19e20c40b3f1（#49 【2026年最新】Pocochaのダイヤ換金完全ガイド｜元Sランクが）",
    "reason": "禁止語「手数料」",
    "hit": "手数料",
@@ -494,14 +382,14 @@
    "md": "blog/articles_note/47_副業月5万在宅.md"
   },
   {
-   "where": "note:n72ac7218ef26（#45 ライバーの時給、本当に「時給3,000円」は実在するのか｜私が150）",
+   "where": "note:n72ac7218ef26（#45 ライバーの時給、本当に「時給3,000円」は実在するのか｜私が200）",
    "reason": "取扱外プラットフォーム",
    "hit": "IRIAM",
    "drift": false,
    "md": "blog/articles_note/45_ライバー時給.md"
   },
   {
-   "where": "note:n421fb46eb9a0（#44 正直に言います。初配信で緊張しないライバーはいません｜それでも8割が）",
+   "where": "note:n421fb46eb9a0（#44 正直に言います。初配信で緊張しないライバーはいません｜それでも多くが）",
    "reason": "取扱外プラットフォーム",
    "hit": "IRIAM",
    "drift": false,
@@ -511,13 +399,6 @@
    "where": "note:n4857a2f79084（#41 40代・50代からライバーを始めるのは遅い？実は「大人の配信者」が求）",
    "reason": "取扱外プラットフォーム",
    "hit": "IRIAM",
-   "drift": false,
-   "md": "blog/articles_note/41_40代50代ライバー始め方.md"
-  },
-  {
-   "where": "note:n4857a2f79084（#41 40代・50代からライバーを始めるのは遅い？実は「大人の配信者」が求）",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月3〜10万",
    "drift": false,
    "md": "blog/articles_note/41_40代50代ライバー始め方.md"
   },
@@ -697,13 +578,6 @@
    "md": "blog/articles_note/16_ライバー事務所還元率の真実.md"
   },
   {
-   "where": "note:na36a4968c3bc（#16 ライバー事務所の還元率の真実｜100%還元が当たり前？悪質事務所の見）",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月6万",
-   "drift": false,
-   "md": "blog/articles_note/16_ライバー事務所還元率の真実.md"
-  },
-  {
    "where": "note:na4971c6d00a7（#14 ライバーを辞めたい…と思った時に読む記事｜原因別の対処法と事務所の変）",
    "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
    "hit": "違約金",
@@ -725,44 +599,23 @@
    "md": "blog/articles_note/13_ライバーイベント攻略.md"
   },
   {
-   "where": "note:n82784549746d（#12 ライバーの確定申告ガイド｜副業・専業別の手順と経費にできるもの一覧）",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月1万",
-   "drift": false,
-   "md": "blog/articles_note/12_ライバー確定申告.md"
-  },
-  {
-   "where": "note:n091ee2617062（#11 主婦がライバーで月20万円以上稼ぐ方法｜家事・育児と両立できる在宅ワ）",
+   "where": "note:n091ee2617062（#11 主婦がライバーで月20万円稼ぐ方法｜家事・育児と両立できる在宅ワーク）",
    "reason": "取扱外プラットフォーム",
    "hit": "IRIAM",
    "drift": false,
    "md": "blog/articles_note/11_主婦ライバー.md"
   },
   {
-   "where": "note:n3e1a72579743（#10 大学生がライバーで月20万円以上稼ぐ方法｜バイトより効率的な理由と始）",
+   "where": "note:n3e1a72579743（#10 大学生がライバーで月20万円稼ぐ方法｜バイトより効率的な理由と始め方）",
    "reason": "取扱外プラットフォーム",
    "hit": "IRIAM",
    "drift": false,
    "md": "blog/articles_note/10_大学生ライバー.md"
   },
   {
-   "where": "note:n79d526cf01a9（#9 顔出しなしでライバーはできる？｜ラジオ配信・Vtuberで月20万円）",
+   "where": "note:n79d526cf01a9（#9 顔出しなしでライバーはできる？｜結論と、声だけで月20万円を目指す現）",
    "reason": "取扱外プラットフォーム",
    "hit": "IRIAM",
-   "drift": null,
-   "md": null
-  },
-  {
-   "where": "note:n79d526cf01a9（#9 顔出しなしでライバーはできる？｜ラジオ配信・Vtuberで月20万円）",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月1〜2万",
-   "drift": null,
-   "md": null
-  },
-  {
-   "where": "note:n79d526cf01a9（#9 顔出しなしでライバーはできる？｜ラジオ配信・Vtuberで月20万円）",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月3〜5万",
    "drift": null,
    "md": null
   },
@@ -823,6 +676,13 @@
    "md": null
   },
   {
+   "where": "note:n490e9578f165（#6 【2026年版】在宅でできるおすすめ副業7選｜スマホOK・初期費用ゼ）",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月収目安: 1〜10万",
+   "drift": null,
+   "md": null
+  },
+  {
    "where": "note:n80a29386b5a8（#5 ライバーの収入はぶっちゃけいくら？｜月収の現実と稼ぐための具体策）",
    "reason": "取扱外プラットフォーム",
    "hit": "IRIAM",
@@ -830,30 +690,23 @@
    "md": null
   },
   {
-   "where": "note:n455d6d379ce6（#3 ライバー事務所の選び方｜失敗しないための7つのチェックポイント）",
+   "where": "note:n455d6d379ce6（#3 ライバー事務所の選び方｜失敗しないための7つのチェックポイント【20）",
    "reason": "禁止語「手数料」",
    "hit": "手数料",
    "drift": null,
    "md": null
   },
   {
-   "where": "note:n455d6d379ce6（#3 ライバー事務所の選び方｜失敗しないための7つのチェックポイント）",
+   "where": "note:n455d6d379ce6（#3 ライバー事務所の選び方｜失敗しないための7つのチェックポイント【20）",
    "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
    "hit": "契約期間",
    "drift": null,
    "md": null
   },
   {
-   "where": "note:n455d6d379ce6（#3 ライバー事務所の選び方｜失敗しないための7つのチェックポイント）",
+   "where": "note:n455d6d379ce6（#3 ライバー事務所の選び方｜失敗しないための7つのチェックポイント【20）",
    "reason": "断定・保証表現",
    "hit": "絶対稼げ",
-   "drift": null,
-   "md": null
-  },
-  {
-   "where": "note:n2dc730f02053（#2 Pocochaは本当に稼げる？｜収入の仕組みと月20万円以上を達成す）",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月5万",
    "drift": null,
    "md": null
   },
@@ -954,6 +807,13 @@
    "hit": "確実に",
    "drift": false,
    "md": "blog/articles_note/123_配信の頻度と長さの決め方.md"
+  },
+  {
+   "where": "note:n8f217e546626（#168 ライバー事務所の立ち上げって、集客で結局つまずくの？｜元Sランクライ）",
+   "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
+   "hit": "違約金",
+   "drift": true,
+   "md": "blog/articles_note/168_事務所立ち上げ集客.md"
   }
  ],
  "drift_violations": []
