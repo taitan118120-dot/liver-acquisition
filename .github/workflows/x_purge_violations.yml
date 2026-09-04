@@ -2,7 +2,15 @@ name: X公開済みポストの違反走査・削除
 
 # X APIの認証情報は Secrets にしか無いので、この作業はActions経由でしか実行できない。
 # 削除は取り消せないため、既定はdry-run。消すときだけ confirm に DELETE と打つ。
+#
+# 2026-09-04: workflow_dispatch だけだと誰かが手で回さない限り一生走らず、
+#   公開済みポストの割合統計違反が放置される（実際 dry-run レポートも古いまま
+#   誰も見ていなかった）。週1の cron を足し、dry-run で違反が見つかったら
+#   Issue で通知する。削除は取り消せないので cron では絶対に消さない
+#   （confirm は空＝dry-run のまま）。直って0件に戻ったら Issue は自動クローズ。
 on:
+  schedule:
+    - cron: '30 2 * * 1'   # 毎週月曜 JST 11:30（他ワークフローの cron と重ならない枠 / dry-run のみ）
   workflow_dispatch:
     inputs:
       reasons:
@@ -17,6 +25,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -35,6 +44,7 @@ jobs:
       - run: pip install tweepy
 
       - name: 走査（＋confirm=DELETE なら削除）
+        id: scan
         env:
           TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
           TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
@@ -42,8 +52,9 @@ jobs:
           TWITTER_ACCESS_TOKEN_SECRET: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
           TWITTER_BEARER_TOKEN: ${{ secrets.TWITTER_BEARER_TOKEN }}
         run: |
-          ARGS="--reasons ${{ inputs.reasons }}"
-          if [ "${{ inputs.confirm }}" = "DELETE" ]; then
+          # cron 起動では github.event.inputs が空になるので既定値を補う。
+          ARGS="--reasons ${{ github.event.inputs.reasons || 'ratio' }}"
+          if [ "${{ github.event.inputs.confirm || '' }}" = "DELETE" ]; then
             echo "::warning::実削除モードで実行します"
             ARGS="$ARGS --delete"
           else
@@ -64,3 +75,82 @@ jobs:
             sleep 5
           done
           echo "::warning::レポートのpushに失敗しました"
+
+      # x_purge_violations.py は違反を見つけても exit 0（削除後も 0）なので
+      # ラン自体は緑のまま。if: failure() では拾えないので、走査ステップが
+      # 成功したときだけレポートJSONの targets を見て Issue の開閉を決める
+      # （走査が API エラー等で落ちたランでは古いレポートで誤って開閉しない）。
+      - name: 違反検知 → Issue通知 / 解消 → 自動クローズ
+        if: steps.scan.outcome == 'success'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const title = 'X公開済みポストに確定ファクト違反（公開ポスト違反番犬）';
+            let report = null;
+            try {
+              report = JSON.parse(fs.readFileSync('data/x_purge_report.json', 'utf8'));
+            } catch (e) {
+              core.warning('x_purge_report.json を読めませんでした。開閉判定をスキップします。');
+              return;
+            }
+            const targets = report.targets || [];
+
+            const findOpen = async () => {
+              const { data: existing } = await github.rest.issues.listForRepo({
+                owner: context.repo.owner, repo: context.repo.repo,
+                state: 'open', per_page: 100,
+              });
+              return existing.find(i => i.title === title);
+            };
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+
+            // 違反0件（またはこのランで削除して消し込んだ直後）→ 開いていれば閉じる。
+            if (targets.length === 0 || report.deleted) {
+              const match = await findOpen();
+              if (!match) return;
+              const how = report.deleted
+                ? `このランで ${targets.length} 件を削除しました`
+                : 'このランの走査で違反は見つかりませんでした';
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: match.number,
+                body: [`解消を確認: ${new Date().toISOString()} — ${how}。自動クローズします。`, '', `- ラン: ${runUrl}`].join('\n'),
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: match.number, state: 'closed',
+              });
+              return;
+            }
+
+            // 違反あり（dry-run）→ Issue を作成/更新。
+            const lines = targets.map(t => {
+              const reasons = (t.reasons || []).map(r => r.reason).join(' / ');
+              const when = (t.created_at || '').slice(0, 10);
+              return `- \`${t.id}\` (${when}) — ${reasons}\n  - ${String(t.text || '').split('\n')[0].slice(0, 70)}`;
+            }).join('\n');
+            const body = [
+              '## X公開済みポスト違反番犬 検知',
+              '',
+              `公開済みのポスト **${targets.length}件** に確定ファクト違反（対象: \`${report.reasons}\`）が残っています。`,
+              'これは**すでにタイムラインに出ている**分なので、生成キューの番犬では拾えません。',
+              '',
+              '## 該当ポスト',
+              lines,
+              '',
+              '## 対処',
+              '`x_purge_violations.yml` を `workflow_dispatch` で開き、',
+              '`confirm` に `DELETE` と入力して実行すると削除されます（削除は取り消せません）。',
+              '全文は `data/x_purge_report.json` にあります。',
+              '',
+              '消すと次回のランがこの Issue を自動クローズします。',
+              '',
+              '---',
+              '_この Issue は `.github/workflows/x_purge_violations.yml` により自動生成されました。_',
+            ].join('\n');
+            const guard = require('./.github/scripts/guard_comment.js');
+            await guard.notify({
+              github, context, title, body,
+              recomment: `再検知: ${new Date().toISOString()}\n${targets.map(t => t.id).join(', ')}`,
+            });

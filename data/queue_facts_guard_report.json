@@ -1,0 +1,15 @@
+{
+ "total_violations": 0,
+ "x": {
+  "file": "posts/twitter_posts.json",
+  "queue_total": 385,
+  "unposted": 172,
+  "violations": []
+ },
+ "threads": {
+  "file": "threads/threads_posts.json",
+  "queue_total": 180,
+  "unposted": 8,
+  "violations": []
+ }
+}
