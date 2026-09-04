@@ -12,11 +12,6 @@
    "hit": "一般的な事務所"
   },
   {
-   "where": "blog/articles/how-to-start-liver.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
-  },
-  {
    "where": "blog/articles/liver-agency-guide.md",
    "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
    "hit": "違約金"
@@ -52,11 +47,6 @@
    "hit": "月収目安 | 0〜50万"
   },
   {
-   "where": "blog/articles_note/01_ライバー始め方.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
-  },
-  {
    "where": "blog/articles_note/02_Pococha稼げる.md",
    "reason": "確定レンジ未満の少額表記（月15万が下限）",
    "hit": "月5万"
@@ -75,11 +65,6 @@
    "where": "blog/articles_note/03_事務所選び方.md",
    "reason": "断定・保証表現",
    "hit": "絶対稼げ"
-  },
-  {
-   "where": "blog/articles_note/05_ライバー収入現実.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
   },
   {
    "where": "blog/articles_note/06_在宅副業おすすめ.md",
@@ -142,11 +127,6 @@
    "hit": "絶対稼げ"
   },
   {
-   "where": "blog/articles_note/10_大学生ライバー.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
-  },
-  {
    "where": "blog/articles_note/110_副業ライバー収入いつからいくら現実.md",
    "reason": "確定レンジ未満の少額表記（月15万が下限）",
    "hit": "月10万"
@@ -175,11 +155,6 @@
    "where": "blog/articles_note/117_17LIVE事務所おすすめ選び方.md",
    "reason": "断定・保証表現",
    "hit": "絶対稼げ"
-  },
-  {
-   "where": "blog/articles_note/11_主婦ライバー.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
   },
   {
    "where": "blog/articles_note/123_配信の頻度と長さの決め方.md",
@@ -248,11 +223,6 @@
   },
   {
    "where": "blog/articles_note/17_ライバー面接対策.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
-  },
-  {
-   "where": "blog/articles_note/17_ライバー面接対策.md",
    "reason": "断定・保証表現",
    "hit": "絶対稼げ"
   },
@@ -283,11 +253,6 @@
   },
   {
    "where": "blog/articles_note/26_ライバー副業バレない.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
-  },
-  {
-   "where": "blog/articles_note/26_ライバー副業バレない.md",
    "reason": "断定・保証表現",
    "hit": "保証"
   },
@@ -295,11 +260,6 @@
    "where": "blog/articles_note/27_ライバー事務所おすすめランキング.md",
    "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
    "hit": "契約期間"
-  },
-  {
-   "where": "blog/articles_note/27_ライバー事務所おすすめランキング.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
   },
   {
    "where": "blog/articles_note/27_ライバー事務所おすすめランキング.md",
@@ -353,11 +313,6 @@
   },
   {
    "where": "blog/articles_note/34_ライバー容姿関係ない.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
-  },
-  {
-   "where": "blog/articles_note/34_ライバー容姿関係ない.md",
    "reason": "断定・保証表現",
    "hit": "安定して稼"
   },
@@ -398,23 +353,8 @@
   },
   {
    "where": "blog/articles_note/41_40代50代ライバー始め方.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
-  },
-  {
-   "where": "blog/articles_note/41_40代50代ライバー始め方.md",
    "reason": "確定レンジ未満の少額表記（月15万が下限）",
    "hit": "月3〜10万"
-  },
-  {
-   "where": "blog/articles_note/44_初配信コツ.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
-  },
-  {
-   "where": "blog/articles_note/45_ライバー時給.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
   },
   {
    "where": "blog/articles_note/47_副業月5万在宅.md",
@@ -528,23 +468,8 @@
   },
   {
    "where": "blog/articles_note/56_副業ライバーおすすめ.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
-  },
-  {
-   "where": "blog/articles_note/56_副業ライバーおすすめ.md",
-   "reason": "断定・保証表現",
-   "hit": "安定して稼"
-  },
-  {
-   "where": "blog/articles_note/56_副業ライバーおすすめ.md",
    "reason": "確定レンジ未満の少額表記（月15万が下限）",
    "hit": "月10万"
-  },
-  {
-   "where": "blog/articles_note/57_ライバーデビュー準備.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
   },
   {
    "where": "blog/articles_note/57_ライバーデビュー準備.md",
@@ -588,11 +513,6 @@
   },
   {
    "where": "blog/articles_note/62_TikTokLIVE始め方完全ガイド.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
-  },
-  {
-   "where": "blog/articles_note/62_TikTokLIVE始め方完全ガイド.md",
    "reason": "根拠なしの実績誇張",
    "hit": "数百人"
   },
@@ -618,11 +538,6 @@
   },
   {
    "where": "blog/articles_note/65_TikTokライバー事務所選び方.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
-  },
-  {
-   "where": "blog/articles_note/65_TikTokライバー事務所選び方.md",
    "reason": "断定・保証表現",
    "hit": "保証"
   },
@@ -638,18 +553,8 @@
   },
   {
    "where": "blog/articles_note/73_顔バレ身バレ対策完全ガイド.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
-  },
-  {
-   "where": "blog/articles_note/73_顔バレ身バレ対策完全ガイド.md",
    "reason": "確定レンジ未満の少額表記（月15万が下限）",
    "hit": "月10〜30万"
-  },
-  {
-   "where": "blog/articles_note/74_配信ゴールデンタイム完全ガイド.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
   },
   {
    "where": "blog/articles_note/74_配信ゴールデンタイム完全ガイド.md",
@@ -685,11 +590,6 @@
    "where": "blog/articles_note/75_ライバー親バレ対策完全ガイド.md",
    "reason": "確定レンジ未満の少額表記（月15万が下限）",
    "hit": "月収10万"
-  },
-  {
-   "where": "blog/articles_note/76_月収100万円ライバー共通点.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
   },
   {
    "where": "blog/articles_note/76_月収100万円ライバー共通点.md",
