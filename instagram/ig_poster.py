@@ -672,6 +672,20 @@ def post_by_id(post_id, dry_run=False):
 MAX_RETRY = 5  # 永続エラーのみカウント（一時エラーはカウントしない）
 
 
+def queue_candidates(posts):
+    """投稿の候補（未投稿・未アーカイブ・画像あり・リトライ上限内）を返す。
+
+    post_next() と キュー番犬（queue_facts_guard.py）が **同じ集合** を見るための正本。
+    この条件を二重に書くと、番犬が見ていない候補がそのまま投稿されうる
+    （facts_patterns.py 冒頭の「必ずどれか1本が古くなる」と同じ事故）。
+    """
+    return [
+        p for p in posts
+        if not p["posted"] and not p.get("archived")
+        and p.get("image_path") and p.get("fail_count", 0) < MAX_RETRY
+    ]
+
+
 def post_next(dry_run=False):
     """未投稿の次のコンテンツを投稿。(success, is_transient) を返す。
     is_transient: 一時エラーかどうか（スケジューラのリトライ判断に使う）
@@ -684,11 +698,7 @@ def post_next(dry_run=False):
     last_is_transient = False
     for candidate_idx in range(MAX_POST_CANDIDATES):
         posts = load_posts()
-        candidates = [
-            p for p in posts
-            if not p["posted"] and not p.get("archived")
-            and p.get("image_path") and p.get("fail_count", 0) < MAX_RETRY
-        ]
+        candidates = queue_candidates(posts)
 
         # 確定ファクト違反はここで候補から外す。fail_count は増やさない
         # （投稿の失敗ではなく内容の問題で、リトライしても永久に直らないため）。

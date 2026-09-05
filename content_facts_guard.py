@@ -31,7 +31,7 @@
   事務所は危険」のように、**禁止語を引用・注意喚起として使うのが記事の中身そのもの**。
   生成側と同じ物差しで全部赤にすると、番犬が永久に鳴きやまなくなる。
 
-この番犬が見る4軸:
+この番犬が見る5軸:
   1. 禁止パターン走査 — 確定ファクト（[[project_taitan_pro_note_facts]] の常設grep）を
      LP・特典HTML原稿・**配布PDFの抽出テキスト**・**Note記事の原稿**に当てる。
      パターンの正本は facts_patterns.py（媒体共通）。ここには一切コピーを置かない。
@@ -45,10 +45,17 @@
      さらに（--repo-only でなければ）jsDelivr が実際に返すバイトまで照合する。
   4. 孤児の配布物 — lp/shared/*.pdf でリポジトリのどこからも参照されていないもの。
      参照が無い＝更新フローに乗らない＝旧ファクトが公開URLに残り続ける温床。
+  5. 投稿済みIGの **実物**（2026-09-05 追加）— 1 で見ているのは記録
+     （instagram/ig_posts.json）であって、Instagram に載っている文面ではない。
+     手編集と --apply の順番が入れ替わるだけで両者はズレ、とくに
+     **記録だけ直して実物が古い**とこの番犬は緑になって嘘をつく。
+     （--repo-only でなければ）Graph API で実物のキャプションを取り、
+     同じ物差しで走査したうえで記録との差も見る。
 
 判定ポリシー:
   - NG   = 禁止パターン検出／HTMLとPDFの乖離／SHA固定のズレ／孤児PDF
-           /pdftotext が使えず走査できなかった → exit 1（Actionsが赤くなる）
+           /pdftotext が使えず走査できなかった／**IGの実物を取得できなかった**
+           → exit 1（Actionsが赤くなる）
   - WARN = 主語や文脈で可否が変わり、公開済み長文では人が判断する話なので赤にしない
            （[[feedback_watchdog_autoclose]] 永久に鳴きやむことのない番犬にしない）
            LP・特典PDF … facts_patterns.AUDIT_WARN_LABELS（少額表記・実績誇張・他社比較）
@@ -56,7 +63,7 @@
 
 使い方:
   python3 content_facts_guard.py              # 全チェック
-  python3 content_facts_guard.py --repo-only  # jsDelivr への実アクセスなし（ローカル用）
+  python3 content_facts_guard.py --repo-only  # jsDelivr・IG Graph API への実アクセスなし（ローカル用）
   python3 content_facts_guard.py --warn       # WARN の全件を出す（既定は先頭20件）
 
 レポートは data/content_facts_guard_report.json に保存される。
@@ -531,6 +538,114 @@ def scan_ig_posted():
     return ng, wn, scanned
 
 
+# ── 4'. 投稿済みIGの「実物」（Graph API）─────────────────────────
+# scan_ig_posted() が見ているのは **記録**（instagram/ig_posts.json）であって、
+# Instagram に実際に載っている文面ではない。この2つはズレる:
+#   - アプリで手編集したのに --apply を流し忘れる → 実物は直っているのに記録が古い
+#     （番犬が赤のままなので、直す気力だけが削られる）
+#   - 先に --apply を流してしまう             → 記録だけ直って実物は古い
+#     **番犬は緑になるが、公開されている文面は違反のまま**。こちらが本当に危ない。
+#     ig_facts_fix_20260904.py の手順書きが「先に流すと嘘をつく」と警告しているのは、
+#     裏を返せば運用の注意だけで守っている状態だったということ。
+# 記録と実物の両方を見て初めて「公開されている文面に違反が無い」と言えるので、
+# Graph API から実物のキャプションを取って突合する。
+#
+# 1メディア1リクエストではなく /{user}/media のページングで取る（70本を1本ずつ
+# 引くと読み取り枠を無駄に食う）。実装は instagram/ig_insights.py を使い回す。
+IG_LIVE_LIMIT = 200
+
+
+def fetch_ig_live():
+    """公開済みキャプションを Graph API から取る。(media_id -> caption, エラー)。"""
+    token = os.environ.get("INSTAGRAM_ACCESS_TOKEN", "").strip()
+    user_id = os.environ.get("INSTAGRAM_BUSINESS_ID", "").strip()
+    if not token or not user_id:
+        return None, ("INSTAGRAM_ACCESS_TOKEN / INSTAGRAM_BUSINESS_ID が無く、"
+                      "実物のキャプションを取得できない")
+    ig_dir = os.path.join(BASE_DIR, "instagram")
+    if ig_dir not in sys.path:
+        sys.path.insert(0, ig_dir)
+    try:
+        import ig_insights  # requests に依存するのでここで遅延import
+    except Exception as e:  # noqa: BLE001
+        return None, f"ig_insights を読み込めない: {type(e).__name__}: {e}"[:160]
+    try:
+        version = ig_insights.pick_api_version(token, user_id)
+        media = ig_insights.fetch_media(f"https://graph.facebook.com/{version}",
+                                        token, user_id, IG_LIVE_LIMIT, page_delay=2)
+    except SystemExit as e:      # pick_api_version は取得できないと exit する
+        return None, f"Graph API に接続できない（exit {e.code}）"
+    except Exception as e:       # noqa: BLE001 — ネットワーク層は理由を問わず可視化する
+        return None, f"Graph API 取得に失敗: {type(e).__name__}: {e}"[:160]
+    if not media:
+        return None, "Graph API が投稿を1件も返さなかった"
+    return {str(m["id"]): m.get("caption") or "" for m in media}, None
+
+
+def scan_ig_live(repo_only):
+    """実物のキャプションを走査し、ig_posts.json とのズレも見る。
+
+    ズレの扱い:
+      - ズレで**検品の結論が変わる**（実物にだけ違反がある／実物では直っているのに
+        記録が古い）→ 赤。記録を見ている scan_ig_posted() が当てにならなくなるため。
+      - 結論が変わらない体裁だけのズレ → 警告。
+    """
+    stats = {"checked": 0, "missing": 0, "drifted": 0, "skipped": None}
+    if repo_only:
+        stats["skipped"] = "--repo-only（実アクセスなし）"
+        return [], [], stats
+    if not os.path.exists(IG_POSTS_FILE):
+        return [], [], stats
+
+    live, err = fetch_ig_live()
+    if live is None:
+        # 黙って素通りさせない。取得できない＝**実物は誰も見ていない**状態で、
+        # それを緑にすると「記録だけ直して実物が古い」を永久に見逃す
+        # （pdftotext が無いときに赤にするのと同じ理由）。
+        stats["skipped"] = err
+        return [{"where": "instagram/ig_posts.json（実物）", "reason": err,
+                 "hit": "記録(ig_posts.json)しか見ていない＝公開中の文面は無検査"}], [], stats
+
+    with open(IG_POSTS_FILE, encoding="utf-8") as f:
+        posts = json.load(f)
+
+    warn_labels = AUDIT_WARN_LABELS | IG_POSTED_WARN_LABELS
+    ng, wn = [], []
+    for p in posts:
+        mid = str(p.get("media_id") or "")
+        if not p.get("posted") or not mid:
+            continue          # media_id が無い分は Graph API では追えない
+        if mid not in live:
+            stats["missing"] += 1
+            continue
+        stats["checked"] += 1
+        where = f"instagram（実物 media_id {mid} / {p.get('id', '?')}）"
+        a, b = scan_text(live[mid], where, warn_labels=warn_labels)
+        ng += a
+        wn += b
+
+        if flat(live[mid]) == flat(p.get("caption", "")):
+            continue
+        stats["drifted"] += 1
+        live_ng = {v["reason"] for v in scan_text(live[mid], where, warn_labels)[0]}
+        json_ng = {v["reason"] for v in
+                   scan_text(p.get("caption", ""), where, warn_labels)[0]}
+        hit = f"実物 {len(live[mid])}文字 / 記録 {len(p.get('caption', ''))}文字"
+        if live_ng == json_ng:
+            wn.append({"where": where, "hit": hit,
+                       "reason": "実物と ig_posts.json の記録がズレている"
+                                 "（検品の結論は同じ＝体裁だけのズレ）"})
+        elif live_ng - json_ng:
+            ng.append({"where": where, "hit": hit,
+                       "reason": "実物にだけ違反がある。記録(ig_posts.json)を見ても"
+                                 f"分からない状態（{', '.join(sorted(live_ng - json_ng))}）"})
+        else:
+            ng.append({"where": where, "hit": hit,
+                       "reason": "実物では直っているのに記録が古い。"
+                                 "instagram/ig_facts_fix_20260904.py --apply で同期する"})
+    return ng, wn, stats
+
+
 def main():
     repo_only = "--repo-only" in sys.argv
     violations, warns = [], []
@@ -575,6 +690,12 @@ def main():
     violations += ig_ng
     warns += ig_wn
 
+    # 1'''''. 投稿済みIGの**実物**（Graph API）。記録と実物のズレもここで出る。
+    live_ng, live_wn, ig_live = scan_ig_live(repo_only)
+    violations += live_ng
+    warns += live_wn
+    ig_ng += live_ng   # 末尾の案内（手編集が要る件数）にも数える
+
     # 2. 原稿HTML ↔ 配布PDF
     for p in pdf_files:
         if p not in pdf_texts:
@@ -596,11 +717,18 @@ def main():
                    "scanned": {"html": [rel(p) for p in html_files],
                                "pdf": [rel(p) for p in pdf_files],
                                "article": [rel(p) for p in article_files],
-                               "ig_posted": ig_scanned}},
+                               "ig_posted": ig_scanned,
+                               "ig_live": ig_live}},
                   f, ensure_ascii=False, indent=1)
 
     print(f"[走査] HTML {len(html_files)}本 / PDF {len(pdf_files)}本 "
           f"/ 記事 {len(article_files)}本 / 投稿済みIG {ig_scanned}本")
+    if ig_live.get("skipped"):
+        print(f"   ※ IGの実物（Graph API）は未検査: {ig_live['skipped']}")
+    else:
+        print(f"   ※ IGの実物（Graph API）: 突合 {ig_live['checked']}本 / "
+              f"APIに見当たらない {ig_live['missing']}本 / "
+              f"記録とズレ {ig_live['drifted']}本")
     # 記事は149本あるので個別には並べない（ログが埋まって肝心の違反が見えなくなる）。
     # 全件は data/content_facts_guard_report.json の scanned.article に載る。
     for p in html_files + pdf_files:
@@ -628,7 +756,7 @@ def main():
                   f"手編集になる。貼り付け用の全文は "
                   f"instagram/ig_facts_fix_20260904.py --show で出せる。")
         return 1
-    print("\nLP・特典HTML・配布PDF・記事・投稿済みIGに確定ファクト違反なし ✅")
+    print("\nLP・特典HTML・配布PDF・記事・投稿済みIG（記録と実物）に確定ファクト違反なし ✅")
     return 0
 
 

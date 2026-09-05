@@ -1638,6 +1638,12 @@
    "blog/articles_note/98_会社員から配信月100万代理店並行150万専業ライバー.md",
    "blog/articles_note/99_ライブ配信盛り上げる技術_元ミクチャNo1の枠づくり.md"
   ],
-  "ig_posted": 89
+  "ig_posted": 89,
+  "ig_live": {
+   "checked": 0,
+   "missing": 0,
+   "drifted": 0,
+   "skipped": "--repo-only（実アクセスなし）"
+  }
  }
 }
