@@ -29,6 +29,26 @@ POSTS_FILE = os.path.join(SCRIPT_DIR, "ig_posts.json")
 POST_LOG_CSV = os.path.join(PROJECT_ROOT, "data", "ig_post_log.csv")
 
 
+# ── 投稿直前の確定ファクト検品（2026-09-04 追加）───────────────────
+# ig_viral_generator / ig_content_generator は**生成時**に facts_patterns で検品するが、
+# それは「これから作る分」にしか効かない。**基準を後から厳しくした分**は
+# 既にキューに入っている未投稿分に残り、post_next() は unposted[0] を
+# 無検品で投稿していた。X（cloud_post.py が x_post_guard で候補から除外）と
+# Threads（生成時に弾く）には投稿経路のゲートがあるのに、IGだけ無かった。
+#
+# 実測（2026-09-04）: 未投稿14本のうち ig_auto_068 に
+# 「引退後の仕事の8割は『紹介』」（出典なしの割合統計）が残っており、
+# 週3投稿のペースで1ヶ月以内にそのまま公開される状態だった。
+#
+# 弾いた分は queue_facts_guard.py が「見えない欠品」として毎週報告する。
+# ここで静かに飛ばすだけにすると、在庫には数えられるのに一生投稿されない分が
+# 誰にも見えなくなる（X で実際に起きた形）。
+def facts_violations(caption):
+    """キャプションの確定ファクト違反を [(理由, ヒット), ...] で返す。"""
+    from facts_patterns import common_violations
+    return common_violations(caption or "")
+
+
 def _resolve_image_path(image_path):
     """画像パスを解決（相対パスならプロジェクトルートからの相対パスとして処理）"""
     if not image_path:
@@ -652,6 +672,20 @@ def post_by_id(post_id, dry_run=False):
 MAX_RETRY = 5  # 永続エラーのみカウント（一時エラーはカウントしない）
 
 
+def queue_candidates(posts):
+    """投稿の候補（未投稿・未アーカイブ・画像あり・リトライ上限内）を返す。
+
+    post_next() と キュー番犬（queue_facts_guard.py）が **同じ集合** を見るための正本。
+    この条件を二重に書くと、番犬が見ていない候補がそのまま投稿されうる
+    （facts_patterns.py 冒頭の「必ずどれか1本が古くなる」と同じ事故）。
+    """
+    return [
+        p for p in posts
+        if not p["posted"] and not p.get("archived")
+        and p.get("image_path") and p.get("fail_count", 0) < MAX_RETRY
+    ]
+
+
 def post_next(dry_run=False):
     """未投稿の次のコンテンツを投稿。(success, is_transient) を返す。
     is_transient: 一時エラーかどうか（スケジューラのリトライ判断に使う）
@@ -664,11 +698,18 @@ def post_next(dry_run=False):
     last_is_transient = False
     for candidate_idx in range(MAX_POST_CANDIDATES):
         posts = load_posts()
-        unposted = [
-            p for p in posts
-            if not p["posted"] and not p.get("archived")
-            and p.get("image_path") and p.get("fail_count", 0) < MAX_RETRY
-        ]
+        candidates = queue_candidates(posts)
+
+        # 確定ファクト違反はここで候補から外す。fail_count は増やさない
+        # （投稿の失敗ではなく内容の問題で、リトライしても永久に直らないため）。
+        unposted = []
+        for p in candidates:
+            bad = facts_violations(p.get("caption", ""))
+            if bad:
+                labels = ", ".join(sorted({r for r, _ in bad}))
+                print(f"[FACTS] スキップ {p['id']}: {labels}")
+                continue
+            unposted.append(p)
 
         if not unposted:
             if candidate_idx == 0:
