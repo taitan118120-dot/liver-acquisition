@@ -18,12 +18,25 @@ X (`posts/twitter_posts.json`) と Threads (`threads/threads_posts.json`) の
   x_purge_violations.yml は **公開済みポスト**（タイムライン）を見る別物で、
   未投稿のキューはスコープ外。だからキュー側にはこの番犬が要る。
 
+2026-09-05 の追加 — Instagram:
+  ig_poster.post_next() にも 2026-09-04 に投稿直前ゲートが入り、
+  違反キャプションは候補から外れるようになった。ところが**その分を報告する側**が
+  無かった（ig_poster.py のコメントは「弾いた分は queue_facts_guard.py が
+  『見えない欠品』として毎週報告する」と書いてあるのに、この番犬はIGを
+  一切見ていなかった）。ゲートだけ入れて報告が無い状態は、X で実際に起きた
+  「在庫に数えられるのに一生投稿されない」に逆戻りする。IGも走査対象に加える。
+
+  候補の条件（未投稿・未アーカイブ・画像あり・リトライ上限内）は
+  ig_poster.queue_candidates() を**そのまま呼ぶ**。ここで書き写すと、
+  番犬が見ていない候補が投稿されうる。
+
 動作:
   各キューの未投稿分だけを、それぞれの正本の検品にかける:
-    - X       … x_post_guard.details()      （data/recent_post_ids.txt に無い分）
-    - Threads … threads_content._violations()（"posted" が真でない分）
+    - X         … x_post_guard.details()      （data/recent_post_ids.txt に無い分）
+    - Threads   … threads_content._violations()（"posted" が真でない分）
+    - Instagram … ig_poster.facts_violations() （queue_candidates() が返す分）
   1件でも違反が残っていれば exit 1 で赤くし、Issue で通知する。
-  両方0件に戻ったら Issue は自動クローズされる
+  全部0件に戻ったら Issue は自動クローズされる
   （[[feedback_watchdog_autoclose]] 「直ったら閉じる」までが番犬）。
 
 使い方:
@@ -112,6 +125,39 @@ def scan_threads():
     }
 
 
+def scan_instagram():
+    """IGキューの投稿候補を ig_poster.facts_violations() にかける。
+
+    「未投稿」の判定は ig_poster.queue_candidates() に任せる（post_next が
+    実際に投稿する集合そのもの）。アーカイブ済み・画像なし・リトライ上限超えは
+    そもそも投稿されないので、違反が残っていても害が無く、赤にすると鳴きやまない。
+    """
+    ig_dir = os.path.join(BASE_DIR, "instagram")
+    sys.path.insert(0, ig_dir)
+    import ig_poster
+
+    with open(ig_poster.POSTS_FILE, encoding="utf-8") as f:
+        posts = json.load(f)
+    candidates = ig_poster.queue_candidates(posts)
+
+    bad = []
+    for p in candidates:
+        v = ig_poster.facts_violations(p.get("caption", ""))
+        if not v:
+            continue
+        bad.append({
+            "id": p.get("id", "?"),
+            "head": (p.get("title") or p.get("caption", "")).split("\n")[0][:60],
+            "labels": sorted({r for r, _ in v}),
+        })
+    return {
+        "file": _rel(ig_poster.POSTS_FILE),
+        "queue_total": len(posts),
+        "unposted": len(candidates),
+        "violations": bad,
+    }
+
+
 def _print_section(name, sec):
     print(f"[{name}] {sec['file']} — 未投稿 {sec['unposted']}本 / "
           f"違反 {len(sec['violations'])}本")
@@ -128,12 +174,15 @@ def main():
 
     x = scan_x()
     threads = scan_threads()
-    total = len(x["violations"]) + len(threads["violations"])
+    instagram = scan_instagram()
+    total = (len(x["violations"]) + len(threads["violations"])
+             + len(instagram["violations"]))
 
     report = {
         "total_violations": total,
         "x": x,
         "threads": threads,
+        "instagram": instagram,
     }
     if args.json:
         os.makedirs(os.path.dirname(REPORT_FILE), exist_ok=True)
@@ -143,6 +192,7 @@ def main():
 
     _print_section("X", x)
     _print_section("Threads", threads)
+    _print_section("Instagram", instagram)
 
     if total:
         print(f"\n❌ 未投稿キューに確定ファクト違反が {total}本 残っています。"
