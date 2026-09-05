@@ -9,7 +9,13 @@
  "threads": {
   "file": "threads/threads_posts.json",
   "queue_total": 180,
-  "unposted": 8,
+  "unposted": 6,
+  "violations": []
+ },
+ "instagram": {
+  "file": "instagram/ig_posts.json",
+  "queue_total": 103,
+  "unposted": 0,
   "violations": []
  }
 }
