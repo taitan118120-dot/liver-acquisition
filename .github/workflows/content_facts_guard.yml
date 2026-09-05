@@ -36,6 +36,8 @@ name: 公開コンテンツ確定ファクト番犬
 #   - 原稿HTML と 配布PDF が同期しているか（焼き直し忘れ／別バージョン配布）
 #   - jsDelivr のSHA固定URLが、いま手元にあるPDFと同じ実体を配っているか
 #   - lp/shared/*.pdf に「どこからも参照されていない配布物」が残っていないか
+#   - 投稿済みIGの**実物のキャプション**（Graph API）と ig_posts.json の記録の突合
+#     （2026-09-05 追加。記録だけ直して実物が古いと、この番犬は緑になって嘘をつく）
 #   - 違反があればランを赤にし、Issueを作成/更新して通知
 #   - 直って0件に戻ったら、そのIssueを自動クローズする（他の番犬と同じ型）
 
@@ -71,8 +73,15 @@ jobs:
           sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils
           pdftotext -v
 
-      - name: LP・特典原稿・配布PDF・記事走査
+      - name: LP・特典原稿・配布PDF・記事・投稿済みIG走査
         id: guard
+        env:
+          # 投稿済みIGは記録（instagram/ig_posts.json）だけ見ても担保にならない。
+          # 手編集と --apply の順番が入れ替わるだけでズレ、とくに記録だけ直して
+          # 実物が古いと番犬は緑になって嘘をつく。Graph API で実物のキャプションを
+          # 取って突合する。取得できなければ赤（＝実物を誰も見ていない状態）。
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          INSTAGRAM_BUSINESS_ID: ${{ secrets.INSTAGRAM_BUSINESS_ID }}
         run: python3 content_facts_guard.py
 
       - name: 検知 → Issue通知
@@ -144,6 +153,12 @@ jobs:
               sLines || '(なし)',
               '',
               '## 対処',
+              '0. **投稿済みIG（`instagram/ig_posts.json:...` / `instagram（実物 ...）`）**は',
+              '   Graph API に公開済みキャプションの更新エンドポイントが無いため、',
+              '   Instagramアプリからの手編集になります。貼り付け用の全文は',
+              '   `python3 instagram/ig_facts_fix_20260904.py --show`（`--only <ID>` で絞れる）。',
+              '   **アプリで貼り替えた分だけ** `--apply` を流すこと。先に流すと記録だけ直って',
+              '   実物が古いままになり、実物の突合が「実物にだけ違反がある」で赤になります。',
               '1. 禁止パターンの正本は `facts_patterns.py`。**この番犬にコピーは無い**ので、',
               '   ルールを足すときは共通正本に足す（全媒体に同時に効く）',
               '2. 特典PDFを直すときは **原稿HTMLだけ直しても配布物は変わらない**。必ず3点セット:',

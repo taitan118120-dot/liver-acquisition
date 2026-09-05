@@ -1,0 +1,30 @@
+{
+ "violations": [],
+ "warn": [],
+ "diffs": [],
+ "canon": [],
+ "skipped": [
+  {
+   "media": "X @taitan_LIVER",
+   "reason": "TWITTER_BEARER_TOKEN 未設定"
+  },
+  {
+   "media": "Threads @taitanblog",
+   "reason": "THREADS_ACCESS_TOKEN 未設定"
+  },
+  {
+   "media": "IG @taitan_pro7",
+   "reason": "INSTAGRAM_ACCESS_TOKEN / INSTAGRAM_BUSINESS_ID 未設定"
+  }
+ ],
+ "skipped_media": [
+  "IG @taitan_pro7",
+  "Threads @taitanblog",
+  "X @taitan_LIVER"
+ ],
+ "require_live": false,
+ "manual": [
+  "IG @taitanblog（個人アカウント／Graph API 対象外）: 表示名・bio・リンク・ハイライト名",
+  "X / Threads の「固定」状態そのもの（固定APIが存在しないため自動判定不可）"
+ ]
+}
