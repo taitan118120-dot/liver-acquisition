@@ -147,6 +147,11 @@
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_012",
+   "reason": "出典なしの割合統計（割合がそのまま述語）",
+   "hit": "【9割が知らない】Pocochaイベント入賞の秘"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_012",
    "reason": "出典なしの割合統計（割合が主語の後ろ）",
    "hit": "ochaでイベント入賞を経験したライバーの約70%が「初心者の頃に初入賞した」と回答していま"
   },
@@ -167,6 +172,11 @@
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_013",
+   "reason": "出典なしの割合統計（割合がそのまま述語）",
+   "hit": "【ライバーの6割が悩む辞めたい病の特効薬】\n\n「リスナーさ"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_013",
    "reason": "出典なしの割合統計（割合が主語の後ろ）",
    "hit": "しい道が必ずあります。\n\n実は、ライバーの約60%が開始3ヶ月以内に「辞めたい」と感じた経験"
   },
@@ -174,6 +184,11 @@
    "where": "instagram/ig_posts.json:ig_auto_014",
    "reason": "リスナーの呼び捨て",
    "hit": "リスナー"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_014",
+   "reason": "出典なしの割合統計（割合がそのまま述語）",
+   "hit": "【9割が知らない】男性ライバーが稼げる裏事情🎯"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_014",
@@ -221,6 +236,11 @@
    "hit": "オンライン面談"
   },
   {
+   "where": "instagram/ig_posts.json:ig_auto_016",
+   "reason": "出典なしの割合統計（割合がそのまま述語）",
+   "hit": "0名以上の所属ライバーのうち約7割が配信未経験からスタート。「お金を稼ぎたい"
+  },
+  {
    "where": "instagram/ig_posts.json:ig_auto_017",
    "reason": "リスナーの呼び捨て",
    "hit": "リスナー"
@@ -241,6 +261,11 @@
    "hit": "リスナー"
   },
   {
+   "where": "instagram/ig_posts.json:ig_auto_019",
+   "reason": "出典なしの割合統計（割合がそのまま述語）",
+   "hit": "【9割が知らない】配信ネタ50選🎯\n\n配信で話す"
+  },
+  {
    "where": "instagram/ig_posts.json:ig_auto_020",
    "reason": "所属数が200名以外（数字が先に来る形）",
    "hit": "150人以上のライバー"
@@ -259,6 +284,11 @@
    "where": "instagram/ig_posts.json:ig_auto_021",
    "reason": "根拠のない市場規模・成長率",
    "hit": "市場は2026年現在、日本国内だけで約1,500億円"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_021",
+   "reason": "出典なしの割合統計（割合がそのまま述語）",
+   "hit": "【30代必見】9割が知らない「今」ライバーを始めるべき理由"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_021",
@@ -332,6 +362,11 @@
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_028",
+   "reason": "出典なしの割合統計（割合がそのまま述語）",
+   "hit": "【9割が知らない】怪しいライバー事務所の罠を見抜"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_028",
    "reason": "自社と矛盾する判断軸（契約期間の長さ・違約金の有無）",
    "hit": "一度契約すると「最低2年間の契約期間」や「退所時に高額な違約金50万円」を請求されるなど、ライバーを「逃がさない」ための厳…"
   },
@@ -366,6 +401,11 @@
    "hit": "リスナー"
   },
   {
+   "where": "instagram/ig_posts.json:ig_auto_032",
+   "reason": "出典なしの割合統計（割合がそのまま述語）",
+   "hit": "【9割が知らない】稼げるライブ配信アプリの見分け"
+  },
+  {
    "where": "instagram/ig_posts.json:ig_auto_033",
    "reason": "所属数が200名以外（数字が先に来る形）",
    "hit": "150人以上のライバー"
@@ -374,6 +414,11 @@
    "where": "instagram/ig_posts.json:ig_auto_033",
    "reason": "リスナーの呼び捨て",
    "hit": "リスナー"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_033",
+   "reason": "出典なしの割合統計（割合がそのまま述語）",
+   "hit": "【9割が誤解】ライバーの見た目、実は稼ぎに関係な"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_033",
@@ -396,6 +441,11 @@
    "hit": "【初配信で緊張しちゃう？実は8割が翌日消えるワケ】\n\n「初配信、緊張しすぎて私には向いてないかも…」って思ってま"
   },
   {
+   "where": "instagram/ig_posts.json:ig_auto_036",
+   "reason": "出典なしの割合統計（割合がそのまま述語）",
+   "hit": "【初配信で緊張しちゃう？実は8割が翌日消えるワケ】\n\n「初配信、緊張しすぎ"
+  },
+  {
    "where": "instagram/ig_posts.json:ig_auto_037",
    "reason": "所属数が200名以外（数字が先に来る形）",
    "hit": "150人のデータ"
@@ -409,6 +459,11 @@
    "where": "instagram/ig_posts.json:ig_auto_037",
    "reason": "出典なしの割合統計（離脱/成功率）",
    "hit": "だから。時間ダイヤだけで時給計算している状態です。\n「話と違う」と最初の3ヶ月で7割が辞めてしまうのも無理はありません。"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_037",
+   "reason": "出典なしの割合統計（割合がそのまま述語）",
+   "hit": "【ライバー9割が知らない時給の落とし穴】\n\n「ライバーっ"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_038",
@@ -429,6 +484,11 @@
    "where": "instagram/ig_posts.json:ig_auto_038",
    "reason": "出典なしの割合統計（離脱/成功率）",
    "hit": "に辞めてしまうケースは少なくありませんでした。\n1年続き、安定して稼ぐライバーの9割が共通して持っていたのは、「昨日と少"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_038",
+   "reason": "出典なしの割合統計（割合がそのまま述語）",
+   "hit": "【9割が知らない】ライバーで稼ぎ続ける人の共通点"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_038",
@@ -464,6 +524,11 @@
    "where": "instagram/ig_posts.json:ig_auto_040",
    "reason": "出典なしの割合統計（離脱/成功率）",
    "hit": "ライブ配信で挫折する人、理由の9割はこれです。最初の1ヶ月が運命を分けます。\n\n「『誰も見てくれない配信、これ続け"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_040",
+   "reason": "出典なしの割合統計（割合がそのまま述語）",
+   "hit": "ライブ配信で挫折する人、理由の9割はこれです。最初の1ヶ月が運命を分けます。"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_042",
@@ -567,6 +632,11 @@
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_052",
+   "reason": "取扱外プラットフォーム",
+   "hit": "BIGO LIVE"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_052",
    "reason": "リスナーの呼び捨て",
    "hit": "リスナー"
   },
@@ -607,6 +677,11 @@
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_057",
+   "reason": "出典なしの割合統計（割合がそのまま述語）",
+   "hit": "月を乗り越えた所属ライバーの約7割が、その後安定して月収5万円以上を達成して"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_057",
    "reason": "確定レンジ未満の少額表記（月15万が下限）",
    "hit": "月収5万"
   },
@@ -624,6 +699,11 @@
    "where": "instagram/ig_posts.json:ig_auto_059",
    "reason": "出典なしの割合統計（離脱/成功率）",
    "hit": "直面する壁が「話すことがない」という悩み。ある調査では、ライブ配信を始めた人の約7割が、配信継続の難しさとして「ネタ切れ"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_059",
+   "reason": "出典なしの割合統計（割合がそのまま述語）",
+   "hit": "では、ライブ配信を始めた人の約7割が、配信継続の難しさとして「ネタ切れ」を挙"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_060",
@@ -1323,24 +1403,9 @@
    "hit": "違約金"
   },
   {
-   "where": "instagram/ig_posts.json:ig_auto_012",
-   "reason": "出典なしの割合統計（割合がそのまま述語）",
-   "hit": "【9割が知らない】Pocochaイベント入賞の秘"
-  },
-  {
    "where": "instagram/ig_posts.json:ig_auto_013",
    "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
    "hit": "違約金"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_013",
-   "reason": "出典なしの割合統計（割合がそのまま述語）",
-   "hit": "【ライバーの6割が悩む辞めたい病の特効薬】\n\n「リスナーさ"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_014",
-   "reason": "出典なしの割合統計（割合がそのまま述語）",
-   "hit": "【9割が知らない】男性ライバーが稼げる裏事情🎯"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_015",
@@ -1351,21 +1416,6 @@
    "where": "instagram/ig_posts.json:ig_auto_016",
    "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
    "hit": "違約金"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_016",
-   "reason": "出典なしの割合統計（割合がそのまま述語）",
-   "hit": "0名以上の所属ライバーのうち約7割が配信未経験からスタート。「お金を稼ぎたい"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_019",
-   "reason": "出典なしの割合統計（割合がそのまま述語）",
-   "hit": "【9割が知らない】配信ネタ50選🎯\n\n配信で話す"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_021",
-   "reason": "出典なしの割合統計（割合がそのまま述語）",
-   "hit": "【30代必見】9割が知らない「今」ライバーを始めるべき理由"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_022",
@@ -1383,49 +1433,14 @@
    "hit": "契約期間"
   },
   {
-   "where": "instagram/ig_posts.json:ig_auto_028",
-   "reason": "出典なしの割合統計（割合がそのまま述語）",
-   "hit": "【9割が知らない】怪しいライバー事務所の罠を見抜"
-  },
-  {
    "where": "instagram/ig_posts.json:ig_auto_031",
    "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
    "hit": "違約金"
   },
   {
-   "where": "instagram/ig_posts.json:ig_auto_032",
-   "reason": "出典なしの割合統計（割合がそのまま述語）",
-   "hit": "【9割が知らない】稼げるライブ配信アプリの見分け"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_033",
-   "reason": "出典なしの割合統計（割合がそのまま述語）",
-   "hit": "【9割が誤解】ライバーの見た目、実は稼ぎに関係な"
-  },
-  {
    "where": "instagram/ig_posts.json:ig_auto_034",
    "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
    "hit": "違約金"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_036",
-   "reason": "出典なしの割合統計（割合がそのまま述語）",
-   "hit": "【初配信で緊張しちゃう？実は8割が翌日消えるワケ】\n\n「初配信、緊張しすぎ"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_037",
-   "reason": "出典なしの割合統計（割合がそのまま述語）",
-   "hit": "【ライバー9割が知らない時給の落とし穴】\n\n「ライバーっ"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_038",
-   "reason": "出典なしの割合統計（割合がそのまま述語）",
-   "hit": "【9割が知らない】ライバーで稼ぎ続ける人の共通点"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_040",
-   "reason": "出典なしの割合統計（割合がそのまま述語）",
-   "hit": "ライブ配信で挫折する人、理由の9割はこれです。最初の1ヶ月が運命を分けます。"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_056",
@@ -1436,16 +1451,6 @@
    "where": "instagram/ig_posts.json:ig_auto_056",
    "reason": "根拠なしの実績誇張",
    "hit": "多数輩出"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_057",
-   "reason": "出典なしの割合統計（割合がそのまま述語）",
-   "hit": "月を乗り越えた所属ライバーの約7割が、その後安定して月収5万円以上を達成して"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_059",
-   "reason": "出典なしの割合統計（割合がそのまま述語）",
-   "hit": "では、ライブ配信を始めた人の約7割が、配信継続の難しさとして「ネタ切れ」を挙"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_060",

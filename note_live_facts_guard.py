@@ -132,7 +132,18 @@ def load_keymap():
         key = rec.get("key")
         if not key:
             continue
-        hits = glob.glob(os.path.join(ARTICLE_DIR, f"{num}_*.md"))
+        # ファイル名は 01_〜09_ がゼロ埋め2桁、100_〜 はゼロ埋めなし。
+        # 台帳のキーは "1"/"9"/"100" とゼロ埋めなしなので、両綴りで引いて先に当たった方を使う。
+        pats = [f"{num}_*.md"]
+        try:
+            pats.insert(0, f"{int(num):02d}_*.md")
+        except (TypeError, ValueError):
+            pass
+        hits = []
+        for pat in pats:
+            hits = glob.glob(os.path.join(ARTICLE_DIR, pat))
+            if hits:
+                break
         out[key] = {"num": num, "title": rec.get("title", ""),
                     "md": os.path.relpath(hits[0], BASE_DIR) if hits else None}
     return out
