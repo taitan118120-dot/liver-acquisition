@@ -1,6 +1,11 @@
 {
  "violations": [
   {
+   "where": "instagram/ig_posts.json:ig_auto_000",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月3〜5万"
+  },
+  {
    "where": "instagram/ig_posts.json:ig_auto_004",
    "reason": "還元率が「100%+α」になっていない",
    "hit": "還元率100%"
@@ -9,6 +14,56 @@
    "where": "instagram/ig_posts.json:ig_auto_004",
    "reason": "取扱外プラットフォーム",
    "hit": "IRIAM"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_004",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_004",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5万"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_004",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月1万"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_004",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月0〜1万"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_004",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5万"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_004",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5万"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_004",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月0〜3万"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_004",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5〜20万"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_004",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月0〜2万"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_004",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月3〜10万"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_006",
@@ -41,9 +96,29 @@
    "hit": "還元率100%"
   },
   {
+   "where": "instagram/ig_posts.json:ig_auto_007",
+   "reason": "断定・保証表現",
+   "hit": "安定して稼"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_007",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月1〜2万"
+  },
+  {
    "where": "instagram/ig_posts.json:ig_auto_008",
    "reason": "取扱外プラットフォーム",
    "hit": "IRIAM"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_008",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_008",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10万"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_009",
@@ -56,9 +131,19 @@
    "hit": "IRIAM"
   },
   {
+   "where": "instagram/ig_posts.json:ig_auto_010",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
    "where": "instagram/ig_posts.json:ig_auto_012",
    "reason": "所属数が200名以外（数字が先に来る形）",
    "hit": "150人以上の所属"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_012",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_012",
@@ -72,6 +157,11 @@
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_013",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_013",
    "reason": "出典なしの割合統計（離脱/成功率）",
    "hit": "乗り越えるための具体的な改善策や、新しい道が必ずあります。\n\n実は、ライバーの約60%が開始3ヶ月以内に「辞めたい」と感"
   },
@@ -82,8 +172,18 @@
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_014",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_014",
    "reason": "出典なしの割合統計（他と比べた増減）",
    "hit": "がける\n　男性ライバーはリスナー定着率が女性より約20%高い傾向。一度ついたファンを大切"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_014",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月1〜2万"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_015",
@@ -94,6 +194,11 @@
    "where": "instagram/ig_posts.json:ig_auto_015",
    "reason": "還元率が確定値でない",
    "hit": "還元率80%"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_015",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月2〜5万"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_016",
@@ -116,14 +221,39 @@
    "hit": "オンライン面談"
   },
   {
+   "where": "instagram/ig_posts.json:ig_auto_017",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
    "where": "instagram/ig_posts.json:ig_auto_018",
    "reason": "所属数が200名以外（数字が先に来る形）",
    "hit": "150人以上の所属"
   },
   {
+   "where": "instagram/ig_posts.json:ig_auto_018",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_019",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
    "where": "instagram/ig_posts.json:ig_auto_020",
    "reason": "所属数が200名以外（数字が先に来る形）",
    "hit": "150人以上のライバー"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_020",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_021",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_021",
@@ -142,6 +272,11 @@
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_022",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_022",
    "reason": "根拠のない市場規模・成長率",
    "hit": "市場は、2026年には約1,500億円"
   },
@@ -149,6 +284,21 @@
    "where": "instagram/ig_posts.json:ig_auto_023",
    "reason": "「無料面談」は使わない（CTAはLINE誘導に統一）",
    "hit": "無料面談"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_023",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5万"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_024",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10万"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_024",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月3万"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_025",
@@ -171,6 +321,11 @@
    "hit": "還元率100%"
   },
   {
+   "where": "instagram/ig_posts.json:ig_auto_027",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
    "where": "instagram/ig_posts.json:ig_auto_028",
    "reason": "還元率が確定値でない",
    "hit": "還元率70%"
@@ -181,9 +336,19 @@
    "hit": "一度契約すると「最低2年間の契約期間」や「退所時に高額な違約金50万円」を請求されるなど、ライバーを「逃がさない」ための厳…"
   },
   {
+   "where": "instagram/ig_posts.json:ig_auto_029",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
    "where": "instagram/ig_posts.json:ig_auto_030",
    "reason": "所属数が200名以外（数字が先に来る形）",
    "hit": "150名以上のライバー"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_030",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_031",
@@ -196,9 +361,34 @@
    "hit": "IRIAM"
   },
   {
+   "where": "instagram/ig_posts.json:ig_auto_032",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
    "where": "instagram/ig_posts.json:ig_auto_033",
    "reason": "所属数が200名以外（数字が先に来る形）",
    "hit": "150人以上のライバー"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_033",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_033",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月収10万"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_035",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_036",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_036",
@@ -212,6 +402,11 @@
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_037",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_037",
    "reason": "出典なしの割合統計（離脱/成功率）",
    "hit": "だから。時間ダイヤだけで時給計算している状態です。\n「話と違う」と最初の3ヶ月で7割が辞めてしまうのも無理はありません。"
   },
@@ -219,6 +414,16 @@
    "where": "instagram/ig_posts.json:ig_auto_038",
    "reason": "所属数が200名以外（数字が先に来る形）",
    "hit": "150人以上のライバー"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_038",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_038",
+   "reason": "断定・保証表現",
+   "hit": "安定して稼"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_038",
@@ -231,9 +436,99 @@
    "hit": "器にコアファンを育てる\n当事務所の上位層の43%が、面談時に人見知りを自称していました。明"
   },
   {
+   "where": "instagram/ig_posts.json:ig_auto_039",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5万"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_039",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5万"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_039",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5万"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_039",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月5万"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_040",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
    "where": "instagram/ig_posts.json:ig_auto_040",
    "reason": "出典なしの割合統計（離脱/成功率）",
    "hit": "ライブ配信で挫折する人、理由の9割はこれです。最初の1ヶ月が運命を分けます。\n\n「『誰も見てくれない配信、これ続け"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_042",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_043",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_043",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月収10万"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_045",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_045",
+   "reason": "断定・保証表現",
+   "hit": "安定して稼"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_045",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月10万"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_046",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_046",
+   "reason": "断定・保証表現",
+   "hit": "安定して稼"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_047",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_047",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月収10万"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_048",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_048",
+   "reason": "断定・保証表現",
+   "hit": "安定して稼"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_049",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_049",
@@ -241,14 +536,104 @@
    "hit": "のデータでは、3ヶ月以上継続したライバーの約70%が月収5万円以上を達成しています。特に、毎"
   },
   {
+   "where": "instagram/ig_posts.json:ig_auto_049",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月収5万"
+  },
+  {
    "where": "instagram/ig_posts.json:ig_auto_050",
    "reason": "取扱外プラットフォーム",
    "hit": "IRIAM"
   },
   {
+   "where": "instagram/ig_posts.json:ig_auto_050",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_050",
+   "reason": "断定・保証表現",
+   "hit": "安定して稼"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_051",
+   "reason": "断定・保証表現",
+   "hit": "安定して稼"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_051",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月収10万"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_052",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_052",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月収10万"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_053",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_054",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_055",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_055",
+   "reason": "断定・保証表現",
+   "hit": "保証"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_056",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月収5万"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_057",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_057",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月収5万"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_058",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_059",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
    "where": "instagram/ig_posts.json:ig_auto_059",
    "reason": "出典なしの割合統計（離脱/成功率）",
    "hit": "直面する壁が「話すことがない」という悩み。ある調査では、ライブ配信を始めた人の約7割が、配信継続の難しさとして「ネタ切れ"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_060",
+   "reason": "リスナーの呼び捨て",
+   "hit": "リスナー"
+  },
+  {
+   "where": "instagram/ig_posts.json:ig_auto_063",
+   "reason": "確定レンジ未満の少額表記（月15万が下限）",
+   "hit": "月1万"
   },
   {
    "where": "instagram/ig_posts.json:ig_viral_000",
@@ -289,6 +674,11 @@
    "where": "instagram/ig_posts.json:ig_viral_007",
    "reason": "特典PDF名は『ライバー新人期スタートダッシュガイド』",
    "hit": "新人期スタートダッシュ"
+  },
+  {
+   "where": "instagram/ig_posts.json（実物）",
+   "reason": "INSTAGRAM_ACCESS_TOKEN / INSTAGRAM_BUSINESS_ID が無く、実物のキャプションを取得できない",
+   "hit": "記録(ig_posts.json)しか見ていない＝公開中の文面は無検査"
   }
  ],
  "warn": [
@@ -918,64 +1308,9 @@
    "hit": "手数料"
   },
   {
-   "where": "instagram/ig_posts.json:ig_auto_000",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月3〜5万"
-  },
-  {
    "where": "instagram/ig_posts.json:ig_auto_002",
    "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
    "hit": "違約金"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_004",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_004",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月5万"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_004",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月1万"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_004",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月0〜1万"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_004",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月5万"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_004",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月5万"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_004",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月0〜3万"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_004",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月5〜20万"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_004",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月0〜2万"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_004",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月3〜10万"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_006",
@@ -986,36 +1321,6 @@
    "where": "instagram/ig_posts.json:ig_auto_007",
    "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
    "hit": "違約金"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_007",
-   "reason": "断定・保証表現",
-   "hit": "安定して稼"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_007",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月1〜2万"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_008",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_008",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月10万"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_010",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_012",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_012",
@@ -1029,18 +1334,8 @@
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_013",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_013",
    "reason": "出典なしの割合統計（割合がそのまま述語）",
    "hit": "【ライバーの6割が悩む辞めたい病の特効薬】\n\n「リスナーさ"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_014",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_014",
@@ -1048,19 +1343,9 @@
    "hit": "【9割が知らない】男性ライバーが稼げる裏事情🎯"
   },
   {
-   "where": "instagram/ig_posts.json:ig_auto_014",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月1〜2万"
-  },
-  {
    "where": "instagram/ig_posts.json:ig_auto_015",
    "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
    "hit": "違約金"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_015",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月2〜5万"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_016",
@@ -1073,34 +1358,9 @@
    "hit": "0名以上の所属ライバーのうち約7割が配信未経験からスタート。「お金を稼ぎたい"
   },
   {
-   "where": "instagram/ig_posts.json:ig_auto_017",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_018",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_019",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
-  },
-  {
    "where": "instagram/ig_posts.json:ig_auto_019",
    "reason": "出典なしの割合統計（割合がそのまま述語）",
    "hit": "【9割が知らない】配信ネタ50選🎯\n\n配信で話す"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_020",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_021",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_021",
@@ -1109,38 +1369,13 @@
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_022",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_022",
    "reason": "根拠なしの実績誇張",
    "hit": "続々と"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_023",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月5万"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_024",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月10万"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_024",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月3万"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_026",
    "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
    "hit": "契約期間"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_027",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_028",
@@ -1153,24 +1388,9 @@
    "hit": "【9割が知らない】怪しいライバー事務所の罠を見抜"
   },
   {
-   "where": "instagram/ig_posts.json:ig_auto_029",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_030",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
-  },
-  {
    "where": "instagram/ig_posts.json:ig_auto_031",
    "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
    "hit": "違約金"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_032",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_032",
@@ -1179,33 +1399,13 @@
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_033",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_033",
    "reason": "出典なしの割合統計（割合がそのまま述語）",
    "hit": "【9割が誤解】ライバーの見た目、実は稼ぎに関係な"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_033",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月収10万"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_034",
    "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
    "hit": "違約金"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_035",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_036",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_036",
@@ -1214,23 +1414,8 @@
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_037",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_037",
    "reason": "出典なしの割合統計（割合がそのまま述語）",
    "hit": "【ライバー9割が知らない時給の落とし穴】\n\n「ライバーっ"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_038",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_038",
-   "reason": "断定・保証表現",
-   "hit": "安定して稼"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_038",
@@ -1238,154 +1423,9 @@
    "hit": "【9割が知らない】ライバーで稼ぎ続ける人の共通点"
   },
   {
-   "where": "instagram/ig_posts.json:ig_auto_039",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月5万"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_039",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月5万"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_039",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月5万"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_039",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月5万"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_040",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
-  },
-  {
    "where": "instagram/ig_posts.json:ig_auto_040",
    "reason": "出典なしの割合統計（割合がそのまま述語）",
    "hit": "ライブ配信で挫折する人、理由の9割はこれです。最初の1ヶ月が運命を分けます。"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_042",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_043",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_043",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月収10万"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_045",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_045",
-   "reason": "断定・保証表現",
-   "hit": "安定して稼"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_045",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月10万"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_046",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_046",
-   "reason": "断定・保証表現",
-   "hit": "安定して稼"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_047",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_047",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月収10万"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_048",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_048",
-   "reason": "断定・保証表現",
-   "hit": "安定して稼"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_049",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_049",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月収5万"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_050",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_050",
-   "reason": "断定・保証表現",
-   "hit": "安定して稼"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_051",
-   "reason": "断定・保証表現",
-   "hit": "安定して稼"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_051",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月収10万"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_052",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_052",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月収10万"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_053",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_054",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_055",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_055",
-   "reason": "断定・保証表現",
-   "hit": "保証"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_056",
@@ -1398,34 +1438,9 @@
    "hit": "多数輩出"
   },
   {
-   "where": "instagram/ig_posts.json:ig_auto_056",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月収5万"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_057",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
-  },
-  {
    "where": "instagram/ig_posts.json:ig_auto_057",
    "reason": "出典なしの割合統計（割合がそのまま述語）",
    "hit": "月を乗り越えた所属ライバーの約7割が、その後安定して月収5万円以上を達成して"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_057",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月収5万"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_058",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_059",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_059",
@@ -1434,23 +1449,8 @@
   },
   {
    "where": "instagram/ig_posts.json:ig_auto_060",
-   "reason": "リスナーの呼び捨て",
-   "hit": "リスナー"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_060",
    "reason": "少額表記（数万円/お小遣い程度）",
    "hit": "数万円"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_062",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月7万"
-  },
-  {
-   "where": "instagram/ig_posts.json:ig_auto_063",
-   "reason": "確定レンジ未満の少額表記（月15万が下限）",
-   "hit": "月1万"
   }
  ],
  "scanned": {
@@ -1643,7 +1643,7 @@
    "checked": 0,
    "missing": 0,
    "drifted": 0,
-   "skipped": "--repo-only（実アクセスなし）"
+   "skipped": "INSTAGRAM_ACCESS_TOKEN / INSTAGRAM_BUSINESS_ID が無く、実物のキャプションを取得できない"
   }
  }
 }
