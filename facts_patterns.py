@@ -160,10 +160,48 @@ INCOME_WORD = re.compile(r"月収|年収|収入|稼|報酬|時給|売上|ギフ�
 NON_INCOME_WINDOW = 30
 
 
+def _nearest_distance(pattern, text, start, end, max_distance):
+    """[start,end)からmax_distance以内でpatternに最短距離で一致する位置までの
+    距離（一致なしはNone）。
+
+    以前は「[start-30, end+30]を先に切り出してから検索」していたが、
+    切り出し境界をまたぐ語（例: window開始の1文字前から始まる「掛金」）が
+    丸ごと落ちる実測バグがあった。全文を検索してから距離でフィルタする
+    ことで、語がwindowの内と外のどちらから始まっていても正しく拾う。
+    """
+    best = None
+    for m in pattern.finditer(text):
+        if m.end() <= start:
+            d = start - m.end()
+        elif m.start() >= end:
+            d = m.start() - end
+        else:
+            d = 0
+        if d <= max_distance and (best is None or d < best):
+            best = d
+    return best
+
+
 def _is_non_income_amount(text, start, end):
-    """その金額が収入の話でない（掛金・積立額など）なら True。"""
-    around = text[max(0, start - NON_INCOME_WINDOW): end + NON_INCOME_WINDOW]
-    return bool(NON_INCOME_CONTEXT.search(around)) and not INCOME_WORD.search(around)
+    """その金額が収入の話でない（掛金・積立額など）なら True。
+
+    2026-09-05: 単純な「windowに両方あるか」の判定だと、投稿済みIGの
+    実測で誤検知した（ig_auto_062「ライバー収入を事業所得で申告してる人なら
+    OK。✅ 月7万円が上限」＝『収入』は申告条件の説明で「月7万」とは無関係、
+    ig_auto_063「掛金は月1,000円〜7万円…月1万円スタート、稼げる月に増額」＝
+    『稼げる』は掛金の増額先の話で「月1万」とは無関係）。windowにincome語が
+    **たまたま**入っているだけで免除が効かなくなっていた。
+    「金額に近い方の語を採用する」距離比較に変えて、この2件を正しく免除する。
+    """
+    non_income_d = _nearest_distance(
+        NON_INCOME_CONTEXT, text, start, end, NON_INCOME_WINDOW)
+    if non_income_d is None:
+        return False
+    income_d = _nearest_distance(
+        INCOME_WORD, text, start, end, NON_INCOME_WINDOW)
+    if income_d is None:
+        return True
+    return non_income_d < income_d
 
 # strict モードで「月◯万」の記載を許すレンジ表記。
 # 下限(MONEY_FLOOR)は全媒体共通だが、「確定レンジ以外の金額は一切書かない」
