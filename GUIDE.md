@@ -23,8 +23,12 @@ X(Twitter)とInstagramの自動化・手動運用の「今の姿」をまとめ�
 | 投稿 | `cloud_post.py` / `auto_post.yml` | 毎日3回（JST 8/13/20時、着弾時刻にジッターあり） | なし（完全自動） |
 | リード検索（いいねなし） | `cloud_engage.py` / `auto_engage.yml` | 毎日2回 | CSVに溜まったリードは見るだけ。自動アクションはしない |
 | 公開リストへの追加 | `cloud_list_add.py` / `auto_list_add.yml` | 毎日 | なし（リスト追加は相手に通知が届き、プロフィールを見に来てもらう狙いの施策） |
-| フォロバなしの整理 | `cloud_unfollow_noback.py` / `auto_unfollow.yml` | 毎日 | なし（フォロー/フォロワー比を健全に保つための後処理で、新規フォロー施策ではない） |
 | リプ候補の抽出 | `x_reply_digest.py` / `x_reply_digest.yml` | 毎日 JST 7:00 | **ここが本体。** GitHub Issueで届く候補から実際にリプする投稿を選び、文面も手動で書いて送信する |
+
+> 廃止（2026-09-06）: 「フォロバなしアンフォロー」（`auto_unfollow.yml`）は削除した。
+> X APIのクレジット枯渇（402 credits depleted）で2026-08-23以降ずっと失敗し、
+> 毎日の失敗通知メールを増やすだけになっていたため。
+> スクリプト `cloud_unfollow_noback.py` は手動実行用に残してある。
 
 ### 手動リプ運用（2026-08-08〜、現在のメイン施策）
 
