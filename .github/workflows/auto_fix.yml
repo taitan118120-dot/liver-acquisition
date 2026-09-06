@@ -32,7 +32,13 @@ jobs:
     permissions:
       issues: write
       actions: read
+      contents: read   # guard_comment.js を取るチェックアウトに必要
     steps:
+      # guard_comment.js を使うためだけの最小チェックアウト（workflow_run は既定でコードを持たない）
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: .github/scripts
+
       - name: Create or update issue on workflow failure
         uses: actions/github-script@v7
         with:
@@ -43,15 +49,6 @@ jobs:
             const branch = run.head_branch || 'main';
             const url = run.html_url;
             const title = `ワークフロー失敗: ${workflowName}`;
-
-            // 同じワークフローの未クローズIssueを探してスパム防止
-            const { data: existing } = await github.rest.issues.listForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-              per_page: 100,
-            });
-            const match = existing.find(i => i.title === title);
 
             const body = [
               '## ワークフロー失敗通知',
@@ -70,23 +67,27 @@ jobs:
               '_このIssueは `.github/workflows/auto_fix.yml` により自動生成されました。_',
             ].join('\n');
 
-            if (match) {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: match.number,
-                body: `再発: [Run #${runId}](${url}) がブランチ \`${branch}\` で失敗しました。`,
-              });
-              core.info(`Commented on existing issue #${match.number}`);
-            } else {
-              const { data: created } = await github.rest.issues.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                title: title,
-                body: body,
-              });
-              core.info(`Created issue #${created.number}`);
-            }
+            // 旧実装は失敗のたびに「再発: Run #… が失敗しました」を無条件で積んでいた。
+            // Issueを1本にまとめてもコメント1件ごとにメールが飛ぶので、
+            // 「同じワークフローがまだ直っていない」という1つの事実で通知だけが増え続け、
+            // 2026-08-23〜09-06 の自動投稿では Issue #45 がコメント81件になった（2026-09-06修正）。
+            // 番犬側で先に解決していた guard_comment.js に寄せ、内容が変わったときだけ鳴かせる。
+            //
+            // recomment に Run ID や時刻を混ぜないこと。混ぜると同一判定が毎回外れて
+            // 元の毎ラン投稿に逆戻りする（先頭の「再検知:」行だけは比較から除かれる）。
+            // 最新の失敗ランはIssue本文のURLではなくActionsタブで追う運用に倒した。
+            const guard = require('./.github/scripts/guard_comment.js');
+            const result = await guard.notify({
+              github, context, title, body,
+              recomment: [
+                `再検知: ${new Date().toISOString()}`,
+                '',
+                `\`${workflowName}\` はまだ失敗し続けています。`,
+                '最新の失敗ランは Actions タブで確認してください。',
+                '内容が変わらないかぎり、このコメントは増えません。',
+              ].join('\n'),
+            });
+            core.info(`[auto_fix] guard_comment: ${result}`);
 
   # 自動リトライ等で復旧したら、対応する失敗Issueを自動クローズする
   # （開きっぱなしのIssueが溜まると本物の障害が埋もれるため）

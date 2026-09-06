@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: write
+  issues: write   # クレジット枯渇(402)をIssue1本に集約するため
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -77,15 +78,97 @@ jobs:
           done
           echo "::warning::投稿ログのpushに3回失敗しました（次回実行で重複スキップされるため致命的ではない）"
 
+      - name: クレジット枯渇(402) → Issue1本に集約
+        # exit 75 = cloud_post.py の EXIT_CREDITS_DEPLETED。
+        # 課金しないと絶対に直らないので、再実行もIssueコメントの積み増しも無意味。
+        # 「まだ枯渇している」という1つの事実は、このIssueが開いていることだけで表す。
+        if: steps.post.outputs.post_exit_code == '75'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'X APIのクレジットが枯渇しています（自動投稿が停止中）';
+            const body = [
+              '## X API クレジット枯渇',
+              '',
+              '`cloud_post.py` が `402 Payment Required / credits depleted` を受け取りました。',
+              '**コード側の問題ではありません。** 投稿キューもファクトガードも正常で、',
+              'X API に投稿を渡す最後の一手だけが課金で止まっています。',
+              '',
+              `- 検知したラン: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              '',
+              '## 対処（コードでは直せません）',
+              '',
+              'https://developer.x.com/en/portal/dashboard で残クレジットとプランを確認し、',
+              '課金を回復してください。',
+              '',
+              '## 回復したらどうなるか',
+              '',
+              'cron（JST 8:00 / 13:00 / 20:00）は止めていないので、クレジットが戻れば',
+              '**次回の実行で自動的に投稿が再開し、このIssueは自動クローズされます。**',
+              '手動での復旧作業は要りません。',
+              '',
+              '## このIssueが静かな理由',
+              '',
+              '枯渇が続く間、ランは赤にしません（`auto_post.yml`）。',
+              '2026-08-23〜09-06 は毎ラン赤で、失敗メール・自動リトライ・再発コメントが',
+              '積み上がり Issue #45 はコメント81件になりました。原因が1つで対処も1つなら、',
+              '通知も1つで足ります。**このIssueが開いている＝まだ枯渇している**と読んでください。',
+              '',
+              '---',
+              '_このIssueは `.github/workflows/auto_post.yml` により自動生成されました。_',
+            ].join('\n');
+            const guard = require('./.github/scripts/guard_comment.js');
+            // recomment は「毎回まったく同じ文面」にすること。
+            // run ID や時刻を混ぜると guard_comment の同一判定が毎回外れ、
+            // 黙らせたかったコメントが結局毎ラン積まれる（先頭の「再検知:」行だけは比較から除かれる）。
+            const result = await guard.notify({
+              github, context, title, body,
+              recomment: [
+                `再検知: ${new Date().toISOString()}`,
+                '',
+                'まだ `402 credits depleted` のままです。',
+                '課金が回復するまで、このコメントは増えません。',
+              ].join('\n'),
+            });
+            core.info(`[credits] guard_comment: ${result}`);
+            core.warning('X APIのクレジット枯渇により投稿できませんでした（課金の回復待ち。ランは赤にしません）');
+
+      - name: 投稿成功 → クレジット枯渇Issueをクローズ
+        # 番犬は「鳴く」だけでなく「鳴きやむ」ところまでが仕組み。
+        if: steps.post.outputs.post_exit_code == '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'X APIのクレジットが枯渇しています（自動投稿が停止中）';
+            const guard = require('./.github/scripts/guard_comment.js');
+            const match = await guard.findOpenIssue({ github, context, title });
+            if (!match) return;
+            const common = { owner: context.repo.owner, repo: context.repo.repo, issue_number: match.number };
+            await github.rest.issues.createComment({
+              ...common,
+              body: `復旧を確認: ${new Date().toISOString()} のランで投稿に成功しました。クレジットが回復したものとして自動クローズします。`,
+            });
+            await github.rest.issues.update({ ...common, state: 'closed' });
+            core.info(`Closed issue #${match.number}`);
+
       - name: 結果サマリ
         # 投稿できなかったらランを赤にする。
         # → auto_retry.yml が1回だけ自動再実行し、auto_fix.yml がIssueで通知する。
         # 旧実装は常に緑で「26日間投稿ゼロ」に気づけなかったため、緑の偽装は廃止。
+        #
+        # 唯一の例外が exit 75（X APIクレジット枯渇）。ここだけ緑で終える。
+        # 「気づけない緑」を避けるための赤なのに、課金でしか直らない事象で毎日赤くしても
+        # 気づきは1回ぶんも増えず、メールだけが増える（2026-08-23〜09-06 に42ラン）。
+        # 気づきの担保は上のIssueが開いたままであることに移してある。
         if: always()
         run: |
           rc="${{ steps.post.outputs.post_exit_code }}"
           if [ "$rc" = "0" ]; then
             echo "✅ 投稿完了"
+          elif [ "$rc" = "75" ]; then
+            echo "⏸ X APIのクレジット枯渇により投稿をスキップしました（課金の回復待ち）。"
+            echo "   Issue「X APIのクレジットが枯渇しています（自動投稿が停止中）」で追跡中。"
+            echo "   クレジットが戻れば次回のcronで自動再開します。"
           else
             echo "❌ 投稿失敗 (exit=$rc) — X API側の問題か、全候補が重複の可能性。自動リトライ＋Issue通知が発動します。"
             exit 1

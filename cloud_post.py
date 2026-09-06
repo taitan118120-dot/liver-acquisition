@@ -47,6 +47,16 @@ KEYWORD_TO_CATEGORY = {
 MAX_RETRIES = 3
 RETRY_WAIT_SEC = 5
 
+# X API のクレジット枯渇（HTTP 402 Payment Required / "credits depleted"）専用の終了コード。
+# 背景（2026-09-06）: 2026-08-23 から14日間、全ランがこの402で赤くなり続けていた。
+# クレジットは課金しないと戻らないので、再実行しても別の投稿候補に変えても絶対に直らない。
+# それでも「投稿できなかった＝赤」で扱っていたため、1日3回の失敗メールに加えて
+# auto_retry の再実行と auto_fix の再発コメントまで積み上がり、Issue #45 はコメント81件になった。
+# コード側は正常で、直せるのは課金だけ。だから「一時的に投稿できない既知の状態」として
+# 専用コードで区別し、ワークフロー側は赤にせず Issue 1本に集約する（auto_post.yml 参照）。
+# 75 は sysexits.h の EX_TEMPFAIL（一時的な失敗）に合わせた。
+EXIT_CREDITS_DEPLETED = 75
+
 # ─── LINE登録特典（リードマグネット）CTA ───
 # 本文にリンクを入れるとXはリーチを大きく落とすため、投稿成功後に
 # 自分の投稿へリプライでぶら下げる（リンクペナルティ回避の定石）。
@@ -489,6 +499,18 @@ def main():
         except tweepy.errors.TwitterServerError as e:
             print(f"[WARN] サーバーエラー: {e} → 別の投稿で再挑戦")
             continue
+        # 402 は Forbidden/TooManyRequests/TwitterServerError と同じ HTTPException の仲間なので、
+        # それらより後（＝より一般的な方を後ろ）に置く。順番を入れ替えると 403 などをここで飲み込む。
+        except tweepy.errors.HTTPException as e:
+            status = getattr(getattr(e, "response", None), "status_code", None)
+            if status != 402:
+                raise
+            # クレジット枯渇はアカウント全体に効くので、別の投稿候補を試しても無意味。
+            # 赤にはせず専用コードで抜ける（ワークフロー側が Issue 1本にまとめる）。
+            print("[HALT] X API のクレジットが枯渇しています (402 Payment Required)。")
+            print("  課金が回復するまで、どの投稿候補を試しても同じ結果になります。")
+            print("  → https://developer.x.com/en/portal/dashboard で残クレジットとプランを確認してください。")
+            sys.exit(EXIT_CREDITS_DEPLETED)
 
     if not success:
         print("[ERROR] すべての投稿候補が失敗しました")
