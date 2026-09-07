@@ -1,16 +1,7 @@
 {
  "checked": 150,
- "bad": 1,
- "agency_bad": 1,
+ "bad": 0,
+ "agency_bad": 0,
  "max_missing": 0,
- "items": [
-  {
-   "key": "n33525859b063",
-   "title": "ライバー代理店のためのSNS集客戦略｜最初の一週間で成果を出す方法と行動計画【2026年版】",
-   "agency": true,
-   "problems": [
-    "冒頭CTAなし"
-   ]
-  }
- ]
+ "items": []
 }
