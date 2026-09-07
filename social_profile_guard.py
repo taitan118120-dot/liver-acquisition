@@ -191,6 +191,13 @@ EXPECTED_FIELDS = {
     "x": ("name", "bio", "link", "pinned"),
     # IG は固定投稿という概念を運用していないので pinned は設計対象外
     "ig_taitan_pro7": ("name", "bio", "link"),
+    # @taitan_pro は「使わないアカウント」なので name/bio は正本を持たない。
+    # link だけは例外的に正本がある（2026-09-05）: 投稿済みIG 89本中68本のCTAが
+    # このアカウントのプロフィールリンクを名指ししていて、本文32本を手編集する代わりに
+    # リンク先を現行導線へ揃える判断をしたため（marketing/social_profiles.md の②）。
+    # 正本に canonical:ig_taitan_pro.link を足したときここへの登録が漏れており、
+    # 「未知の媒体キー」で番犬が毎日赤くなっていた（2026-09-07 修正）。
+    "ig_taitan_pro": ("link",),
     "ig_taitanblog": ("name", "bio", "link"),
 }
 KNOWN_FIELDS = {f for fs in EXPECTED_FIELDS.values() for f in fs}
