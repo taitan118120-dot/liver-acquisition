@@ -63,3 +63,6 @@ shorts/bgm/
 shorts/se/
 shorts/assets/
 shorts/render.log
+
+# Fly.io 撤収時のDBバックアップ（42MB・gitに入れない）
+backups/
