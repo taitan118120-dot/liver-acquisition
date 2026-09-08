@@ -226,20 +226,60 @@ def mark_as_published(article_num):
         json.dump(tracker, f, ensure_ascii=False, indent=2)
 
 
+# 箇条書きの行頭記号。`format_body_for_note` が Markdown テーブルを
+# 「・ラベル: 値 ／ ラベル: 値」の行に変換して渡してくるので「・」も拾う。
+# `*` は後ろの空白必須（「*この記事は…」のような注釈と区別するため。
+# note_geo_structure.BULLET_RE と同じ判定にしてある）。
+BULLET_LINE_RE = re.compile(r"^(?:・|[-*＊][ 　\t])")
+QUOTE_LINE_RE = re.compile(r"^(?:&gt;|＞|>)[ 　\t]?")
+
+
 def markdown_to_html(body_text):
-    """MarkdownをNote.com用HTMLに変換"""
+    """MarkdownをNote.com用HTMLに変換
+
+    箇条書きは `<p>・…</p>` ではなく本物の `<ul><li>` にする。
+    2026-09-04 の実測では、全期間PV上位30本のうち29本が本文の `<ul>` を1個も持たず
+    （唯一の `<ul>` は「あわせて読みたい」の内部リンク）、箇条書きも比較表も全部 `<p>` で
+    書かれていた。読者には箇条書きに見えるが、検索エンジンとAIには段落の壁にしか見えない。
+    公開済み記事は note_geo_structure.py で直したが、**投稿元がここで `<p>・` を作り続けて
+    いた**ので、新記事は毎回この欠陥を持って公開されていた。
+    `<ul><li>` と `<blockquote>` は note の保存を生き残る（`<table>` は捨てられるので作らない）。
+    """
+    lines = body_text.split("\n")
     html = ""
-    for line in body_text.split("\n"):
-        stripped = line.strip()
+    i = 0
+    while i < len(lines):
+        stripped = lines[i].strip()
+        if BULLET_LINE_RE.match(stripped) and not stripped.startswith("---"):
+            items = []
+            while i < len(lines):
+                s = lines[i].strip()
+                if not BULLET_LINE_RE.match(s) or s.startswith("---"):
+                    break
+                items.append(convert_inline_markdown(BULLET_LINE_RE.sub("", s).strip()))
+                i += 1
+            html += "<ul>" + "".join(f"<li>{t}</li>" for t in items) + "</ul>"
+            continue
+        if QUOTE_LINE_RE.match(stripped):
+            items = []
+            while i < len(lines) and QUOTE_LINE_RE.match(lines[i].strip()):
+                items.append(convert_inline_markdown(
+                    QUOTE_LINE_RE.sub("", lines[i].strip()).strip()))
+                i += 1
+            html += "<blockquote>" + "<br>".join(items) + "</blockquote>"
+            continue
+
+        i += 1
         if not stripped:
             html += "<br>"
         elif stripped.startswith("## "):
             html += f"<h2>{convert_heading_markdown(stripped[3:].strip())}</h2>"
         elif stripped.startswith("### "):
             html += f"<h3>{convert_heading_markdown(stripped[4:].strip())}</h3>"
-        elif stripped.startswith("- "):
-            item_text = convert_inline_markdown(stripped[2:].strip())
-            html += f"<p>・{item_text}</p>"
+        elif stripped.startswith("■ "):
+            # format_for_note が `### 見出し` を `■ 見出し` に落としてから渡してくる。
+            # 素の <p> のままだと見出しとして読まれないので h3 に戻す。
+            html += f"<h3>{convert_heading_markdown(stripped[2:].strip())}</h3>"
         elif stripped.startswith("---"):
             html += "<hr>"
         elif re.match(r"<(figure|ol|ul|table)\b", stripped):
