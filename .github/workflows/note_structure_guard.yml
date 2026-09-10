@@ -1,0 +1,165 @@
+name: Note本文構造 番犬
+
+# 公開中のNote記事に「見た目だけ箇条書き（<p>・…</p>）」「見た目だけ引用（<p>&gt;…</p>）」が
+# 残っていないかを毎日見る番犬。
+#
+# 背景（2026-09-09）: note_geo_structure.py が 2026-09-04（9c84751）に公開147本を
+#   全部 <ul><li> / <blockquote> に直した。ところが**記事を作る側**の
+#   note_auto_poster.markdown_to_html は <p>・…</p> を吐いたままで、直ったのは
+#   2026-09-09（ce10c6a）。その間に公開された5本
+#   （n757225e527ab / n33525859b063 / n7bd7288d5b21 / n32f0c24e8d1b / nf0cf1f7d3460）は
+#   **生まれた瞬間から壊れていた**まま最大5日放置され、人間が聞いてやっと見つかった
+#   （合計 見た目だけ箇条書き128個・引用3個。修正は d816721）。
+#   既存の番犬はどれも本文構造を見ていない
+#   （tag=タグ/eyecatch、keys=キー台帳、stock=在庫、funnel=内部導線、facts=確定ファクト）。
+#
+# 動作: 非ログインの公開APIで data/published_note_keys.json の全記事の本文を読み、
+#   残骸があれば赤くして Issue で通知、直って緑に戻ったらそのIssueを自動クローズする。
+#
+# ⚠️ 直す方（note_geo_structure.py の書き込み）はここでは絶対に走らせない。
+#   live PUT にログインCookieが要るが CI に browser_cookie3 は無い（note_tag_guard で既に踏んだ）。
+#   ここは検知と通知だけ。修正は人間が手元で回す。
+
+on:
+  schedule:
+    - cron: '25 1 * * *'   # JST 10:25（8:03の自動投稿が終わり、新記事が公開された後に見る）
+  push:
+    paths:
+      - 'note_structure_guard.py'
+      - 'note_geo_structure.py'
+      - '.github/workflows/note_structure_guard.yml'
+  workflow_dispatch:
+    inputs:
+      max_bad:
+        description: '許容する違反本数'
+        required: false
+        default: '0'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  structure-guard:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 依存パッケージインストール
+        run: pip install requests
+
+      # 番犬が壊れて「何も見つからない」まま緑になり続けるのが一番まずいので、
+      # 本番の走査の前に検知器そのものを通信なしで自己診断する。
+      - name: 検知器の自己診断
+        run: python3 note_structure_guard.py --self-test
+
+      # 非ログインの公開APIしか叩かないので secret は不要。
+      - name: 公開記事の本文構造を確認
+        id: guard
+        run: python3 note_structure_guard.py --json --max-bad ${{ github.event.inputs.max_bad || 0 }}
+
+      - name: 構造が壊れている → Issue通知
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const title = 'Note記事の本文が「見た目だけ箇条書き」に戻っています（本文構造番犬）';
+            let report = {checked: 0, bad: 0, bullets: 0, quotes: 0, items: [], errors: []};
+            try {
+              report = JSON.parse(fs.readFileSync('data/note_structure_guard_report.json', 'utf8'));
+            } catch (e) {}
+            const items = (report.items || []).slice(0, 40).map(
+              a => `- [${a.title}](https://note.com/taitan_118/n/${a.key})\n`
+                 + `  - ${a.problems.join(' / ')}\n`
+                 + (a.samples || []).slice(0, 2).map(s => `  - 例: \`${s}\``).join('\n')
+            ).join('\n');
+            const more = (report.items || []).length > 40
+              ? `\n\n…ほか ${(report.items || []).length - 40}本` : '';
+            const keys = (report.items || []).map(a => a.key).join(' ');
+            const errs = (report.errors || []).length
+              ? ['', '## 取得できず未確認',
+                 (report.errors || []).map(e => `- \`${e.key}\`: ${e.error}`).join('\n'),
+                 '', '未確認の記事が1本でもあると緑にしません（見落としのまま通すより赤で止める）。'
+                ].join('\n')
+              : '';
+            const body = [
+              '## Note本文構造 番犬 検知',
+              '',
+              `公開 **${report.checked}本** のうち **${report.bad}本** で、本文が`,
+              `本物の \`<ul><li>\` / \`<blockquote>\` ではなく \`<p>\` のままです`,
+              `（見た目だけ箇条書き **${report.bullets}個** / 見た目だけ引用 **${report.quotes}個**）。`,
+              '',
+              '読者には箇条書き・引用に見えますが、検索エンジンとAIには**ただの段落の壁**にしか',
+              '見えません。PUTは成功していてログも緑なので、ログを見ても気づけません。',
+              '',
+              '典型的な原因は2つ:',
+              '- 記事を**作る側**（`note_auto_poster.markdown_to_html` など）が `<p>・…</p>` を吐いている',
+              '  → 新記事が生まれた瞬間から壊れる。2026-09-04〜09-08 の5本がこれ（最大5日放置）',
+              '- 本文にPUTを打つ一括修正スクリプトが構造を書き戻した（回帰）',
+              '',
+              '## 対象',
+              items || '(なし)',
+              more,
+              errs,
+              '',
+              '## 対処',
+              '手元（ログイン済みのMac）で回します。**CIでは直せません**',
+              '（note への live PUT にログインCookieが要るが、CIに browser_cookie3 が無い）。',
+              '',
+              '```bash',
+              `python3 note_geo_structure.py --plan ${keys || '<key>'}`,
+              '```',
+              '',
+              '変換内容（文言は1文字も変わらないことを機械保証しています）を確認してから、',
+              '`--plan` を外して実行 → `python3 note_structure_guard.py` で緑を確認。',
+              '',
+              '新記事が毎回壊れている場合は、記事を**作る側**を直さないと再発します',
+              '（生成側の穴を塞がずに公開済みだけ直すと、翌日また同じIssueが立ちます）。',
+              '',
+              '直すと次回のランがこのIssueを自動クローズします。',
+              '',
+              '---',
+              '_このIssueは `.github/workflows/note_structure_guard.yml` により自動生成されました。_',
+            ].join('\n');
+            const guard = require('./.github/scripts/guard_comment.js');
+            await guard.notify({
+              github, context, title, body,
+              recomment: `再検知: ${new Date().toISOString()}\n`
+                + `${report.bad}本 / 箇条書き${report.bullets}個・引用${report.quotes}個`
+                + `${(report.errors || []).length ? ` / 未確認${report.errors.length}本` : ''}`,
+            });
+
+      - name: 構造が回復 → Issueを自動クローズ
+        # note_structure_guard.py は毎回**台帳の全記事**を読み直し、1本でも取得に
+        # 失敗したら赤にする。つまり緑＝全件を実際に見て残骸0が確定した状態（差分ではない）。
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'Note記事の本文が「見た目だけ箇条書き」に戻っています（本文構造番犬）';
+            const guard = require('./.github/scripts/guard_comment.js');
+            const match = await guard.findOpenIssue({ github, context, title });
+            if (!match) return;
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: match.number,
+              body: [
+                `復旧を確認: ${new Date().toISOString()} のランで全記事の本文構造が揃っていました。自動クローズします。`,
+                '',
+                `- ラン: ${runUrl}`,
+              ].join('\n'),
+            });
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: match.number,
+              state: 'closed',
+            });
