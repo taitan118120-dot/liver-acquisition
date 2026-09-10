@@ -75,7 +75,7 @@ jobs:
           steps.check.outputs.today_is_post_day == 'true'
         run: |
           echo "投稿0本の日: ${{ steps.check.outputs.missed }}"
-          echo "今日は投稿曜日なので臨時投稿は撃たず、通常のウィンドウ(JST 19:50-22:30)に任せます。"
+          echo "今日は投稿曜日なので臨時投稿は撃たず、通常のウィンドウ(JST 19:50-23:40)に任せます。"
 
       - name: 欠け検知 → Issue通知
         if: steps.check.outputs.missed_count != '' && steps.check.outputs.missed_count != '0'

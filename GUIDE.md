@@ -48,7 +48,7 @@ X上でフォロワーを増やす手段は実質リプライ・引用のみで�
 
 | 内容 | スクリプト / ワークフロー | 頻度 |
 |---|---|---|
-| バズ特化カルーセル投稿 | `instagram/ig_viral_generator.py` + `ig_poster.py` / `instagram_post.yml` | 週3回（月・水・金 JST 19:50-22:30 の窓で1本） |
+| バズ特化カルーセル投稿 | `instagram/ig_viral_generator.py` + `ig_poster.py` / `instagram_post.yml` | 週3回（月・水・金 JST 19:50-23:40 の窓で1本） |
 | 投稿の欠け検知・自己回復 | `instagram/ig_slot.py` / `instagram_post_watchdog.yml` | 毎日 JST 12:40 |
 
 投稿時刻は cron ではなく `instagram/ig_slot.py` が決める。Actions の schedule 遅延が
