@@ -231,9 +231,33 @@ def auto_refresh():
     if not new_token:
         return False
 
-    # GitHub Secretを更新
+    # GitHub Secretを更新（期限が延びていなくても、新しい文字列自体は有効なので先に入れる）
     print("\n=== GitHub Secret 更新 ===")
     update_github_secret("INSTAGRAM_ACCESS_TOKEN", new_token)
+
+    # 「更新成功」と言いながら期限が1ミリも延びていないことがある。
+    # 2026-08-10〜09-07 は毎日ここを通って毎回 success だったのに、有効期限は
+    # ずっと 2026-09-08 15:38:25 のままで、そのまま失効してIG投稿が止まった。
+    # fb_exchange_token は「すでに長期トークン」を渡しても新しい文字列は返すが、
+    # 期限は延ばさないことがあるため。expires_in の自己申告ではなく、
+    # 新トークンを debug_token に掛け直して実際の期限を確かめる。
+    print("\n=== 更新後の期限を実測 ===")
+    after = debug_token(new_token)
+    if not after:
+        print("[ERROR] 更新後のトークンを確認できませんでした。")
+        return False
+    if after["expires_at"] == 0:
+        print("更新後は無期限トークンです。")
+        return True
+    # 1日以上延びていなければ「延長できていない」とみなす
+    if after["expires_at"] <= info["expires_at"] + 86400:
+        print("[ERROR] トークン文字列は入れ替わりましたが、有効期限が延びていません")
+        print(f"  更新前: {datetime.fromtimestamp(info['expires_at'])}")
+        print(f"  更新後: {datetime.fromtimestamp(after['expires_at'])}")
+        print("  このまま放置すると期限日にIG投稿が止まります。")
+        print("  Meta for Developers で長期トークンを再発行し、")
+        print("  GitHub Secrets の INSTAGRAM_ACCESS_TOKEN を差し替えてください。")
+        return False
 
     return True
 
