@@ -13,6 +13,8 @@ name: Note導線 番犬
 # 動作: 非ログインの公開APIで全記事の本文を読み、冒頭CTA／あわせて読みたい／
 #   公式LINEリンク／（代理店記事なら）代理店LPと代理店向け特典の有無を確認する。
 #   欠けがあれば赤くして Issue で通知し、直って緑に戻ったらそのIssueを自動クローズする。
+#   取得できなかった記事（3回リトライしても取れない）は「未確認」として赤にする。
+#   握りつぶすと、剥がれている記事の取得がたまたま失敗した回に緑＝自動クローズ、になる。
 
 on:
   schedule:
@@ -58,7 +60,7 @@ jobs:
           script: |
             const fs = require('fs');
             const title = 'Note記事の導線が剥がれています（導線番犬）';
-            let report = {checked: 0, bad: 0, agency_bad: 0, items: []};
+            let report = {checked: 0, bad: 0, agency_bad: 0, items: [], errors: []};
             try {
               report = JSON.parse(fs.readFileSync('data/note_funnel_guard_report.json', 'utf8'));
             } catch (e) {}
@@ -67,6 +69,13 @@ jobs:
             ).join('\n');
             const more = (report.items || []).length > 40
               ? `\n\n…ほか ${(report.items || []).length - 40}本` : '';
+            const errs = (report.errors || []).length
+              ? ['', '## 取得できず未確認',
+                 (report.errors || []).map(e => `- \`${e.key}\`: ${e.error}`).join('\n'),
+                 '', '未確認の記事が1本でもあると緑にしません（見落としのまま通すより赤で止める）。',
+                 'note側の一時的な5xx／タイムアウトなら、次のランで自然に緑へ戻ります。'
+                ].join('\n')
+              : '';
             const body = [
               '## Note導線 番犬 検知',
               '',
@@ -79,6 +88,7 @@ jobs:
               '## 対象',
               items || '(なし)',
               more,
+              errs,
               '',
               '## 対処',
               '- 冒頭CTA／あわせて読みたい欠け → `python3 note_boost_publish.py --plan` で対象を確認して実行',
@@ -95,12 +105,14 @@ jobs:
             const guard = require('./.github/scripts/guard_comment.js');
             await guard.notify({
               github, context, title, body,
-              recomment: `再検知: ${new Date().toISOString()}\n欠け ${report.bad}本（代理店 ${report.agency_bad}本）`,
+              recomment: `再検知: ${new Date().toISOString()}\n欠け ${report.bad}本（代理店 ${report.agency_bad}本）`
+                + `${(report.errors || []).length ? ` / 未確認${report.errors.length}本` : ''}`,
             });
 
       - name: 導線が回復 → Issueを自動クローズ
-        # note_funnel_guard.py は毎回**公開記事を全件**読み直すので、
-        # 緑＝欠けが1本も無いことが確定する（差分ではない）。
+        # note_funnel_guard.py は毎回**公開記事を全件**読み直し、1本でも取得に
+        # 失敗したら（3回リトライしても取れなければ）赤にする。つまり緑＝全件を
+        # 実際に見て欠け0が確定した状態（差分でもなく、未確認込みでもない）。
         if: success()
         uses: actions/github-script@v7
         with:

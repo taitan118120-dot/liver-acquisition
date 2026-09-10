@@ -23,10 +23,19 @@
      — `/agency/` LP と『ライバー代理店パートナー スタートガイド』。
        ライバー向け特典を出していたら違反（2026-08-28まで14本全部がそうだった）
 
+■ 取れなかった記事は「未確認」で赤にする（2026-09-10）
+以前は取得に失敗した記事を握りつぶして continue していたので、集計対象から外れ、
+**導線が剥がれている記事の取得がたまたま失敗すると exit 0＝緑**になっていた。
+リトライも無かったので、note側の一時的な5xx／タイムアウト1回で1本まるごと未確認になる。
+ワークフローの「回復したらIssueを自動クローズ」は「緑＝全件見て欠け0」を前提にして
+いるため、未確認のまま緑になると**まだ直っていないIssueを閉じてしまう**。
+いまは fetch を3回まで粘り、それでも取れなければ `errors` に積んで exit 1 にする
+（note_structure_guard.py と同じ扱い）。
+
 使い方:
-  python3 note_funnel_guard.py                 # 全件確認。違反があれば exit 1
+  python3 note_funnel_guard.py                 # 全件確認。違反・未確認があれば exit 1
   python3 note_funnel_guard.py --json          # data/note_funnel_guard_report.json も出力
-  python3 note_funnel_guard.py --max-missing 5 # 許容本数（既定0）
+  python3 note_funnel_guard.py --max-missing 5 # 許容本数（既定0。未確認の本数は許容しない）
 """
 import argparse
 import json
@@ -48,6 +57,8 @@ LINE_URL = "lin.ee/xchCfdn"
 AGENCY_LP = "taitan-pro-lp.netlify.app/agency/"
 AGENCY_GIFT = "ライバー代理店パートナー スタートガイド"
 LIVER_GIFT = "ライバー新人期スタートダッシュガイド"
+
+FETCH_TRIES = 3
 
 # 見出しとしての「あわせて読みたい」だけを数える。地の文の
 # 「> 📖 あわせて読みたい：…」を数えると、リンク0の記事を緑と誤判定する
@@ -73,15 +84,32 @@ def is_agency(title):
     return any(w in title for w in AGENCY_WORDS)
 
 
+def get_json(session, url, **kw):
+    """GETしてJSONを返す。取れないまま緑にしないため、握りつぶさず粘ってから投げる。
+
+    note側の一時的な5xx／タイムアウトを1回引いただけで記事が未確認になるのを防ぐ。
+    """
+    last = None
+    for attempt in range(FETCH_TRIES):
+        try:
+            r = session.get(url, timeout=25, **kw)
+            r.raise_for_status()
+            return r.json()
+        except Exception as e:
+            last = e
+            if attempt < FETCH_TRIES - 1:
+                time.sleep(1.5 * (attempt + 1))
+    raise last
+
+
 def fetch_published(session):
     """公開中の記事を [(key, title)] で返す。非ログインの公開APIのみ。"""
     out, page = [], 1
     while page <= 25:
-        r = session.get(
+        d = get_json(
+            session,
             f"https://note.com/api/v2/creators/{URLNAME}/contents"
-            f"?kind=note&page={page}", timeout=25)
-        r.raise_for_status()
-        d = r.json()["data"]
+            f"?kind=note&page={page}")["data"]
         notes = d.get("contents", [])
         for n in notes:
             out.append((n["key"], n.get("name", "")))
@@ -92,13 +120,17 @@ def fetch_published(session):
     return out
 
 
+def fetch(session, key):
+    return get_json(session, f"https://note.com/api/v3/notes/{key}",
+                    headers={"Cache-Control": "no-cache"})["data"]
+
+
 def check(session, key, title):
-    r = session.get(f"https://note.com/api/v3/notes/{key}",
-                    headers={"Cache-Control": "no-cache"}, timeout=25)
-    r.raise_for_status()
-    d = r.json()["data"]
+    d = fetch(session, key)
     if d.get("status") != "published":
         return None
+    # --keys 指定時はタイトルが手元に無いので本文と一緒に取る（代理店記事の判定に要る）
+    title = title or d.get("name", "") or ""
     body = d.get("body", "") or ""
     n = max(1, len(body))
     problems = []
@@ -142,20 +174,28 @@ def main():
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--max-missing", type=int, default=0,
                     help="違反を許容する本数（既定0）")
+    ap.add_argument("--keys", nargs="*",
+                    help="確認するキー（既定は公開記事の全件）")
     args = ap.parse_args()
 
     s = requests.Session()
     s.headers.update({"User-Agent": UA, "Accept": "application/json"})
 
-    pub = fetch_published(s)
+    if args.keys:
+        pub = [(k, "") for k in args.keys]
+    else:
+        pub = fetch_published(s)
     print(f"公開記事 {len(pub)}本を確認中…", file=sys.stderr)
 
-    rows = []
-    for i, (key, title) in enumerate(pub, 1):
+    rows, errors = [], []
+    for key, title in pub:
         try:
             r = check(s, key, title)
         except Exception as e:
+            # 未確認のまま緑にしない。ここで continue して集計から外していたのが
+            # 「取得失敗を握りつぶして緑になる」穴だった（2026-09-10 修正）。
             print(f"  取得失敗 {key}: {e}", file=sys.stderr)
+            errors.append({"key": key, "title": title, "error": str(e)})
             continue
         if r:
             rows.append(r)
@@ -169,15 +209,21 @@ def main():
     for r in bad:
         print(f"  - {r['title'][:50]}")
         print(f"      {' / '.join(r['problems'])}   https://note.com/{URLNAME}/n/{r['key']}")
+    if errors:
+        print(f"\n!! 取得できず未確認の記事 {len(errors)}本"
+              f"（未確認のまま緑にはしない）: "
+              f"{', '.join(e['key'] for e in errors)}")
 
-    report = {"checked": len(rows), "bad": len(bad), "agency_bad": len(ag_bad),
-              "max_missing": args.max_missing, "items": bad}
+    report = {"generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+              "total": len(pub), "checked": len(rows), "bad": len(bad),
+              "agency_bad": len(ag_bad), "max_missing": args.max_missing,
+              "items": bad, "errors": errors}
     if args.json:
         os.makedirs(os.path.dirname(REPORT_PATH), exist_ok=True)
         json.dump(report, open(REPORT_PATH, "w"), ensure_ascii=False, indent=1)
         print(f"\n保存: {REPORT_PATH}")
 
-    if len(bad) > args.max_missing:
+    if errors or len(bad) > args.max_missing:
         sys.exit(1)
     print("\nOK")
 
