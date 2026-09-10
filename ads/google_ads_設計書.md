@@ -4847,6 +4847,9 @@ Google の診断は ￥300 を名指ししていないので、ここは**断定
 | ブラウザ | Chromium は入っている（`/opt/pw-browsers/chromium`）が、**プロファイルは空**。`~/.config/google-chrome` も `~/.config/chromium` も存在しない |
 | 認証情報 | リポジトリにも環境変数にも **Google広告のCookie・パスワード・APIトークンは一切無い**（`grep -rn "google.ads\|developer_token\|GOOGLE_ADS"` → 実装ヒットゼロ。`requirements.txt` にも `google-ads` は無い） |
 | 過去セッション | §0-34〜§0-39 の管理画面操作は **ユーザーのMac上のローカル環境**（ログイン済みブラウザ）で実施されていた |
+| 🔴 ネットワーク | **`ads.google.com:443` への接続自体がネットワークポリシーで拒否される**（2026-09-10 実測。`curl` は `HTTP 000`、エージェントプロキシのログに `connect_rejected / gateway answered 403 to CONNECT / host: ads.google.com:443`）。**認証情報の有無以前に、ホストへ到達できない** |
+
+⚠️ **「ユーザーが自分のPCでログインする」ではこの壁は越えられない。**ログイン状態はユーザーのMacのブラウザにあり、このコンテナとは別物。**このコンテナ側の到達可否の問題**なので、ローカルのClaude Codeで回すか、画面のスクショ／CSVをこちらに渡すかの2択になる。
 
 🔑 **結論：管理画面が絡む作業は必ずローカルのClaude Codeで回す。**クラウドセッションでできるのは「リポジトリ側の修正」と「手順書・調査の準備」まで。
 
