@@ -2,12 +2,20 @@ name: Threads自動投稿
 
 on:
   schedule:
-    # Pull戦略・安全運用: 1日2回まで（JST 9:00 / 22:00 = UTC 0:00 / 13:00）
-    # 時刻別の実測(data/threads_insights.csv)で、8時台の中央値11viewsに対し
-    # 9時台45.5・22時台46。GitHub Actionsの遅延で実投稿は+0〜1時間ずれるので、
-    # 遅延しても好調な帯（9〜10時 / 22〜23時）に収まる時刻を選んだ。
-    - cron: '0 0 * * *'
-    - cron: '0 13 * * *'
+    # 30分おきに終日起動して、実際に投稿するかは threads/threads_slot.py が
+    # JSTの実時刻で決める（投稿は従来どおり1日2本まで）。
+    #
+    # 以前は JST 9:00/22:00 を狙って UTC 0:00/13:00 に置いていたが、
+    # Actions の schedule 遅延が 8/27 以降に 2〜4時間へ悪化し、実際の着弾が
+    # JST 11時台と深夜1〜2時台に固定されていた。時刻別の実測(中央値)は
+    #   9時44 / 10時24 / 22時64 / 23時56  ←狙っていた帯
+    #   8時16.5 / 11時22.5 / 深夜1〜2時33.5 ←実際に落ちていた帯
+    # で、9月のリーチ低下(中央値50.5→24)はこの時刻崩れと同期している。
+    # cron を前倒ししても遅延幅が日によって変わるので制御できない。
+    # 「終日起動＋着弾時刻で判定」にすれば遅延が何時間でも枠内の回が必ず出る。
+    # ウィンドウ外の回はゲート判定だけで数秒で終わる（PUBLICリポなので無料）。
+    # 分は毎時0/15/30/45を避ける（その時刻ほど混雑して遅延が伸びるため）。
+    - cron: '18,48 * * * *'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -16,6 +24,10 @@ on:
         default: false
       require_reply_link:
         description: 'reply_link付きの投稿だけを対象にする（CTA返信の動作確認用）'
+        type: boolean
+        default: false
+      ignore_window:
+        description: '投稿ウィンドウ(JST)を無視して即実行する'
         type: boolean
         default: false
 
@@ -32,16 +44,40 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
+      # ゲート判定までは履歴を引かない。30分おきに起動するので、150MB超の
+      # パックを毎回フルcloneすると無駄が大きい。通過した回だけ unshallow する。
       - uses: actions/checkout@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0
+          fetch-depth: 1
+
+      - name: 投稿ウィンドウ判定（JST）
+        id: gate
+        shell: bash
+        run: |
+          set +e
+          if [ "${{ inputs.ignore_window }}" = "true" ]; then
+            echo "[GATE] ignore_window=true → ウィンドウ判定をスキップ"
+            echo "should_post=true" >> "$GITHUB_OUTPUT"
+            echo "slot=manual" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # 標準ライブラリだけで動くので setup-python / pip install より前に置ける
+          python3 threads/threads_slot.py --check
+          exit 0
+
+      - name: 判定結果
+        if: steps.gate.outputs.should_post != 'true'
+        shell: bash
+        run: echo "${{ steps.gate.outputs.reason }} → 今回は投稿しません"
 
       - uses: actions/setup-python@v6
+        if: steps.gate.outputs.should_post == 'true'
         with:
           python-version: '3.11'
 
       - name: 依存パッケージ
+        if: steps.gate.outputs.should_post == 'true'
         shell: bash
         run: |
           set +e
@@ -49,13 +85,17 @@ jobs:
           exit 0
 
       - name: 最新データ取得
+        if: steps.gate.outputs.should_post == 'true'
         shell: bash
         run: |
           set +e
+          # ログ保存の rebase / push に履歴が要るので、ここで全体を引き直す
+          git fetch --unshallow --no-tags origin main || git fetch --no-tags origin main
           git pull --rebase origin main
           exit 0
 
       - name: キューを補充（残り少なければGeminiで生成）
+        if: steps.gate.outputs.should_post == 'true'
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         shell: bash
@@ -92,6 +132,7 @@ jobs:
           exit 0
 
       - name: Threads投稿
+        if: steps.gate.outputs.should_post == 'true'
         env:
           THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
           THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
@@ -99,6 +140,11 @@ jobs:
         run: |
           set +e
           ARGS="--next"
+          # ゲートは上のステップでも見ているが、生成やpullに時間がかかって
+          # ウィンドウを跨いだ場合に備えて投稿直前にもう一度見る。
+          if [ "${{ inputs.ignore_window }}" != "true" ]; then
+            ARGS="$ARGS --slot-gate"
+          fi
           if [ "${{ inputs.require_reply_link }}" = "true" ]; then
             ARGS="$ARGS --require-reply-link"
           fi
@@ -115,7 +161,7 @@ jobs:
           exit 0
 
       - name: ログ保存
-        if: always()
+        if: always() && steps.gate.outputs.should_post == 'true'
         shell: bash
         run: |
           set +e

@@ -1,0 +1,129 @@
+name: Threads投稿ウォッチドッグ
+
+# Threads自動投稿の「サイレント停止」を検知する番犬。
+#
+# 背景: 2026-09-10 に threads_post.yml を「30分おき起動＋JSTウィンドウ判定」へ
+# 切り替えた。それまでは遅延しても必ず1本は出ていたが、新方式は
+# 「ウィンドウ外なら投稿しない」ので、Actions の遅延が想定外に伸びると
+# その日の投稿が丸ごと0本になりうる。しかもゲートで抜けたランは success で
+# 終わるため、ワークフローの色では気づけない（IGトークン失効と同じ緑の嘘）。
+#
+# 動作: 直近30時間に「Threads投稿ログ更新」コミットが1件もなければ
+#   1. ignore_window=true で自動投稿を即時トリガー（自己回復の試み）
+#   2. Issueを作成/更新して通知
+# 投稿が再開したらそのIssueを自動クローズする（[[feedback_watchdog_autoclose]]）。
+#
+# 注意: threads_post.yml 側のログコミットメッセージ「Threads投稿ログ更新」を
+# 変える場合は、ここの判定文字列も必ず合わせて変更すること。
+
+on:
+  schedule:
+    - cron: '20 3 * * *'   # 毎日 JST 12:20（朝枠 09:00-10:59 の後に確認）
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+  issues: write
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: .github/scripts
+
+      - name: 直近30時間の実投稿を確認
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          since=$(date -u -d '30 hours ago' +%Y-%m-%dT%H:%M:%SZ)
+          echo "since=$since で投稿ログコミットを検索"
+          count=$(gh api "repos/$GITHUB_REPOSITORY/commits?since=$since&per_page=100" \
+            --jq '[.[].commit.message | select(startswith("Threads投稿ログ更新"))] | length')
+          echo "投稿ログコミット: $count 件"
+          echo "ok_count=$count" >> "$GITHUB_OUTPUT"
+
+      - name: 停止検知 → 投稿をウィンドウ無視で即時トリガー
+        if: steps.check.outputs.ok_count == '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "30時間以上Threadsへの実投稿がありません。ウィンドウを無視して1本出します。"
+          gh workflow run threads_post.yml --repo "$GITHUB_REPOSITORY" -f ignore_window=true
+
+      - name: 停止検知 → Issue通知
+        if: steps.check.outputs.ok_count == '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'Threads自動投稿が30時間以上動いていません（ウォッチドッグ検知）';
+            const body = [
+              '## Threads投稿ウォッチドッグ検知',
+              '',
+              '直近30時間、`Threads投稿ログ更新` のコミットが1件もありません。',
+              'ゲートで抜けたランは success で終わるので、ワークフローの色では気づけません。',
+              '',
+              '- `ignore_window=true` で自動投稿を即時トリガー済み（自己回復の試み）',
+              '- 検知内容が変わったときだけこのIssueにコメントが追加されます',
+              '',
+              '## 原因確認',
+              '```bash',
+              'gh run list --workflow=threads_post.yml --limit 20',
+              '# ゲートの判定理由はランのログ「投稿ウィンドウ判定（JST）」ステップに出る',
+              'python threads/threads_slot.py --check',
+              '```',
+              '',
+              'よくある原因:',
+              '- Actions の遅延が伸びて、どのランも threads_slot.SLOTS の枠に入らなかった',
+              '- 未投稿キューが空、または全部が確定ファクト違反でブロックされた',
+              '- THREADS_ACCESS_TOKEN の失効',
+              '',
+              '直すと次回のランがこのIssueを自動クローズします。',
+              '',
+              '---',
+              '_このIssueは `.github/workflows/threads_post_watchdog.yml` により自動生成されました。_',
+            ].join('\n');
+            const guard = require('./.github/scripts/guard_comment.js');
+            await guard.notify({
+              github, context, title, body,
+              recomment: `再検知: ${new Date().toISOString()} 時点でも直近30時間の実投稿がありません。`,
+            });
+
+      - name: 投稿再開を確認 → Issueを自動クローズ
+        # 検知しても赤くならない型なので success() だけでは排他にならない。
+        # 空文字を弾くのは、check ステップがコケたランを「復旧」と誤読しないため。
+        if: success() && steps.check.outputs.ok_count != '' && steps.check.outputs.ok_count != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'Threads自動投稿が30時間以上動いていません（ウォッチドッグ検知）';
+            const count = '${{ steps.check.outputs.ok_count }}';
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const match = existing.find(i => i.title === title);
+            if (!match) return;
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: match.number,
+              body: [
+                `復旧を確認: ${new Date().toISOString()} のランで直近30時間に \`Threads投稿ログ更新\` コミットが ${count} 件ありました。自動クローズします。`,
+                '',
+                `- ラン: ${runUrl}`,
+              ].join('\n'),
+            });
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: match.number,
+              state: 'closed',
+            });

@@ -27,9 +27,11 @@ import json
 import os
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 import requests
+
+JST = timezone(timedelta(hours=9))
 
 GRAPH_BASE = "https://graph.threads.net/v1.0"
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -261,7 +263,7 @@ def _pick_by_mix(candidates, posts):
     return known[best][0]
 
 
-def cmd_next(dry_run=False, require_reply_link=False):
+def cmd_next(dry_run=False, require_reply_link=False, slot_gate=False):
     """キュー(threads_posts.json)から未投稿を1本投稿する。
 
     先頭から順ではなく、TARGET_MIX に対していちばん不足している型を選ぶ。
@@ -274,10 +276,28 @@ def cmd_next(dry_run=False, require_reply_link=False):
 
     require_reply_link=True のときは reply_link を持つ投稿だけを対象にする。
     CTA返信(reply_to_id)の動作確認を、通常の順番待ちをせずに1本試すための入口。
+
+    slot_gate=True のときは threads_slot の投稿ウィンドウ(JST)を見て、
+    枠外・枠消化済みなら何もせず 0 を返す。ワークフロー側でも同じ判定を
+    先に掛けているが、cronが増えた以上ここが最後の歯止めになる
+    （ゲートを通さずに --next を直叩きすると1日3本目が出てしまう）。
     """
+    posts = _load_posts()
+    if slot_gate:
+        try:
+            from threads_slot import decide
+        except ImportError as e:
+            print(f"[WARN] スロット判定を読み込めません（ゲートなしで続行）: {e}")
+        else:
+            should, slot, reason = decide(posts)
+            print(f"[GATE] {reason}")
+            if not should:
+                print("[SKIP] 投稿ウィンドウ外のため何もしません。")
+                return 0
+            print(f"[GATE] {slot} 枠として投稿します。")
+
     token = _token()
     user_id = _user_id(token)
-    posts = _load_posts()
     if not posts:
         print("[INFO] キューが空です。threads/threads_content.py で生成するか手動で追加してください。")
         return 0
@@ -342,7 +362,12 @@ def cmd_next(dry_run=False, require_reply_link=False):
         return 0
     if media_id:
         target["posted"] = True
-        target["posted_at"] = datetime.now().isoformat(timespec="seconds")
+        # タイムゾーン付きで書く。以前は datetime.now() の naive 値で、実体は
+        # 実行環境のローカル時刻（CI=UTC / 手元=JST）だった。threads_slot が
+        # 「今日この枠を消化したか」をJSTで判定するので、どちらで実行しても
+        # 同じ意味になるよう揃える。過去分の naive 値は UTC として解釈される。
+        target["posted_at"] = datetime.now(timezone.utc).astimezone(JST).isoformat(
+            timespec="seconds")
         target["media_id"] = media_id
         _save_posts(posts)
         _post_link_reply(token, user_id, target, media_id)
@@ -392,6 +417,8 @@ def main():
     ap.add_argument("--dry-run", action="store_true", help="投稿せず内容のみ表示")
     ap.add_argument("--require-reply-link", action="store_true",
                     help="--next と併用。reply_link を持つ投稿だけを対象にする（CTA返信の動作確認用）")
+    ap.add_argument("--slot-gate", action="store_true",
+                    help="--next と併用。JSTの投稿ウィンドウ内でなければ何もしない")
     args = ap.parse_args()
 
     if args.whoami:
@@ -406,7 +433,9 @@ def main():
         sys.exit(0 if rc else 1)
 
     if args.next:
-        sys.exit(cmd_next(dry_run=args.dry_run, require_reply_link=args.require_reply_link))
+        sys.exit(cmd_next(dry_run=args.dry_run,
+                          require_reply_link=args.require_reply_link,
+                          slot_gate=args.slot_gate))
 
     ap.print_help()
 
