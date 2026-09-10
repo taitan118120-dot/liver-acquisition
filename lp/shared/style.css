@@ -168,6 +168,15 @@ body {
   line-height: 2;
 }
 
+/* ファーストビューの収入訴求に付ける注記（Google広告「誤解を招くコンテンツ」対策） */
+.hero-note {
+  max-width: 480px;
+  margin: -24px auto 34px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.8;
+}
+
 /* ===== CTA Button ===== */
 .cta-btn {
   position: relative;
