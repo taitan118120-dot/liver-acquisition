@@ -169,7 +169,7 @@ def _try_refresh(current_token):
         return False
 
 
-def run(generate_if_empty=False, source_type="auto", dry_run=False):
+def run(generate_if_empty=False, source_type="auto", dry_run=False, slot_gate=False):
     """スケジュール実行のメイン処理。(success, has_content) を返す。"""
 
     # トークン事前チェック（dry-runでは不要）
@@ -247,6 +247,17 @@ def run(generate_if_empty=False, source_type="auto", dry_run=False):
         print("  `python ig_content_generator.py --generate` でコンテンツを生成してください。")
         return False, False
 
+    # ワークフロー側のゲートを通ってから、生成（Geminiの画像生成は数分かかる）と
+    # git push を挟んでいる。その間にウィンドウを跨いでいたら投稿しない。
+    # ここで止めても生成物は残るので、次のウィンドウの回がそのまま投稿する。
+    if slot_gate and not dry_run:
+        from ig_slot import decide as slot_decide
+        allowed, _slot, slot_reason = slot_decide()
+        if not allowed:
+            print(f"[GATE] 投稿直前の再判定でウィンドウ外: {slot_reason}")
+            print("  生成済みコンテンツは次のウィンドウの回で投稿されます。")
+            return False, False
+
     # 一時エラー時のリトライループ
     last_error_kind = None  # "transient" | "permanent" | None
     for attempt in range(TRANSIENT_RETRIES + 1):
@@ -293,6 +304,8 @@ def main():
                         help="コンテンツソース（default: auto = バズカルーセル）")
     parser.add_argument("--test", action="store_true",
                         help="テスト実行（投稿しない）")
+    parser.add_argument("--slot-gate", action="store_true",
+                        help="投稿直前に ig_slot のJSTウィンドウを再判定する（Actions用）")
     args = parser.parse_args()
 
     dry_run = args.test
@@ -300,6 +313,7 @@ def main():
         generate_if_empty=args.generate,
         source_type=args.source,
         dry_run=dry_run,
+        slot_gate=args.slot_gate,
     )
 
     if success:

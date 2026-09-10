@@ -270,19 +270,31 @@ def main():
             sys.exit(1)
 
         new_token = exchange_short_to_long(short_token, app_id, app_secret)
-        if new_token:
-            print(f"\n以下をGitHub Secretに設定してください:")
-            print(f"  gh secret set INSTAGRAM_ACCESS_TOKEN")
-            update_github_secret("INSTAGRAM_ACCESS_TOKEN", new_token)
+        if not new_token:
+            sys.exit(1)
+        print(f"\n以下をGitHub Secretに設定してください:")
+        print(f"  gh secret set INSTAGRAM_ACCESS_TOKEN")
+        update_github_secret("INSTAGRAM_ACCESS_TOKEN", new_token)
 
     elif args.refresh or args.force_refresh:
+        # 失敗したら必ず非ゼロで落とす。
+        # 2026-09-08 に INSTAGRAM_ACCESS_TOKEN が失効したとき、ここが戻り値を
+        # 捨てていたので instagram_token_refresh.yml は毎日 success のままで、
+        # 9/9(水)のIG投稿が丸ごと落ちていたのに気づけなかった（発覚は9/11）。
+        # トークンが死んだら投稿も止まる＝赤で気づける状態にしておく
+        # （[[feedback_keep_failure_notifications]]）。
         if args.force_refresh:
             token = config.INSTAGRAM_ACCESS_TOKEN or os.environ.get("INSTAGRAM_ACCESS_TOKEN", "")
             new_token = refresh_long_token(token)
-            if new_token:
-                update_github_secret("INSTAGRAM_ACCESS_TOKEN", new_token)
-        else:
-            auto_refresh()
+            if not new_token:
+                print("[ERROR] トークンの強制更新に失敗しました。")
+                sys.exit(1)
+            update_github_secret("INSTAGRAM_ACCESS_TOKEN", new_token)
+        elif not auto_refresh():
+            print("[ERROR] トークンの確認/更新に失敗しました。"
+                  "Meta for Developers で長期トークンを再発行し、"
+                  "GitHub Secrets の INSTAGRAM_ACCESS_TOKEN を更新してください。")
+            sys.exit(1)
 
     else:
         parser.print_help()
