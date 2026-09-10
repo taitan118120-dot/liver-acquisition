@@ -51,14 +51,17 @@ Threads 投稿コンテンツ生成（Gemini）
 """
 
 import argparse
+import csv
 import json
 import os
+import random
 import re
 import sys
 from datetime import datetime
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 POSTS_FILE = os.path.join(SCRIPT_DIR, "threads_posts.json")
+INSIGHTS_CSV = os.path.join(os.path.dirname(SCRIPT_DIR), "data", "threads_insights.csv")
 
 # 確定ファクトの禁止パターンはリポジトリ直下の facts_patterns.py が正本（媒体共通）。
 # 2026-08-09: 割合統計だけをここに繋いだ（Threadsの _violations() には割合統計の
@@ -201,50 +204,93 @@ storyと同じ「深夜の独り言」のトーンで書く。募集要項の説
 ライバーの月収実例も、代理店の収入と誤読されるので代理店投稿では書かない。""",
 }
 
+# ── ネタの引き出し ────────────────────────────────────────
+# 2026-09-10 リスト化。以前は改行区切りの1つの文字列で「毎回ちがうものを選ぶ」と
+# 指示するだけだったので、同じネタが何度も出ていた（実害の例:
+#   6/13「配信者の闇って、枠を閉じた瞬間に世界で一番静かな部屋になるとこ」323views
+#   9/05「配信枠を閉じた後の静寂は、配信者にしか分からない」26views
+# 加えて未投稿キューにも「枠を閉じた瞬間の静けさ」がもう1本たまっていた）。
+# n-gram の重複判定は言い換えられるとすり抜けるので、こちら側で
+# 「直近で使ったネタは配らない」と決めてしまう。
+# storyは在庫8ネタしかなく、2週間で必ず一周していたので28ネタまで増やした。
 TOPICS = {
-    "story": """- 4年間で見てきた、伸びる子と辞めていく子の違い
-- 枠を閉じた後の静けさ、配信者のメンタルのリアル
-- 「顔出ししたくない」「稼ぎたいと言うのが恥ずかしい」という相談の多さ
-- 事務所に入ったのに放置される、という業界のよくある話（他社名は出さない）
-- リスナーさんとの距離感、支えられている感覚
-- 数字が伸びない時期に何を考えていたか
-- 家族や職場に言えないまま配信してる人の葛藤
-- 稼ぐより「居場所」で続いている人の話""",
-    "liver": """- Pocochaの時間ダイヤ＝投げ銭ゼロの日でも配信時間で報酬が出る仕組み
-- 毎日配信しなくていい（ノルマなし・月4日のオフの日）
-- 最初の数週間でつまずくポイントと乗り越え方
-- 顔・若さ・トーク力より続ける力
-- 伸び悩んでいるとき、環境を変える選択肢がある（移籍視点）
-- 副業ペースの実例（FACTSの男性ライバーの例だけ。変動ありを添える）
-- 会社バレが不安な人へ：住民税と身バレが主な原因、一般論レベルの対策（断定せず）""",
+    "story": [
+        "4年間で見てきた、伸びる子と辞めていく子の違い",
+        "枠を閉じた後の静けさ、配信者のメンタルのリアル",
+        "「顔出ししたくない」「稼ぎたいと言うのが恥ずかしい」という相談の多さ",
+        "事務所に入ったのに放置される、という業界のよくある話（他社名は出さない）",
+        "リスナーさんとの距離感、支えられている感覚",
+        "数字が伸びない時期に何を考えていたか",
+        "家族や職場に言えないまま配信してる人の葛藤",
+        "稼ぐより「居場所」で続いている人の話",
+        "誰も来ない枠に向かって喋り続けた時間が、後から効いてくる話",
+        "コメントが1件も来ない日をどうやり過ごすか",
+        "「可愛い子が勝つ」わけではなかった、という現場の実感",
+        "配信を辞めた子が数ヶ月後にふらっと戻ってくること",
+        "リスナーさんの生活が透けて見える瞬間（夜勤明け・仕事帰り）",
+        "応援してくれていた人が、何も言わずにいなくなるとき",
+        "数字を追いかけすぎて配信が楽しくなくなる瞬間",
+        "「今日は無理」と言える人のほうが長く続くという話",
+        "初配信の日の緊張と、そのあと変わったこと",
+        "自分の声や喋り方が嫌いだった人が続けられた理由",
+        "配信の外の生活のほうが結局は大事だと気づくとき",
+        "リスナーさんの名前を覚えていることの重み",
+        "稼げるようになった人の生活で、実際に変わったこと／変わらなかったこと",
+        "続いている人が共通してやっている、地味で目立たないこと",
+        "引退を考えた夜に、何を考えていたか",
+        "配信が生活のリズムそのものを作ってくれること",
+        "救われているのは配信者の側だった、という話",
+        "配信していることを隠している人が抱えている後ろめたさ",
+        "うまく喋れないことは、配信では弱点にならないという話",
+        "他の配信者と比べた瞬間に、楽しさが消えるという話",
+    ],
+    "liver": [
+        "Pocochaの時間ダイヤ＝投げ銭ゼロの日でも配信時間で報酬が出る仕組み",
+        "毎日配信しなくていい（ノルマなし・月4日のオフの日）",
+        "最初の数週間でつまずくポイントと乗り越え方",
+        "顔・若さ・トーク力より続ける力",
+        "伸び悩んでいるとき、環境を変える選択肢がある（移籍視点）",
+        "副業ペースの実例（FACTSの男性ライバーの例だけ。変動ありを添える）",
+        "会社バレが不安な人へ：住民税と身バレが主な原因、一般論レベルの対策（断定せず）",
+        "枠タイトルとプロフィールが、配信の中身より先に見られている話",
+        "配信の開始直後にやることを1つだけ決めておくと崩れない話",
+        "リスナーさんが増えない時期に、数字以外で見ておく指標",
+    ],
     # 2026-09-04 実務側を追加。Noteの実測（月間PV 実務型253 / 募集型29＝約9倍）で、
     # 検索・回遊しているのは「もう始める気がある人」で、その人の困りごとは
     # スカウトの返信率・立ち上げ・両立といった手を動かす場面だと判明したため。
     # 「代理店とは」「メリット」「なる方法」型のネタはここに置かない。
-    "agency": """- 送ったスカウトの返信が来ない時に、実際に変えている一文
-- 初回のやりとりで必ず聞いていること（稼ぎたい額より先に聞く方）
-- 配信を始める前日に何を渡しておくと初配信で折れないか
-- 声をかけた人が「考えます」で止まったあと、どう追わないか
-- 会社員をやりながら関わる子を持つときの、現実的な時間の使い方
-- 立ち上げの最初の数人をどこから見つけたか（発信を続けた側の順番）
-- 辞めそうな子が出すサイン（配信の時間帯がずれる・連絡が短くなる）
-- 伸び悩んだ子への声のかけ方。数字の話から入らない理由
-- 自分で全部教えようとして詰んだ話。事務所のマネージャーに投げる線引き
-- 関わる人数が増えたときに最初に崩れるもの（連絡の粒度）
-- 「人の成長で食べていく」という仕事観
-- ライバーを発掘して伸ばすプロセスの面白さと難しさ
-- 個人で全部抱えなくていい、事務所と組む構造
-- 営業や接客の経験が別の形で活きる話
-- 在宅・スキマ時間でできる働き方としての実際
-- 紹介して終わりにした人は続かない。所属後の最初の1ヶ月が全部という話
-- 知らない人への一斉DMをやり尽くして分かったこと（届かない・アカウントが危ない）
-- 発信を続けていたら「実はやってみたくて」と向こうから来た、という順番の話
-- スカウトが上手い人より、伸び悩んだ子の隣にいられる人のほうが残る
-- 自分の利益と、紹介した子が楽しく続けられるかが同じ方向を向いている構造
-- 数字を追うなら報酬額ではなく「先月の子が今月も配信しているか」
-- 配信を迷っている人が本当に気にしているのは、稼げるかではなく自分にできるか
-- 人の小さな変化（コメントを返せるようになった等）を面白がれるかどうか""",
+    "agency": [
+        "送ったスカウトの返信が来ない時に、実際に変えている一文",
+        "初回のやりとりで必ず聞いていること（稼ぎたい額より先に聞く方）",
+        "配信を始める前日に何を渡しておくと初配信で折れないか",
+        "声をかけた人が「考えます」で止まったあと、どう追わないか",
+        "会社員をやりながら関わる子を持つときの、現実的な時間の使い方",
+        "立ち上げの最初の数人をどこから見つけたか（発信を続けた側の順番）",
+        "辞めそうな子が出すサイン（配信の時間帯がずれる・連絡が短くなる）",
+        "伸び悩んだ子への声のかけ方。数字の話から入らない理由",
+        "自分で全部教えようとして詰んだ話。事務所のマネージャーに投げる線引き",
+        "関わる人数が増えたときに最初に崩れるもの（連絡の粒度）",
+        "「人の成長で食べていく」という仕事観",
+        "ライバーを発掘して伸ばすプロセスの面白さと難しさ",
+        "個人で全部抱えなくていい、事務所と組む構造",
+        "営業や接客の経験が別の形で活きる話",
+        "在宅・スキマ時間でできる働き方としての実際",
+        "紹介して終わりにした人は続かない。所属後の最初の1ヶ月が全部という話",
+        "知らない人への一斉DMをやり尽くして分かったこと（届かない・アカウントが危ない）",
+        "発信を続けていたら「実はやってみたくて」と向こうから来た、という順番の話",
+        "スカウトが上手い人より、伸び悩んだ子の隣にいられる人のほうが残る",
+        "自分の利益と、紹介した子が楽しく続けられるかが同じ方向を向いている構造",
+        "数字を追うなら報酬額ではなく「先月の子が今月も配信しているか」",
+        "配信を迷っている人が本当に気にしているのは、稼げるかではなく自分にできるか",
+        "人の小さな変化（コメントを返せるようになった等）を面白がれるかどうか",
+    ],
 }
+
+# 直近に使ったネタは配らない。何本ぶん遡るかは在庫数に対する比率で決める
+# （固定本数にすると、在庫の少ないangleで未使用ネタが尽きて再利用が始まる）。
+# 6割まで止めれば、どのangleでも常に4割は新しいネタが残る。
+RECENT_TOPIC_RATIO = 0.6
 
 PROMPT = """あなたはライバー事務所TAITAN PROの代表の隣で4年間現場を見てきた人物として、Threadsに投稿する文章を書く。
 広告コピーライターではない。宣伝文を書いたら失敗だと思ってほしい。
@@ -253,18 +299,33 @@ PROMPT = """あなたはライバー事務所TAITAN PROの代表の隣で4年間
 
 {style}
 
-ネタの引き出し（毎回ちがうものを選ぶ）：
+今回書くネタはこの{n}個。**1本につき1ネタ、番号の順に1本ずつ書く**。
+ここに無い話題は書かない（最近すでに投稿した話題は除外済み）。
 {topics}
 
+{examples}
 {viral}
 
 {facts}
 
-出力は必ず次のJSON配列のみ（前置き・説明・コードフェンス禁止）：
+出力は必ず次のJSON配列のみ（前置き・説明・コードフェンス禁止）。
+topic には上で指定されたネタの番号を入れる：
 [
-  {{"text":"投稿本文"}},
+  {{"topic":1,"text":"投稿本文"}},
   ...
 ]
+"""
+
+# 実測の手本。伸びた自分の投稿を見せたほうが、抽象的なルールより効く。
+EXAMPLES_HEADER = """【このアカウントで実際に伸びた投稿（末尾はviews）】
+{wins}
+
+【実際に沈んだ投稿（書き出しだけ。この書き方は絶対にしない）】
+{loses}
+
+伸びた側に共通するのは「短さ」「1行目の断言」「宣伝ゼロ」「言い切って終わる」。
+そこだけを真似る。**ネタも言い回しもそのまま流用しない**（同じ話を繰り返すと飽きられる）。
+沈んだ側は事務所の説明・条件・実績が本文に入っている。ここに出てくる語句は使わない。
 """
 
 # ── 機械検品 ───────────────────────────────────────────────
@@ -360,16 +421,108 @@ def _extract_json_array(raw):
     return m.group(0) if m else None
 
 
-def _gen_one_angle(angle, n):
+def _recent_topics(posts, angle, window=None):
+    """直近 window 本（同じangle）で使ったネタ。キュー未投稿分も含めて数える。"""
+    if window is None:
+        window = max(4, int(len(TOPICS.get(angle) or []) * RECENT_TOPIC_RATIO))
+    seen = []
+    for p in reversed(posts):
+        if p.get("angle") != angle:
+            continue
+        if len(seen) >= window:
+            break
+        if p.get("topic"):
+            seen.append(p["topic"])
+    return set(seen)
+
+
+def _pick_topics(angle, n, posts):
+    """このバッチで使うネタを n 個選ぶ。直近で使ったものは避ける。"""
+    pool = TOPICS[angle]
+    used = _recent_topics(posts, angle)
+    fresh = [t for t in pool if t not in used]
+    stale = [t for t in pool if t in used]
+    random.shuffle(fresh)
+    random.shuffle(stale)
+    # 在庫が尽きたら使用済みも解禁する（生成そのものを止めないため）
+    picked = (fresh + stale)[:n]
+    if len(fresh) < n:
+        print(f"  [INFO] {angle}: 未使用ネタ{len(fresh)}個 < 要求{n}本。"
+              f"使用済みネタを{min(n, len(picked)) - len(fresh)}個再利用します"
+              f"（TOPICS['{angle}'] の拡充を検討）")
+    return picked
+
+
+def _load_examples(win_n=4, lose_n=3, max_len=170):
+    """実測CSVから伸びた投稿／沈んだ投稿を取り出してプロンプトの手本にする。
+
+    抽象的なルール（短く・断言で・宣伝を入れない）は既に VIRAL_RULES に
+    書いてあるが、実物を見せたほうが再現される。
+    手本にするのは短い投稿だけ（長文を手本にすると長さも真似るため）。
+    """
+    if not os.path.exists(INSIGHTS_CSV):
+        return ""
+    try:
+        with open(INSIGHTS_CSV, encoding="utf-8") as f:
+            rows = list(csv.DictReader(f))
+    except (OSError, ValueError):
+        return ""
+
+    cleaned = []
+    for r in rows:
+        text = (r.get("text") or "").replace("\\n", "\n").strip()
+        try:
+            views = int(float(r.get("views") or 0))
+        except ValueError:
+            continue
+        if not text or views <= 0:
+            continue
+        cleaned.append((views, text, r.get("style") or ""))
+    if len(cleaned) < win_n + lose_n:
+        return ""
+
+    cleaned.sort(key=lambda x: -x[0])
+    # 手本に確定ファクト違反を混ぜない。沈んだ投稿は旧特典PDF名や旧い金額表記を
+    # 含んでいることがあり、「悪い例」として見せたつもりでもモデルは書き方ごと
+    # 学習してしまう（[[feedback_ai_prompt_teaches_violations]]）。
+    # 宣伝密度そのものは負け例として見せたい要素なので、ここで見るのは
+    # 確定ファクト側の禁止パターンだけにする。
+    def _clean(t):
+        return not common_violations(t, strict_money=True)
+
+    wins = [(v, t) for v, t, _s in cleaned if len(t) <= max_len and _clean(t)][:win_n]
+    # 負け例は「宣伝型・混在型」か「長文」だけにする。viewsが低いだけの投稿を
+    # 悪い手本として見せると、短い本音型まで避けるべき書き方だと誤って伝わる
+    # （時刻やタイミングで沈んだ本音型が下位に大量にいる）。
+    loses = [(v, t) for v, t, s in cleaned[::-1]
+             if _clean(t) and (s in ("宣伝型", "混在型") or len(t) >= 250)][:lose_n]
+    if not wins or not loses:
+        return ""
+
+    def fmt(items, clip=None):
+        out = []
+        for v, t in items:
+            body = t if clip is None or len(t) <= clip else t[:clip] + "…（以下略）"
+            out.append(f"----\n{body}\n（{v}views）")
+        return "\n\n".join(out)
+
+    # 負け例は書き出しの雰囲気が伝われば十分。全文を見せるほど、そこに含まれる
+    # 言い回しを拾って書いてしまうリスクが上がるので頭だけにする。
+    return EXAMPLES_HEADER.format(wins=fmt(wins), loses=fmt(loses, clip=150))
+
+
+def _gen_one_angle(angle, n, posts=None):
     from google import genai
 
     api_key = os.environ.get("GEMINI_API_KEY", "")
     if not api_key:
         print("[ERROR] GEMINI_API_KEY 未設定")
         return []
+    topics = _pick_topics(angle, n, posts if posts is not None else _load_posts())
+    topic_block = "\n".join(f"{i}. {t}" for i, t in enumerate(topics, 1))
     prompt = PROMPT.format(
-        n=n, style=STYLE_SPECS[angle], topics=TOPICS[angle],
-        facts=FACTS, viral=VIRAL_RULES,
+        n=n, style=STYLE_SPECS[angle], topics=topic_block,
+        facts=FACTS, viral=VIRAL_RULES, examples=_load_examples(),
     )
 
     client = genai.Client(api_key=api_key)
@@ -393,7 +546,13 @@ def _gen_one_angle(angle, n):
                         dropped += 1
                         print(f"  [DROP] {', '.join(v)} :: {text.splitlines()[0][:30]}")
                         continue
-                    out.append({"angle": angle, "text": text})
+                    # 指定したネタ番号を控えておく。次回の生成で同じネタを
+                    # 配らないための記録なので、番号が壊れていても投稿は通す。
+                    try:
+                        topic = topics[int(it.get("topic")) - 1]
+                    except (TypeError, ValueError, IndexError):
+                        topic = ""
+                    out.append({"angle": angle, "text": text, "topic": topic})
                 if out:
                     print(f"  [OK] {model_name}: {angle} {len(out)}本合格 / {dropped}本却下")
                     return out
@@ -486,12 +645,15 @@ def generate(total, angle_filter=None):
     new_items = []
     for angle, n in plan.items():
         if n > 0:
-            new_items += _gen_one_angle(angle, n)
+            new_items += _gen_one_angle(angle, n, posts)
 
     # ネタ被り判定は直近60本と比べる（全履歴だと重く、古い話は再利用してよい）
     recent = [p.get("text", "") for p in posts[-60:]]
     batch = [p.get("text", "") for p in posts if not p.get("posted")]
     tails = {_tail_key(t) for t in batch if _tail_key(t)}
+    # 同じネタ番号が同一バッチ内で2本出ることがある（モデルが番号を無視する）。
+    # 未投稿キューに残っているネタも含めて、1ネタ1本に絞る。
+    used_topics = {p.get("topic") for p in posts if not p.get("posted") and p.get("topic")}
 
     # 経歴の枕詞やGeminiが好む決まり文句が並ぶと一気に量産感が出る。
     # 未投稿キュー全体で各1回までに制限する。
@@ -503,6 +665,11 @@ def generate(total, angle_filter=None):
         text = it["text"].strip()
         if text in existing:
             continue
+        topic = (it.get("topic") or "").strip()
+        if topic and topic in used_topics:
+            print(f"  [DROP] 同じネタが既にキューにある({topic[:20]}) "
+                  f":: {text.splitlines()[0][:24]}")
+            continue
         if _too_similar(text, recent) or _too_similar(text, batch, tight=True):
             print(f"  [DROP] 直近と内容が重複 :: {text.splitlines()[0][:30]}")
             continue
@@ -513,6 +680,8 @@ def generate(total, angle_filter=None):
         recent.append(text)
         batch.append(text)
         tails.add(tk)
+        if topic:
+            used_topics.add(topic)
         angle = it["angle"]
         over = next((p for p in ONCE_PER_BATCH
                      if re.search(p, text) and quota[p] <= 0), None)
@@ -537,6 +706,7 @@ def generate(total, angle_filter=None):
         posts.append({
             "text": text,
             "angle": angle,
+            "topic": topic,
             "tags": [],
             "link": None,
             **entry,

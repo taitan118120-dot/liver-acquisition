@@ -24,6 +24,7 @@ import os
 import re
 import sys
 from collections import defaultdict
+from datetime import datetime, timedelta, timezone
 
 import requests
 
@@ -31,6 +32,7 @@ GRAPH_BASE = "https://graph.threads.net/v1.0"
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 CSV_PATH = os.path.join(PROJECT_ROOT, "data", "threads_insights.csv")
+ACCOUNT_CSV = os.path.join(PROJECT_ROOT, "data", "threads_account.csv")
 POSTS_FILE = os.path.join(SCRIPT_DIR, "threads_posts.json")
 
 METRICS = ["views", "likes", "replies", "reposts", "quotes", "shares"]
@@ -109,6 +111,62 @@ def fetch_insights(token, media_id):
         msg = json.dumps(data, ensure_ascii=False)[:200]
         print(f"  [WARN] insights取得失敗 {media_id}: {msg}")
     return vals
+
+
+def fetch_account(token, user_id):
+    """アカウント単位のインサイト（フォロワー数など）。
+
+    2026-09-10 追加。投稿別のviewsだけを見ていると、リーチが落ちたときに
+    「投稿の中身が悪い」のか「そもそも母数が増えていない／減った」のかを
+    切り分けられない。週次で1行ずつ残して推移を追えるようにする。
+    """
+    data = _get(
+        f"{GRAPH_BASE}/{user_id}/threads_insights",
+        {"metric": "followers_count", "access_token": token},
+    )
+    for row in data.get("data", []):
+        if row.get("name") != "followers_count":
+            continue
+        if row.get("total_value"):
+            return row["total_value"].get("value")
+        vals = row.get("values") or []
+        if vals:
+            return vals[-1].get("value")
+    print(f"  [WARN] followers_count 取得失敗: "
+          f"{json.dumps(data, ensure_ascii=False)[:200]}")
+    return None
+
+
+def save_account(followers):
+    """フォロワー数を日次1行で追記する（同じ日は上書き）。"""
+    if followers is None:
+        return
+    today = datetime.now(timezone.utc).astimezone(
+        timezone(timedelta(hours=9))).strftime("%Y-%m-%d")
+    rows = {}
+    if os.path.exists(ACCOUNT_CSV):
+        try:
+            with open(ACCOUNT_CSV, encoding="utf-8", newline="") as f:
+                for r in csv.DictReader(f):
+                    if r.get("date"):
+                        rows[r["date"]] = r
+        except (OSError, ValueError):
+            pass
+    prev = sorted(rows)[-1] if rows else None
+    rows[today] = {"date": today, "followers": followers}
+    os.makedirs(os.path.dirname(ACCOUNT_CSV), exist_ok=True)
+    with open(ACCOUNT_CSV, "w", encoding="utf-8", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["date", "followers"])
+        w.writeheader()
+        for d in sorted(rows):
+            w.writerow(rows[d])
+    delta = ""
+    if prev and prev != today:
+        try:
+            delta = f"（{prev} から {followers - int(rows[prev]['followers']):+d}）"
+        except (ValueError, KeyError):
+            delta = ""
+    print(f"[OK] フォロワー数 {followers} を記録{delta}")
 
 
 def _queue_index():
@@ -232,8 +290,15 @@ def _avg(rows, key):
     return round(sum(r[key] for r in rows) / len(rows), 1) if rows else 0
 
 
-# 生成・投稿側の目標配分。ズレたら threads_content.TARGET_MIX 側が正本。
-TARGET_MIX = {"story": 0.60, "liver": 0.25, "agency": 0.15}
+# 生成・投稿側の目標配分。threads_content.TARGET_MIX が正本なので必ず import する。
+# 2026-09-10まで story60/liver25/agency15 をここに直書きしていて、正本が
+# story50/liver10/agency40 に変わったあとも古い目標のまま判定していた
+# （目標どおりの配分に対して「agencyが多すぎ・要是正」と誤警告が出る状態）。
+try:
+    sys.path.insert(0, SCRIPT_DIR)
+    from threads_content import TARGET_MIX
+except ImportError:
+    TARGET_MIX = {"story": 0.50, "liver": 0.10, "agency": 0.40}
 TREND_CHUNK = 30
 
 
@@ -262,14 +327,59 @@ def _mix_trend(rows):
         print(f"  {period}  n={len(c):>3}  {share}   平均views {_avg(c,'views'):>7}")
 
     latest = chunks[-1]
-    story_share = sum(1 for r in latest if r["angle"] == "story") / len(latest)
-    agency_share = sum(1 for r in latest if r["angle"] == "agency") / len(latest)
     issues = []
-    if story_share < 0.50:
-        issues.append(f"storyが{100*story_share:.0f}%（目標50%以上）")
-    if agency_share > 0.20:
-        issues.append(f"agencyが{100*agency_share:.0f}%（上限20%）")
+    for angle, target in TARGET_MIX.items():
+        share = sum(1 for r in latest if r["angle"] == angle) / len(latest)
+        # 目標から±15ポイント以上ズレたら是正対象。以前は story/agency だけを
+        # 固定のしきい値で見ていて、目標側が変わると誤警告になっていた。
+        if abs(share - target) >= 0.15:
+            issues.append(f"{angle}が{100*share:.0f}%（目標{100*target:.0f}%）")
     print("  → " + ("配分は目標どおり" if not issues else "要是正: " + " / ".join(issues)))
+
+
+def _slot_report(rows, recent_n=30):
+    """着弾時刻(JST)の分布。ここが崩れるとリーチが半分以下になる。
+
+    2026-08-27〜09-10に、GitHub Actions の schedule 遅延が2〜4時間に伸びて
+    投稿が JST 11時台と深夜1〜2時台に落ち続け、中央値が50.5→24に落ちた。
+    週次レポートに時刻の欄が無かったので、2週間以上気づけなかった。
+    投稿ウィンドウは threads_slot.SLOTS が正本。
+    """
+    try:
+        from threads_slot import SLOTS, slot_of, _to_jst
+    except ImportError:
+        return
+
+    dated = []
+    for r in rows:
+        dt = _to_jst(r.get("timestamp"))
+        if dt:
+            dated.append((dt, r))
+    if not dated:
+        return
+    dated.sort(key=lambda x: x[0])
+
+    print("\n■ 着弾時刻(JST)別 ※ここが崩れるとリーチが半減する")
+    buckets = defaultdict(list)
+    for dt, r in dated:
+        buckets[dt.hour].append(r["views"])
+    for h in sorted(buckets):
+        v = sorted(buckets[h])
+        med = v[len(v) // 2]
+        mark = " ←狙う帯" if slot_of(dt.replace(hour=h, minute=30)) else ""
+        print(f"  {h:>2}時  n={len(v):>3}  中央views {med:>5}  平均 {sum(v)/len(v):>7.1f}{mark}")
+
+    latest = dated[-recent_n:]
+    out = [dt for dt, _r in latest if slot_of(dt) is None]
+    windows = " / ".join(f"{k} {v[0]}-{v[1]}" for k, v in SLOTS.items())
+    print(f"\n  投稿ウィンドウ: {windows}")
+    print(f"  直近{len(latest)}本のうちウィンドウ外に落ちたのは {len(out)}本")
+    if len(out) > len(latest) * 0.3:
+        recent_out = ", ".join(f"{dt:%m/%d %H:%M}" for dt in out[-6:])
+        print(f"  → 要是正: 着弾時刻がズレている（例: {recent_out}）。"
+              f"threads_post.yml の cron と threads_slot.SLOTS を確認する")
+    else:
+        print("  → 着弾時刻は狙いどおり")
 
 
 def report(rows):
@@ -305,6 +415,7 @@ def report(rows):
                   f"平均👍{_avg(v,'likes'):>5}  平均💬{_avg(v,'replies'):>4}")
 
     _mix_trend(rows)
+    _slot_report(rows)
 
     print("\n■ 本文の長さ別")
     def bucket(n):
@@ -338,6 +449,7 @@ def main():
 
     token = _env("THREADS_ACCESS_TOKEN")
     user_id = _env("THREADS_USER_ID")
+    save_account(fetch_account(token, user_id))
     rows = build_rows(token, user_id, args.limit)
     if not rows:
         print("[ERROR] 取得0件")
