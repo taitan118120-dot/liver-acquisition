@@ -65,6 +65,13 @@ NUMERIC = [
 
 JST = timezone(timedelta(hours=9))
 
+# フォロワー数。--report-only ではAPIを叩かないので記録値を使う。
+# 正本は marketing/social_profiles.md（@taitan_pro7 / 2026-08-08 時点で15人）。
+# リーチはフォロワー数を天井にするので、この数字を並べずに「平均リーチ21 vs 10」
+# だけを見ると必ず読み違える（2026-09-11 のフォーマット誤判定の原因がこれ）。
+FOLLOWERS_FALLBACK = 15
+_FOLLOWERS = None  # ライブ取得できたらこちらが入る
+
 # media_type -> 実際に取れた指標リスト（1メディア目で確定させて以降使い回す）
 _SUPPORTED_CACHE = {}
 
@@ -132,16 +139,25 @@ def report_scopes(token):
 
 
 def pick_api_version(token, user_id):
-    """生きている最新の API バージョンを選ぶ。"""
+    """生きている最新の API バージョンを選ぶ。ついでにフォロワー数も取る。
+
+    フォロワー数は追加リクエストではなく、このバージョン判定の GET に
+    fields で相乗りさせている（リーチの天井を出すのに必須なので、
+    取れるタイミングで一緒に取ってしまう）。
+    """
+    global _FOLLOWERS
     override = os.environ.get("IG_GRAPH_API_VERSION", "").strip()
     if override:
         print(f"[INFO] APIバージョン {override}（環境変数指定）")
         return override
     for v in API_VERSIONS:
         data = _get(f"https://graph.facebook.com/{v}/{user_id}",
-                    {"fields": "id,username", "access_token": token})
+                    {"fields": "id,username,followers_count", "access_token": token})
         if data.get("id"):
-            print(f"[INFO] APIバージョン {v} / アカウント @{data.get('username', '?')}")
+            if isinstance(data.get("followers_count"), int):
+                _FOLLOWERS = data["followers_count"]
+            print(f"[INFO] APIバージョン {v} / アカウント @{data.get('username', '?')}"
+                  f" / フォロワー {_FOLLOWERS if _FOLLOWERS is not None else '取得できず'}")
             return v
         time.sleep(1.0)
     print("[ERROR] どのAPIバージョンでもアカウント情報を取得できませんでした。"
@@ -464,22 +480,62 @@ def _avg(rows, key):
     return round(sum(r.get(key, 0) for r in rows) / len(rows), 1) if rows else 0
 
 
-def _bucket_report(rows, label, key, order=None):
+def _bucket_report(rows, label, key, order=None, min_n=10):
+    """区分別の比較表。**中央値で並べる**（平均は参考に併記するだけ）。
+
+    平均で並べてはいけない: 2026-09-11 に「単画像 平均21.3 / カルーセル 平均10.1」
+    から「カルーセルは単画像の半分」と結論したが、実体は67本中3本
+    （リーチ171/187/173・いずれも views < reach のデータ異常行）が平均を
+    持ち上げていただけで、中央値は 11.5 vs 10.0 とほぼ差が無かった。
+    リーチ二桁のアカウントでは外れ値1本で平均が倍になるので、平均は使えない。
+
+    期間が重なっていない区分を並べても「フォーマットの差」にはならない点にも注意。
+    （単画像=4〜7月 / カルーセル=7月以降 で、重なりは1本しかなかった）
+    """
     buckets = defaultdict(list)
     for r in rows:
         buckets[r.get(key) or "(不明)"].append(r)
-    print(f"\n■ {label}別")
-    items = sorted(buckets.items(), key=lambda kv: -_avg(kv[1], "reach"))
+    print(f"\n■ {label}別 ※中央値で並べる（平均は外れ値1本で倍になるので順位に使わない）")
+    items = sorted(buckets.items(), key=lambda kv: -_med([r.get("reach", 0) for r in kv[1]]))
     if order:
         items = sorted(items, key=lambda kv: order.index(kv[0]) if kv[0] in order else 99)
     for k, v in items:
-        print(f"  {str(k):<14} n={len(v):>3}  平均リーチ {_avg(v,'reach'):>7}  "
-              f"平均保存 {_avg(v,'saved'):>5}  平均いいね {_avg(v,'likes'):>5}  "
-              f"平均フォロー {_avg(v,'follows'):>4}")
+        span = _span(v)
+        thin = "  ※n少・参考値" if len(v) < min_n else ""
+        print(f"  {str(k):<14} n={len(v):>3}  中央リーチ {_med([r.get('reach',0) for r in v]):>6}  "
+              f"(平均 {_avg(v,'reach'):>6})  保存計 {sum(r.get('saved',0) for r in v):>3}  "
+              f"いいね計 {sum(r.get('likes',0) for r in v):>4}  "
+              f"フォロー計 {sum(r.get('follows',0) for r in v):>3}  {span}{thin}")
+
+
+def _span(rows):
+    """その区分が投稿された期間。区分どうしが別の時期なら比較として成立しない。"""
+    days = sorted((r.get("posted_at") or "")[:10] for r in rows if r.get("posted_at"))
+    if not days:
+        return ""
+    return f"[{days[0]}〜{days[-1]}]"
+
+
+def integrity_report(rows):
+    """比較に使ってはいけない行を弾く。
+
+    reach（ユニーク到達）は定義上 views（延べ表示）を超えられない。
+    views < reach の行は2つの指標の計測期間がズレている疑いがあり、
+    リーチの値をそのまま content の良し悪しに使えない。
+    """
+    bad = [r for r in rows if 0 < r.get("views", 0) < r.get("reach", 0)]
+    if bad:
+        print(f"\n[WARN] views < reach の行が {len(bad)}本あります"
+              "（reachはviewsを超えられないので計測ズレ。比較からは除外します）")
+        for r in sorted(bad, key=lambda x: -x["reach"])[:6]:
+            print(f"    {(r.get('posted_at') or '')[:10]}  reach {r['reach']:>4} / views {r['views']:>4}  "
+                  f"{(r.get('theme') or r.get('caption_head',''))[:34]}")
+    return [r for r in rows if r not in bad]
 
 
 def _med(values):
-    return round(statistics.median(values), 1) if values else 0
+    """中央値。奇数長だとintが返って桁がガタつくので必ずfloatに揃える。"""
+    return round(float(statistics.median(values)), 1) if values else 0.0
 
 
 def _posted_hour(row):
@@ -580,9 +636,24 @@ def report(rows):
         print("[WARN] リーチが取れた投稿がありません")
         return
     print("\n" + "=" * 72)
-    print(f"投稿数 {len(live)} / 平均リーチ {_avg(live,'reach')} / "
-          f"平均保存 {_avg(live,'saved')} / 平均いいね {_avg(live,'likes')} / "
-          f"平均フォロー {_avg(live,'follows')}")
+    followers = _FOLLOWERS if _FOLLOWERS is not None else FOLLOWERS_FALLBACK
+    src = "API" if _FOLLOWERS is not None else "記録値 marketing/social_profiles.md"
+    print(f"投稿数 {len(live)} / 中央リーチ {_med([r['reach'] for r in live])} "
+          f"(平均 {_avg(live,'reach')}) / 保存計 {sum(r['saved'] for r in live)} / "
+          f"いいね計 {sum(r['likes'] for r in live)} / "
+          f"フォロー計 {sum(r['follows'] for r in live)}")
+
+    # リーチの天井＝フォロワー数。ここを超えた本数が「外（非フォロワー）に
+    # 出た本数」で、フォーマット論より先に見るべき数字。
+    out = [r for r in live if r["reach"] > followers]
+    print(f"フォロワー {followers}人（{src}） → "
+          f"リーチがフォロワー数を超えた投稿 {len(out)}/{len(live)}本 "
+          f"({len(out)/len(live)*100:.0f}%)")
+    if len(out) / len(live) < 0.3:
+        print("  ※ 大半の投稿がフォロワーの外に出ていない。この状態では"
+              "フォーマット/テーマの差は測れない（母数が足りない）")
+
+    live = integrity_report(live)
 
     print("\n■ 伸びた投稿 TOP10（リーチ順）")
     for r in sorted(live, key=lambda x: -x["reach"])[:10]:
@@ -611,11 +682,19 @@ def report(rows):
         months[(r.get("posted_at") or "")[:7]].append(r)
     for k in sorted(months):
         v = months[k]
-        print(f"  {k:<14} n={len(v):>3}  平均リーチ {_avg(v,'reach'):>7}  "
-              f"平均保存 {_avg(v,'saved'):>5}  平均いいね {_avg(v,'likes'):>5}")
+        print(f"  {k:<14} n={len(v):>3}  中央リーチ {_med([r['reach'] for r in v]):>6}  "
+              f"(平均 {_avg(v,'reach'):>6})  保存計 {sum(r['saved'] for r in v):>3}  "
+              f"いいね計 {sum(r['likes'] for r in v):>4}")
 
-    print("\n■ 保存率TOP5（リーチ50以上）")
-    cand = [r for r in live if r["reach"] >= 50]
+    # 閾値を50固定にすると、リーチ二桁しか無い時期に表が丸ごと空になって
+    # 「保存が取れていない」事実そのものが見えなくなる。上位1/4を母数にする。
+    reaches = sorted((r["reach"] for r in live), reverse=True)
+    floor = reaches[max(0, len(reaches) // 4 - 1)] if reaches else 0
+    print(f"\n■ 保存率TOP5（リーチ上位1/4＝{floor}以上）")
+    cand = [r for r in live if r["reach"] >= floor]
+    if not any(r.get("saved") for r in cand):
+        print(f"  上位{len(cand)}本すべて保存0。"
+              "保存CTA（📌保存して〜）は現状まったく効いていない")
     for r in sorted(cand, key=lambda x: -(float(x.get("save_rate") or 0)))[:5]:
         print(f"  保存率 {float(r.get('save_rate') or 0):.1%}  "
               f"({r['saved']}/{r['reach']})  "
