@@ -10,7 +10,8 @@ netlify.toml で `/shared/*` と `/beginner/*.css|*.js` に `max-age=604800`（7
 **ファイルを差し替え・更新したら、必ずどちらかを行うこと:**
 
 1. **ファイル名を変える**（推奨・画像向け）
-   例: `hero-liver.jpg` → `hero-liver-photo.jpg`。参照側（HTML の `src` / `og:image` /
+   例: `hero-liver.jpg` → `hero-liver-photo.jpg`（2026-07-21 に実施した実例。旧ファイルは
+   現在 `illust-sofa-phone.jpg`）。参照側（HTML の `src` / `og:image` /
    CSS の `url()`）も全て新ファイル名に更新する。
 2. **参照側の `?v=` を更新する**（CSS/JS や、名前を変えたくない場合）
    例: `style.css?v=20260720` → `style.css?v=20260801`。日付ベースで付ける。
@@ -34,6 +35,34 @@ netlify.toml で `/shared/*` と `/beginner/*.css|*.js` に `max-age=604800`（7
 - `shared/liver_starter_guide.pdf`（LINE特典PDF）も同じ7日キャッシュ対象。
   差し替え時はファイル名を変えるのが安全。
 - 新しい画像参照を追加するときも最初から `?v=YYYYMMDD` を付けておく。
+
+## shared/img 素材一覧（写真 / イラストの区別）
+
+**命名ルール：`illust-` プレフィックス付き = イラスト。プレフィックスなし = 実写（写真風）。**
+
+LP のビジュアル方針は「イラストでなく実写人物写真」なので、**LP・広告に新しく使うのは
+プレフィックスなしの方だけ**。`illust-*` は 2026-07-21 の写真化より前の旧素材で、
+現在どの LP からも参照していない（残してあるだけ）。
+
+| 実写（LP で使用中） | イラスト（未参照・使わない） |
+| --- | --- |
+| `hero-liver-photo.jpg` / `mechanism.jpg` / `setup.jpg` / `safety.jpg` / `meeting.jpg` | `illust-phone-lookback.jpg`（後ろ姿で振り返る女性・**横顔あり**・スマホ） |
+| `worry-start.jpg` / `worry-skill.jpg` / `worry-time.jpg` | `illust-desk-noperson.jpg`（机とタブレットのみ・**人物なし**） |
+| `step-stream.jpg` / `step-talk.jpg` / `step-reward.jpg` | `illust-women-group.jpg`（女性4人・スマホ） |
+| `agency-hero.jpg` / `agency-mechanism.jpg` / `agency-setup.jpg` | `illust-phone-hearts.jpg`（巨大スマホとハート） |
+| `liver-muu.jpg` / `liver-hayato.jpg` / `liver-housewife.jpg` | `illust-notebook-writing.jpg`（ノートに書く女性） |
+| | `illust-sofa-phone.jpg`（旧 hero・ソファでスマホ） |
+| | `illust-kitchen-phone.jpg`（キッチンでスマホ） |
+| | `illust-student-phone.jpg`（床座りの学生・スマホ） |
+
+2026-09-11 に改名（旧名 → 新名）：`no-face.jpg` → `illust-phone-lookback.jpg` /
+`desk.jpg` → `illust-desk-noperson.jpg` / `age.jpg` → `illust-women-group.jpg` /
+`fans.jpg` → `illust-phone-hearts.jpg` / `prepare.jpg` → `illust-notebook-writing.jpg` /
+`hero-liver.jpg` → `illust-sofa-phone.jpg` / `case-housewife.jpg` → `illust-kitchen-phone.jpg` /
+`case-student.jpg` → `illust-student-phone.jpg`。
+旧 `no-face.jpg` は「顔なし」という名前なのに人物の横顔が大きく写っていて、
+Google 広告の「人物なしカット」素材探しで実際に誤選定した（`ads/google_ads_設計書.md` §0-42 ⑤）。
+新しい素材を置くときも、イラストなら `illust-` を付けること。
 
 ## 洗い出しコマンド
 
