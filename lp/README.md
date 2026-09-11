@@ -62,6 +62,41 @@ curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/
   -d '{"clear_cache": true}' "https://api.netlify.com/api/v1/sites/$SITE/builds"
 ```
 
+## もう1つの公開サイト: taitan-pro-lp-targets（手動デプロイ）
+
+同じ `lp/` が**2つのサイト**に配られている。
+
+| サイト | デプロイ | 何が見に来るか |
+| --- | --- | --- |
+| `taitan-pro-lp.netlify.app` | main への push で**自動** | 公式LINE・Note・SNS |
+| `taitan-pro-lp-targets.netlify.app` | **手動 zip デプロイ** | 求人媒体（`job_posts/indeed/*.md` / `job_posts/engage/*.md`）・`ads/` の遷移先 |
+
+**`lp/` を直したら -targets にも配ること。** 自動デプロイされるのは main 側だけなので、
+忘れると**応募者が見る面だけが古いまま**になる。2026-08-24 の「面談」→「お話しするとき」
+置換（4392b4f）は、2026-09-11 まで -targets に反映されておらず、`/beginner/` で7箇所・
+`/agency/` で6箇所が古いままだった。
+
+```sh
+./scripts/lp_targets_deploy.sh
+```
+
+zip → アップロード → `state:"ready"` まで待機 → `lp_drift_guard.py` で突合、までやる。
+（POST のレスポンスは `state:"uploaded"` で返る。ready を待たずに検証すると古い本文を読む）
+
+### 番犬
+
+`lp_drift_guard.py`（`.github/workflows/lp_drift_guard.yml` で毎日 JST 9:35）が
+4ページを両サイトから取得して本文を突合し、ついでに -targets の実物へ確定ファクトの
+禁止パターンを当てる。ドリフトがあれば Issue で鳴き、直すと自動クローズする。
+
+```sh
+python3 lp_drift_guard.py            # 手元で突合
+python3 lp_drift_guard.py --verbose  # 差分を全部出す
+```
+
+ページを増やしたら `lp_drift_guard.py` の `PAGES` にも足すこと（足し忘れたページは
+誰も見ていない）。
+
 ## shared/img 素材一覧（写真 / イラストの区別）
 
 **命名ルール：`illust-` プレフィックス付き = イラスト。プレフィックスなし = 実写（写真風）。**

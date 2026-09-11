@@ -1,0 +1,223 @@
+name: LPドリフト番犬
+
+# 2つの公開LPサイトの本文ドリフトを検知する番犬。
+#
+# 背景（2026-09-11）: LPは同じ lp/ から2サイトに配られている。
+#   - taitan-pro-lp.netlify.app          … main への push で自動デプロイ
+#   - taitan-pro-lp-targets.netlify.app  … 手動 zip デプロイ（求人媒体・広告の遷移先）
+# 「面談」→「お話しするとき」の置換は 4392b4f（2026-08-24）でリポジトリに入っていたが、
+# -targets は手動デプロイなので 2026-09-11 まで反映されておらず、/beginner/ で7箇所、
+# /agency/ で6箇所が古いままだった（応募者が見る面だけが3週間古い状態）。
+#
+# 真因は走査対象の設計:
+#   - content_facts_guard.py が見る "lp/**/*.html" は**ローカルのファイル**。
+#     作業ツリーが直っていれば公開中の実物が古くても緑になる。
+#   - link_guard.py は -targets も見るが、見るのはリンクの生死だけで文面は見ない。
+#   ⇒ 公開中の -targets の本文を見ている番犬が1本も無かった。
+#
+# 動作: 毎日1回 lp_drift_guard.py を実行し、
+#   - 4ページ（beginner/agency/liver/sidejob）を2サイトから取得して突合
+#   - -targets の実物に確定ファクト違反（facts_patterns.py が正本）が無いか走査
+#   - ドリフト/違反があればランを赤にし、Issueを作成/更新して通知
+#   - **そのページが実際に一致に戻ったことを確認してから** Issueを自動クローズする
+
+on:
+  schedule:
+    - cron: '35 0 * * *'   # 毎日 JST 9:35（link_guard 9:20 / content_facts_guard の後ろ）
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  lp-drift-guard:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 依存パッケージインストール
+        run: pip install requests
+
+      - name: 2サイトのLP本文を突合
+        id: guard
+        run: python3 lp_drift_guard.py
+
+      - name: 検知 → Issue通知
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const title = 'LP本文ドリフト検知（LPドリフト番犬）';
+            let report = {verified: [], drift: [], violations: [], pages: []};
+            try {
+              report = JSON.parse(fs.readFileSync('data/lp_drift_guard_report.json', 'utf8'));
+            } catch (e) {}
+
+            const driftLines = (report.drift || []).map(d =>
+              `- \`/${d.page}/\` — ${d.lines}行が食い違い\n\n` +
+              '```diff\n' + (d.diff || []).slice(0, 60).join('\n') + '\n```'
+            ).join('\n');
+            const ngLines = (report.violations || []).map(v =>
+              `- \`/${v.page}/\` — ${v.reason}${v.hit ? `: \`${v.hit}\`` : ''}`
+            ).join('\n');
+
+            // 復旧判定に使う機械可読マーカー。閉じる側はこれを読んで
+            // 「このページが本当に一致に戻ったか」を確認する（本文とコメント両方から拾う）。
+            const bad = [...new Set([
+              ...(report.drift || []).map(d => d.page),
+              ...(report.violations || []).map(v => v.page),
+            ])];
+            const marker = `<!-- lp-drift-guard-pages: ${bad.join(',')} -->`;
+
+            const deployCmd = [
+              '```sh',
+              './scripts/lp_targets_deploy.sh',
+              '```',
+              '',
+              '<details><summary>スクリプトを使わず手で叩く場合</summary>',
+              '',
+              '```sh',
+              'cd lp && zip -rq /tmp/lp.zip . -x "*.DS_Store" && \\',
+              '  curl -H "Content-Type: application/zip" \\',
+              '       -H "Authorization: Bearer $(cat ~/.netlify_token)" \\',
+              '       --data-binary @/tmp/lp.zip \\',
+              '       https://api.netlify.com/api/v1/sites/taitan-pro-lp-targets.netlify.app/deploys',
+              '```',
+              '',
+              'POST のレスポンスは `state:"uploaded"` で返る（まだ公開されていない）。',
+              '`/api/v1/deploys/<id>` を `state:"ready"` までポーリングしてから検証すること。',
+              '</details>',
+            ].join('\n');
+
+            const body = [
+              '## LPドリフト番犬 検知',
+              '',
+              '`taitan-pro-lp.netlify.app`（git自動デプロイ）と',
+              '`taitan-pro-lp-targets.netlify.app`（**手動zipデプロイ**）で本文が食い違っています。',
+              '-targets は求人媒体（`job_posts/indeed/*.md` / `job_posts/engage/*.md`）と `ads/` の遷移先なので、',
+              '**応募者が見る面だけが古い**状態です。',
+              '',
+              `突合できたページ: ${(report.verified || []).length}/${(report.pages || []).length}`,
+              '',
+              '## ドリフト',
+              driftLines || '(なし)',
+              '',
+              '## -targets 側の確定ファクト違反',
+              ngLines || '(なし)',
+              '',
+              '## 対処（-targets は手動デプロイなので、直すのは人の作業）',
+              '',
+              deployCmd,
+              '',
+              'デプロイ後 `python3 lp_drift_guard.py` がローカルで緑になることを確認してください。',
+              '',
+              '※ ドリフトではなく **-targets 側の違反** だった場合は、先に `lp/` を直して',
+              '  main に入れてから上のデプロイを行うこと（先に配ると次のデプロイで巻き戻る）。',
+              '',
+              '直すと次回のランがこのIssueを自動クローズします',
+              '（上記のページが実際に一致へ戻ったことを確認してから閉じます）。',
+              '',
+              '---',
+              '_このIssueは `.github/workflows/lp_drift_guard.yml` により自動生成されました。_',
+              marker,
+            ].join('\n');
+
+            // 同じドリフトが直るまでは毎ラン赤になる。そのたびに同内容のコメントを積むと
+            // メール通知だけが毎日増えるので、内容が変わったときだけ鳴く（赤は維持）。
+            const guard = require('./.github/scripts/guard_comment.js');
+            await guard.notify({
+              github, context, title, body,
+              recomment: `再検知: ${new Date().toISOString()}\n\n${driftLines || ngLines}\n\n${marker}`,
+            });
+
+      - name: ドリフト解消 → Issueを自動クローズ
+        # ⚠️ 「緑だった」だけでは閉じない（[[feedback_watchdog_autoclose]]）。
+        # これは差分型の番犬なので、緑には2つの意味がありうる:
+        #   (a) 2サイトの本文が実際に一致した
+        #   (b) そもそも突合できていない（取得失敗・PAGES から消えた・ページが増えた）
+        # (b) で閉じると「直っていないのに鳴きやんだ」になる。lp_drift_guard.py 側は
+        # 取得失敗を必ず赤にしてあるが、ここでも Issue に埋めた lp-drift-guard-pages
+        # マーカーを読み、**そのページが report.verified に載っていて、かつ drift にも
+        # violations にも出ていない**ことを確認できたときだけ閉じる。
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const title = 'LP本文ドリフト検知（LPドリフト番犬）';
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const match = issues.find(i => i.title === title);
+            if (!match) return;
+
+            // 本文と全コメントからマーカーを集める（再検知でページが増えることがある）。
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: match.number,
+              per_page: 100,
+            });
+            const texts = [match.body || '', ...comments.map(c => c.body || '')];
+            const re = /<!-- lp-drift-guard-pages: ([^>]*) -->/g;
+            const wanted = new Set();
+            for (const t of texts) {
+              for (const m of t.matchAll(re)) {
+                for (const p of m[1].split(',').map(s => s.trim()).filter(Boolean)) {
+                  wanted.add(p);
+                }
+              }
+            }
+            if (wanted.size === 0) {
+              // マーカーの無い（手動作成・旧形式の）Issueは機械判定できないので触らない。
+              core.info('復旧判定用のマーカーが無いIssueなので自動クローズしません。');
+              return;
+            }
+
+            let report;
+            try {
+              report = JSON.parse(fs.readFileSync('data/lp_drift_guard_report.json', 'utf8'));
+            } catch (e) {
+              core.info(`レポートを読めませんでした（${e.message}）。自動クローズしません。`);
+              return;
+            }
+            const verified = new Set(report.verified || []);
+            const stillBad = new Set([
+              ...(report.drift || []).map(d => d.page),
+              ...(report.violations || []).map(v => v.page),
+            ]);
+            const unresolved = [...wanted].filter(p => !verified.has(p) || stillBad.has(p));
+            if (unresolved.length) {
+              core.info(`未確認/未復旧のページがあるので閉じません: ${unresolved.join(', ')}`);
+              return;
+            }
+
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: match.number,
+              body: [
+                `復旧を確認: ${new Date().toISOString()} のランで、食い違っていた ${wanted.size} ページ`
+                + `（${[...wanted].map(p => '`/' + p + '/`').join(', ')}）を2サイトから実際に取得し、`
+                + `本文一致・確定ファクト違反なしでした。自動クローズします。`,
+                '',
+                `- ラン: ${runUrl}`,
+              ].join('\n'),
+            });
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: match.number,
+              state: 'closed',
+            });

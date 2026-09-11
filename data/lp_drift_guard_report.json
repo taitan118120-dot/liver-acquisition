@@ -1,0 +1,34 @@
+{
+ "sites": {
+  "main": "https://taitan-pro-lp.netlify.app",
+  "targets": "https://taitan-pro-lp-targets.netlify.app"
+ },
+ "pages": [
+  "beginner",
+  "agency",
+  "liver",
+  "sidejob"
+ ],
+ "verified": [
+  "beginner",
+  "agency",
+  "liver",
+  "sidejob"
+ ],
+ "drift": [],
+ "violations": [],
+ "warn": [
+  {
+   "page": "beginner",
+   "where": "https://taitan-pro-lp-targets.netlify.app/beginner/",
+   "reason": "根拠なしの実績誇張",
+   "hit": "何百人"
+  },
+  {
+   "page": "liver",
+   "where": "https://taitan-pro-lp-targets.netlify.app/liver/",
+   "reason": "他社を下げる書き方",
+   "hit": "一般的な事務所"
+  }
+ ]
+}
