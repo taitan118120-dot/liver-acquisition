@@ -2661,6 +2661,7 @@
         ]
       }
     ],
-    "posted": false
+    "posted": false,
+    "last_error": "[一時] スライド1の子コンテナ作成失敗"
   }
 ]
