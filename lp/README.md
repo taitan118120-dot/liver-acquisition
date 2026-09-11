@@ -36,6 +36,32 @@ netlify.toml で `/shared/*` と `/beginner/*.css|*.js` に `max-age=604800`（7
   差し替え時はファイル名を変えるのが安全。
 - 新しい画像参照を追加するときも最初から `?v=YYYYMMDD` を付けておく。
 
+## デプロイが動いているかの確認（重要）
+
+main に push すると Netlify が `lp/` を自動デプロイする——**が、netlify.toml の `ignore`
+コマンドが効きすぎて無言でスキップされることがある**。2026-08-24〜09-11 のビルド40件は
+全部 `Canceled build due to no content change` でキャンセルされていて、`lp/` を実際に
+変更したコミットまで公開されなかった（原因：`$CACHED_COMMIT_REF` が空だと
+`git diff --quiet $COMMIT_REF -- .` に退化し、常に「差分なし」になる。2026-09-11 に
+ref のガードを追加して修正）。
+
+**LP を変更したら、公開URLで実物を見るまで完了にしない**。詰まっていないかの確認:
+
+```sh
+TOKEN=$(cat ~/.netlify_token)
+SITE=3661f380-0fae-4e63-b1f8-1089c470b1d0   # taitan-pro-lp
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "https://api.netlify.com/api/v1/sites/$SITE/deploys?per_page=5" \
+  | python3 -c "import json,sys;[print(d['state'],(d.get('commit_ref') or '')[:8],d['created_at'],(d.get('error_message') or '')[:60]) for d in json.load(sys.stdin)]"
+```
+
+スキップされていたら、キャッシュを消して強制ビルド:
+
+```sh
+curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"clear_cache": true}' "https://api.netlify.com/api/v1/sites/$SITE/builds"
+```
+
 ## shared/img 素材一覧（写真 / イラストの区別）
 
 **命名ルール：`illust-` プレフィックス付き = イラスト。プレフィックスなし = 実写（写真風）。**
