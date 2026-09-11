@@ -47,6 +47,9 @@
 | `META_APP_ID` | MetaアプリのApp ID |
 | `META_APP_SECRET` | MetaアプリのApp Secret |
 
+> トークンが失効したとき／インサイトが権限不足で落ちるときの再発行手順は
+> [TOKEN_REISSUE.md](TOKEN_REISSUE.md) にまとめてある。
+
 ---
 
 ## テスト方法

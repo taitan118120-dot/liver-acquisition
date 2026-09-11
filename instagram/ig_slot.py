@@ -27,8 +27,15 @@ Instagram には時刻別リーチの実測がまだ無い。
       ＝ instagram_manage_insights の権限が付いていない）
 したがって現時点の窓は **実測ではなく一般的なゴールデンタイム(JST 20-22時)** と、
 元の cron が狙っていた 20:00 に合わせた暫定値である。
-instagram_manage_insights を付与して data/ig_insights.csv が貯まったら、
-Threads と同じように時刻別の中央値を出して WINDOW を測り直すこと。
+
+測り直す手順（トークン再発行は instagram/TOKEN_REISSUE.md）:
+  1. instagram_manage_insights 付きのトークンに差し替える
+  2. gh workflow run instagram_insights.yml -f limit=200
+  3. python instagram/ig_insights.py --slots-only
+投稿ごとの reach は生涯値なので、新しく数週間貯めなくても、既に投稿済みの
+91本だけで時刻別の中央値が出せる（Actionsの遅延で着弾が20時台〜翌6時台まで
+バラけているぶんがそのままサンプルになる）。その表を根拠にここを書き換え、
+「実測ではなく暫定」と書いてあるこの段落も実測ベースに直すこと。
 
 ■ 対策の考え方（Threads と同じ）
 cron の時刻を前倒ししても遅延幅が日によって 22分〜10時間と変わるので制御できない。

@@ -12,6 +12,7 @@ Instagram Graph API から自分の投稿一覧とメディア単位のインサ
   python instagram/ig_insights.py                  # 取得＋CSV更新＋レポート表示
   python instagram/ig_insights.py --limit 200      # 取得件数
   python instagram/ig_insights.py --report-only    # 既存CSVから分析だけ
+  python instagram/ig_insights.py --slots-only     # 既存CSVから着弾時刻(JST)別だけ
   python instagram/ig_insights.py --no-link-queue  # ig_posts.json への media_id 書き戻しをしない
 
 必要な環境変数:
@@ -24,6 +25,7 @@ import csv
 import json
 import os
 import re
+import statistics
 import sys
 import time
 from collections import defaultdict
@@ -476,6 +478,102 @@ def _bucket_report(rows, label, key, order=None):
               f"平均フォロー {_avg(v,'follows'):>4}")
 
 
+def _med(values):
+    return round(statistics.median(values), 1) if values else 0
+
+
+def _posted_hour(row):
+    """CSVの posted_at（JST ISO）からJSTの時（0-23）を取る。取れなければ None。"""
+    s = str(row.get("posted_at") or "").strip().replace("Z", "+00:00")
+    s = re.sub(r"([+-]\d{2})(\d{2})$", r"\1:\2", s)
+    if not s:
+        return None
+    try:
+        dt = datetime.fromisoformat(s)
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        # 保存時は必ずJSTに直しているので、tzなしの古い行はJSTとみなす
+        return dt.hour
+    return dt.astimezone(JST).hour
+
+
+def _load_window():
+    """ig_slot.py の WINDOW を正本として読む（なければ None）。"""
+    try:
+        from ig_slot import WINDOW, in_window
+    except ImportError:
+        return None, None
+    return WINDOW, in_window
+
+
+def slot_report(rows, min_n=3):
+    """着弾時刻(JST)別のリーチ中央値。ig_slot.WINDOW を決め直す根拠になる表。
+
+    投稿1本ごとの reach / views は「その投稿の生涯値」なので、週を待たなくても
+    過去の投稿だけで時刻別の比較ができる。GitHub Actions の schedule 遅延で
+    着弾時刻が 20時台〜翌6時台までバラけているぶんが、そのままサンプルになる。
+    Threads 側で同じ表から窓を決めた前例が threads/threads_slot.py の冒頭にある。
+
+    平均でなく中央値を見るのは、1本のバズ（リーチ数千）で平均が持っていかれて
+    「その時刻が強い」と誤読するのを避けるため。
+    """
+    live = [r for r in rows if r.get("reach", 0) > 0]
+    if not live:
+        print("[WARN] リーチが取れた投稿がありません（権限不足のままだと全部0になる）")
+        return
+
+    buckets = defaultdict(list)
+    for r in live:
+        h = _posted_hour(r)
+        if h is not None:
+            buckets[h].append(r)
+    if not buckets:
+        print("[WARN] posted_at を読めた投稿がありません")
+        return
+
+    window, in_window = _load_window()
+
+    print("\n■ 着弾時刻(JST)別 ※ig_slot.WINDOW を決め直す根拠はここ")
+    print("  （中央値で見る。1本のバズで平均が動くため）")
+    for h in sorted(buckets):
+        v = buckets[h]
+        reach = [r.get("reach", 0) for r in v]
+        views = [r.get("views", 0) for r in v]
+        mark = ""
+        if in_window:
+            # その時刻の30分地点が窓に入るかで「現WINDOW内」を判定する
+            probe = datetime(2000, 1, 1, h, 30, tzinfo=JST)
+            mark = " ←現WINDOW内" if in_window(probe) else ""
+        thin = "  ※n少" if len(v) < min_n else ""
+        print(f"  {h:>2}時  n={len(v):>3}  中央リーチ {_med(reach):>7}  "
+              f"中央views {_med(views):>7}  平均リーチ {_avg(v,'reach'):>7}{mark}{thin}")
+
+    if not in_window:
+        print("  [WARN] ig_slot.py を読めなかったので現WINDOWとの突き合わせは省略")
+        return
+
+    inside, outside = [], []
+    for h, v in buckets.items():
+        probe = datetime(2000, 1, 1, h, 30, tzinfo=JST)
+        (inside if in_window(probe) else outside).extend(v)
+    print(f"\n  現WINDOW: {window[0]}-{window[1]}（instagram/ig_slot.py が正本）")
+    print(f"    窓内 n={len(inside):>3}  中央リーチ {_med([r.get('reach',0) for r in inside]):>7}")
+    print(f"    窓外 n={len(outside):>3}  中央リーチ {_med([r.get('reach',0) for r in outside]):>7}")
+
+    ranked = sorted(
+        ((h, v) for h, v in buckets.items() if len(v) >= min_n),
+        key=lambda kv: -_med([r.get("reach", 0) for r in kv[1]]),
+    )
+    if not ranked:
+        print(f"    → n>={min_n} の時刻がまだ無い。窓は動かさず、投稿を貯めてから判断する")
+        return
+    best = ", ".join(f"{h}時({_med([r.get('reach',0) for r in v])})" for h, v in ranked[:4])
+    print(f"    → 中央リーチが高い時刻(n>={min_n}): {best}")
+    if len(live) < 20:
+        print(f"    ※ 母数 {len(live)}本。窓を動かす判断には少なすぎるので参考値扱い")
+
+
 def report(rows):
     live = [r for r in rows if r.get("reach", 0) > 0]
     if not live:
@@ -505,6 +603,8 @@ def report(rows):
     if viral:
         _bucket_report(viral, "バズ型（viralのみ）", "viral_type")
 
+    slot_report(live)
+
     print("\n■ 月別")
     months = defaultdict(list)
     for r in live:
@@ -530,9 +630,15 @@ def main():
                     help="メディア1件ごとの待機秒（バースト防止）")
     ap.add_argument("--page-delay", type=float, default=3.0, help="ページング間の待機秒")
     ap.add_argument("--report-only", action="store_true", help="取得せずCSVから分析のみ")
+    ap.add_argument("--slots-only", action="store_true",
+                    help="着弾時刻(JST)別の表だけ出す（WINDOWを決め直すとき用）")
     ap.add_argument("--no-link-queue", action="store_true",
                     help="ig_posts.json への media_id 書き戻しをしない")
     args = ap.parse_args()
+
+    if args.slots_only:
+        slot_report(load_csv())
+        return
 
     if args.report_only:
         report(load_csv())
