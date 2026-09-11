@@ -2,9 +2,26 @@ name: Instagram自動投稿
 
 on:
   schedule:
-    # IGからサイバーセキュリティ警告が出たため頻度を週3回に削減 (2026-05-16)
-    # JST 月/水/金 20:00 = UTC 月/水/金 11:00
-    - cron: '0 11 * * 1,3,5'
+    # 30分おきに終日起動して、実際に投稿するかは instagram/ig_slot.py が
+    # JSTの実時刻で決める（投稿頻度は従来どおり 月/水/金 の週3回・1日1本）。
+    #
+    # 以前は JST 月/水/金 20:00 を狙って UTC 11:00 に置いていたが、Actions の
+    # schedule 遅延が 2026-08-27 以降に 22分 → 4〜10時間へ悪化し、実際の着弾が
+    # 深夜0時前後に固定されていた（09-02 23:57 / 09-04 23:46 / 09-08 01:16 /
+    # 09-10 00:00・すべてJST）。Threads で同じ崩れが起きたときは時刻別リーチの
+    # 中央値が3倍近く違ったので、IGでも時間帯を戻す。
+    # cron を前倒ししても遅延幅が日によって変わるので制御できない。
+    # 「終日起動＋着弾時刻で判定」にすれば遅延が何時間でも枠内の回が必ず出る。
+    # ウィンドウ外の回はゲート判定だけで数秒で終わる（PUBLICリポなので無料）。
+    # 分は毎時0/15/30/45を避ける（その時刻ほど混雑して遅延が伸びるため）。
+    # Threads(18,48) とずらして、ログpushの衝突も減らす。
+    #
+    # 注意: 30分おきに書いても GitHub が30分おきに起動してくれるわけではない。
+    # 2026-09-11 の実測では scheduleラン の実配信間隔は 149分 / 163分だった
+    # （遅延したランがキューに残ると後続の schedule イベントが捨てられる）。
+    # そのぶん ig_slot.WINDOW を 19:50-23:40 の230分取って、最悪の間隔でも
+    # 必ず1回は窓の中に着弾するようにしている。
+    - cron: '7,37 * * * *'
   workflow_dispatch:  # 手動実行も可能
     inputs:
       source:
@@ -18,6 +35,10 @@ on:
         default: auto
       dry_run:
         description: 'テスト実行（投稿しない）'
+        type: boolean
+        default: false
+      ignore_window:
+        description: '投稿ウィンドウ(JST)と曜日指定を無視して即実行する'
         type: boolean
         default: false
 
@@ -40,17 +61,40 @@ jobs:
     # マスク済みなので二重保護は不要な上、checkout/setup-python の失敗まで緑にしてしまい
     # 「実は一度も走っていない」状態に気づけなくなる。
     steps:
+      # ゲート判定までは履歴を引かない。30分おきに起動するので、フルcloneを
+      # 毎回やると無駄が大きい。通過した回だけ unshallow する。
       - uses: actions/checkout@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          # main への push を可能にするため 全履歴を取得
-          fetch-depth: 0
+          fetch-depth: 1
+
+      - name: 投稿ウィンドウ判定（JST）
+        id: gate
+        shell: bash
+        run: |
+          set +e
+          if [ "${{ inputs.ignore_window }}" = "true" ]; then
+            echo "[GATE] ignore_window=true → ウィンドウ判定をスキップ"
+            echo "should_post=true" >> "$GITHUB_OUTPUT"
+            echo "slot=manual" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # 標準ライブラリだけで動くので setup-python / pip install より前に置ける
+          python3 instagram/ig_slot.py --check
+          exit 0
+
+      - name: 判定結果
+        if: steps.gate.outputs.should_post != 'true'
+        shell: bash
+        run: echo "${{ steps.gate.outputs.reason }} → 今回は投稿しません"
 
       - uses: actions/setup-python@v6
+        if: steps.gate.outputs.should_post == 'true'
         with:
           python-version: '3.11'
 
       - name: 依存パッケージをインストール
+        if: steps.gate.outputs.should_post == 'true'
         # 一時的なPyPI障害でも赤くしないため set +e
         shell: bash
         run: |
@@ -66,13 +110,17 @@ jobs:
           exit 0
 
       - name: 最新の投稿データを取得
+        if: steps.gate.outputs.should_post == 'true'
         shell: bash
         run: |
           set +e
+          # ログ保存の rebase / push に履歴が要るので、ここで全体を引き直す
+          git fetch --unshallow --no-tags origin main || git fetch --no-tags origin main
           git pull --rebase origin main
           exit 0
 
       - name: Instagram投稿実行（多層防御）
+        if: steps.gate.outputs.should_post == 'true'
         env:
           INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
           INSTAGRAM_BUSINESS_ID: ${{ secrets.INSTAGRAM_BUSINESS_ID }}
@@ -87,6 +135,13 @@ jobs:
           SOURCE="${{ inputs.source || 'auto' }}"
           export PYTHONPATH="${{ github.workspace }}:${{ github.workspace }}/instagram"
 
+          # ゲートは上のステップでも見ているが、カルーセル画像の生成に数分かかって
+          # ウィンドウを跨ぐことがあるので、投稿直前にもう一度見る
+          GATE_ARG="--slot-gate"
+          if [ "${{ inputs.ignore_window }}" = "true" ]; then
+            GATE_ARG=""
+          fi
+
           # Pythonレベルの多層防御: Content-Type検証/catboxフォールバック/GitHub raw/
           # 永続エラー時の次候補自動試行/exit 0+STEP_SUMMARY警告
           # ワークフロー側では Gemini 503 等の一時障害対策の外側リトライのみ行う
@@ -97,7 +152,7 @@ jobs:
             if [ "${{ inputs.dry_run }}" = "true" ]; then
               python instagram/ig_scheduler.py --generate --source "$SOURCE" --test
             else
-              python instagram/ig_scheduler.py --generate --source "$SOURCE"
+              python instagram/ig_scheduler.py --generate --source "$SOURCE" $GATE_ARG
             fi
             EXIT_CODE=$?
             if [ $EXIT_CODE -eq 0 ]; then
@@ -121,7 +176,7 @@ jobs:
           exit 0
 
       - name: 投稿データを保存
-        if: always()
+        if: always() && steps.gate.outputs.should_post == 'true'
         shell: bash
         run: |
           set +e
