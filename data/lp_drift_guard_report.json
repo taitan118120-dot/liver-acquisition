@@ -4,14 +4,14 @@
   "targets": "https://taitan-pro-lp-targets.netlify.app"
  },
  "pages": [
-  "beginner",
   "agency",
+  "beginner",
   "liver",
   "sidejob"
  ],
  "verified": [
-  "beginner",
   "agency",
+  "beginner",
   "liver",
   "sidejob"
  ],

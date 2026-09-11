@@ -94,8 +94,8 @@ python3 lp_drift_guard.py            # 手元で突合
 python3 lp_drift_guard.py --verbose  # 差分を全部出す
 ```
 
-ページを増やしたら `lp_drift_guard.py` の `PAGES` にも足すこと（足し忘れたページは
-誰も見ていない）。
+監視対象のページは `lp/*/index.html` の実体から自動で拾う（`MIN_PAGES` の4ページを下限に
+union する）ので、LPを増やしても番犬への追加忘れは起きない。
 
 ## shared/img 素材一覧（写真 / イラストの区別）
 

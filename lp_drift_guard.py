@@ -83,8 +83,23 @@ SITE_MAIN = "https://taitan-pro-lp.netlify.app"
 # 手動 zip デプロイの側（求人媒体 job_posts/*・広告 ads/* の遷移先）
 SITE_TARGETS = "https://taitan-pro-lp-targets.netlify.app"
 
-# 両サイトに配られている全ページ。lp/ にディレクトリを足したらここにも足すこと。
-PAGES = ["beginner", "agency", "liver", "sidejob"]
+# 両サイトに配られている全ページ。
+# 2026-09-11 時点の4ページを下限として持ちつつ、**lp/ の実体から自動で足す**。
+# 手で並べるだけだと、LPを増やしたときに「番犬のPAGESへの追加忘れ」で
+# 新しいページだけ誰も見ていない状態が生まれる（この番犬が塞いだ穴と同じ形）。
+# 逆に lp/ から消えたページは下限側に残るので、配信だけ残っていても見続ける。
+MIN_PAGES = ["beginner", "agency", "liver", "sidejob"]
+
+
+def discover_pages():
+    found = set(MIN_PAGES)
+    for name in os.listdir(os.path.join(BASE_DIR, "lp")):
+        if os.path.isfile(os.path.join(BASE_DIR, "lp", name, "index.html")):
+            found.add(name)
+    return sorted(found)
+
+
+PAGES = discover_pages()
 
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
