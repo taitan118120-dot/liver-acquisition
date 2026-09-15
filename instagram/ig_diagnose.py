@@ -213,6 +213,52 @@ def main():
                 found.append((f"graph.instagram.com/me.{key}", str(data[key]),
                               data.get("username", "")))
 
+    # ── 6b. 追加プローブ ─────────────────────────────────────
+    # 「トークンの持ち主から見えない」のか「オブジェクト自体が消えた」のかを
+    # もう少し絞る。どれも読み取りのみ。
+    section("6b. 追加プローブ")
+
+    print("  /me/businesses（ビジネスポートフォリオ経由でページを持っていないか）:")
+    data, err = call(FB, "me/businesses", token, fields="id,name")
+    if err:
+        print(f"    ❌ {err}")
+    else:
+        bs = data.get("data") or []
+        print(f"    {len(bs)}件" + ("" if bs else " — ポートフォリオ経由でも0件"))
+        for b in bs:
+            print(f"    - {b.get('name')} (id={b.get('id')})")
+            d2, e2 = call(FB, f"{b['id']}/owned_pages", token,
+                          fields="id,name,instagram_business_account{id,username}")
+            if e2:
+                print(f"        owned_pages: ❌ {e2}")
+            else:
+                for p_ in d2.get("data") or []:
+                    iga = p_.get("instagram_business_account") or {}
+                    print(f"        - ページ {p_.get('name')} (id={p_.get('id')})"
+                          f" 連携IG={iga.get('username') or 'なし'} {iga.get('id') or ''}")
+                    if iga.get("id"):
+                        found.append(("owned_pages", str(iga["id"]), iga.get("username", "")))
+
+    print("  /me/accounts（fields無し・素の呼び出し）:")
+    data, err = call(FB, "me/accounts", token, limit=100)
+    print(f"    ❌ {err}" if err else f"    {len(data.get('data') or [])}件")
+
+    if biz:
+        print("  /{BUSINESS_ID}/media（メディア側は読めるか）:")
+        data, err = call(FB, f"{biz}/media", token, fields="id", limit=1)
+        print(f"    ❌ {err}" if err else f"    ✅ {len(data.get('data') or [])}件")
+
+        # アプリアクセストークンで読めるなら「オブジェクトは生きていて、
+        # 足りないのはユーザー側の許可」と切り分けられる
+        app_id = os.environ.get("META_APP_ID", "").strip()
+        app_secret = os.environ.get("META_APP_SECRET", "").strip()
+        if app_id and app_secret:
+            print("  /{BUSINESS_ID}（アプリアクセストークン）:")
+            data, err = call(FB, biz, f"{app_id}|{app_secret}", fields="id,username")
+            print(f"    ❌ {err}" if err else f"    ✅ @{data.get('username')}")
+        else:
+            print("  /{BUSINESS_ID}（アプリアクセストークン）: [SKIP] META_APP_ID/SECRET 未設定")
+
     # ── 7. 判定 ──────────────────────────────────────────────
     section("7. 判定")
     uniq = {}
