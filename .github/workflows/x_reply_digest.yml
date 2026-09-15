@@ -35,17 +35,57 @@ jobs:
           TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
           TWITTER_ACCESS_TOKEN_SECRET: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
           TWITTER_BEARER_TOKEN: ${{ secrets.TWITTER_BEARER_TOKEN }}
-        # rc=2 は「今日は条件を満たす候補が0件」。失敗ではないのでIssue作成だけ飛ばす。
+        # 「0件」には意味の正反対な2種類があるので、終了コードで分ける。
+        #   rc=2  … 検索は通ったが、条件を満たす候補が0件。失敗ではないのでIssue作成だけ飛ばす。
+        #   rc=75 … 検索が全件402（クレジット枯渇）で0件。APIが死んでいて母数がゼロ。
+        # 2026-08-23〜09-15 は後者を rc=2 と同じ扱いにしていたため、CIが毎朝 success のまま
+        # リプ候補Issueが3週間1本も出ていないことに誰も気づけなかった。
         run: |
           set +e
           python x_reply_digest.py
           rc=$?
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
-          if [ $rc -eq 2 ]; then
-            echo "::notice::候補0件のため今日のIssueは作成しません"
+          # 75は「課金でしか直らない既知の停止」。赤にはしない（赤にする打ち手は
+          # Issue #45 がコメント81件になった件で失敗済み）。可視化は下のIssue合流とサマリで行う。
+          if [ $rc -eq 2 ] || [ $rc -eq 75 ]; then
             exit 0
           fi
           exit $rc
+
+      - name: クレジット枯渇(402) → 集約Issueに合流
+        # 新しいIssueは立てない。402は投稿・リプ候補・リスト追加を同時に止めるので、
+        # 通知も「X APIのクレジットが枯渇しています」1本にまとめる。
+        # 既にそのIssueが開いていれば、発信元ごとに1回だけコメントして以後は黙る。
+        if: steps.gen.outputs.rc == '75'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const guard = require('./.github/scripts/guard_comment.js');
+            const umbrella = require('./.github/scripts/x_credits_issue.js');
+            const detectedBy = 'Xリプ候補ダイジェスト (x_reply_digest.yml)';
+            // recomment は「毎回まったく同じ文面」にすること。run IDや時刻を混ぜると
+            // guard_comment の同一判定が毎回外れ、黙らせたいコメントが毎日積まれる
+            // （先頭の「再検知（…）:」行だけは比較から除かれる）。
+            const result = await guard.notify({
+              github, context,
+              key: 'Xリプ候補ダイジェスト',
+              title: umbrella.TITLE,
+              body: umbrella.body({ context, detectedBy }),
+              recomment: [
+                `再検知（Xリプ候補ダイジェスト）: ${new Date().toISOString()}`,
+                '',
+                '**毎朝のリプ候補Issueも、この枯渇で止まっています。**',
+                '全クエリが `402 credits depleted` で失敗し、候補を1件も抽出できていません。',
+                '手動リプ運用はXで唯一生きている施策なので、この間Xからの流入はゼロです。',
+                '',
+                '課金が回復するまで、このコメントは増えません。',
+              ].join('\n'),
+            });
+            core.info(`[credits] guard_comment: ${result}`);
+            core.warning(
+              'X APIのクレジット枯渇によりリプ候補を1件も抽出できませんでした' +
+              '（課金の回復待ち。ランは赤にしません）',
+            );
 
       - name: 前日分のダイジェストIssueを閉じる
         if: steps.gen.outputs.rc == '0'
@@ -68,6 +108,33 @@ jobs:
             --title "$title" \
             --body-file data/x_reply_digest.md \
             --label x-reply-digest
+
+      - name: 結果サマリ
+        # 「候補0件」の理由をランのサマリに必ず出す。
+        # CIの色（緑）だけを見て「動いている」と読めてしまう状態をここで塞ぐ。
+        if: always()
+        run: |
+          rc="${{ steps.gen.outputs.rc }}"
+          {
+            if [ "$rc" = "0" ]; then
+              echo "✅ リプ候補のIssueを発行しました。"
+            elif [ "$rc" = "2" ]; then
+              echo "🔍 **検索は通りましたが、条件を満たす候補が0件でした。**"
+              echo ""
+              echo "APIは生きています。今日は良い候補が無かっただけなので、Issueは作りません。"
+            elif [ "$rc" = "75" ]; then
+              echo "⏸ **動いていません — X APIのクレジット枯渇(402)で検索が全滅しました。**"
+              echo ""
+              echo "候補0件の理由は「良い投稿が無かった」ではなく「検索が1本も通っていない」です。"
+              echo "**このランが緑なのは、課金でしか直らない既知の停止だからです。正常動作ではありません。**"
+              echo ""
+              echo "- 追跡: Issue「X APIのクレジットが枯渇しています（自動投稿が停止中）」"
+              echo "- 対処: https://developer.x.com/en/portal/dashboard で残クレジットを回復"
+              echo "- クレジットが戻れば翌朝のcronから自動で再開します（手動作業は不要）。"
+            else
+              echo "❌ リプ候補の抽出に失敗しました (exit=$rc)。"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: 既読リストを保存
         if: always()

@@ -79,52 +79,31 @@ jobs:
           echo "::warning::投稿ログのpushに3回失敗しました（次回実行で重複スキップされるため致命的ではない）"
 
       - name: クレジット枯渇(402) → Issue1本に集約
-        # exit 75 = cloud_post.py の EXIT_CREDITS_DEPLETED。
+        # exit 75 = x_credits.EXIT_CREDITS_DEPLETED（リプ候補・リスト追加も同じコードを返す）。
         # 課金しないと絶対に直らないので、再実行もIssueコメントの積み増しも無意味。
         # 「まだ枯渇している」という1つの事実は、このIssueが開いていることだけで表す。
         if: steps.post.outputs.post_exit_code == '75'
         uses: actions/github-script@v7
         with:
           script: |
-            const title = 'X APIのクレジットが枯渇しています（自動投稿が停止中）';
-            const body = [
-              '## X API クレジット枯渇',
-              '',
-              '`cloud_post.py` が `402 Payment Required / credits depleted` を受け取りました。',
-              '**コード側の問題ではありません。** 投稿キューもファクトガードも正常で、',
-              'X API に投稿を渡す最後の一手だけが課金で止まっています。',
-              '',
-              `- 検知したラン: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
-              '',
-              '## 対処（コードでは直せません）',
-              '',
-              'https://developer.x.com/en/portal/dashboard で残クレジットとプランを確認し、',
-              '課金を回復してください。',
-              '',
-              '## 回復したらどうなるか',
-              '',
-              'cron（JST 8:00 / 13:00 / 20:00）は止めていないので、クレジットが戻れば',
-              '**次回の実行で自動的に投稿が再開し、このIssueは自動クローズされます。**',
-              '手動での復旧作業は要りません。',
-              '',
-              '## このIssueが静かな理由',
-              '',
-              '枯渇が続く間、ランは赤にしません（`auto_post.yml`）。',
-              '2026-08-23〜09-06 は毎ラン赤で、失敗メール・自動リトライ・再発コメントが',
-              '積み上がり Issue #45 はコメント81件になりました。原因が1つで対処も1つなら、',
-              '通知も1つで足ります。**このIssueが開いている＝まだ枯渇している**と読んでください。',
-              '',
-              '---',
-              '_このIssueは `.github/workflows/auto_post.yml` により自動生成されました。_',
-            ].join('\n');
             const guard = require('./.github/scripts/guard_comment.js');
+            const umbrella = require('./.github/scripts/x_credits_issue.js');
+            // タイトルと本文は x_credits_issue.js が正本。402で止まるワークフローが
+            // 3本になったので、タイトル文字列をここにコピペしない（1文字ずれると
+            // 集約先を見失って2本目のIssueが立ち、「通知は1本」の設計が壊れる）。
+            const detectedBy = '自動投稿 (auto_post.yml)';
             // recomment は「毎回まったく同じ文面」にすること。
             // run ID や時刻を混ぜると guard_comment の同一判定が毎回外れ、
-            // 黙らせたかったコメントが結局毎ラン積まれる（先頭の「再検知:」行だけは比較から除かれる）。
+            // 黙らせたかったコメントが結局毎ラン積まれる（先頭の「再検知（…）:」行だけは比較から除かれる）。
+            // key は発信元ごとに前回コメントを比べるためのもの。これが無いと3本の
+            // ワークフローが交互にコメントし、毎回「前回と違う」と判定されて積み続ける。
             const result = await guard.notify({
-              github, context, title, body,
+              github, context,
+              key: '自動投稿',
+              title: umbrella.TITLE,
+              body: umbrella.body({ context, detectedBy }),
               recomment: [
-                `再検知: ${new Date().toISOString()}`,
+                `再検知（自動投稿）: ${new Date().toISOString()}`,
                 '',
                 'まだ `402 credits depleted` のままです。',
                 '課金が回復するまで、このコメントは増えません。',
@@ -139,8 +118,11 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const title = 'X APIのクレジットが枯渇しています（自動投稿が停止中）';
             const guard = require('./.github/scripts/guard_comment.js');
+            const umbrella = require('./.github/scripts/x_credits_issue.js');
+            // 投稿の成功は「クレジットが戻った」証拠。402で止まっていた他の2本
+            // （リプ候補の抽出・リスト追加）も同時に生き返るので、ここで一括して閉じる。
+            const title = umbrella.TITLE;
             const match = await guard.findOpenIssue({ github, context, title });
             if (!match) return;
             const common = { owner: context.repo.owner, repo: context.repo.repo, issue_number: match.number };

@@ -86,7 +86,7 @@ OFFICE_INSTAGRAM_SUSPENDED = (
 #   402は「課金しないと絶対に直らない／課金したら次のランで勝手に直る」性質なので、
 #   実際の応答を見て降格すれば、クレジットが戻った瞬間に自動で通常検査へ復帰する。
 #   auto_post.yml が既に採っている「402は赤にせずIssue1本・回復で自動クローズ」と
-#   同じ考え方（cloud_post.EXIT_CREDITS_DEPLETED のコメント参照）。
+#   同じ考え方（正本は x_credits.py のdocstring）。
 #
 # 降格するのは402だけ。トークン失効・Secrets切れ・別アカウント参照といった
 # 「取れるはずのものが取れない＝死角」は今まで通り --require-live で赤にする。

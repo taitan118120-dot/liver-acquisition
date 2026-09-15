@@ -19,6 +19,7 @@ import time
 import tweepy
 
 from x_post_guard import post_body, violations
+from x_credits import EXIT_CREDITS_DEPLETED, is_credits_depleted  # noqa: F401  (再エクスポート)
 
 
 # ハッシュタグプール（ニッチタグ重視 — 小規模アカウントでも上位表示を狙う）
@@ -47,15 +48,10 @@ KEYWORD_TO_CATEGORY = {
 MAX_RETRIES = 3
 RETRY_WAIT_SEC = 5
 
-# X API のクレジット枯渇（HTTP 402 Payment Required / "credits depleted"）専用の終了コード。
-# 背景（2026-09-06）: 2026-08-23 から14日間、全ランがこの402で赤くなり続けていた。
-# クレジットは課金しないと戻らないので、再実行しても別の投稿候補に変えても絶対に直らない。
-# それでも「投稿できなかった＝赤」で扱っていたため、1日3回の失敗メールに加えて
-# auto_retry の再実行と auto_fix の再発コメントまで積み上がり、Issue #45 はコメント81件になった。
-# コード側は正常で、直せるのは課金だけ。だから「一時的に投稿できない既知の状態」として
-# 専用コードで区別し、ワークフロー側は赤にせず Issue 1本に集約する（auto_post.yml 参照）。
-# 75 は sysexits.h の EX_TEMPFAIL（一時的な失敗）に合わせた。
-EXIT_CREDITS_DEPLETED = 75
+# X API のクレジット枯渇（402）の扱いは x_credits.py が正本（上の import で持ち込んでいる）。
+# 経緯・終了コード75の意味・「なぜ赤にしないか」はそちらのdocstringに書いてある。
+# 402で止まるのは投稿だけではない（リプ候補の抽出・リスト追加も同時に死ぬ）ので、
+# 判定を各スクリプトにコピペせず1本に寄せてある。
 
 # ─── LINE登録特典（リードマグネット）CTA ───
 # 本文にリンクを入れるとXはリーチを大きく落とすため、投稿成功後に
@@ -502,8 +498,7 @@ def main():
         # 402 は Forbidden/TooManyRequests/TwitterServerError と同じ HTTPException の仲間なので、
         # それらより後（＝より一般的な方を後ろ）に置く。順番を入れ替えると 403 などをここで飲み込む。
         except tweepy.errors.HTTPException as e:
-            status = getattr(getattr(e, "response", None), "status_code", None)
-            if status != 402:
+            if not is_credits_depleted(e):
                 raise
             # クレジット枯渇はアカウント全体に効くので、別の投稿候補を試しても無意味。
             # 赤にはせず専用コードで抜ける（ワークフロー側が Issue 1本にまとめる）。

@@ -29,6 +29,7 @@ from datetime import datetime, timedelta, timezone
 import tweepy
 
 from cloud_engage import is_ng
+from x_credits import EXIT_CREDITS_DEPLETED, is_credits_depleted, print_halt
 
 JST = timezone(timedelta(hours=9))
 
@@ -176,8 +177,32 @@ def save_seen(seen):
         json.dump(seen[-SEEN_KEEP:], f)
 
 
-def search(client, query, max_results=100):  # recent search の上限。母数を稼ぐ
-    """検索して (tweet, user) のリストを返す。失敗しても止めない。"""
+class SearchOutcome:
+    """検索が「通ったのか」「402で死んだのか」を数える。
+
+    なぜ必要か（2026-09-16）: 従来は検索失敗を握りつぶして [] を返していたため、
+    「良い候補が無くて0件」と「APIが死んでいて0件」が同じ道を通っていた。
+    その結果 2026-08-23 の402以降、CIは毎朝 success のまま
+    リプ候補Issueが1本も出ない状態が3週間続いた（実測: run 34912969025 は全8クエリが402）。
+    手動リプ運用はXで唯一生きている施策なので、ここが黙って止まると流入がゼロになる。
+    """
+
+    def __init__(self):
+        self.ok = 0                  # 応答が返ってきたクエリ数（0件ヒットも含む）
+        self.credits_depleted = 0    # 402で落ちたクエリ数
+        self.other_error = 0         # それ以外の失敗（レート制限・5xx など）
+        self.halted = False          # 402を見た＝以降どのクエリを投げても同じ
+
+    def all_depleted(self) -> bool:
+        """1回も検索が通らず、かつ402を見た＝「APIが死んでいて0件」。
+
+        一部でも検索が通っているなら、0件の理由は選定条件の側にある。
+        """
+        return self.ok == 0 and self.credits_depleted > 0
+
+
+def search(client, query, stats, max_results=100):  # recent search の上限。母数を稼ぐ
+    """検索して (tweet, user) のリストを返す。失敗しても止めない（結果は stats に記録）。"""
     try:
         resp = client.search_recent_tweets(
             query=f"{query} -is:retweet -is:reply lang:ja",
@@ -187,9 +212,18 @@ def search(client, query, max_results=100):  # recent search の上限。母数�
             expansions=["author_id"],
         )
     except Exception as e:  # レート制限含め、1クエリ失敗で全体を落とさない
+        # 402 だけは「一時的な失敗」ではなく「課金が戻るまで確定で全滅」。
+        # 他の失敗と同じ [] にして先へ進むと、0件の理由が読めなくなる。
+        if is_credits_depleted(e):
+            stats.credits_depleted += 1
+            stats.halted = True
+            print(f"  [HALT] 検索がクレジット枯渇(402)で失敗: {query[:40]}")
+            return []
+        stats.other_error += 1
         print(f"  [WARN] 検索失敗 ({query}): {e}")
         return []
 
+    stats.ok += 1
     if not resp or not resp.data:
         return []
     users = {u.id: u for u in (resp.includes or {}).get("users", [])}
@@ -200,7 +234,7 @@ def hours_ago(created_at):
     return (datetime.now(timezone.utc) - created_at).total_seconds() / 3600
 
 
-def collect(client, queries, seen, my_id, keep, mode):
+def collect(client, queries, seen, my_id, keep, mode, stats):
     """mode='empathy' or 'reach' で採点基準を変えて候補を集める。
 
     候補が0件になったときに「検索が取れていない」のか「フィルタが厳しすぎる」のか
@@ -209,8 +243,12 @@ def collect(client, queries, seen, my_id, keep, mode):
     cands = []
     picked_authors = set()
     rej = Counter()
-    for q in queries:
-        found = search(client, q)
+    for i, q in enumerate(queries):
+        # クレジット枯渇はアカウント全体に効く。残りを投げても同じ402が返るだけなので打ち切る。
+        if stats.halted:
+            print(f"  [SKIP] クレジット枯渇のため残り{len(queries) - i}クエリを送りません")
+            break
+        found = search(client, q, stats)
         rej[f"検索ヒット({q[:24]})"] += len(found)
         for t, u in found:
             if str(t.id) in seen or u.id == my_id:
@@ -322,6 +360,9 @@ def collect(client, queries, seen, my_id, keep, mode):
     for k, v in rej.most_common():
         print(f"    {k}: {v}")
     print(f"    → 通過: {len(cands)}")
+    # 「通過0」の意味は検索が通ったかどうかで正反対になるので、必ず並べて出す。
+    print(f"    （検索: 成功{stats.ok} / 402で失敗{stats.credits_depleted} "
+          f"/ その他の失敗{stats.other_error}）")
 
     cands.sort(key=lambda c: -c["score"])
     # 同じ人に何件もリプしない
@@ -336,13 +377,23 @@ def collect(client, queries, seen, my_id, keep, mode):
     return out
 
 
-def render(empathy, reach):
+def render(empathy, reach, stats):
     today = datetime.now(JST).strftime("%Y-%m-%d (%a)")
     lines = [
         f"# 今日のXリプ候補 — {today}",
         "",
         "**所要10分。上から順にリンクを開いて、一言返すだけ。**",
         "",
+    ]
+    if stats.credits_depleted:
+        # 途中でクレジットが尽きた回。件数が少ないのは選定が厳しいせいではないと明示する。
+        lines += [
+            "> ⚠️ **途中で X API のクレジットが枯渇(402)しました。**",
+            f"> 送れたクエリは {stats.ok} 本だけで、残りは検索そのものが通っていません。",
+            "> 件数が少ないのは条件が厳しいからではなく、母数が取れていないからです。",
+            "",
+        ]
+    lines += [
         "ルール（これを守らないと逆効果になります）:",
         "- リンク・LINE・特典・事務所の話は**リプに書かない**。宣伝アカ判定されてリーチが落ちます。",
         "- ヒントはそのままコピペしない。**最低1文は自分の言葉**に直す（同一文の連投はスパム判定）。",
@@ -404,23 +455,40 @@ def main() -> int:
         me = client.get_me()
         my_id = me.data.id if me and me.data else None
     except Exception as e:
-        print(f"[WARN] get_me 失敗（自分の投稿の除外だけ効かなくなる）: {e}")
+        if is_credits_depleted(e):
+            print("[WARN] get_me がクレジット枯渇(402)で失敗。検索も同じ結果になる見込み。")
+        else:
+            print(f"[WARN] get_me 失敗（自分の投稿の除外だけ効かなくなる）: {e}")
         my_id = None
 
     seen = load_seen()
     seen_set = set(seen)
 
+    stats = SearchOutcome()
     # 1日1回の実行なので全クエリ回して構わない（8リクエスト）
-    empathy = collect(client, EMPATHY_QUERIES, seen_set, my_id, 5, "empathy")
-    reach = collect(client, REACH_QUERIES, seen_set, my_id, 5, "reach")
+    empathy = collect(client, EMPATHY_QUERIES, seen_set, my_id, 5, "empathy", stats)
+    reach = collect(client, REACH_QUERIES, seen_set, my_id, 5, "reach", stats)
 
     if not empathy and not reach:
+        # 同じ「0件」でも意味が正反対なので、終了コードで分ける。
+        # ここを一緒くたにしていたせいで、402の3週間を誰も気づけなかった。
+        if stats.all_depleted():
+            print_halt("リプ候補の抽出")
+            print("  → 手動リプ運用（Xで唯一生きている施策）が止まっています。")
+            return EXIT_CREDITS_DEPLETED
         # 空のIssueを毎朝送ると開かなくなるので、その日は黙って見送る。
         # 失敗(1)ではなく2を返し、ワークフロー側でIssue作成だけスキップする。
-        print("[INFO] 条件を満たす候補が0件でした。今日はIssueを作りません。")
+        if stats.ok == 0:
+            # 402以外（レート制限・5xx）で全滅した回。次のランで直ることが多いので
+            # 402とは別扱いにするが、「条件に合わなかった」と読まれないよう言い分ける。
+            print(f"[INFO] 検索が1本も通りませんでした（失敗{stats.other_error}本・402以外）。"
+                  "今日はIssueを作りません。")
+        else:
+            print(f"[INFO] 検索は{stats.ok}本通りましたが、条件を満たす候補が0件でした。"
+                  "今日はIssueを作りません。")
         return 2
 
-    body = render(empathy, reach)
+    body = render(empathy, reach, stats)
     os.makedirs("data", exist_ok=True)
     with open(OUT_FILE, "w", encoding="utf-8") as f:
         f.write(body)

@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  issues: write   # クレジット枯渇(402)を既存の集約Issueに合流させるため
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -28,6 +29,7 @@ jobs:
       - run: pip install tweepy
 
       - name: リスト追加実行
+        id: add
         env:
           TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
           TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
@@ -35,9 +37,74 @@ jobs:
           TWITTER_ACCESS_TOKEN_SECRET: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
           TWITTER_BEARER_TOKEN: ${{ secrets.TWITTER_BEARER_TOKEN }}
           X_LIST_ID: ${{ secrets.X_LIST_ID }}
-        run: python cloud_list_add.py
+        # rc=75 は「検索が全件402（クレジット枯渇）で追加0件」。課金でしか直らないので赤にしない。
+        # 従来は402を「検索エラー」として素通りさせ exit 0 で終わっていたため、
+        # CIが緑のまま追加0件が続いていた（実測: run 34915986059 は全31キーワードが402）。
+        run: |
+          set +e
+          python cloud_list_add.py
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          if [ $rc -eq 75 ]; then
+            exit 0
+          fi
+          exit $rc
+
+      - name: クレジット枯渇(402) → 集約Issueに合流
+        # 新しいIssueは立てない。402は投稿・リプ候補・リスト追加を同時に止めるので1本に集約する。
+        if: steps.add.outputs.rc == '75'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const guard = require('./.github/scripts/guard_comment.js');
+            const umbrella = require('./.github/scripts/x_credits_issue.js');
+            const detectedBy = 'リスト自動追加 (auto_list_add.yml)';
+            // recomment は毎回まったく同じ文面にすること（先頭の「再検知（…）:」行のみ比較対象外）。
+            const result = await guard.notify({
+              github, context,
+              key: 'リスト自動追加',
+              title: umbrella.TITLE,
+              body: umbrella.body({ context, detectedBy }),
+              recomment: [
+                `再検知（リスト自動追加）: ${new Date().toISOString()}`,
+                '',
+                '**公開リストへの追加も、この枯渇で止まっています。**',
+                '全キーワードの検索が `402 credits depleted` で失敗し、追加0件です。',
+                '',
+                '課金が回復するまで、このコメントは増えません。',
+              ].join('\n'),
+            });
+            core.info(`[credits] guard_comment: ${result}`);
+            core.warning(
+              'X APIのクレジット枯渇によりリストに1件も追加できませんでした' +
+              '（課金の回復待ち。ランは赤にしません）',
+            );
+
+      - name: 結果サマリ
+        # 「追加0件」の理由をランのサマリに必ず出す。
+        # CIの色（緑）だけを見て「動いている」と読めてしまう状態をここで塞ぐ。
+        if: always()
+        run: |
+          rc="${{ steps.add.outputs.rc }}"
+          {
+            if [ "$rc" = "75" ]; then
+              echo "⏸ **動いていません — X APIのクレジット枯渇(402)で検索が全滅しました。**"
+              echo ""
+              echo "追加0件の理由は「条件に合う人がいなかった」ではなく「検索が1本も通っていない」です。"
+              echo "**このランが緑なのは、課金でしか直らない既知の停止だからです。正常動作ではありません。**"
+              echo ""
+              echo "- 追跡: Issue「X APIのクレジットが枯渇しています（自動投稿が停止中）」"
+              echo "- 対処: https://developer.x.com/en/portal/dashboard で残クレジットを回復"
+              echo "- クレジットが戻れば翌日のcronから自動で再開します（手動作業は不要）。"
+            elif [ "$rc" = "0" ]; then
+              echo "✅ リスト追加を実行しました（件数はログの「完了: N件」を参照）。"
+            else
+              echo "❌ リスト追加に失敗しました (exit=$rc)。"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: 処理済みデータ保存
+        if: always()
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"

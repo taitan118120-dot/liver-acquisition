@@ -22,6 +22,8 @@ from datetime import datetime, timezone, timedelta
 
 import tweepy
 
+from x_credits import EXIT_CREDITS_DEPLETED, is_credits_depleted, print_halt
+
 # ============================================================
 # ログ設定
 # ============================================================
@@ -233,6 +235,12 @@ def main():
     added_count = 0
     keywords_shuffled = random.sample(SEARCH_KEYWORDS, len(SEARCH_KEYWORDS))
 
+    # 「追加0件」の理由を最後に言い分けるためのカウンタ。
+    # 従来は402を「検索エラー」として素通りさせ、31キーワード全滅でも exit 0 で終わっていたため、
+    # CIが緑のまま追加0件が続いた（実測: run 34915986059 は全31キーワードが402）。
+    searches_ok = 0
+    credits_depleted = False
+
     for keyword in keywords_shuffled:
         if added_count >= daily_target:
             break
@@ -259,8 +267,17 @@ def main():
             time.sleep(30)
             continue
         except Exception as e:
+            # 402（クレジット枯渇）は「今回のキーワードが悪い」ではなくアカウント全体が停止。
+            # 残りのキーワードを投げても同じ402が返るだけなので、ここで打ち切る。
+            if is_credits_depleted(e):
+                credits_depleted = True
+                log.error(f"検索がクレジット枯渇(402)で失敗: {keyword}")
+                log.error("  残りのキーワードは送りません（結果は変わらないため）")
+                break
             log.error(f"検索エラー: {e}")
             continue
+
+        searches_ok += 1
 
         if not tweets.data:
             log.info("  検索結果なし")
@@ -327,8 +344,16 @@ def main():
     log.info(f"\n{'='*40}")
     log.info(f"完了: {added_count}件 リストに追加")
     log.info(f"処理済み累計: {len(processed)}人")
+    log.info(f"検索: 成功{searches_ok}件 / クレジット枯渇で打ち切り={credits_depleted}")
     log.info(f"{'='*40}")
+
+    # 「良い候補が無くて0件」と「APIが死んでいて0件」を終了コードで言い分ける。
+    # 1件も検索が通らなかったなら、追加0件はフィルタのせいではない。
+    if searches_ok == 0 and credits_depleted:
+        print_halt("公開リストへの追加")
+        return EXIT_CREDITS_DEPLETED
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
