@@ -17,7 +17,7 @@
 
 このスクリプトが見る4軸:
   1. 禁止パターン走査 — 確定ファクト（[[project_taitan_pro_note_facts]]）の
-     常設grepパターンを、実物のプロフィール文・固定ポスト・IG投稿キャプションに当てる
+     常設grepパターンを、実物のプロフィール文・固定ポストに当てる
   2. 正本との突合 — marketing/social_profiles.md（表示名・bio・リンクの正本）を
      パースして、実物と1文字単位で一致するか見る。乖離＝どちらかが古い
   3. 正本そのものの検査（2026-08-09 追加）— パース結果に (a) 期待する媒体・項目が
@@ -34,8 +34,9 @@
   - NG   = プロフィール／固定ポストの禁止パターン検出、正本との乖離、正本自体の問題、
            反映スクリプトが正本から読んでいない、
            トークンが別アカウントを指している → exit 1（Actionsが赤くなる）
-  - WARN = 過去投稿のキャプションの違反 → 報告のみ。**Graph API でキャプションは編集できない**ので
-           赤にすると番犬が永久に鳴きやまなくなる（[[feedback_watchdog_autoclose]]）
+  - WARN = 主語や文脈で可否が変わるルール（facts_patterns.AUDIT_WARN_LABELS）
+           → 報告のみ。赤にすると番犬が永久に鳴きやまなくなる
+           （[[feedback_watchdog_autoclose]]）
   - SKIP = 取得に必要なトークンが無い／固定ポスト本文が取れなかった媒体
            （ローカル実行時など）→ 既定では報告のみで exit 0。
            ただし SKIP が1件でもある回は、その実行が言えるのは
@@ -53,6 +54,9 @@
   - 手動 = IG @taitanblog は個人アカウントで Graph API が使えない。
            自動取得できないので毎回チェック項目として出力するだけ（赤にはしない）
 
+  ※ 事務所IG @taitan_pro7 の走査は 2026-09-16 に撤去した（[[project_ig_retired]]）。
+    アカウントが消滅してIG自動化を恒久停止したため、取りに行く先も直す先も無い。
+
 使い方:
   python3 social_profile_guard.py          # 全媒体（取得できない媒体は SKIP）
   python3 social_profile_guard.py --require-live  # 1媒体でも取得できなければ exit 1（CI用）
@@ -61,7 +65,7 @@
 
 正本の書き方（重要）:
   値は ```canonical:<媒体>.<項目> と印を付けたフェンスにだけ書く。
-  例:  ```canonical:x.pinned … ```    媒体= threads / x / ig_taitan_pro7 / ig_taitanblog
+  例:  ```canonical:x.pinned … ```    媒体= threads / x / ig_taitanblog
                                       項目= name / bio / link / pinned
   印の無い ``` ブロックは**すべて単なる例示**として無視されるので、
   手順例・旧文面・エラーログを正本のどこに置いても値には影響しない。
@@ -69,7 +73,6 @@
 必要な環境変数（GitHub Secrets から注入）:
   TWITTER_BEARER_TOKEN                        X
   THREADS_ACCESS_TOKEN                        Threads
-  INSTAGRAM_ACCESS_TOKEN / INSTAGRAM_BUSINESS_ID   Instagram @taitan_pro7
 
 レポートは data/social_profile_guard_report.json に保存される。
 """
@@ -100,23 +103,22 @@ REPORT_FILE = os.path.join(BASE_DIR, "data", "social_profile_guard_report.json")
 CANON_FILE = os.path.join(BASE_DIR, "marketing", "social_profiles.md")
 
 X_USERNAME = "taitan_LIVER"
-IG_GRAPH = "https://graph.facebook.com/v21.0"
 THREADS_GRAPH = "https://graph.threads.net/v1.0"
 
-# ── 事務所IGハンドルの正本 ────────────────────────────────────
-# config.OFFICE_INSTAGRAM が唯一の正本。番犬側にも期待username を手書きしていたので
-# 一本化した（片方だけ直せる状態そのものが、この番犬が潰すべき欠陥）。
+# ── 撤去済み事務所IGハンドルの検知 ──────────────────────────────
+# 2026-09-16 にIG自動投稿を恒久停止し、@taitan_pro7 は Instagram 上から消滅している
+# （[[project_ig_retired]]）。したがって **どの事務所IGハンドルも誘導先として不正**で、
+# 公開テキストに出てきたら「存在しないアカウントへ送っている」ことになる。
+# 以前は「正本ハンドルと一致するか」を見ていたが、正本そのものが無くなったので
+# 「事務所IGらしきハンドルが1つでも出てきたら赤」に意味を変えた。
+# 末尾の数字違い（@taitan_pro / @taitan_pro7 / @taitan_pro77）までまとめて拾う。
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 import config  # noqa: E402
 
-OFFICE_IG_HANDLE = ("@" + config.OFFICE_INSTAGRAM.lstrip("@"))
-OFFICE_IG_USERNAME = OFFICE_IG_HANDLE[1:]
-# 末尾の数字だけが違う紛らわしいハンドル（@taitan_pro / @taitan_pro77）まで拾う。
-# 「@taitan_pro が無い」ではなく「正本と一致しない事務所ハンドル」を検知したいので、
-# 旧値を直書きせずに正本から機械的に組む（[[feedback_verify_before_asserting]]）。
-OFFICE_HANDLE_LOOKALIKE = re.compile(
-    r"@" + re.escape(OFFICE_IG_USERNAME.rstrip("0123456789")) + r"\d*(?![\w.])")
+RETIRED_IG_HANDLE = ("@" + config.OFFICE_INSTAGRAM.lstrip("@"))
+RETIRED_HANDLE_LOOKALIKE = re.compile(
+    r"@" + re.escape(RETIRED_IG_HANDLE[1:].rstrip("0123456789")) + r"\d*(?![\w.])")
 
 # ── 禁止パターン ──────────────────────────────────────────────
 # 【2026-08-12】以前はここに確定ファクトの禁止パターンを**丸ごと自前で持って**いた。
@@ -189,15 +191,12 @@ FENCE_END = re.compile(r"^`{3,}\s*$")
 EXPECTED_FIELDS = {
     "threads": ("name", "bio", "link", "pinned"),
     "x": ("name", "bio", "link", "pinned"),
-    # IG は固定投稿という概念を運用していないので pinned は設計対象外
-    "ig_taitan_pro7": ("name", "bio", "link"),
-    # @taitan_pro は「使わないアカウント」なので name/bio は正本を持たない。
-    # link だけは例外的に正本がある（2026-09-05）: 投稿済みIG 89本中68本のCTAが
-    # このアカウントのプロフィールリンクを名指ししていて、本文32本を手編集する代わりに
-    # リンク先を現行導線へ揃える判断をしたため（marketing/social_profiles.md の②）。
-    # 正本に canonical:ig_taitan_pro.link を足したときここへの登録が漏れており、
-    # 「未知の媒体キー」で番犬が毎日赤くなっていた（2026-09-07 修正）。
-    "ig_taitan_pro": ("link",),
+    # 事務所IG（ig_taitan_pro7 / ig_taitan_pro）は 2026-09-16 に削除した
+    # （[[project_ig_retired]]）。アカウントが消滅し、IG自動化も恒久停止したので
+    # 「実物へ反映する先」が無い＝正本を持つ意味が無い。marketing/social_profiles.md
+    # 側も canonical: の印を外して**記録**に落としてある（両方同時に直すこと。
+    # 片方だけ残すと「未知の媒体キー」でこの番犬が毎日赤くなる）。
+    # @taitanblog は個人アカウントで手動更新のみ。実在するので正本は残す。
     "ig_taitanblog": ("name", "bio", "link"),
 }
 KNOWN_FIELDS = {f for fs in EXPECTED_FIELDS.values() for f in fs}
@@ -295,13 +294,13 @@ def audit_canonical(canon):
 # 片方だけ直しても CI は緑のままだった（＝一括ファクト更新が固定ポストを
 # 取りこぼした 2026-08-08 の事故と同じ構造の死角）。
 #
-# → 埋め込みを撤去して parse_canonical() 読み込みに一本化した（ig_profile_update.py と同じ形）。
+# → 埋め込みを撤去して parse_canonical() 読み込みに一本化した。
 #   ここでは「またコピーに戻していないか」を3重に見る:
 #     (a) ast — 対象の定数に文字列リテラルを代入していないか（今日たまたま一致していても
 #         リテラルなら明日必ずズレる。値比較だけでは捕まらないのでこちらが本命）
 #     (b) ast — ファイルのどこかに正本の値と同一の文字列リテラルが無いか
 #         （定数名を変えて別の場所へ逃がしたコピーを拾う。名前に依存しないので
-#           ig_profile_update.py のように定数を持たないスクリプトも守れる）
+#           定数を持たないスクリプトも守れる）
 #     (c) import — 実際に読める値が正本と **1文字単位で** 一致するか
 #         norm() は使わない。空白の差も「片方だけ直した」の兆候なので潰さない
 CONSUMERS = [
@@ -309,8 +308,7 @@ CONSUMERS = [
      [("NAME", "x", "name"), ("DESCRIPTION", "x", "bio"), ("URL", "x", "link")]),
     ("social_pinned_publish.py", "social_pinned_publish",
      [("X_PINNED_TEXT", "x", "pinned"), ("THREADS_PINNED_TEXT", "threads", "pinned")]),
-    # 元から正本読み込み型。定数は持たないので (b) だけが効く
-    ("ig_profile_update.py", "ig_profile_update", []),
+    # ig_profile_update.py は 2026-09-16 のIG撤去で削除した（[[project_ig_retired]]）
 ]
 
 
@@ -408,43 +406,33 @@ def audit_consumers(canon):
     return out
 
 
-# ── 5軸目: 生成側のハンドル検査（2026-08-10 追加）──────────────────
-# 背景: 事務所公式が @taitan_pro7 に確定（2026-08-08）した後も、
-#   instagram/ig_content_generator.py と ig_viral_generator.py は @taitan_pro を
-#   直書きしたままで、キャプションのCTAと画像ウォーターマークが
+# ── 5軸目: 生成側のハンドル検査（2026-08-10 追加 / 2026-09-16 意味変更）────
+# 背景: 事務所公式が @taitan_pro7 に確定（2026-08-08）した後も、IGの生成スクリプトが
+#   @taitan_pro を直書きしたままで、キャプションのCTAと画像ウォーターマークが
 #   **未運用の別アカウント** へフォロワーを誘導し続けていた。
-#   未投稿キュー10件（ig_auto_065〜074）は既にその文面で待機していた。
 #   この番犬は「プロフィールと固定ポスト」しか見ていなかったので、
 #   これから公開される投稿が汚染されていても一切鳴かなかった。
 # → 公開テキストを **作る側** も毎日読む。投稿前に直せる場所なので NG（exit 1）扱い。
+#
+# 2026-09-16（[[project_ig_retired]]）: @taitan_pro7 の消滅でIG自動化を恒久停止し、
+#   IG側の生成スクリプトとワークフローを撤去した。残る生成側は Threads だけだが、
+#   検査自体は残す。判定は「正本ハンドルと違うか」から **「事務所IGらしきハンドルが
+#   出てきたら赤」** に変えた。もう生きている事務所IGは存在しないので、公開テキストに
+#   残っていれば消えたアカウントへ読者を送ることになる。
 GENERATORS = [
-    "instagram/ig_content_generator.py",
-    "instagram/ig_viral_generator.py",
     "threads/threads_content.py",
 ]
-POST_QUEUE = "instagram/ig_posts.json"
 
 
 def _handle_mismatches(text):
-    """テキスト中の「正本と一致しない事務所ハンドル」を返す。"""
-    return [m.group(0) for m in OFFICE_HANDLE_LOOKALIKE.finditer(text or "")
-            if m.group(0) != OFFICE_IG_HANDLE]
+    """テキスト中の「撤去済み事務所IGハンドル」を返す。"""
+    return [m.group(0) for m in RETIRED_HANDLE_LOOKALIKE.finditer(text or "")]
 
 
 def audit_generators():
     out = []
 
-    # (1) 正本ファイルが config と同じアカウントを設計対象にしているか。
-    #     ここがズレると、以降の突合が「別アカウントの正本」との比較になる
-    key = f"ig_{OFFICE_IG_USERNAME}"
-    if key not in EXPECTED_FIELDS:
-        out.append({
-            "where": "config.OFFICE_INSTAGRAM",
-            "reason": f"正本の媒体キー {key} が EXPECTED_FIELDS に無い"
-                      f"（config だけ変えて marketing/social_profiles.md と番犬が取り残されている）",
-            "hit": f"既知の媒体キー: {', '.join(sorted(EXPECTED_FIELDS))}"})
-
-    # (2) 生成スクリプトの直書き。**文字列リテラルだけ** を見るので、
+    # 生成スクリプトの直書き。**文字列リテラルだけ** を見るので、
     #     経緯を説明する `#` コメントや docstring の外の記述は誤検知しない
     for rel in GENERATORS:
         path = os.path.join(BASE_DIR, rel)
@@ -461,31 +449,10 @@ def audit_generators():
             for hit in _handle_mismatches(lit):
                 out.append({
                     "where": where,
-                    "reason": f"正本でないIGハンドルを直書きしている"
-                              f"（config.OFFICE_INSTAGRAM = {OFFICE_IG_HANDLE} を参照すること）",
+                    "reason": "撤去済みの事務所IGハンドルを直書きしている"
+                              "（IGは2026-09-16に恒久停止・アカウントも消滅しているので、"
+                              "公開テキストから誘導先を消すこと）",
                     "hit": f"{hit} … {lit.strip()[:60]}"})
-
-    # (3) 未投稿キュー。既に投稿済みのキャプションは Graph API で編集できないので
-    #     対象外（main() が過去投稿を warn として別途拾う）。未投稿分は今なら直せる
-    qpath = os.path.join(BASE_DIR, POST_QUEUE)
-    if not os.path.exists(qpath):
-        out.append({"where": f"投稿キュー {POST_QUEUE}", "reason": "ファイルが見つからない", "hit": ""})
-        return out
-    try:
-        queue = json.load(open(qpath, encoding="utf-8"))
-    except (OSError, ValueError) as e:
-        out.append({"where": f"投稿キュー {POST_QUEUE}", "reason": "JSONとして読めない",
-                    "hit": f"{type(e).__name__}: {e}"[:120]})
-        return out
-    for item in queue:
-        if item.get("posted"):
-            continue
-        for hit in _handle_mismatches(item.get("caption", "")):
-            out.append({
-                "where": f"投稿キュー {POST_QUEUE} / {item.get('id', '?')}",
-                "reason": f"未投稿キャプションが正本でないIGハンドルを含む"
-                          f"（このまま投稿されると {hit} へ誘導される）",
-                "hit": f"{hit} … {item.get('title', '')[:40]}"})
     return out
 
 
@@ -560,45 +527,6 @@ def fetch_threads():
             "bio": d.get("threads_biography", "")}, None
 
 
-def fetch_ig():
-    token = os.environ.get("INSTAGRAM_ACCESS_TOKEN", "").strip()
-    biz = os.environ.get("INSTAGRAM_BUSINESS_ID", "").strip()
-    if not (token and biz):
-        return None, "INSTAGRAM_ACCESS_TOKEN / INSTAGRAM_BUSINESS_ID 未設定"
-    r = requests.get(f"{IG_GRAPH}/{biz}",
-                     params={"fields": "username,name,biography,website",
-                             "access_token": token}, timeout=30)
-    if r.status_code != 200:
-        # code=100/subcode=33 は「トークン失効」と紛らわしいが別物。
-        # トークンが有効でも、IGアカウント側が消えた／ページ連携が切れた／
-        # アプリの許可が外れたときに同じ文面で返る。2026-09-12〜15 はこれを
-        # 「IG API 400」とだけ出していたので、再発行を4日繰り返して直らなかった。
-        try:
-            err = r.json().get("error", {})
-        except ValueError:
-            err = {}
-        if err.get("code") == 100 and err.get("error_subcode") == 33:
-            return None, ("IG アカウントに到達できません（code=100/subcode=33）。"
-                          "トークンは有効でもこの状態になります（アカウント消滅・"
-                          "ページ連携切れ・アプリ許可の失効）。"
-                          "再発行の前に Actions の「Instagram API 診断」"
-                          "(instagram_diagnose.yml) を実行してください")
-        return None, f"IG API {r.status_code}: {r.text[:200]}"
-    d = r.json()
-    out = {"username": d.get("username", ""), "name": d.get("name", ""),
-           "bio": d.get("biography", ""), "link": d.get("website", ""), "captions": []}
-    m = requests.get(f"{IG_GRAPH}/{biz}/media",
-                     params={"fields": "caption,permalink,timestamp", "limit": 25,
-                             "access_token": token}, timeout=30)
-    if m.status_code == 200:
-        out["captions"] = [
-            {"caption": x.get("caption", ""), "permalink": x.get("permalink", "")}
-            for x in m.json().get("data", [])
-        ]
-    return out, None
-
-
-# ── 突合 ─────────────────────────────────────────────────────
 def compare(media_label, live, canon, fields):
     diffs = []
     for f in fields:
@@ -637,7 +565,7 @@ def print_canon(canon, problems, warns=()):
             body = v.replace("\n", "\n        ")
             print(f"  [{f}] {len(v)}字\n        {body}")
     print(f"\n[正本＋反映スクリプト＋生成側の検査] 問題 {len(problems)} 件"
-          f" / 警告 {len(warns)} 件（事務所IG正本 = {OFFICE_IG_HANDLE}）")
+          f" / 警告 {len(warns)} 件")
     for p in problems:
         print(f"  ❌ {p['where']}: {p['reason']}" + (f"\n     → {p['hit']}" if p["hit"] else ""))
     for w in warns:
@@ -706,26 +634,12 @@ def main():
          ["name", "bio", "link"], ["bio", "pinned"]),
         ("Threads @taitanblog", "threads", fetch_threads, "taitanblog",
          ["name", "bio"], ["bio"]),
-        # 事務所公式は @taitan_pro7（2026-08-08 ユーザー確定）。
-        # @taitan_pro は投稿が一度も流れていない別アカウントで、運用しない。
-        # 期待username は config.OFFICE_INSTAGRAM から引く（ここに手書きすると
-        # 「configだけ直して番犬が旧アカを見続ける」が起きる）
-        (f"IG {OFFICE_IG_HANDLE}", f"ig_{OFFICE_IG_USERNAME}", fetch_ig, OFFICE_IG_USERNAME,
-         ["name", "bio", "link"], ["bio"]),
+        # 事務所IG @taitan_pro7 は 2026-09-16 に走査対象から外した
+        # （[[project_ig_retired]]。アカウント消滅＋IG自動化の恒久停止）。
     ]
 
-    # 事務所IGを畳んでいる間は、IG媒体を走査対象から外す。
-    # skipped に入れると --require-live が赤にするが、それは「取れるはずのものが
-    # 取れていない＝死角」を捕まえるための仕掛けで、アカウントが存在しないと
-    # 分かっている期間に鳴らしても X / Threads の本物の赤を埋めるだけになる。
-    # だから skipped ではなく suspended として別枠で出す（緑にはするが黙らせない）。
-    # 再開条件は config.OFFICE_INSTAGRAM_SUSPENDED のコメントを参照。
-    # 402（X）のようにループ中で足すものもあるので、ここで用意しておく
+    # 402（X）のようにループ中で足すものがあるので、ここで用意しておく
     suspended = []
-    if getattr(config, "OFFICE_INSTAGRAM_SUSPENDED", ""):
-        sources = [s for s in sources if not s[0].startswith("IG ")]
-        suspended.append({"media": f"IG {OFFICE_IG_HANDLE}",
-                          "reason": config.OFFICE_INSTAGRAM_SUSPENDED})
 
     for label, key, fetch, want_user, cmp_fields, scan_fields in sources:
         live, err = fetch()
@@ -761,10 +675,6 @@ def main():
             ng, warn = split_warn(scan(live.get(f, ""), f"{label} / {f}"))
             violations += ng
             warns += warn
-        # 過去投稿のキャプションはAPIで編集できない（＝直せない）。
-        # 赤にすると番犬が永久に鳴きやまなくなるので warn 扱いにする。
-        for c in live.get("captions", []):
-            warns += scan(c["caption"], f"{label} / 投稿 {c['permalink']}")
         diffs += compare(label, live, canon.get(key, {}), cmp_fields)
 
         print(f"  ✅ {label}: 取得OK（@{got_user or '?'}）"

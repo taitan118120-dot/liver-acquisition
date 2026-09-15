@@ -6,9 +6,9 @@
 290本（全585本中）そのまま残っていた。放置すると:
   - cloud_post.py が毎回290本を除外してログを埋める
   - **posts/twitter_posts.json を別用途で読む経路に漏れる**
-    （instagram/ig_content_generator.py がツイートをIG投稿のソースにしている、
-      blog/generate_articles.py が記事ネタにしている）
-    ＝ X では止まっても IG・ブログ側から同じ文面が出ていく
+    （blog/generate_articles.py が記事ネタにしている。IG側にも同じ経路が
+      あったが、2026-09-16のIG撤去で消えた＝[[project_ig_retired]]）
+    ＝ X では止まってもブログ側から同じ文面が出ていく
 
 そこで違反分は posts/twitter_posts_blocked.json に理由付きで退避する。
 削除ではなく退避にするのは、文面を直せば再利用できる資産だから

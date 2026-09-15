@@ -45,16 +45,15 @@
      さらに（--repo-only でなければ）jsDelivr が実際に返すバイトまで照合する。
   4. 孤児の配布物 — lp/shared/*.pdf でリポジトリのどこからも参照されていないもの。
      参照が無い＝更新フローに乗らない＝旧ファクトが公開URLに残り続ける温床。
-  5. 投稿済みIGの **実物**（2026-09-05 追加）— 1 で見ているのは記録
-     （instagram/ig_posts.json）であって、Instagram に載っている文面ではない。
-     手編集と --apply の順番が入れ替わるだけで両者はズレ、とくに
-     **記録だけ直して実物が古い**とこの番犬は緑になって嘘をつく。
-     （--repo-only でなければ）Graph API で実物のキャプションを取り、
-     同じ物差しで走査したうえで記録との差も見る。
+
+  ※ 2026-09-04/05 に足した Instagram の走査（記録 ig_posts.json と Graph API の
+    実物）は 2026-09-16 に外した（[[project_ig_retired]]）。@taitan_pro7 が消滅して
+    投稿自体が公開されておらず、手編集する先も無い＝「直せる違反」が存在しない。
+    赤にも警告にもならないものを毎日出すと、LP・特典PDF・記事側の本物が埋もれる。
 
 判定ポリシー:
   - NG   = 禁止パターン検出／HTMLとPDFの乖離／SHA固定のズレ／孤児PDF
-           /pdftotext が使えず走査できなかった／**IGの実物を取得できなかった**
+           /pdftotext が使えず走査できなかった
            → exit 1（Actionsが赤くなる）
   - WARN = 主語や文脈で可否が変わり、公開済み長文では人が判断する話なので赤にしない
            （[[feedback_watchdog_autoclose]] 永久に鳴きやむことのない番犬にしない）
@@ -63,7 +62,7 @@
 
 使い方:
   python3 content_facts_guard.py              # 全チェック
-  python3 content_facts_guard.py --repo-only  # jsDelivr・IG Graph API への実アクセスなし（ローカル用）
+  python3 content_facts_guard.py --repo-only  # jsDelivr への実アクセスなし（ローカル用）
   python3 content_facts_guard.py --warn       # WARN の全件を出す（既定は先頭20件）
 
 レポートは data/content_facts_guard_report.json に保存される。
@@ -85,19 +84,10 @@ if BASE_DIR not in sys.path:
 # 禁止パターンの正本は facts_patterns.py だけ。ここに再定義すると
 # 「必ずどれか1本が古くなる」に逆戻りする（まさに今回の京都コレクションがそれ）。
 from facts_patterns import (  # noqa: E402
-    AUDIT_WARN_LABELS, CONTRACT_AXIS_LABEL, EXIT_CLAIM_LABEL, MONEY_FLOOR,
+    AUDIT_WARN_LABELS, CONTRACT_AXIS_LABEL, EXIT_CLAIM_LABEL,
     common_violations)
 
 REPORT_FILE = os.path.join(BASE_DIR, "data", "content_facts_guard_report.json")
-
-# 投稿済みInstagramキャプションの記録（instagram/ig_poster.py が posted を立てる）
-IG_POSTS_FILE = os.path.join(BASE_DIR, "instagram", "ig_posts.json")
-
-
-def _config():
-    """config.py を遅延import（起動コストを増やさないため）。"""
-    import config
-    return config
 
 # ── 記事だけ「検知はする／赤にはしない」に落とすルール ──────────────
 # 2026-08-12 に blog/ 149本へ当てて実測した結果から決めている。数字は実測の箇所数。
@@ -148,66 +138,6 @@ ARTICLE_WARN_LABELS = frozenset({
     "自社導線は「LINE通話で相談」（オンライン面談は使わない）",
 })
 
-# ── 投稿済みInstagramキャプションの物差し（2026-09-04 追加）───────────
-# 背景: instagram/ig_posts.json の posted 分（88本）を見ている番犬が**1本も無かった**。
-#   content_facts_guard … LP / 特典PDF / 記事
-#   social_profile_guard … プロフィール・固定ポスト
-#   queue_facts_guard   … X / Threads の**未投稿**キュー
-# どれも投稿済みIGを見ていないので、2026-08以降に確定したファクト
-# （還元率100%+α・取扱3アプリ・特典PDF改名・契約期間に触れない）が
-# 公開済みのIG投稿に一切反映されないまま4ヶ月以上放置されていた。
-#
-# 物差しは記事とも LP とも違う。IGキャプションは短文の自社発信で、
-# 「事務所選びの注意点」という記事的な中身も持つという二面性がある。
-#   - 自社の条件・導線・取扱アプリを名乗る形 → 赤（記事のように第三者の事実へ逃げられない）
-#   - 少額表記・割合フック・リスナー呼び捨て  → WARN（件数が多く、直す価値の判断が人の仕事）
-#
-# ⚠ 公開済みキャプションは Graph API で更新できない（更新エンドポイントが無い）。
-#   赤が出たらInstagramアプリからの手編集になる。だからこの番犬は
-#   「直す計画とセット」でしか意味を持たない（[[feedback_watchdog_autoclose]]）。
-IG_POSTED_WARN_LABELS = frozenset({
-    # 2026-09-05: 実例つきでユーザーに見せて判断を仰いだ結果、以下の3ラベルは
-    # 「全部直す」で決着した（instagram/ig_facts_fix_20260905.py が置換一式）。
-    # 判断がついた以上ここに置いたままにする理由は無い（＝もうWARNではなく赤で
-    # よい）ので、このコミットで3ラベルとも外した。手編集がまだ済んでいない間は
-    # 赤のまま出るが、それは2026-09-04の33+1件のRED修正（未適用）と同じ状態で、
-    # [[feedback_watchdog_autoclose]] が言う「直ったら閉じる」の「直す」側の作業
-    # がまだ残っているだけ。判断待ちのWARNに戻すのはNG（また同じ議論をやり直す
-    # ことになる）。
-    #   ・確定レンジ未満の少額表記（32件）→ 赤へ
-    #   ・リスナーの呼び捨て（38件） → 赤へ
-    #   ・断定・保証表現（8件。ig_auto_055の「時給が保証される」＝Pocochaの
-    #     公式制度の説明も含めて直す、とユーザー判断） → 赤へ
-    #
-    # 少額表記のうち、これとは別軸の「お小遣い程度」ラベルは今回ユーザーに諮って
-    # おらず判断していない。記事側（ARTICLE_WARN_LABELS）と同じ「他の副業との
-    # 対比なら成立する」文脈用途1件（ig_auto_060、初期の少人数リスナーからの
-    # 現実的な出発点として言及）だけなので、記事と揃えてWARNのまま据え置く。
-    "少額表記（数万円/お小遣い程度）",
-    # ⚠ 「出典なしの割合統計（割合がそのまま述語）」は 2026-09-04 に
-    #   「ほぼ全部が【9割が知らない】というクリックベイトのフックで事実主張ではない」
-    #   としてここに入れていたが、2026-09-05 に別セッションでユーザー判断を仰いだ
-    #   結果**直す側**に回った（ig_facts_fix_20260904.HOOK_RULES に9本ぶんの置換が
-    #   ある。ig_auto_013のタイトル「6割が悩む」もここに含まれる）ので外した。
-    #   このときWARNに落としていた副作用が実際に出ていた: ig_auto_057 の
-    #   「TAITAN PROの統計データでは…所属ライバーの約7割が…月収5万円以上」は
-    #   フックではなく**自社に帰属させた出典なしの統計**なのに、ラベルが同じだった
-    #   というだけで警告の山に埋もれ、33本の修正対象から漏れていた。
-    #   → ラベル単位でWARNに落とすと、同じラベルの中の本物が一緒に隠れる。
-    # 11箇所。記事と同じ理由（「違約金の有無を契約前に確認しましょう」は正しい助言）。
-    # ⚠ 完成形の自社主張（EXIT_CLAIM_LABEL）は別ラベルで赤にしてある。
-    "「いつでも退所」「違約金なし」系／契約期間への言及",
-})
-
-# scan_ig_posted() が実際に使う集合。単純に AUDIT_WARN_LABELS と OR すると
-# 「確定レンジ未満の少額表記」がLP/PDF/記事と共通のWARNとして生き残ってしまう
-# （facts_patterns.AUDIT_WARN_LABELS にこのラベルが**常に**入っているため）。
-# 2026-09-05 にこのラベルをIGだけ赤にすると決めたので、AUDIT_WARN_LABELS 側は
-# LP/PDFのために触らず、IG向けの集合からだけ差し引く。
-IG_WARN_LABELS = (AUDIT_WARN_LABELS
-                   - {f"確定レンジ未満の少額表記（月{MONEY_FLOOR}万が下限）"}
-                   ) | IG_POSTED_WARN_LABELS
-
 # 判断軸の矛盾と「違約金なし」の完成形だけは、どの媒体でも**赤**のまま通す。
 # WARN 集合に足せば番犬はすぐ静かになるが、それは2026-08-12に12箇所が
 # 64件のWARNに埋もれて誰も気づかなかった状態そのものなので、機械で塞いでおく。
@@ -215,7 +145,7 @@ IG_WARN_LABELS = (AUDIT_WARN_LABELS
 _ALWAYS_RED = (CONTRACT_AXIS_LABEL, EXIT_CLAIM_LABEL)
 for _label in _ALWAYS_RED:
     assert _label not in (
-        AUDIT_WARN_LABELS | ARTICLE_WARN_LABELS | IG_POSTED_WARN_LABELS), (
+        AUDIT_WARN_LABELS | ARTICLE_WARN_LABELS), (
         f"{_label} はWARNに落としてはいけない（赤のまま出す）")
 
 # ── 走査対象 ────────────────────────────────────────────────
@@ -552,161 +482,6 @@ def check_orphans(pdf_paths):
     return out
 
 
-def scan_ig_posted():
-    """投稿済みInstagramキャプションを走査して (violations, warns, 本数) を返す。
-
-    posted が真のものだけを見る。未投稿キューは queue_facts_guard.py の担当で、
-    そちらは「直せば消える」問題、こちらは「Instagramアプリで手編集するしかない」
-    問題なので、報告を混ぜない。
-    """
-    if not os.path.exists(IG_POSTS_FILE):
-        return [], [], 0
-    with open(IG_POSTS_FILE, encoding="utf-8") as f:
-        posts = json.load(f)
-    # 事務所IGを畳んでいる間は、赤ではなく警告に落とす。
-    # この番犬が赤にしているのは「Instagramアプリで手編集すれば直せる」からで、
-    # アカウントが消えている今は**手編集する先が無い**（＝直せない）うえ、
-    # 投稿自体が公開されていないので読者にも届かない。前提が消えたのに赤を
-    # 出し続けると、この番犬の赤は毎日IGだけで埋まり、LP・特典PDF・記事側の
-    # 本物の違反が見えなくなる。記録は消さず、警告として残して見えるようにする。
-    # （同じ判断を social_profile_guard.py が「過去投稿はAPIで編集できない」ぶんに
-    #   対して先にやっている。再開すれば自動で赤に戻る）
-    suspended = getattr(_config(), "OFFICE_INSTAGRAM_SUSPENDED", "")
-    ng, wn = [], []
-    scanned = 0
-    for p in posts:
-        if not p.get("posted"):
-            continue
-        scanned += 1
-        a, b = scan_text(p.get("caption", ""),
-                         f"instagram/ig_posts.json:{p.get('id', '?')}",
-                         warn_labels=IG_WARN_LABELS)
-        if suspended:
-            for v in a:
-                v["reason"] += f"（事務所IG停止中につき警告扱い: {suspended}）"
-            wn += a
-        else:
-            ng += a
-        wn += b
-    return ng, wn, scanned
-
-
-# ── 4'. 投稿済みIGの「実物」（Graph API）─────────────────────────
-# scan_ig_posted() が見ているのは **記録**（instagram/ig_posts.json）であって、
-# Instagram に実際に載っている文面ではない。この2つはズレる:
-#   - アプリで手編集したのに --apply を流し忘れる → 実物は直っているのに記録が古い
-#     （番犬が赤のままなので、直す気力だけが削られる）
-#   - 先に --apply を流してしまう             → 記録だけ直って実物は古い
-#     **番犬は緑になるが、公開されている文面は違反のまま**。こちらが本当に危ない。
-#     ig_facts_fix_20260904.py の手順書きが「先に流すと嘘をつく」と警告しているのは、
-#     裏を返せば運用の注意だけで守っている状態だったということ。
-# 記録と実物の両方を見て初めて「公開されている文面に違反が無い」と言えるので、
-# Graph API から実物のキャプションを取って突合する。
-#
-# 1メディア1リクエストではなく /{user}/media のページングで取る（70本を1本ずつ
-# 引くと読み取り枠を無駄に食う）。実装は instagram/ig_insights.py を使い回す。
-IG_LIVE_LIMIT = 200
-
-
-def fetch_ig_live():
-    """公開済みキャプションを Graph API から取る。(media_id -> caption, エラー)。"""
-    token = os.environ.get("INSTAGRAM_ACCESS_TOKEN", "").strip()
-    user_id = os.environ.get("INSTAGRAM_BUSINESS_ID", "").strip()
-    if not token or not user_id:
-        return None, ("INSTAGRAM_ACCESS_TOKEN / INSTAGRAM_BUSINESS_ID が無く、"
-                      "実物のキャプションを取得できない")
-    ig_dir = os.path.join(BASE_DIR, "instagram")
-    if ig_dir not in sys.path:
-        sys.path.insert(0, ig_dir)
-    try:
-        import ig_insights  # requests に依存するのでここで遅延import
-    except Exception as e:  # noqa: BLE001
-        return None, f"ig_insights を読み込めない: {type(e).__name__}: {e}"[:160]
-    try:
-        version = ig_insights.pick_api_version(token, user_id)
-        media = ig_insights.fetch_media(f"https://graph.facebook.com/{version}",
-                                        token, user_id, IG_LIVE_LIMIT, page_delay=2)
-    except SystemExit as e:      # pick_api_version は取得できないと exit する
-        return None, f"Graph API に接続できない（exit {e.code}）"
-    except Exception as e:       # noqa: BLE001 — ネットワーク層は理由を問わず可視化する
-        return None, f"Graph API 取得に失敗: {type(e).__name__}: {e}"[:160]
-    if not media:
-        return None, "Graph API が投稿を1件も返さなかった"
-    return {str(m["id"]): m.get("caption") or "" for m in media}, None
-
-
-def scan_ig_live(repo_only):
-    """実物のキャプションを走査し、ig_posts.json とのズレも見る。
-
-    ズレの扱い:
-      - ズレで**検品の結論が変わる**（実物にだけ違反がある／実物では直っているのに
-        記録が古い）→ 赤。記録を見ている scan_ig_posted() が当てにならなくなるため。
-      - 結論が変わらない体裁だけのズレ → 警告。
-    """
-    stats = {"checked": 0, "missing": 0, "drifted": 0, "skipped": None}
-    if repo_only:
-        stats["skipped"] = "--repo-only（実アクセスなし）"
-        return [], [], stats
-    # 事務所IGを畳んでいる間は、実物を取りに行っても必ず失敗する（アカウントが無い）。
-    # 下の「取得できない＝赤」は**取れるはずのものが取れない**ときの死角検知なので、
-    # 取れないと分かっている期間まで赤にすると番犬が鳴きっぱなしになり、
-    # 他の番犬の赤が埋もれる。停止中は理由つきのスキップに落とす。
-    # 再開条件は config.OFFICE_INSTAGRAM_SUSPENDED のコメントを参照。
-    if getattr(_config(), "OFFICE_INSTAGRAM_SUSPENDED", ""):
-        stats["skipped"] = f"事務所IGは停止中。{_config().OFFICE_INSTAGRAM_SUSPENDED}"
-        return [], [], stats
-    if not os.path.exists(IG_POSTS_FILE):
-        return [], [], stats
-
-    live, err = fetch_ig_live()
-    if live is None:
-        # 黙って素通りさせない。取得できない＝**実物は誰も見ていない**状態で、
-        # それを緑にすると「記録だけ直して実物が古い」を永久に見逃す
-        # （pdftotext が無いときに赤にするのと同じ理由）。
-        stats["skipped"] = err
-        return [{"where": "instagram/ig_posts.json（実物）", "reason": err,
-                 "hit": "記録(ig_posts.json)しか見ていない＝公開中の文面は無検査"}], [], stats
-
-    with open(IG_POSTS_FILE, encoding="utf-8") as f:
-        posts = json.load(f)
-
-    warn_labels = AUDIT_WARN_LABELS | IG_POSTED_WARN_LABELS
-    ng, wn = [], []
-    for p in posts:
-        mid = str(p.get("media_id") or "")
-        if not p.get("posted") or not mid:
-            continue          # media_id が無い分は Graph API では追えない
-        if mid not in live:
-            stats["missing"] += 1
-            continue
-        stats["checked"] += 1
-        where = f"instagram（実物 media_id {mid} / {p.get('id', '?')}）"
-        a, b = scan_text(live[mid], where, warn_labels=warn_labels)
-        ng += a
-        wn += b
-
-        if flat(live[mid]) == flat(p.get("caption", "")):
-            continue
-        stats["drifted"] += 1
-        live_ng = {v["reason"] for v in scan_text(live[mid], where, warn_labels)[0]}
-        json_ng = {v["reason"] for v in
-                   scan_text(p.get("caption", ""), where, warn_labels)[0]}
-        hit = f"実物 {len(live[mid])}文字 / 記録 {len(p.get('caption', ''))}文字"
-        if live_ng == json_ng:
-            wn.append({"where": where, "hit": hit,
-                       "reason": "実物と ig_posts.json の記録がズレている"
-                                 "（検品の結論は同じ＝体裁だけのズレ）"})
-        elif live_ng - json_ng:
-            ng.append({"where": where, "hit": hit,
-                       "reason": "実物にだけ違反がある。記録(ig_posts.json)を見ても"
-                                 f"分からない状態（{', '.join(sorted(live_ng - json_ng))}）"})
-        else:
-            ng.append({"where": where, "hit": hit,
-                       "reason": "実物では直っているのに記録が古い。"
-                                 "instagram/ig_facts_fix_20260904.py --apply で同期する"})
-    return ng, wn, stats
-
-
 def main():
     repo_only = "--repo-only" in sys.argv
     violations, warns = [], []
@@ -746,17 +521,6 @@ def main():
     for p in note_article_files:
         violations += scan_note_inline_hashtags(p)
 
-    # 1''''. 投稿済みInstagramキャプション（Graph APIでは直せないので手編集用の一覧）
-    ig_ng, ig_wn, ig_scanned = scan_ig_posted()
-    violations += ig_ng
-    warns += ig_wn
-
-    # 1'''''. 投稿済みIGの**実物**（Graph API）。記録と実物のズレもここで出る。
-    live_ng, live_wn, ig_live = scan_ig_live(repo_only)
-    violations += live_ng
-    warns += live_wn
-    ig_ng += live_ng   # 末尾の案内（手編集が要る件数）にも数える
-
     # 2. 原稿HTML ↔ 配布PDF
     for p in pdf_files:
         if p not in pdf_texts:
@@ -777,19 +541,11 @@ def main():
         json.dump({"violations": violations, "warn": warns,
                    "scanned": {"html": [rel(p) for p in html_files],
                                "pdf": [rel(p) for p in pdf_files],
-                               "article": [rel(p) for p in article_files],
-                               "ig_posted": ig_scanned,
-                               "ig_live": ig_live}},
+                               "article": [rel(p) for p in article_files]}},
                   f, ensure_ascii=False, indent=1)
 
     print(f"[走査] HTML {len(html_files)}本 / PDF {len(pdf_files)}本 "
-          f"/ 記事 {len(article_files)}本 / 投稿済みIG {ig_scanned}本")
-    if ig_live.get("skipped"):
-        print(f"   ※ IGの実物（Graph API）は未検査: {ig_live['skipped']}")
-    else:
-        print(f"   ※ IGの実物（Graph API）: 突合 {ig_live['checked']}本 / "
-              f"APIに見当たらない {ig_live['missing']}本 / "
-              f"記録とズレ {ig_live['drifted']}本")
+          f"/ 記事 {len(article_files)}本")
     # 記事は149本あるので個別には並べない（ログが埋まって肝心の違反が見えなくなる）。
     # 全件は data/content_facts_guard_report.json の scanned.article に載る。
     for p in html_files + pdf_files:
@@ -811,13 +567,8 @@ def main():
             print(f"       …ほか {len(items) - 3} 件（--warn で全件表示）")
 
     if violations:
-        if ig_ng:
-            print(f"\n※ うち {len(ig_ng)}件は**投稿済みInstagram**。Graph APIに公開済み"
-                  f"キャプションの更新エンドポイントが無いので、Instagramアプリからの"
-                  f"手編集になる。貼り付け用の全文は "
-                  f"instagram/ig_facts_fix_20260904.py --show で出せる。")
         return 1
-    print("\nLP・特典HTML・配布PDF・記事・投稿済みIG（記録と実物）に確定ファクト違反なし ✅")
+    print("\nLP・特典HTML・配布PDF・記事に確定ファクト違反なし ✅")
     return 0
 
 

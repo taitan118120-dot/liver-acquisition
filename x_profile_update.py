@@ -11,8 +11,7 @@
   **正本 marketing/social_profiles.md の ```canonical:x.* フェンスから直接読む。**
   以前はここに同じ文字列を手書きでコピーしていて、担保は docstring の
   「必ず両方を直すこと」だけだった。機械的な照合が無いので、片方だけ直しても
-  CI は緑のまま＝黙ってズレる。直すのは正本1箇所でよくなった
-  （ig_profile_update.py と同じ形）。
+  CI は緑のまま＝黙ってズレる。直すのは正本1箇所でよくなった。
   埋め込みに戻すと social_profile_guard.py の audit_consumers() が赤くする。
 
 使い方:

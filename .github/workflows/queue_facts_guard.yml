@@ -17,15 +17,12 @@ name: 生成キュー確定ファクト番犬
 # 動作: queue_facts_guard.py を実行し、
 #   - X / Threads それぞれの未投稿分を、各媒体の正本の検品にかける
 #     （X = x_post_guard.details() / Threads = threads_content._violations()）
-#   - Instagram = ig_poster.facts_violations()（ig_poster.queue_candidates() が返す分）
 #   - 1件でも違反が残っていればランを赤にし、Issue を作成/更新して通知する
 #   - 全部0件に戻ったら、その Issue を自動クローズする（他の番犬と同じ型）
 #
-# 2026-09-05: Instagram を追加。ig_poster.post_next() には 2026-09-04 に投稿直前
-# ゲートが入ったのに、**弾いた分を報告する側が無かった**（ig_poster.py のコメントは
-# 「弾いた分は queue_facts_guard.py が報告する」と書いてあるのに、この番犬は
-# IGを一切見ていなかった）。ゲートだけで報告が無い状態は、X で実際に起きた
-# 「在庫に数えられるのに一生投稿されない」に逆戻りする。
+# 2026-09-05 に Instagram を足したが、2026-09-16 に外した（[[project_ig_retired]]）。
+# IG自動投稿は恒久停止して ig_poster.py ごと撤去したので、「弾かれて一生投稿されない
+# キュー」という概念自体が無くなった（instagram/ig_posts.json は記録として残るだけ）。
 
 on:
   schedule:
@@ -34,11 +31,9 @@ on:
     paths:
       - 'posts/twitter_posts.json'
       - 'threads/threads_posts.json'
-      - 'instagram/ig_posts.json'
       - 'queue_facts_guard.py'
       - 'x_post_guard.py'
       - 'threads/threads_content.py'
-      - 'instagram/ig_poster.py'
       - 'facts_patterns.py'
   workflow_dispatch:
 
@@ -57,12 +52,9 @@ jobs:
         with:
           python-version: '3.11'
 
-      # x_post_guard / threads_content / facts_patterns は標準ライブラリだけで動くが、
-      # IG の候補判定に使う ig_poster が requests を import する（モジュール先頭）。
-      # 入れないと ImportError でランが落ちて、番犬が「壊れて赤」になる。
-      - name: 依存パッケージインストール
-        run: pip install requests
-
+      # x_post_guard / threads_content / facts_patterns は標準ライブラリだけで動く。
+      # （requests を入れていたのは IG候補判定の ig_poster のためで、
+      #  2026-09-16 のIG撤去で不要になった）
       - name: 未投稿キューを走査
         id: guard
         run: python3 queue_facts_guard.py --json
@@ -91,7 +83,7 @@ jobs:
               '## 生成キュー確定ファクト番犬 検知',
               '',
               '未投稿キューに確定ファクト違反の投稿が残っています。',
-              '`cloud_post.py` / `threads_content.py` / `ig_poster.py` は投稿直前（または生成時）に',
+              '`cloud_post.py` / `threads_content.py` は投稿直前（または生成時）に',
               'これらを候補から除外するので、**直さない限り在庫に数えられるだけで',
               '一生投稿されません**（「見えない欠品」）。',
               '在庫を「キュー本数 − 投稿済み数」で見積もると、その分だけ水増しされます。',
@@ -99,8 +91,6 @@ jobs:
               section('X', report.x || {}),
               '',
               section('Threads', report.threads || {}),
-              '',
-              section('Instagram', report.instagram || {}),
               '',
               '## 対処',
               '1. 該当投稿の本文を確定ファクトに合わせて直す',
@@ -118,10 +108,9 @@ jobs:
             const guard = require('./.github/scripts/guard_comment.js');
             const xIds = (report.x?.violations || []).map(v => v.id).join(',');
             const thIds = (report.threads?.violations || []).map(v => `#${v.idx}`).join(',');
-            const igIds = (report.instagram?.violations || []).map(v => v.id).join(',');
             await guard.notify({
               github, context, title, body,
-              recomment: `再検知: ${new Date().toISOString()}\nX: ${xIds || 'なし'}\nThreads: ${thIds || 'なし'}\nInstagram: ${igIds || 'なし'}`,
+              recomment: `再検知: ${new Date().toISOString()}\nX: ${xIds || 'なし'}\nThreads: ${thIds || 'なし'}`,
             });
 
       - name: 違反解消 → Issueを自動クローズ

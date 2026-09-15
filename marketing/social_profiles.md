@@ -1,6 +1,6 @@
 # TAITAN PRO SNSプロフィール（Threads / X / Instagram 統一版）
 
-最終更新：2026-09-15（**IG @taitan_pro7 が消滅したためIG節は停止中の記録として凍結**／**X はAPIクレジット枯渇で実物チェックも反映も停止中**。残作業は Threadsの固定操作だけになった）
+最終更新：2026-09-16（**IG事務所アカウントは恒久停止＝下のIG節は過去の記録**／**X はAPIクレジット枯渇で実物チェックも反映も停止中**。残作業は Threadsの固定操作だけ）
 方針：業者臭を消し「元S帯の人間」としてフォロワーを集める。集客はプロフ（bio＋固定）に任せ、投稿は売り込まない。
 ※数字・経歴は確定ファクトのみ（還元率100%+α / Pococha歴4年 / 元S帯 / ミクチャ8,000人中ミスターコン1位 / 200名 / B帯月20〜30万 / 最高月収は3桁）。「手数料なし/0円」表記は全媒体NG。
 ※取扱プラットフォームは **Pococha・TikTok LIVE・17LIVE** で統一（IRIAM・SHOWROOM等は書かない）。
@@ -16,7 +16,7 @@
 
 | | 使える値 |
 |---|---|
-| 媒体 | `threads` / `x` / `ig_taitan_pro7` / `ig_taitanblog` |
+| 媒体 | `threads` / `x` / `ig_taitanblog` |（事務所IGは2026-09-16に撤去）
 | 項目 | `name`（表示名・名前欄） / `bio` / `link` / `pinned`（固定ポスト本文。IGは対象外） |
 
 - **印の無い ``` ブロックは全部ただの例示**。手順例・旧文面・エラーログを
@@ -84,8 +84,9 @@ HTTP 400 GraphMethodException code=100 error_subcode=33
 
 ### ✅ 文面の埋め込みは全スクリプトから撤去済み（2026-08-09）
 
-`ig_profile_update.py` / `x_profile_update.py` / `social_pinned_publish.py` は
+`x_profile_update.py` / `social_pinned_publish.py` は
 **文面をこの正本から直接パースする**。**直すのはこのファイル1箇所だけでよい。**
+（`ig_profile_update.py` も同じ形だったが、2026-09-16のIG撤去で削除した）
 
 以前は x_profile_update.py と social_pinned_publish.py が同じ文字列をスクリプト内にも
 手書きでコピーしていて、担保は docstring の「必ず両方を直すこと」だけだった。
@@ -257,17 +258,18 @@ https://lin.ee/xchCfdn
 
 ## Instagram
 
-> ## ⏸ 2026-09-15：この節は**停止中の記録**。現時点の作業指示ではない
+> ## 🛑 2026-09-16：事務所IGは**恒久停止**。この節は過去の記録で、作業指示ではない
 >
-> **`@taitan_pro7` は 2026-09-11 に Instagram 上から消滅した**（削除または停止。トークンも
-> `INSTAGRAM_BUSINESS_ID` も正常で、APIでは復旧不能）。ユーザー判断でIG自動化を一旦畳んでいる。
+> **`@taitan_pro7` は 2026-09-11 に Instagram 上から消滅**（削除または停止。トークンも
+> `INSTAGRAM_BUSINESS_ID` も正常で、APIでは復旧不能）。09-15 に自動投稿を停止し、
+> **09-16 にユーザー判断で恒久停止**＝ワークフロー・投稿スクリプト・番犬のIG走査を撤去した。
 >
-> - したがって下に残っている「**名前欄が未反映＝残作業はここだけ**」は、**もう作業できない**
->   （直す先のアカウントが無い）。消さずに残すのは、再開したときにここから再開するため
-> - 番犬（`social_profile_guard.py`）はIG媒体を走査対象から外している。
->   スイッチは `config.OFFICE_INSTAGRAM_SUSPENDED` 1本
-> - **再開条件・再開手順は [`instagram/TOKEN_REISSUE.md`](../instagram/TOKEN_REISSUE.md)** が正本。
->   別アカウントに乗り換えると決めたときは、この節も新ハンドルへ寄せること
+> - 下に残る「名前欄が未反映」等の残作業は**もう存在しない**（直す先のアカウントが無い）
+> - 正本フェンス（```canonical:ig_taitan_pro7.*` / `ig_taitan_pro.link`）は印を外して
+>   ただの記録にした。`social_profile_guard.py` の `EXPECTED_FIELDS` からも消してある
+>   （**片方だけ戻すと番犬が「未知の媒体キー」で毎日赤くなる**ので必ず両方同時に）
+> - 経緯とファイルの撤去範囲は [`instagram/RETIRED.md`](../instagram/RETIRED.md)
+> - 個人アカウント **@taitanblog の節（③）は現役**。手動更新の対象として残す
 
 ### ⚠️ 事務所IGは2つある。**自動投稿されているのは @taitan_pro7 のほう**（2026-08-08 判明）
 
@@ -294,12 +296,12 @@ https://lin.ee/xchCfdn
 
 #### 名前欄（30字制限内／18字）
 **⚠️ ここだけ未反映。実物は `TAITAN_PRO` のまま**（番犬が毎ラン「name が正本と不一致」を出していた）。
-```canonical:ig_taitan_pro7.name
+```text  # 旧正本（2026-09-16にIG撤去。記録として残すだけ）
 TAITAN PRO｜ライバー事務所
 ```
 
 #### bio（150字制限内／115字。**2026-08-24に実物へ反映済み**）
-```canonical:ig_taitan_pro7.bio
+```text  # 旧正本（2026-09-16にIG撤去。記録として残すだけ）
 ライバー事務所【TAITAN PRO】公式
 取扱👉Pococha・TikTok LIVE・17LIVE
 未経験中心に200名が所属／還元率100%+α
@@ -309,7 +311,7 @@ TAITAN PRO｜ライバー事務所
 
 #### リンク欄
 **@taitan_pro7 は既にこのリンク＝変更不要**。
-```canonical:ig_taitan_pro7.link
+```text  # 旧正本（2026-09-16にIG撤去。記録として残すだけ）
 https://lin.ee/xchCfdn
 ```
 
@@ -340,7 +342,7 @@ https://lin.ee/xchCfdn
 本文を直さず、**このアカウントのリンク先を @taitan_pro7 と同じ現行導線に揃える**ことで
 CTAが機能するようにする（ユーザー判断 2026-09-05：32本の手編集はコストに見合わないため見送り）。
 
-```canonical:ig_taitan_pro.link
+```text  # 旧正本（2026-09-16にIG撤去。記録として残すだけ）
 https://lin.ee/xchCfdn
 ```
 （旧リンクは `taitan-pro-lp.netlify.app/#apply`。API書き込みは実測で不可なので、

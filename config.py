@@ -53,31 +53,26 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 OFFICE_NAME = "TAITAN PRO"
 OFFICE_URL = "https://taitan-pro-lp.netlify.app/beginner/?utm_source=dm&utm_medium=dm&utm_campaign=dm_direct"
 OFFICE_TWITTER = "@taitan_LIVER"
-OFFICE_INSTAGRAM = "@taitan_pro7"   # 事務所公式（2026-08-08確定）。@taitan_pro は未運用の別アカウント
+# 旧・事務所公式IG。2026-09-11に消滅し、2026-09-16に自動化ごと撤去した（下の注記参照）。
+# 値を残すのは番犬が「撤去済みハンドルの残骸」を検知するための照合元としてだけ。
+OFFICE_INSTAGRAM = "@taitan_pro7"
 CONTACT_LINE = "https://lin.ee/xchCfdn"
 
-# ── 事務所IGの停止フラグ（空文字なら稼働中）────────────────────────
-# 空でない＝停止中で、この文字列がそのまま番犬のログに「なぜ見ていないか」として出る。
-# 理由を別の場所に置くと「フラグだけ残って理由が行方不明」になるので、ここに同居させる。
+# ── 事務所IG（撤去済み）────────────────────────────────────
+# 2026-09-16 にIG自動化を**恒久停止**した（[[project_ig_retired]]）。
+# @taitan_pro7 は 2026-09-11 に Instagram 上から消滅し、APIでは復旧不能だったため、
+# ワークフロー（instagram_post / insights / token_refresh / watchdog / diagnose /
+# ig_profile_update）・投稿スクリプト一式・番犬のIG走査をすべて削除している。
+# 経緯と撤去範囲の正本は instagram/RETIRED.md。
 #
-# 見ているのは:
-#   - social_profile_guard.py … IG媒体を走査対象から外す（--require-live でも赤にしない）
-#   - content_facts_guard.py  … scan_ig_live() の実物走査を飛ばす
-# 止めたワークフロー（`gh workflow enable <file>` で戻る）:
-#   instagram_post.yml / instagram_insights.yml / instagram_token_refresh.yml /
-#   instagram_post_watchdog.yml
-#   ※ instagram_diagnose.yml は手動実行専用なので止めていない（再開判定に使う）
+# 上の OFFICE_INSTAGRAM を残してあるのは、social_profile_guard.py が
+# 「公開テキストに事務所IGらしきハンドルが残っていないか」を毎日見るため
+# （消えたアカウントへ読者を送らないための検知）。運用先としては使わない。
 #
-# **再開条件と手順は instagram/TOKEN_REISSUE.md の「畳んだ状態からの再開手順」。**
-# このフラグを空に戻してよいのは、そこの再開条件を満たしたときだけ。
-OFFICE_INSTAGRAM_SUSPENDED = (
-    "2026-09-11に @taitan_pro7 が Instagram 上から消滅（診断の型(e)＝APIでは復旧不能）。"
-    "2026-09-15にユーザー判断でIG自動化を一旦停止。"
-    "再開条件は instagram/TOKEN_REISSUE.md の「畳んだ状態からの再開手順」"
-)
+# 停止スイッチ OFFICE_INSTAGRAM_SUSPENDED は、見る側の番犬ごと消えたので削除した。
 
 # ── X APIクレジット枯渇(402)の扱い（空文字なら402も赤にする）──────────
-# **IGと違って「手で立てる停止スイッチ」ではない。**
+# **手で立てる停止スイッチではない。**
 # 空でない＝「X APIが実際に402を返した回だけ」番犬がX媒体を停止扱いにする条件付きの
 # 降格で、この文字列がそのまま「なぜ見ていないか」としてログに出る。
 #

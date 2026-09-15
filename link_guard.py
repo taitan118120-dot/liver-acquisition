@@ -57,7 +57,6 @@ CONTENT_GLOBS = [
     "posts/*.json",
     "posts/*.txt",
     "threads/threads_posts.json",
-    "instagram/ig_posts.json",
     "lp/**/*.html",
     "line_bot/messages.py",
     "line_bot/config.py",
@@ -65,7 +64,8 @@ CONTENT_GLOBS = [
     "note_article_generator.py",
     "threads/threads_content.py",
     "cloud_post.py",
-    "instagram/ig_viral_generator.py",
+    # instagram/ig_posts.json と ig_viral_generator.py は 2026-09-16 のIG恒久停止で
+    # 走査対象から外した（[[project_ig_retired]]）。投稿される経路がもう無い。
     # DMテンプレ（見込み客に直接送られる＝最も目に触れるコンテンツ）
     # 2026-08-01: templates/dm_model_scout.txt が404の告知先を長期間載せていたが
     # 走査対象外だったため一度も検知できなかった。その再発防止。

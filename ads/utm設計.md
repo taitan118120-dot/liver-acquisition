@@ -198,12 +198,12 @@ LINE直リンクは §1-1 のとおり計測できないので、**LPリンク�
 |---|---|
 | Threads プロフィールリンク | `…/beginner/?utm_source=threads&utm_medium=profile&utm_campaign=threads_profile` |
 | Threads 投稿内リンク | `…/beginner/?utm_source=threads&utm_medium=post&utm_campaign=threads_post` |
-| Instagram プロフィールリンク | `…/beginner/?utm_source=instagram&utm_medium=profile&utm_campaign=ig_profile` |
-| Instagram ストーリーズのリンク | `…/beginner/?utm_source=instagram&utm_medium=story&utm_campaign=ig_story` |
+| ~~Instagram プロフィールリンク~~ | 2026-09-16にIG撤去（`instagram/RETIRED.md`）。使わない |
+| ~~Instagram ストーリーズのリンク~~ | 同上 |
 | X プロフィールリンク | `…/beginner/?utm_source=x&utm_medium=profile&utm_campaign=x_profile` |
 
-⚠️ Instagram の**投稿本文にはURLを書かない**運用（`ig_content_generator.py:233`）なので、IGは
-プロフィールリンク・ストーリーズだけが対象。
+⚠️ Instagram は 2026-09-16 に撤去したので対象外（[`instagram/RETIRED.md`](../instagram/RETIRED.md)）。
+再開する場合は「投稿本文にURLを書かない」運用だったため、プロフィールリンクとストーリーズだけが対象になる。
 
 ### 3-4. 求人媒体（Indeed / Wantedly / engage）
 
