@@ -35,6 +35,16 @@ name: プロフィール番犬
 #   以前はトークンが取れない媒体を SKIP して exit 0 にしていたので、
 #   Secrets 切れ・トークン失効で全媒体 SKIP になっても番犬は緑のまま＝何も見ていなかった。
 #   CI は Secrets が揃っている前提なので、1媒体でも取得できなければ赤にする。
+#
+# 停止中の媒体（2026-09-15追加）:
+#   --require-live の赤は「取れるはずのものが取れない＝死角」を捕まえる仕掛けなので
+#   恒久的に外さない。ただし直す当てが無い赤を鳴らし続けるのも同じ死角を作る
+#   （本物の赤が埋もれる）。そこで2種類だけ suspended として別枠に出す:
+#     - IG @taitan_pro7 … アカウントが消滅（config.OFFICE_INSTAGRAM_SUSPENDED）
+#     - X … クレジット枯渇 402 を受けた回だけ（config.X_API_CREDITS_DEPLETED_SUSPENDED）
+#   どちらも赤にはしないが、毎ラン「停止中の媒体」として表示し、Issue本文にも載せる。
+#   X は手動フラグではなく実際の402応答を見て降格するので、課金が戻れば自動で
+#   通常検査に復帰する。401・Secrets切れなどは従来どおり赤。
 
 on:
   schedule:
@@ -78,7 +88,8 @@ jobs:
           script: |
             const fs = require('fs');
             const title = 'プロフィール／固定ポストに確定ファクト違反（プロフィール番犬）';
-            let report = {violations: [], diffs: [], canon: [], skipped: [], manual: []};
+            let report = {violations: [], diffs: [], canon: [], skipped: [],
+                          suspended: [], manual: []};
             try {
               report = JSON.parse(fs.readFileSync('data/social_profile_guard_report.json', 'utf8'));
             } catch (e) {}
@@ -95,6 +106,10 @@ jobs:
             const cLines = (report.canon || []).map(v =>
               `- **${v.where}** — ${v.reason}` + (v.hit ? `\n  - 該当: \`${v.hit}\`` : '')).join('\n');
             const sLines = report.skipped.map(s => `- ${s.media}: ${s.reason}`).join('\n');
+            // 停止中＝意図的に見ていない媒体。赤のIssueにこれが載っていないと、
+            // 読んだ人が「載っていない媒体は検査して問題なし」と誤読する。
+            const pLines = (report.suspended || []).map(s =>
+              `- ⏸ ${s.media}: ${s.reason}`).join('\n');
             const mLines = (report.manual || []).map(m => `- [ ] ${m}`).join('\n');
             const body = [
               '## プロフィール番犬 検知',
@@ -137,6 +152,14 @@ jobs:
               '',
               sLines || '(なし)',
               '',
+              '## 停止中の媒体（意図的に走査対象から外している＝このランでは見ていない）',
+              '停止中の媒体は「違反が無い」のではなく **検査していない** 媒体です。',
+              '未取得と違って意図的なので赤にはしませんが、死角であることは変わりません。',
+              'スイッチと再開条件は `config.py`（`OFFICE_INSTAGRAM_SUSPENDED` /',
+              '`X_API_CREDITS_DEPLETED_SUSPENDED`）のコメントに書いてあります。',
+              '',
+              pLines || '(なし)',
+              '',
               '## 自動判定できない項目（毎回目視）',
               mLines || '(なし)',
               '',
@@ -160,7 +183,7 @@ jobs:
             const guard = require('./.github/scripts/guard_comment.js');
             await guard.notify({
               github, context, title, body,
-              recomment: `再検知: ${new Date().toISOString()}\n\n${vLines}\n\n${dLines}\n\n${cLines}\n\n${sLines}`,
+              recomment: `再検知: ${new Date().toISOString()}\n\n${vLines}\n\n${dLines}\n\n${cLines}\n\n${sLines}\n\n${pLines}`,
             });
 
       - name: 違反0件 → Issueを自動クローズ
@@ -169,6 +192,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const fs = require('fs');
             const title = 'プロフィール／固定ポストに確定ファクト違反（プロフィール番犬）';
             const { data: existing } = await github.rest.issues.listForRepo({
               owner: context.repo.owner, repo: context.repo.repo,
@@ -176,10 +200,22 @@ jobs:
             });
             const match = existing.find(i => i.title === title);
             if (!match) return;
+            // 「全媒体を取得でき」と言い切ると、停止中の媒体があっても
+            // 全部見た上で緑になったと誤読される。見ていない媒体は必ず書く。
+            let suspended = [];
+            try {
+              suspended = JSON.parse(
+                fs.readFileSync('data/social_profile_guard_report.json', 'utf8')).suspended || [];
+            } catch (e) {}
+            const scope = suspended.length
+              ? `停止中の ${suspended.length}媒体（${suspended.map(s => s.media).join(', ')}）を除く全媒体`
+              : '全媒体';
             await github.rest.issues.createComment({
               owner: context.repo.owner, repo: context.repo.repo,
               issue_number: match.number,
-              body: `復旧を確認: ${new Date().toISOString()} のランで全媒体を取得でき、違反0件・正本との乖離0件でした。自動クローズします。`,
+              body: `復旧を確認: ${new Date().toISOString()} のランで${scope}を取得でき、違反0件・正本との乖離0件でした。自動クローズします。`
+                + (suspended.length ? `\n\n⏸ 停止中（このランでは検査していません）:\n`
+                    + suspended.map(s => `- ${s.media}: ${s.reason}`).join('\n') : ''),
             });
             await github.rest.issues.update({
               owner: context.repo.owner, repo: context.repo.repo,

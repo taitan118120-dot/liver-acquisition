@@ -509,6 +509,8 @@ def fetch_x():
         timeout=30,
     )
     if r.status_code != 200:
+        # ⚠️ この文言は credits_depleted_reason() が 402 の判定に使っている。
+        #    書式（先頭の "X API <status>:"）を変えるならあちらも一緒に直すこと。
         return None, f"X API {r.status_code}: {r.text[:200]}"
     d = r.json()
     u = d.get("data") or {}
@@ -643,6 +645,36 @@ def print_canon(canon, problems, warns=()):
               + (f"\n     → {w['hit']}" if w["hit"] else ""))
 
 
+# fetch_x() が返すエラー文言の先頭。402 かどうかはここから読む。
+X_STATUS_RE = re.compile(r"^X API (\d{3})\b")
+
+
+def credits_depleted_reason(key, err):
+    """X APIのクレジット枯渇(402)なら停止理由の文字列、それ以外は None。
+
+    402 は「課金しないと絶対に直らない／課金したら次のランで勝手に直る」種類の
+    エラーで、コード側でできることが1つも無い。2026-08-23から3週間以上、この番犬は
+    それだけを理由に毎日赤になっていて、X/Threadsの本物の赤を埋める側に回っていた。
+
+    だから 402 のときだけ suspended 枠に回す（別枠で毎ラン表示するが赤にはしない）。
+    **手動フラグで止めるのではなく実際の応答を見て降格する**ので、クレジットが
+    戻った回は自動的に通常検査へ復帰する（フラグの戻し忘れという死角が生まれない）。
+
+    降格するのは 402 だけ。401（トークン失効）・Secrets未設定・別アカウント参照など
+    「取れるはずのものが取れない＝死角」は従来どおり --require-live で赤にする。
+    """
+    if key != "x":
+        return None
+    reason = getattr(config, "X_API_CREDITS_DEPLETED_SUSPENDED", "")
+    if not reason:
+        # 空に戻された＝「402でも赤くしたい」という判断。降格しない
+        return None
+    m = X_STATUS_RE.match(err or "")
+    if not m or m.group(1) != "402":
+        return None
+    return f"{reason}｜今回の応答: {err[:120]}"
+
+
 def require_live_enabled(argv=None):
     """--require-live / PROFILE_GUARD_REQUIRE_LIVE が有効か。
 
@@ -688,6 +720,7 @@ def main():
     # 分かっている期間に鳴らしても X / Threads の本物の赤を埋めるだけになる。
     # だから skipped ではなく suspended として別枠で出す（緑にはするが黙らせない）。
     # 再開条件は config.OFFICE_INSTAGRAM_SUSPENDED のコメントを参照。
+    # 402（X）のようにループ中で足すものもあるので、ここで用意しておく
     suspended = []
     if getattr(config, "OFFICE_INSTAGRAM_SUSPENDED", ""):
         sources = [s for s in sources if not s[0].startswith("IG ")]
@@ -697,6 +730,15 @@ def main():
     for label, key, fetch, want_user, cmp_fields, scan_fields in sources:
         live, err = fetch()
         if err:
+            # クレジット枯渇(402)だけは skipped ではなく suspended へ。
+            # skipped に入れると --require-live が赤にするが、あれは「取れるはずの
+            # ものが取れない＝死角」の検知で、課金でしか直らないと分かっている状態に
+            # 毎日鳴らしても Threads の本物の赤を埋めるだけになる。
+            depleted = credits_depleted_reason(key, err)
+            if depleted:
+                suspended.append({"media": label, "reason": depleted})
+                print(f"  ⏸ {label}: {depleted}")
+                continue
             skipped.append({"media": label, "reason": err})
             print(f"  {'❌' if require_live else '⏭ '} {label}: {err}"
                   + ("（--require-live なので赤にします）" if require_live else ""))
@@ -795,6 +837,13 @@ def main():
               f"{', '.join(skipped_media)}）⚠️")
         print("   → 未取得の媒体は検査していません。全媒体を検査するには"
               " トークンを設定して --require-live を付けて実行してください。")
+        return 0
+    if suspended:
+        # 停止中の媒体があるのに「違反なし ✅」だけ出すと、緑＝全媒体OKと読まれる。
+        # 停止は意図的でも「見ていない」ことは未取得と同じなので、必ず併記する。
+        print("\n検査した媒体には違反なし（停止中 "
+              f"{len(suspended)}媒体: {', '.join(s['media'] for s in suspended)}）⚠️")
+        print("   → 停止中の媒体は検査していません。緑なのは直ったからではありません。")
         return 0
     print("\nプロフィール・固定ポストに違反なし ✅")
     return 0
