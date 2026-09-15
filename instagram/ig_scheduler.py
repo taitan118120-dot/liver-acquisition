@@ -28,7 +28,7 @@ import config  # noqa: F401 - configを先にimportしてキャッシュに載�
 
 from ig_content_generator import generate_posts, load_posts
 from ig_viral_generator import generate_viral_posts
-from ig_poster import post_next
+from ig_poster import AccountUnreachableError, post_next
 
 
 MAX_RETRY = 3          # 永続エラーでスキップする回数
@@ -309,12 +309,30 @@ def main():
     args = parser.parse_args()
 
     dry_run = args.test
-    success, had_content = run(
-        generate_if_empty=args.generate,
-        source_type=args.source,
-        dry_run=dry_run,
-        slot_gate=args.slot_gate,
-    )
+    try:
+        success, had_content = run(
+            generate_if_empty=args.generate,
+            source_type=args.source,
+            dry_run=dry_run,
+            slot_gate=args.slot_gate,
+        )
+    except AccountUnreachableError as e:
+        # 「多層防御で必ず緑」の唯一の例外。アカウントに到達できない状態は
+        # リトライでも別コンテンツでも直らず、放っておくと投稿が何日でも
+        # 0本のまま緑で流れ続ける（2026-09-08〜15 に実際に8日間そうなった）。
+        # ここだけは必ず赤くして、人間が見るまで止めない。
+        print(f"\n[FATAL] Instagramアカウントに到達できません: {e}")
+        print("::error::Instagramアカウントに到達できません（トークン再発行では直りません）。"
+              "Actions の「Instagram API 診断」を実行して切り分けてください。")
+        _write_step_summary(
+            "❌ Instagramアカウントに到達できない",
+            f"`INSTAGRAM_BUSINESS_ID` のアカウントにAPIが到達できません。\n\n"
+            f"```\n{e}\n```\n\n"
+            "**トークンの再発行では直りません。** 次の順で切り分けてください。\n\n"
+            "1. Actions の「Instagram API 診断」(`instagram_diagnose.yml`) を実行\n"
+            "2. `instagram/TOKEN_REISSUE.md` の「アカウント到達不能のとき」を読む\n",
+        )
+        sys.exit(1)
 
     if success:
         print("\n投稿完了!")

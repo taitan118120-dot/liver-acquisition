@@ -567,6 +567,20 @@ def fetch_ig():
                      params={"fields": "username,name,biography,website",
                              "access_token": token}, timeout=30)
     if r.status_code != 200:
+        # code=100/subcode=33 は「トークン失効」と紛らわしいが別物。
+        # トークンが有効でも、IGアカウント側が消えた／ページ連携が切れた／
+        # アプリの許可が外れたときに同じ文面で返る。2026-09-12〜15 はこれを
+        # 「IG API 400」とだけ出していたので、再発行を4日繰り返して直らなかった。
+        try:
+            err = r.json().get("error", {})
+        except ValueError:
+            err = {}
+        if err.get("code") == 100 and err.get("error_subcode") == 33:
+            return None, ("IG アカウントに到達できません（code=100/subcode=33）。"
+                          "トークンは有効でもこの状態になります（アカウント消滅・"
+                          "ページ連携切れ・アプリ許可の失効）。"
+                          "再発行の前に Actions の「Instagram API 診断」"
+                          "(instagram_diagnose.yml) を実行してください")
         return None, f"IG API {r.status_code}: {r.text[:200]}"
     d = r.json()
     out = {"username": d.get("username", ""), "name": d.get("name", ""),

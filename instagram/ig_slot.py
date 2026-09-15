@@ -225,6 +225,36 @@ def missed_days(posts=None, now_jst=None, lookback_days=7):
     return missed
 
 
+
+def missed_streak(posts=None, now_jst=None, lookback_days=28):
+    """いま現在も続いている「連続で落とした投稿曜日」の本数を返す。
+
+    missed_days() との違い: あちらは直近N日の欠けを**合計**するので、一度でも
+    大きく落ちると復旧後も数日〜1週間は0に戻らない。ワークフローの赤/緑の判定に
+    使うと「直ったのに赤いまま」になり、結局また色を見なくなる。
+    こちらは直近の投稿曜日から遡り、**1日でも投稿できていたらそこで打ち切る**ので、
+    復旧した次の回で必ず0に戻る（[[feedback_watchdog_autoclose]] と同じ考え方）。
+
+    今日は数えない（まだウィンドウが閉じていない）。理由は missed_days と同じ。
+    """
+    posts = load_posts() if posts is None else posts
+    now_jst = now_jst or jst_now()
+    today = now_jst.date()
+
+    posted_dates = {dt.date() for dt in posted_datetimes(posts)}
+    streak = 0
+    for back in range(1, lookback_days + 1):
+        d = today - timedelta(days=back)
+        if d < EFFECTIVE_FROM:
+            break
+        if d.weekday() not in POST_WEEKDAYS:
+            continue
+        if d in posted_dates:
+            break
+        streak += 1
+    return streak
+
+
 def _write_github_output(pairs):
     out = os.environ.get("GITHUB_OUTPUT")
     if not out:
@@ -247,6 +277,7 @@ def main():
 
     if args.missed:
         missed = missed_days(posts, lookback_days=args.lookback)
+        streak = missed_streak(posts)
         listed = ",".join(d.isoformat() for d in missed)
         if missed:
             pretty = ", ".join(f"{d.isoformat()}({WEEKDAY_JA[d.weekday()]})" for d in missed)
@@ -260,9 +291,13 @@ def main():
         # 自己回復トリガーを撃つかどうかの判断材料として渡す。
         today_is_post_day = jst_now().weekday() in POST_WEEKDAYS
         print(f"[WATCH] today_is_post_day={str(today_is_post_day).lower()}")
+        # streak は「今も落ち続けているか」。ワークフローを赤くする判定に使う。
+        print(f"[WATCH] missed_streak={streak} :: "
+              f"直近の投稿曜日から数えて{streak}回連続で投稿できていない")
         _write_github_output([
             ("missed_count", len(missed)),
             ("missed", listed),
+            ("missed_streak", streak),
             ("today_is_post_day", str(today_is_post_day).lower()),
         ])
         return

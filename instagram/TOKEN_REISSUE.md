@@ -1,5 +1,69 @@
 # Instagram トークン再発行手順（インサイト権限つき）
 
+> ## ⚠️ まずここを読む：再発行しても直らない型がある（2026-09-15）
+>
+> `Unsupported get/post request. Object with ID '...' does not exist, cannot be
+> loaded due to missing permissions, or does not support this operation`
+> （**code=100 / error_subcode=33**）が出ているときは、**この手順をやっても直らない。**
+>
+> このエラーは次の5つの、どれでもまったく同じ文面で返る。
+>
+> | # | 原因 | 再発行で直るか |
+> |---|---|---|
+> | a | `INSTAGRAM_BUSINESS_ID` が別アカウントのIDになっている | ❌ |
+> | b | トークンが別のFacebookユーザー／別アプリのもの | ✅ |
+> | c | Facebookページ ↔ IGビジネスアカウントの連携が切れた | ❌ |
+> | d | トークン生成時にそのページを許可しなかった | ✅ |
+> | e | **IGアカウント自体が消えた／停止された** | ❌（復旧不能） |
+>
+> 先に切り分ける。**Actions → 「Instagram API 診断」を手動実行するだけ**。
+>
+> ```bash
+> gh workflow run instagram_diagnose.yml
+> ```
+>
+> 正本は `instagram/ig_diagnose.py`。トークンは出力せず、`INSTAGRAM_BUSINESS_ID`
+> も指紋と一致判定だけを出すので、ログが公開されても安全。
+>
+> 読み方:
+>
+> - `3. /me/accounts` に対象ページが出ていて、`5.` が ✅ → 正常
+> - `7. 判定` に**候補IDが出ている**のに Secrets と不一致 → **(a)**。Secretsを差し替える
+> - `1. debug_token` の `user_id` が想定と違う → **(b)**。正しいFBアカウントで取り直す
+> - `granular_scopes` の `target_ids` が0件 → **(d)**。生成時にページを選び直す
+> - 候補が0件＋`/me/accounts` も0件 → **(c)** か **(e)**。次の節へ
+>
+> ### アカウント到達不能のとき（(c) / (e) の切り分け）
+>
+> APIを使わずに、**ログアウト状態のブラウザで公開URLを直接開く**のが一番速い。
+>
+> 1. `https://www.instagram.com/<ユーザー名>/`
+> 2. 過去投稿の permalink（`data/ig_insights.csv` の `permalink` 列から1つ）
+>
+> - どちらも普通に表示される → アカウントは生きている＝**(c)**。
+>   IGアプリ → 設定 → アカウントの種類とツール → プロフェッショナルアカウント／
+>   Facebookページの連携を張り直し、そのうえで下の手順1からトークンを取り直す。
+> - **「Profileは利用できません」「Postは利用できません」** → **(e)**。
+>   アカウントが削除または停止されている。APIでは何をしても復旧しない。
+>   IGアプリに該当アカウントでログインして、停止通知と異議申し立て導線を確認する。
+>   ※ ログイン壁と混同しないよう、必ず**生きている別アカウントで対照実験**する
+>   （例: `@taitanblog` が同じログアウト状態で見えるかどうか）。
+>
+> ### 実例: 2026-09-12〜15 の停止
+>
+> **原因は (e)。`@taitan_pro7` が Instagram 上から消滅していた。**
+>
+> - トークンは正常（`is_valid=true` / 期限 2026-11-10 / 必要な6スコープすべて granted）
+> - `INSTAGRAM_BUSINESS_ID` も変更なし
+> - 消滅した時刻は **2026-09-11 14:08〜20:46 JST の間**
+>   （05:08 UTC の番犬ランでは `GET` が成功、11:46 UTC の投稿ランで subcode 33）
+> - ログアウト状態で `@taitanblog`・`@taitan_pro` は表示されるのに
+>   `@taitan_pro7` と、その投稿 permalink 2本は「利用できません」
+> - 09-11 の再発行はこの件と無関係（再発行の前後どちらでも同じIDが見えていた）
+>
+> **再発行を4日繰り返しても直らなかったのは、原因がトークンではなかったから。**
+
+
 Metaの管理画面操作とFacebookのパスワード入力が要るので、**この作業だけは人間がやる**。
 所要10分。終わったら「やった」と言ってもらえれば、あとの確認は自動で回せる。
 
@@ -12,6 +76,9 @@ Metaの管理画面操作とFacebookのパスワード入力が要るので、**
 - `instagram_token_refresh.yml` が赤（`Session has expired` / `有効期限が延びていません`）
 - `instagram_insights.yml` が赤で `(#10) Application does not have permission for this action`
 - IG自動投稿が出ない（`instagram_post_watchdog.yml` が missed を検知）
+
+**ただし上のバナーのとおり、`code=100 / subcode=33` のときは先に診断を回すこと。**
+この手順（再発行）で直るのは (b)(d) だけで、(a)(c)(e) は直らない。
 
 ---
 

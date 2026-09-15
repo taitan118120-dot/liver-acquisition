@@ -295,6 +295,39 @@ class PermanentMediaError(Exception):
     pass
 
 
+class AccountUnreachableError(Exception):
+    """INSTAGRAM_BUSINESS_ID のアカウントにそもそも到達できない。
+
+    2026-09-15 の事故:
+      code=100 / subcode=33 が8日間出続けたのに、分類が無かったので
+      `create_media_container()` は None を返すだけ → 呼び出し側は既定で
+      「一時エラー」扱い → fail_count が一度も増えず、ワークフローも緑のまま。
+      実際にはアカウント @taitan_pro7 が消えており、リトライで直る余地は
+      1ミリも無かった。**画像やキューを差し替えても絶対に直らない種類**なので、
+      他候補も試さず即座に上まで投げて、ランを赤くする。
+    """
+    pass
+
+
+# アカウント/権限に起因し、投稿内容を変えても絶対に直らないコード。
+#   100/33: Object with ID ... does not exist（ID消滅・権限喪失・連携切れ）
+#   10    : Application does not have permission for this action
+#   200   : Permissions error
+#   803   : Some of the aliases you requested do not exist
+ACCOUNT_FATAL_CODES = {10, 200, 803}
+
+
+def _raise_if_account_unreachable(error_code, error_subcode, error_msg, where):
+    """アカウント到達不能なら即座に打ち切る（リトライも別候補も無意味）。"""
+    if error_code in ACCOUNT_FATAL_CODES or (error_code == 100 and error_subcode == 33):
+        print(f"[ACCOUNT] {where}: アカウントに到達できません "
+              f"(code={error_code}, subcode={error_subcode}): {error_msg}")
+        print("  → トークンの再発行では直りません。原因の切り分けは")
+        print("     `python instagram/ig_diagnose.py`（または Actions の「Instagram API 診断」）。")
+        raise AccountUnreachableError(
+            f"code={error_code}/subcode={error_subcode}: {error_msg}")
+
+
 def create_media_container(image_url, caption, max_retries=3, is_carousel_item=False):
     """Instagram Graph APIでメディアコンテナを作成（リトライ付き）。
     TokenExpiredError: トークン期限切れ時に送出。
@@ -336,6 +369,10 @@ def create_media_container(image_url, caption, max_retries=3, is_carousel_item=F
         error_msg = error.get("message", str(data))
         error_code = error.get("code", "N/A")
         error_subcode = error.get("error_subcode", "N/A")
+
+        # アカウント自体に到達できない系はリトライも別画像も無意味
+        _raise_if_account_unreachable(error_code, error_subcode, error_msg,
+                                      "メディアコンテナ作成")
 
         # トークン期限切れは即座にraiseしてリトライしない
         if error_code == 190:
@@ -394,6 +431,9 @@ def create_carousel_container(children_ids, caption, max_retries=3):
         error = data.get("error", {})
         error_msg = error.get("message", str(data))
         error_code = error.get("code", "N/A")
+        error_subcode = error.get("error_subcode", "N/A")
+        _raise_if_account_unreachable(error_code, error_subcode, error_msg,
+                                      "カルーセルコンテナ作成")
         if error_code == 190:
             raise TokenExpiredError(error_msg)
         if error_code in (-2, 2) or "timeout" in error_msg.lower():
@@ -432,6 +472,8 @@ def publish_media(container_id, max_retries=3):
         error = data.get("error", {})
         error_msg = error.get("message", str(data))
         error_code = error.get("code", "N/A")
+        error_subcode = error.get("error_subcode", "N/A")
+        _raise_if_account_unreachable(error_code, error_subcode, error_msg, "投稿公開")
 
         if error_code in (-2, 2) or "timeout" in error_msg.lower():
             print(f"  [RETRY] 公開タイムアウト ({attempt + 1}/{max_retries}): {error_msg}")

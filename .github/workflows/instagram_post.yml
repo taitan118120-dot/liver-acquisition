@@ -166,14 +166,50 @@ jobs:
             fi
           done
 
-          # 最終セーフティ: どんなエラーでもワークフローは必ず成功扱い
-          # ユーザー通知は Step Summary 経由で行われる
+          # 最終セーフティ: 単発の失敗ではワークフローを赤くしない（一時障害で
+          # 毎回赤くなると色を見なくなる）。ただし ::warning:: だと Actions の
+          # 一覧では success と区別が付かず、2026-09-08〜15 に8日間ゼロ本のまま
+          # 誰も気づけなかった。単発でも ::error:: で明示し、「連続で落ちている」
+          # 判定は次のステップでランの色そのものに反映する。
           if [ $FINAL_EXIT -ne 0 ]; then
-            echo "::warning::Instagram投稿は失敗しましたが、Pythonレベルの多層防御で処理済みです。"
-            echo "## ⚠️ 投稿スクリプトが非ゼロ終了" >> $GITHUB_STEP_SUMMARY
+            echo "::error::Instagram投稿に失敗しました (exit=$FINAL_EXIT)。上のログを確認してください。"
+            echo "## ❌ 投稿スクリプトが非ゼロ終了" >> $GITHUB_STEP_SUMMARY
             echo "exit_code=$FINAL_EXIT。詳細は上のログを確認してください。" >> $GITHUB_STEP_SUMMARY
           fi
           exit 0
+
+      # 2026-09-15 の反省: 投稿が8日間ゼロ本でも、このワークフローは
+      # 全ステップ exit 0 でずっと success だった。気づけたのは別建ての
+      # ウォッチドッグ(Issue #55)だけで、それも1日1回しか走らない。
+      # 「投稿が出ているか」をこのワークフロー自身の色に載せる。
+      # 判定は ig_slot.py --missed の missed_streak（＝いま continue 中の
+      # 連続欠け）を使うので、1本でも投稿できた次の回で自動的に緑へ戻る。
+      - name: 連続で投稿を落としていないか（落としていたらランを赤にする）
+        if: always() && steps.gate.outputs.should_post == 'true'
+        id: streak
+        shell: bash
+        run: |
+          set +e
+          python3 instagram/ig_slot.py --missed --lookback 14
+          exit 0
+
+      - name: 連続欠けを通知
+        if: always() && steps.streak.outputs.missed_streak != '' && steps.streak.outputs.missed_streak != '0' && steps.streak.outputs.missed_streak != '1'
+        shell: bash
+        run: |
+          N="${{ steps.streak.outputs.missed_streak }}"
+          echo "::error::Instagram投稿を${N}回連続で落としています（投稿日: ${{ steps.streak.outputs.missed }}）。"
+          {
+            echo "## ❌ Instagram投稿が${N}回連続で落ちています"
+            echo ""
+            echo "投稿0本だった投稿曜日: ${{ steps.streak.outputs.missed }}"
+            echo ""
+            echo "切り分け手順:"
+            echo ""
+            echo "1. Actions の「Instagram API 診断」(\`instagram_diagnose.yml\`) を実行する"
+            echo "2. \`instagram/TOKEN_REISSUE.md\` を読む（トークン再発行で直らない型がある）"
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
 
       - name: 投稿データを保存
         if: always() && steps.gate.outputs.should_post == 'true'
