@@ -56,6 +56,26 @@ OFFICE_TWITTER = "@taitan_LIVER"
 OFFICE_INSTAGRAM = "@taitan_pro7"   # 事務所公式（2026-08-08確定）。@taitan_pro は未運用の別アカウント
 CONTACT_LINE = "https://lin.ee/xchCfdn"
 
+# ── 事務所IGの停止フラグ（空文字なら稼働中）────────────────────────
+# 空でない＝停止中で、この文字列がそのまま番犬のログに「なぜ見ていないか」として出る。
+# 理由を別の場所に置くと「フラグだけ残って理由が行方不明」になるので、ここに同居させる。
+#
+# 見ているのは:
+#   - social_profile_guard.py … IG媒体を走査対象から外す（--require-live でも赤にしない）
+#   - content_facts_guard.py  … scan_ig_live() の実物走査を飛ばす
+# 止めたワークフロー（`gh workflow enable <file>` で戻る）:
+#   instagram_post.yml / instagram_insights.yml / instagram_token_refresh.yml /
+#   instagram_post_watchdog.yml
+#   ※ instagram_diagnose.yml は手動実行専用なので止めていない（再開判定に使う）
+#
+# **再開条件と手順は instagram/TOKEN_REISSUE.md の「畳んだ状態からの再開手順」。**
+# このフラグを空に戻してよいのは、そこの再開条件を満たしたときだけ。
+OFFICE_INSTAGRAM_SUSPENDED = (
+    "2026-09-11に @taitan_pro7 が Instagram 上から消滅（診断の型(e)＝APIでは復旧不能）。"
+    "2026-09-15にユーザー判断でIG自動化を一旦停止。"
+    "再開条件は instagram/TOKEN_REISSUE.md の「畳んだ状態からの再開手順」"
+)
+
 # ============================================================
 # リード検索設定
 # ============================================================

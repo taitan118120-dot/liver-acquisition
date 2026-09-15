@@ -682,6 +682,18 @@ def main():
          ["name", "bio", "link"], ["bio"]),
     ]
 
+    # 事務所IGを畳んでいる間は、IG媒体を走査対象から外す。
+    # skipped に入れると --require-live が赤にするが、それは「取れるはずのものが
+    # 取れていない＝死角」を捕まえるための仕掛けで、アカウントが存在しないと
+    # 分かっている期間に鳴らしても X / Threads の本物の赤を埋めるだけになる。
+    # だから skipped ではなく suspended として別枠で出す（緑にはするが黙らせない）。
+    # 再開条件は config.OFFICE_INSTAGRAM_SUSPENDED のコメントを参照。
+    suspended = []
+    if getattr(config, "OFFICE_INSTAGRAM_SUSPENDED", ""):
+        sources = [s for s in sources if not s[0].startswith("IG ")]
+        suspended.append({"media": f"IG {OFFICE_IG_HANDLE}",
+                          "reason": config.OFFICE_INSTAGRAM_SUSPENDED})
+
     for label, key, fetch, want_user, cmp_fields, scan_fields in sources:
         live, err = fetch()
         if err:
@@ -734,7 +746,7 @@ def main():
         json.dump({"violations": violations, "warn": warns, "diffs": diffs,
                    "canon": canon_problems, "skipped": skipped,
                    "skipped_media": skipped_media, "require_live": require_live,
-                   "manual": manual},
+                   "suspended": suspended, "manual": manual},
                   f, ensure_ascii=False, indent=1)
 
     print(f"\n[結果] 禁止パターン={len(violations)} 正本との乖離={len(diffs)} "
@@ -755,6 +767,11 @@ def main():
               "（この回はここを一切検査していない）")
         for s in skipped:
             print(f"  {'❌' if require_live else '⏭ '} {s['media']}: {s['reason']}")
+    if suspended:
+        print(f"\n[停止中の媒体 {len(suspended)}件]"
+              "（意図的に走査対象から外している。緑でも「見ていない」ことに変わりはない）")
+        for s_ in suspended:
+            print(f"  ⏸ {s_['media']}: {s_['reason']}")
     print("\n[手動確認]")
     for m in manual:
         print(f"  - {m}")

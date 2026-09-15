@@ -63,6 +63,66 @@
 >
 > **再発行を4日繰り返しても直らなかったのは、原因がトークンではなかったから。**
 
+---
+
+## ⏸ 2026-09-15：IG自動化は「一旦畳む」状態にしてある
+
+ユーザー判断で停止した。**放置ではなく、再開条件つきで止めてある。**
+今このリポジトリでIG関連が緑／静かなのは、直ったからではなく**見るのをやめたから**。
+
+### 止めたもの
+
+| 対象 | どう止めたか | 戻し方 |
+|---|---|---|
+| `instagram_post.yml`（30分おき起動） | `gh workflow disable` | `gh workflow enable instagram_post.yml` |
+| `instagram_insights.yml`（週次） | 同上 | `gh workflow enable instagram_insights.yml` |
+| `instagram_token_refresh.yml`（毎日） | 同上 | `gh workflow enable instagram_token_refresh.yml` |
+| `instagram_post_watchdog.yml`（毎日） | 同上 | `gh workflow enable instagram_post_watchdog.yml` |
+| `social_profile_guard.py` のIG走査 | `config.OFFICE_INSTAGRAM_SUSPENDED` を見て**対象から外す**（`--require-live` でも赤にしない。停止中の媒体として毎ラン表示は続く） | フラグを `""` に |
+| `content_facts_guard.py` のIG実物走査（Graph API） | 同フラグでスキップ | フラグを `""` に |
+| `content_facts_guard.py` の投稿済みIG記録走査 | 同フラグで**赤→警告**に降格（記録は消さない） | フラグを `""` に |
+| Issue #55（投稿ウォッチドッグ） | クローズ | 再開後に再発すれば番犬が立て直す |
+
+**止めていないもの**: `instagram_diagnose.yml`（手動実行専用なので空回りしない。
+下の再開判定にそのまま使う）。
+
+### 再開条件
+
+次の**どちらか**が満たされたときだけ再開する。思いつきで戻さない。
+
+1. **`@taitan_pro7` が復活した**
+   異議申し立てが通り、ログアウト状態のブラウザで
+   `https://www.instagram.com/taitan_pro7/` が普通に表示される。
+2. **別アカウントで運用し直すと決めた**
+   `@taitan_pro`（フォロワー11人）などに切り替える判断をした。
+   ※ ただし IG実測ベースライン（92本）の結論は「**リーチの天井はフォロワー数**」で、
+   15人 → 11人は**届く人が減る**乗り換えになる。決め打ちで動かないこと。
+
+### 再開手順
+
+1. `gh workflow run instagram_diagnose.yml` を回し、`7. 判定` が ✅ になることを確認する
+   （ここが ✅ にならないうちは、下をやっても全部同じところで落ちる）
+2. 別アカウントに変えた場合のみ:
+   - GitHub Secrets の `INSTAGRAM_BUSINESS_ID` を差し替え
+   - `config.py` の `OFFICE_INSTAGRAM` を新ハンドルに
+   - `marketing/social_profiles.md`（正本）の Instagram 節を新アカウントに寄せる
+   - `social_profile_guard.py` は `config.OFFICE_INSTAGRAM` から引くので**修正不要**
+3. `config.py` の `OFFICE_INSTAGRAM_SUSPENDED` を `""` にする
+4. 上の表の4本を `gh workflow enable` で戻す
+5. `python3 content_facts_guard.py` と `python3 social_profile_guard.py --require-live` を
+   手元で回し、**赤が戻ってくること**を確認する
+   （緑のままなら降格が解除できていない＝また何も見ていない状態）
+
+> ⚠️ 手順3をやらずに4だけ戻すと、**投稿は再開するのに番犬は黙ったまま**という
+> 一番まずい状態になる。必ずフラグを先に戻すこと。
+
+### 再開しないと決めたとき
+
+`instagram/` 一式と上のワークフロー、`config.OFFICE_INSTAGRAM` 系の参照を消す。
+そのときは `marketing/social_profiles.md` の Instagram 節と
+`data/sns_recruitment_posts.md` の IG 節も一緒に畳む（片方だけ残すと、
+次に読んだ人が「まだIG運用している」と誤読する）。
+
 
 Metaの管理画面操作とFacebookのパスワード入力が要るので、**この作業だけは人間がやる**。
 所要10分。終わったら「やった」と言ってもらえれば、あとの確認は自動で回せる。

@@ -93,6 +93,12 @@ REPORT_FILE = os.path.join(BASE_DIR, "data", "content_facts_guard_report.json")
 # 投稿済みInstagramキャプションの記録（instagram/ig_poster.py が posted を立てる）
 IG_POSTS_FILE = os.path.join(BASE_DIR, "instagram", "ig_posts.json")
 
+
+def _config():
+    """config.py を遅延import（起動コストを増やさないため）。"""
+    import config
+    return config
+
 # ── 記事だけ「検知はする／赤にはしない」に落とすルール ──────────────
 # 2026-08-12 に blog/ 149本へ当てて実測した結果から決めている。数字は実測の箇所数。
 # 共通のAUDIT_WARN_LABELS（少額表記・実績誇張・他社比較）に、記事特有の4本を足す。
@@ -557,6 +563,15 @@ def scan_ig_posted():
         return [], [], 0
     with open(IG_POSTS_FILE, encoding="utf-8") as f:
         posts = json.load(f)
+    # 事務所IGを畳んでいる間は、赤ではなく警告に落とす。
+    # この番犬が赤にしているのは「Instagramアプリで手編集すれば直せる」からで、
+    # アカウントが消えている今は**手編集する先が無い**（＝直せない）うえ、
+    # 投稿自体が公開されていないので読者にも届かない。前提が消えたのに赤を
+    # 出し続けると、この番犬の赤は毎日IGだけで埋まり、LP・特典PDF・記事側の
+    # 本物の違反が見えなくなる。記録は消さず、警告として残して見えるようにする。
+    # （同じ判断を social_profile_guard.py が「過去投稿はAPIで編集できない」ぶんに
+    #   対して先にやっている。再開すれば自動で赤に戻る）
+    suspended = getattr(_config(), "OFFICE_INSTAGRAM_SUSPENDED", "")
     ng, wn = [], []
     scanned = 0
     for p in posts:
@@ -566,7 +581,12 @@ def scan_ig_posted():
         a, b = scan_text(p.get("caption", ""),
                          f"instagram/ig_posts.json:{p.get('id', '?')}",
                          warn_labels=IG_WARN_LABELS)
-        ng += a
+        if suspended:
+            for v in a:
+                v["reason"] += f"（事務所IG停止中につき警告扱い: {suspended}）"
+            wn += a
+        else:
+            ng += a
         wn += b
     return ng, wn, scanned
 
@@ -626,6 +646,14 @@ def scan_ig_live(repo_only):
     stats = {"checked": 0, "missing": 0, "drifted": 0, "skipped": None}
     if repo_only:
         stats["skipped"] = "--repo-only（実アクセスなし）"
+        return [], [], stats
+    # 事務所IGを畳んでいる間は、実物を取りに行っても必ず失敗する（アカウントが無い）。
+    # 下の「取得できない＝赤」は**取れるはずのものが取れない**ときの死角検知なので、
+    # 取れないと分かっている期間まで赤にすると番犬が鳴きっぱなしになり、
+    # 他の番犬の赤が埋もれる。停止中は理由つきのスキップに落とす。
+    # 再開条件は config.OFFICE_INSTAGRAM_SUSPENDED のコメントを参照。
+    if getattr(_config(), "OFFICE_INSTAGRAM_SUSPENDED", ""):
+        stats["skipped"] = f"事務所IGは停止中。{_config().OFFICE_INSTAGRAM_SUSPENDED}"
         return [], [], stats
     if not os.path.exists(IG_POSTS_FILE):
         return [], [], stats
