@@ -313,5 +313,50 @@
       "話し方"
     ],
     "highlight": 0
+  },
+  "186": {
+    "kicker": "Pococha",
+    "lines": [
+      "ランクが",
+      "上がった直後の",
+      "1週間"
+    ],
+    "highlight": 1
+  },
+  "187": {
+    "kicker": "Pococha",
+    "lines": [
+      "枠の締め方",
+      "最後の10分で",
+      "また来たくなる"
+    ],
+    "highlight": 0
+  },
+  "188": {
+    "kicker": "Pococha",
+    "lines": [
+      "ファミリーの",
+      "育て方",
+      "常連さんとの距離"
+    ],
+    "highlight": 1
+  },
+  "189": {
+    "kicker": "Pococha",
+    "lines": [
+      "視聴者が",
+      "0人になったとき",
+      "の過ごし方"
+    ],
+    "highlight": 1
+  },
+  "190": {
+    "kicker": "Pococha",
+    "lines": [
+      "他のライバーと",
+      "比べて",
+      "落ち込むとき"
+    ],
+    "highlight": 2
   }
 }
