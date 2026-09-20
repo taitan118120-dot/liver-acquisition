@@ -1,0 +1,142 @@
+name: Google広告 設計書ヘッダー 番犬
+
+# ads/google_ads_設計書.md の冒頭「最終更新」ヘッダーが、本文の最新節に追いついているかを見る番犬。
+#
+# 背景（2026-09-20）: 本書3行目の `作成日：… / **最終更新：…** / 前回：…` は
+#   「冒頭だけ読めば最新状況が分かる」ことを意図した要約で、その先の5,000行は履歴として読む前提。
+#   ところがヘッダーは **§0-37（2026-09-06）で止まったまま §0-38〜§0-47 の10節ぶん更新されず**、
+#   「ポリシー制限は A1・A2・A5 の3本＝キャンペーンAだけ」と言い続けていた。
+#   実測（§0-46）は **広告9本・摘発アセット31件・3キャンペーン全部**で、
+#   冒頭だけ読んだ人／セッションは規模を1/3以下に見誤る。日予算も §0-17 の ¥5,200/日 のままで、
+#   実値（§0-45）の ¥3,120/日 とズレていた。人間が読んで気づくまで2週間放置された。
+#
+# 動作: 通信は一切しない。リポジトリのファイルだけを読み、
+#   「本文の最大 `## 0-NN`」と「ヘッダーの `最終更新：` ブロックが指す最大 `§0-NN`」を突き合わせる。
+#   ズレていたら Issue で通知し、直って緑に戻ったらそのIssueを自動クローズする。
+#
+# ⚠️ 見ているのは**番号だけ**。番号だけ書き換えて中身を更新しなければ素通りする。
+#    中身の責任は設計書 §0-A A-10 の表のほう（要約はその節の実記述から取る）。
+
+on:
+  schedule:
+    - cron: '45 2 * * *'   # 毎日 JST 11:45（他ワークフローの cron と重ならない枠）
+  push:
+    paths:
+      - 'ads/google_ads_設計書.md'
+      - 'ads_header_guard.py'
+      - '.github/workflows/ads_header_guard.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  header-guard:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # 番犬が壊れて「何も見つからない」まま緑になり続けるのが一番まずいので、
+      # 本番の突合の前に検知器そのものを自己診断する（実際に起きた「§0-37 で止まった形」も含む）。
+      - name: 検知器の自己診断
+        run: python3 ads_header_guard.py --self-test
+
+      # 標準ライブラリだけで動く（pip install も secret も不要）。
+      - name: ヘッダーと本文の最新節を突合
+        id: guard
+        run: python3 ads_header_guard.py --json
+
+      - name: ヘッダーが古い → Issue通知
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const title = 'Google広告 設計書の「最終更新」ヘッダーが本文に追いついていません（ヘッダー番犬）';
+            let r = {body_max: null, header_max: null, missing: [], unknown: [], error: null};
+            try {
+              r = JSON.parse(fs.readFileSync('data/ads_header_guard_report.json', 'utf8'));
+            } catch (e) {}
+            const missing = (r.missing || []).map(n => `§0-${n}`).join(' / ');
+            const unknown = (r.unknown || []).map(n => `§0-${n}`).join(' / ');
+            const body = [
+              '## Google広告 設計書ヘッダー 番犬 検知',
+              '',
+              '`ads/google_ads_設計書.md` 3行目の `最終更新：` ブロックが、本文の最新節を指していません。',
+              '',
+              r.error ? `- 🔴 **${r.error}**` : '',
+              r.header_max != null ? `- ヘッダーが指している最新節: **§0-${r.header_max}**` : '',
+              r.body_max != null ? `- 本文にある最新節: **§0-${r.body_max}**` : '',
+              missing ? `- 反映されていない節（**${(r.missing || []).length}節**）: ${missing}` : '',
+              unknown ? `- 🔴 ヘッダーが**実在しない節**を指しています: ${unknown}（採番ミス・タイポ）` : '',
+              '',
+              'このヘッダーは「**冒頭だけ読めば最新状況が分かる**」ための要約で、',
+              'その先の5,000行は履歴として読む前提になっています。',
+              '**古いまま残ると、冒頭だけ読んだ人／セッションが古い結論を信じます。**',
+              '',
+              '実例（2026-09-20）: ヘッダーが §0-37（9/6）で止まっていたため',
+              '「ポリシー制限は A1・A2・A5 の3本＝キャンペーンAだけ」と言い続けていた。',
+              '実測（§0-46）は **広告9本・摘発アセット31件・3キャンペーン全部**。',
+              '日予算も §0-17 の ¥5,200/日 のままで、実値（§0-45）の ¥3,120/日 とズレていた。',
+              '',
+              '## 対処（設計書 §0-A A-10）',
+              '',
+              '1. **新しい要約を先頭に足し、それまでの `最終更新：…` を `前回：…` へ送る**（既存の記述は消さない）',
+              '2. 要約は**その節の実記述から取る**（記憶・推測で数字を書かない）',
+              '3. 要約の末尾に、その回で足した節番号を `§0-NN` の形で書く（番犬はここを読む）',
+              '',
+              '```bash',
+              'python3 ads_header_guard.py',
+              '```',
+              '',
+              '⚠️ **この番犬が見ているのは番号だけです。**',
+              '番号だけ書き換えて中身を更新しなければ緑になりますが、それでは意味がありません。',
+              '',
+              '直すと次回のランがこのIssueを自動クローズします。',
+              '',
+              '---',
+              '_このIssueは `.github/workflows/ads_header_guard.yml` により自動生成されました。_',
+            ].filter(Boolean).join('\n');
+            const guard = require('./.github/scripts/guard_comment.js');
+            await guard.notify({
+              github, context, title, body,
+              recomment: `再検知: ${new Date().toISOString()}\n`
+                + `ヘッダー §0-${r.header_max} / 本文 §0-${r.body_max}`
+                + `${(r.missing || []).length ? ` / 未反映${r.missing.length}節` : ''}`
+                + `${(r.unknown || []).length ? ` / 実在しない参照${r.unknown.length}件` : ''}`,
+            });
+
+      - name: 追いついた → Issueを自動クローズ
+        # ads_header_guard.py は毎回ファイル全体を読み直して突合する（差分ではない）。
+        # つまり緑＝そのランでヘッダーが本文の最新節に追いついていることが確定した状態。
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'Google広告 設計書の「最終更新」ヘッダーが本文に追いついていません（ヘッダー番犬）';
+            const guard = require('./.github/scripts/guard_comment.js');
+            const match = await guard.findOpenIssue({ github, context, title });
+            if (!match) return;
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: match.number,
+              body: [
+                `復旧を確認: ${new Date().toISOString()} のランでヘッダーが本文の最新節に追いついていました。自動クローズします。`,
+                '',
+                `- ラン: ${runUrl}`,
+              ].join('\n'),
+            });
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: match.number,
+              state: 'closed',
+            });
