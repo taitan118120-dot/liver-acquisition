@@ -375,11 +375,44 @@ def transform(key, body, _ops_cache={}):
     if not op:
         return None
     new = apply_ops(body, op)
-    return new if new != body else None
+    # 本文が同じでも、タグから17LIVE系を外したときは出し直す必要がある
+    if new == body and not _TAGS_CHANGED["flag"]:
+        return None
+    return new
+
+
+# 公開側のハッシュタグにも 17LIVE 系が残る。publish_one は「いま付いているタグ」を
+# そのまま再送するので、get_note を包んで取り除き、足りない枠は中立な語で埋める。
+TAG_NG = re.compile(r"^#?(17\s?live|17ライブ|１７ライブ|イチナナ|いちなな)$", re.I)
+TAG_FILL = ["配信アプリ", "ライブ配信", "ライバー", "配信初心者"]
+
+
+_TAGS_CHANGED = {"flag": False}
+
+
+def _strip_ng_tags(d):
+    hs = d.get("hashtag_notes") or []
+    kept = [h for h in hs if not TAG_NG.match(h["hashtag"]["name"])]
+    if len(kept) == len(hs):
+        return d
+    _TAGS_CHANGED["flag"] = True
+    have = {h["hashtag"]["name"].lstrip("#") for h in kept}
+    for f in TAG_FILL:
+        if len(kept) >= len(hs):
+            break
+        if f not in have:
+            kept.append({"hashtag": {"name": f}})
+            have.add(f)
+    print(f"  tags: 17LIVE系を除去 {len(hs)} -> {len(kept)}")
+    d["hashtag_notes"] = kept
+    return d
 
 
 def publish_one(key):
     orig = _lm.verify
+    orig_get = _lm.get_note
+    _TAGS_CHANGED["flag"] = False
+    _lm.get_note = lambda *a, **k: _strip_ng_tags(orig_get(*a, **k))
 
     def _verify(k):
         d = orig(k)
@@ -398,6 +431,7 @@ def publish_one(key):
                                title_fn=lambda k, t: TITLE_MAP.get(k))
     finally:
         _lm.verify = orig
+        _lm.get_note = orig_get
 
 
 def dry_run():
