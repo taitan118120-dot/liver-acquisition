@@ -1,16 +1,5 @@
 {
- "violations": [
-  {
-   "where": "配布URL GUIDE_PDF_SHA → lp/shared/liver_starter_guide.pdf",
-   "reason": "配布URLが指すPDFと作業ツリーのPDFが別物。**直したPDFは配られていない**（GUIDE_PDF_SHA をPDF更新コミットのSHAに更新すること）",
-   "hit": "配布中 236ce8d4c5 / 手元 c0984c6fc8"
-  },
-  {
-   "where": "配布URL AGENCY_GUIDE_PDF_SHA → lp/shared/agency_starter_guide.pdf",
-   "reason": "配布URLが指すPDFと作業ツリーのPDFが別物。**直したPDFは配られていない**（AGENCY_GUIDE_PDF_SHA をPDF更新コミットのSHAに更新すること）",
-   "hit": "配布中 a92e4e6706 / 手元 615f76ac4d"
-  }
- ],
+ "violations": [],
  "warn": [
   {
    "where": "lp/beginner/index.html",

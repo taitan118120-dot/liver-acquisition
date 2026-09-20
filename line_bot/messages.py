@@ -8,7 +8,7 @@ import re
 # URLは @main ではなくPDF更新コミットのSHA固定にする。@mainだとURLが変わらず
 # LINEアプリ内ブラウザ/iOS Safariが旧PDFを端末キャッシュし続けて更新が反映されないため、
 # PDFを差し替えたら下記SHAも更新すること（そのコミットのハッシュを入れる）。
-GUIDE_PDF_SHA = "5538f2de3dc85efe3fc42066cb303cf89c03df97"
+GUIDE_PDF_SHA = "92a1ad5e1a40c012f19184d074252c2b2debac29"
 GUIDE_URL = (
     "https://cdn.jsdelivr.net/gh/taitan118120-dot/liver-acquisition@"
     f"{GUIDE_PDF_SHA}/lp/shared/liver_starter_guide.pdf"
@@ -16,7 +16,7 @@ GUIDE_URL = (
 
 # 代理店パートナー希望者向けの特典PDF（2026-08-11 追加）。
 # 上のライバー向けと同じ運用ルール：SHAは必ずPDF更新コミットのハッシュに固定する。
-AGENCY_GUIDE_PDF_SHA = "e306fab1d9bf167c9e11904b8e7b670c791bfe3c"
+AGENCY_GUIDE_PDF_SHA = "92a1ad5e1a40c012f19184d074252c2b2debac29"
 AGENCY_GUIDE_URL = (
     "https://cdn.jsdelivr.net/gh/taitan118120-dot/liver-acquisition@"
     f"{AGENCY_GUIDE_PDF_SHA}/lp/shared/agency_starter_guide.pdf"
