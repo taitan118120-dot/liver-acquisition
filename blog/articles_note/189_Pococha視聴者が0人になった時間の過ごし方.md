@@ -156,7 +156,7 @@ Pocochaで始めたばかりの頃に人が来ない悩みは[【Pococha】始�
 | 項目 | TAITAN PRO |
 |---|---|
 | 還元率 | **100%+α** |
-| 対応 | Pococha・TikTok LIVE・17LIVE |
+| 対応 | Pococha・TikTok LIVE |
 | ノルマ | なし |
 | 対象 | 未経験OK・副業OK・顔出しなしOK |
 | サポート | 専属マネージャーがマンツーマン |

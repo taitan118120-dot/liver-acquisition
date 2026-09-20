@@ -32,7 +32,7 @@ TikTokはアルゴリズムの影響が大きく、「どの時間に・どう�
 
 | 項目 | TAITAN PRO |
 |---|---|
-| 対応プラットフォーム | TikTok LIVE・Pococha・17LIVE |
+| 対応プラットフォーム | TikTok LIVE・Pococha |
 | 還元率（Pococha側） | **100%** |
 | 所属ライバー数 | 200名（Pococha・TikTok合わせて） |
 | 対象 | 未経験OK・顔出しなしOK・副業/在宅可 |
