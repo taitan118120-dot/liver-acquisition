@@ -123,7 +123,7 @@ TWITTER_SEARCH_HASHTAGS = [
 # ライバー志望者向け Twitter 検索キーワード（search_twitter のデフォルト検索対象）
 TWITTER_SEARCH_KEYWORDS = [
     "ライブ配信 始めたい", "ライバー 興味", "ライバー なりたい",
-    "配信 初心者", "Pococha 初心者", "17LIVE 始めた",
+    "配信 初心者", "Pococha 初心者", "TikTokLIVE 始めた",
     "副業 ライバー", "在宅 副業 スマホ", "副業 月5万",
     "スマホ 副業", "ライブ配信 副業",
 ]
@@ -186,7 +186,7 @@ NG_PROFILE_KEYWORDS = [
     # 事務所所属
     "所属", "専属", "公式ライバー", "カーブアウト", "carveout",
     # ライバー・配信者（既にやってる人はNG）
-    "ライバー", "配信者", "配信中", "17LIVE", "17live",
+    "ライバー", "配信者", "配信中",
     "TikTokLIVE", "tiktok live", "IRIAM", "iriam",
     "Pococha", "pococha", "SHOWROOM", "showroom",
     "ライブ配信", "配信してます",

@@ -41,8 +41,8 @@ GUARD_STATS = {"checked": 0, "rejected": 0, "reasons": {}}
 # 下の EXPERIENCE_THEMES と交互に使い、生成プロンプトも分ける。
 THEMES = [
     "事務所所属 vs フリーランスのライバー、結局どっちが得か（対立軸）",
-    # 取扱は Pococha・TikTok LIVE・17LIVE の3つ。IRIAM等は書かない
-    "Pococha vs 17LIVE vs TikTok LIVE、稼げるアプリ論争（対立軸）",
+    # 取扱は Pococha・TikTok LIVE の2つ。17LIVE/IRIAM等は書かない
+    "Pococha vs TikTok LIVE、稼げるアプリ論争（対立軸）",
     "ライバー副業を会社にバレずにやる方法（ツッコミ歓迎の言い切り）",
     "「ライバーは楽して稼いでる」論への反論（噛みつき誘発）",
     "顔出しなしライバー vs 顔出しライバー、収入の現実差（対立軸）",
@@ -146,7 +146,7 @@ FACTS = """【割合統計の禁止（最優先・違反したら投稿は破棄
 - 所属ライバー数は「200名」固定。「200名以上」「約200名」「累計◯名」「総勢◯名」「延べ◯名」は書かない
 - 代理店との関係は「提携」。「統括」「傘下」とは書かない
 - 代表たいたんは **元** Pococha S帯。「現役ライバー」「現役プレイヤー」とは書かない
-- 扱うのは Pococha・TikTok LIVE・17LIVE の3つ。IRIAM/SHOWROOM/ふわっち/REALITY、
+- 扱うのは Pococha・TikTok LIVE の2つ。17LIVE/IRIAM/SHOWROOM/ふわっち/REALITY、
   TwitCasting（ツイキャス）/Bigo Live/ミラティブ/Hakuna/Mildom も出さない。
   「他アプリも多数」のような曖昧なまとめ方もしない
 - 「いつでも退所」「違約金なし」「契約期間」には触れない
@@ -203,7 +203,7 @@ FACTS_COVERAGE = {
     # 2026-09-04: パターンに TwitCasting/Bigo Live/ミラティブ/Hakuna/Mildom を追加。
     # ラベルは同じなので対応表はIRIAMアンカーのまま（FACTSにも列挙済み）。
     "取扱外プラットフォーム": "IRIAM",
-    "取扱は Pococha・TikTok LIVE・17LIVE の3つで統一": "他アプリも多数",
+    "取扱は Pococha・TikTok LIVE の2つで統一": "他アプリも多数",
     "CTAがDM誘導（導線は特典PDF→LINE登録に統一）": "DMで相談",
     "「オンライン無料相談」は使わない": "オンライン無料相談",
     # facts_patterns 由来（2026-09-04 追加）。検品にはあったのにFACTSに無く、

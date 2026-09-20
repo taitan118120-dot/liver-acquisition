@@ -55,7 +55,6 @@ SUB = (214, 222, 240)       # バッジの補足文字
 ACCENTS = {                 # kicker チップの色（プラットフォーム別）
     "Pococha": (255, 92, 138),
     "TikTok LIVE": (0, 224, 196),
-    "17LIVE": (255, 140, 60),
     "代理店": (167, 139, 250),
     "_default": (79, 195, 247),
 }
@@ -90,7 +89,6 @@ BG_HINTS = [
     ("代理店", "a laptop, a notebook and a cup of coffee on a bright office desk, documents neatly stacked, morning light"),
     ("確定申告", "a calculator, receipts and tax documents on a desk with a laptop, tidy and organized, daylight"),
     ("SNS運用", "a smartphone lying on a wooden desk next to a laptop and a small notepad, a cup of coffee, warm afternoon light through a window"),
-    ("17LIVE", "a smartphone on a tripod in a tidy bedroom corner, a soft ring light and a small plant beside it, warm evening light"),
     ("続ける仕組み", "a paper weekly planner open on a desk with a pen, a smartphone on a stand behind it, a mug of tea, calm morning light"),
     ("振り返り", "an open notebook with a pen resting on it beside a smartphone on a wooden desk, a small desk lamp, quiet night light"),
     ("お礼", "a small wrapped gift box and a handwritten letter on a wooden table next to a smartphone, soft warm light"),
@@ -140,7 +138,7 @@ def load_text_map():
 
 
 def guess_kicker(title):
-    for name in ("Pococha", "TikTok LIVE", "TikTok", "17LIVE"):
+    for name in ("Pococha", "TikTok LIVE", "TikTok"):
         if name in title:
             return "TikTok LIVE" if name == "TikTok" else name
     return "ライブ配信"

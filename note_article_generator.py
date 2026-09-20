@@ -120,7 +120,7 @@ TITLE_PATTERNS = [
 #   p=1 … 実測で負けている、または未検証。抽選には残すが当たりにくい
 # 抽選確率は「カテゴリ重み × p」。SHOWROOM/IRIAM/ふわっち/ミクチャ/ツイキャス単体の
 # キーワードは集客対象プラットフォーム外なので**プールから除外**した（Pococha・
-# TikTok LIVE・17LIVE のみ扱う）。退役させたキーワードは
+# TikTok LIVE のみ扱う。17LIVEは2026-09-20に取り扱い終了しプールから退役）。退役させたキーワードは
 # data/note_keyword_tracker.json の "retired" に理由付きで記録している。
 SEO_KEYWORDS = {
     "lifestyle": [
@@ -160,10 +160,7 @@ SEO_KEYWORDS = {
         {"keyword": "Pococha ランク制度 仕組み", "slug": "Pocochaランク制度", "p": 2, "hashtags": ["Pococha", "ランク", "制度", "ライバー"]},
         {"keyword": "Pococha 時間ダイヤ 計算 2026", "slug": "Pococha時間ダイヤ計算", "p": 2, "hashtags": ["Pococha", "時間ダイヤ", "計算", "収入"]},
         {"keyword": "Pococha オフの日 使い方", "slug": "Pocochaオフの日使い方", "p": 2, "hashtags": ["Pococha", "オフの日", "配信", "ライバー"]},
-        {"keyword": "17LIVE 始め方 初心者", "slug": "17LIVE始め方", "p": 2, "hashtags": ["17LIVE", "始め方", "初心者", "ライバー"]},
-        {"keyword": "17LIVE イベント 攻略", "slug": "17LIVEイベント攻略", "p": 2, "hashtags": ["17LIVE", "イベント", "攻略", "ライバー"]},
-        {"keyword": "Pococha TikTokLIVE 17LIVE 掛け持ち", "slug": "3アプリ掛け持ち", "p": 2, "hashtags": ["Pococha", "TikTokLIVE", "17LIVE", "掛け持ち"]},
-        {"keyword": "Pococha 17LIVE どっち", "slug": "Pococha17LIVE比較", "p": 1, "hashtags": ["Pococha", "17LIVE", "比較", "ライバー"]},
+        {"keyword": "Pococha TikTokLIVE 掛け持ち", "slug": "2アプリ掛け持ち", "p": 2, "hashtags": ["Pococha", "TikTokLIVE", "掛け持ち", "ライバー"]},
     ],
     "income": [
         # 収入・お金クラスタは PV/日中央 0.58 で2位。ただし税金・制度系（確定申告・経費・
@@ -393,7 +390,7 @@ AIが「答えとして切り出せる形」で置くこと。以下は必須:
   **月15万未満の金額（「月3万」「月10万」「お小遣い程度」）は、稼げていない側の描写でも書かない**
 - 代表たいたん：元Pococha Sランク、ミクチャ8000人中ミスターコン1位、Pococha歴4年。最高月収は「3桁」とだけ（具体額NG）
 - 所属ライバー数は「200名」固定（「200名以上」「累計◯名」は書かない）
-- 扱うのは Pococha・TikTok LIVE・17LIVE の3つ。IRIAM/SHOWROOM/ふわっち/REALITY は出さない
+- 扱うのは Pococha・TikTok LIVE の2つ。17LIVE/IRIAM/SHOWROOM/ふわっち/REALITY は出さない
 - Pocochaの「オフの日」は月4日の強制休配信日（おやすみチケットとは別制度）
 
 【絶対NG】
@@ -412,7 +409,7 @@ AIが「答えとして切り出せる形」で置くこと。以下は必須:
 - 「オンライン無料相談」（CTAはLINE導線に統一）
 - 「いつでも退所OK」「違約金なし」「違約金0」「いつでも辞められる」など、退所・契約解除が自由だと示す表現は禁止（契約条件は面談で説明する、とだけ書く）
 - ミクチャ・ツイキャスを勧める記述（上のIRIAM/SHOWROOM/ふわっち/REALITYと同じく取り扱い外。
-  集客対象は Pococha・TikTok LIVE・17LIVE の3つだけなので、キーワードもプールから外してある）
+  集客対象は Pococha・TikTok LIVE の2つだけなので、キーワードもプールから外してある）
 - Markdownテーブル（| | | 形式）
 - 水平線（---）
 - コードブロック（```）

@@ -53,7 +53,7 @@ REACH_QUERIES = [
     '(ライバー OR ライブ配信) (稼 OR 収入 OR 現実 OR 事務所)',
     '(Pococha OR ぽこちゃ) (ランク OR ダイヤ OR イベント OR 応援)',
     '(配信者 OR ライバー) (悩み OR しんどい OR メンタル OR 辞め)',
-    '("TikTok LIVE" OR 17LIVE OR イチナナ) (配信 OR ライバー)',
+    '("TikTok LIVE" OR TikTokLIVE) (配信 OR ライバー)',
 ]
 
 # ─── ドメイン判定 ───
@@ -64,7 +64,6 @@ REACH_QUERIES = [
 PRIMARY_PLATFORMS = [
     "pococha", "ぽこちゃ", "ポコチャ", "ポコチャ",
     "tiktok live", "tiktoklive", "ティックトックライブ", "tiktokライブ",
-    "17live", "イチナナ", "17ライブ",
 ]
 # 隣接プラットフォーム・一般語。ターゲットではないが会話は成立する。
 DOMAIN_LIVER = PRIMARY_PLATFORMS + [

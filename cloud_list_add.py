@@ -66,12 +66,6 @@ SEARCH_KEYWORDS = [
     "#ぽこちゃ初心者",
     "#Pococha配信者",
     "#Pococha好きと繋がりたい",
-    # 17LIVE 関連
-    "17LIVE 配信",
-    "17LIVE 始めた",
-    "イチナナ 配信",
-    "#17LIVE配信者",
-    "#イチナナライバー",
     # SHOWROOM 関連
     "SHOWROOM 配信",
     "#SHOWROOM配信",

@@ -297,17 +297,20 @@ COMMON_NG_PATTERNS = [
     #  否定先読みが効いて素通りする）。
     (r"還元率[\s|｜]*100\s*[%％](?!\s*\+\s*α)", "還元率が「100%+α」になっていない"),
     (r"還元率[\s|｜]*(?!100)[0-9]{2,3}\s*[%％]", "還元率が確定値でない"),
-    # [[feedback_note_target_platforms]] 取扱は Pococha・TikTok LIVE・17LIVE の3つ。
+    # [[feedback_note_target_platforms]] 取扱は Pococha・TikTok LIVE の2つ。
+    # 2026-09-20: 17LIVE の取り扱いを終了したので取扱外に移した。単体記事3本は削除済み。
+    # 既存記事に残る比較表・市場俯瞰としての17LIVE言及は、IRIAM等と同じく据え置き（WARN）。
     # 媒体を問わない事務所の確定ファクトなので共通側に置く。
     # 2026-09-04: IRIAM系だけを見ていたので、公開Note記事で「おすすめ度つき」で
     # 読者を送っていた TwitCasting / Bigo Live / ミラティブ / Hakuna / Mildom を
     # 全部素通りさせていた（note_platform_scope_fix_20260904.py の docstring に実例）。
     # Bigo は「BIGO LIVE」表記も実在するので大小両方を拾う。
-    (r"IRIAM|イリアム|SHOWROOM|ショールーム|ふわっち|REALITY"
+    (r"17\s?LIVE|17ライブ|１７ライブ|イチナナ|いちなな"
+     r"|IRIAM|イリアム|SHOWROOM|ショールーム|ふわっち|REALITY"
      r"|TwitCasting|ツイキャス|[Bb]igo ?[Ll]ive|BIGO ?LIVE|ビゴライブ"
      r"|ミラティブ|Mirrativ|Hakuna|ハクナ|Mildom|ミルダム",
      "取扱外プラットフォーム"),
-    (r"他アプリ(?:も)?多数", "取扱は Pococha・TikTok LIVE・17LIVE の3つで統一"),
+    (r"他アプリ(?:も)?多数", "取扱は Pococha・TikTok LIVE の2つで統一"),
     # ── 導線 [[feedback_leadmagnet_first]] 特典PDF→LINE登録に統一 ──
     # 2026-08-11: 旧パターンは「DMして」「DMちょうだい」を素通りさせていた
     # （Xの代理店キュー a03/a10/a11 が全部この形）。

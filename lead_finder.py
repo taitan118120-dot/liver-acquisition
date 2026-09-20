@@ -88,8 +88,8 @@ def classify_target(bio):
         if kw in bio_lower:
             return "agency"
 
-    existing_keywords = ["配信中", "ライバー", "配信者", "pococha", "17live", "showroom",
-                         "イチナナ", "ポコチャ", "配信", "ライブ"]
+    existing_keywords = ["配信中", "ライバー", "配信者", "pococha", "tiktok",
+                         "ポコチャ", "配信", "ライブ"]
     for kw in existing_keywords:
         if kw in bio_lower:
             return "existing"

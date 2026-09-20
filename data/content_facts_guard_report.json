@@ -1,5 +1,16 @@
 {
- "violations": [],
+ "violations": [
+  {
+   "where": "配布URL GUIDE_PDF_SHA → lp/shared/liver_starter_guide.pdf",
+   "reason": "配布URLが指すPDFと作業ツリーのPDFが別物。**直したPDFは配られていない**（GUIDE_PDF_SHA をPDF更新コミットのSHAに更新すること）",
+   "hit": "配布中 236ce8d4c5 / 手元 c0984c6fc8"
+  },
+  {
+   "where": "配布URL AGENCY_GUIDE_PDF_SHA → lp/shared/agency_starter_guide.pdf",
+   "reason": "配布URLが指すPDFと作業ツリーのPDFが別物。**直したPDFは配られていない**（AGENCY_GUIDE_PDF_SHA をPDF更新コミットのSHAに更新すること）",
+   "hit": "配布中 a92e4e6706 / 手元 615f76ac4d"
+  }
+ ],
  "warn": [
   {
    "where": "lp/beginner/index.html",
@@ -55,6 +66,16 @@
    "where": "blog/articles_note/03_事務所選び方.md",
    "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
    "hit": "契約期間"
+  },
+  {
+   "where": "blog/articles_note/03_事務所選び方.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "17LIVE"
+  },
+  {
+   "where": "blog/articles_note/05_ライバー収入現実.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "17LIVE"
   },
   {
    "where": "blog/articles_note/06_在宅副業おすすめ.md",
@@ -130,16 +151,6 @@
    "where": "blog/articles_note/114_ライバー事務所面談で聞くべき質問10.md",
    "reason": "少額表記（数万円/お小遣い程度）",
    "hit": "お小遣い程度"
-  },
-  {
-   "where": "blog/articles_note/117_17LIVE事務所おすすめ選び方.md",
-   "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
-   "hit": "違約金"
-  },
-  {
-   "where": "blog/articles_note/117_17LIVE事務所おすすめ選び方.md",
-   "reason": "断定・保証表現",
-   "hit": "絶対稼げ"
   },
   {
    "where": "blog/articles_note/123_配信の頻度と長さの決め方.md",
@@ -219,7 +230,7 @@
   {
    "where": "blog/articles_note/23_ライブ配信市場将来性.md",
    "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
+   "hit": "17LIVE"
   },
   {
    "where": "blog/articles_note/24_ライバー事務所代理店.md",
@@ -240,6 +251,11 @@
    "where": "blog/articles_note/27_ライバー事務所おすすめランキング.md",
    "reason": "「いつでも退所」「違約金なし」系／契約期間への言及",
    "hit": "契約期間"
+  },
+  {
+   "where": "blog/articles_note/27_ライバー事務所おすすめランキング.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "17LIVE"
   },
   {
    "where": "blog/articles_note/27_ライバー事務所おすすめランキング.md",
@@ -279,7 +295,7 @@
   {
    "where": "blog/articles_note/33_ライブ配信アプリ比較.md",
    "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
+   "hit": "17LIVE"
   },
   {
    "where": "blog/articles_note/33_ライブ配信アプリ比較.md",
@@ -307,6 +323,16 @@
    "hit": "数千"
   },
   {
+   "where": "blog/articles_note/36_ライバーコラボ配信.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "17LIVE"
+  },
+  {
+   "where": "blog/articles_note/37_ライバー月収平均2026.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "17LIVE"
+  },
+  {
    "where": "blog/articles_note/39_ライバー代理店稼げる収入リアル.md",
    "reason": "断定・保証表現",
    "hit": "安定して稼"
@@ -324,12 +350,17 @@
   {
    "where": "blog/articles_note/40_ライバー事務所の仕組み報酬体系完全図解.md",
    "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
+   "hit": "17LIVE"
   },
   {
    "where": "blog/articles_note/41_40代50代ライバー始め方.md",
    "reason": "確定レンジ未満の少額表記（月15万が下限）",
    "hit": "月3〜10万"
+  },
+  {
+   "where": "blog/articles_note/45_ライバー時給.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "17LIVE"
   },
   {
    "where": "blog/articles_note/47_副業月5万在宅.md",
@@ -339,7 +370,7 @@
   {
    "where": "blog/articles_note/48_Pocochaライバー始め方完全ガイド.md",
    "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
+   "hit": "17LIVE"
   },
   {
    "where": "blog/articles_note/49_Pocochaダイヤ換金完全ガイド.md",
@@ -364,7 +395,7 @@
   {
    "where": "blog/articles_note/50_TikTokLIVE収益化完全ガイド.md",
    "reason": "取扱外プラットフォーム",
-   "hit": "IRIAM"
+   "hit": "17LIVE"
   },
   {
    "where": "blog/articles_note/50_TikTokLIVE収益化完全ガイド.md",
@@ -443,6 +474,11 @@
   },
   {
    "where": "blog/articles_note/56_副業ライバーおすすめ.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "17LIVE"
+  },
+  {
+   "where": "blog/articles_note/56_副業ライバーおすすめ.md",
    "reason": "確定レンジ未満の少額表記（月15万が下限）",
    "hit": "月10万"
   },
@@ -488,6 +524,11 @@
   },
   {
    "where": "blog/articles_note/62_TikTokLIVE始め方完全ガイド.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "17LIVE"
+  },
+  {
+   "where": "blog/articles_note/62_TikTokLIVE始め方完全ガイド.md",
    "reason": "根拠なしの実績誇張",
    "hit": "数百人"
   },
@@ -525,6 +566,11 @@
    "where": "blog/articles_note/72_ライバー雑談ネタ100選.md",
    "reason": "断定・保証表現",
    "hit": "確実に"
+  },
+  {
+   "where": "blog/articles_note/73_顔バレ身バレ対策完全ガイド.md",
+   "reason": "取扱外プラットフォーム",
+   "hit": "17LIVE"
   },
   {
    "where": "blog/articles_note/73_顔バレ身バレ対策完全ガイド.md",
@@ -673,10 +719,7 @@
    "blog/articles_note/113_主婦ライバーの扶養税金家族の理解.md",
    "blog/articles_note/114_ライバー事務所面談で聞くべき質問10.md",
    "blog/articles_note/115_TikTokLIVE最初の30日ロードマップ.md",
-   "blog/articles_note/116_17LIVE稼ぎ方収益の仕組み.md",
-   "blog/articles_note/117_17LIVE事務所おすすめ選び方.md",
-   "blog/articles_note/118_17LIVE_Pococha_TikTokLIVE比較どれが向いてる.md",
-   "blog/articles_note/119_40代50代から17LIVE始め方.md",
+   "blog/articles_note/118_配信アプリ適性性格と生活リズムで選ぶ.md",
    "blog/articles_note/11_主婦ライバー.md",
    "blog/articles_note/120_40代50代ライバー続く人辞める人の違い.md",
    "blog/articles_note/121_Pococha新人期間終わった後31日目の壁の越え方.md",
