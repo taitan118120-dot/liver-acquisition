@@ -189,8 +189,13 @@ def pub_candidates(lines, i):
     return [x for x in out if x]
 
 
+_OPS_CACHE = {}
+
+
 def build_ops():
     """{note_key: {"file":…, "reps":[(before,after)…], "dels":[[候補…]…]}}"""
+    if _OPS_CACHE:
+        return _OPS_CACHE
     km = json.load(open(os.path.join(BASE_DIR, "data", "note_key_map.json"), encoding="utf-8"))
     num2key = {str(int(k)) if k.isdigit() else k: v["key"] for k, v in km.items()}
     changed = subprocess.run(
@@ -266,6 +271,7 @@ def build_ops():
         if k in ops:
             ops[k]["reps"] = mo["reps"] + ops[k]["reps"]
             ops[k]["dels"] = mo["dels"] + ops[k]["dels"]
+    _OPS_CACHE.update(ops)
     return ops
 
 
@@ -415,14 +421,23 @@ def publish_one(key):
     _lm.get_note = lambda *a, **k: _strip_ng_tags(orig_get(*a, **k))
 
     def _verify(k):
+        """公開しなおした本文にもう一度 apply_ops を当てて「もう変わらない」ことを見る。
+
+        置換前の文字列を探す方式は使えない。残す方針の比較文（例: 37 の
+        「ギフトで跳ねる（TikTok LIVE・17LIVE）」）が置換キーと部分一致して
+        毎回falseで落ちるため。冪等かどうかで見るのがいちばん素直で漏れない。
+        """
         d = orig(k)
-        text = re.sub(r"<[^>]+>", "", d["body"])
-        ops = build_ops().get(k, {})
-        bad = [b for b, _ in list(ops.get("reps", [])) + GLOBAL_REPS if b in text] + \
-              [c[0] for c in ops.get("dels", []) if any(x in text for x in c)] + \
-              [dk for dk in DEAD_KEYS if dk in d["body"]]
-        if bad:
-            raise RuntimeError(f"verify失敗: 旧記述が残存 {bad[:2]}")
+        op = build_ops().get(k)
+        if op and apply_ops(d["body"], op) != d["body"]:
+            raise RuntimeError("verify失敗: まだ当てられる差分が残っている")
+        left = [dk for dk in DEAD_KEYS if dk in d["body"]]
+        if left:
+            raise RuntimeError(f"verify失敗: 削除した記事へのリンクが残存 {left}")
+        tags = [h["hashtag"]["name"] for h in d.get("hashtag_notes", [])]
+        ng = [t for t in tags if TAG_NG.match(t)]
+        if ng:
+            raise RuntimeError(f"verify失敗: 17LIVE系タグが残存 {ng}")
         return d
 
     _lm.verify = _verify
