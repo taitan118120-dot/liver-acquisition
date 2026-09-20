@@ -35,7 +35,6 @@ _LIVER_MENU = (
     "「事務所」→ TAITAN PROについて\n"
     "「Pococha」→ ポコチャについて\n"
     "「TikTok」→ TikTok LIVEについて\n"
-    "「イチナナ」→ 17LIVEについて\n"
     "「ダイヤ」→ Pocochaの報酬のしくみ\n"
     "「新人」→ 新人期間のスタートダッシュ\n"
     "「ランク」→ ランクシステム\n"
@@ -81,7 +80,7 @@ STEP_MESSAGES = {
     "welcome": {
         "text": (
             "友だち追加ありがとうございます！\n"
-            "Pococha・TikTok LIVE・17LIVE専門のライバー事務所\n"
+            "Pococha・TikTok LIVE専門のライバー事務所\n"
             "TAITAN PROのマネージャーです 🙌\n\n"
             "最初にひとつだけ教えてください。\n"
             "どちらに興味がありますか？番号で送ってください👇\n\n"
@@ -305,7 +304,7 @@ INTENT_REPLIES = {
         "🎁 まずは友だち追加特典をどうぞ！\n"
         "『ライバー新人期スタートダッシュガイド』\n"
         "（最初の30日でやることを全部まとめた非売品PDF。\n"
-        "Pococha・TikTok LIVE・17LIVEどれでも使えます）\n"
+        "Pococha・TikTok LIVEどちらでも使えます）\n"
         f"▼ こちらから読めます\n{GUIDE_URL}\n\n"
         f"{_LIVER_MENU}\n\n"
         "キーワードを送ってもらえれば、すぐお答えします！\n\n"
@@ -360,7 +359,7 @@ MEETING_NUDGE_INTRO = (
     "🗓 15分だけ、話してみませんか？\n\n"
     "チャットだとどうしても一般論になりますが、\n"
     "通話なら「あなたの場合」をその場で決められます👇\n"
-    "・Pococha / TikTok LIVE / 17LIVE のどれが向いているか\n"
+    "・Pococha / TikTok LIVE のどちらが向いているか\n"
     "・今の生活リズムで、週何日・何時から配信するか\n"
     "・最初の30日（新人期間）に何をするか\n\n"
     "Pocochaの新人期間は、始めた直後だけのボーナスタイムです。\n"
@@ -525,7 +524,7 @@ AUTO_REPLIES = {
         "【デビューまでの流れ】🚀\n\n"
         "① LINEで質問・相談（今ここ！）\n"
         "② LINE通話で15分お話し（カメラオフ・声だけOK）\n"
-        "　→ Pococha・TikTok LIVE・17LIVEから\n"
+        "　→ Pococha・TikTok LIVEから\n"
         "　　あなたに合うアプリを一緒に選びます\n"
         "③ アプリをダウンロード＆プロフィール作り\n"
         "④ マネージャーが横について初配信！\n\n"
@@ -594,7 +593,7 @@ AUTO_REPLIES = {
     ),
     "事務所": (
         "【TAITAN PROについて】🏢\n\n"
-        "Pococha・TikTok LIVE・17LIVE専門のライバー事務所です。\n\n"
+        "Pococha・TikTok LIVE専門のライバー事務所です。\n\n"
         "👑 代表は元Pococha Sランクライバー\n"
         "🏆 ミクチャ8,000人中ミスターコン1位\n"
         "🤝 所属ライバーはPococha・TikTok合わせて200名\n"
@@ -630,28 +629,12 @@ AUTO_REPLIES = {
         "✅ 顔出しなしの配信スタイルも人気\n\n"
         "どれが合う？の目安：\n"
         "🔹 コツコツ安定して積み上げたい → Pococha\n"
-        "🔹 動画も楽しみたい・一発の伸びを狙いたい → TikTok LIVE\n"
-        "🔹 イベントで勝負して駆け上がりたい → 17LIVE\n"
+        "🔹 動画も楽しみたい・一発の伸びを狙いたい → TikTok LIVE\n\n"
         "複数を掛け持ちするライバーもいます。\n\n"
         "TAITAN PROはPococha・TikTok合わせて200名が所属。\n"
         "TikTok LIVEの伸ばし方（配信時間帯・動画との連携など）は\n"
         "所属ライバー限定で個別にサポートしています。\n\n"
         "あなたにはどちらが合うか、「面談」で一緒に選びましょう😊"
-    ),
-    "17live": (
-        "【17LIVE（イチナナ）ってどんなアプリ？】📱\n\n"
-        "世界中で使われている大手ライブ配信アプリです。\n\n"
-        "✅ イベントが豊富で、上位入賞から一気に\n"
-        "　知名度を上げるチャンスがある\n"
-        "✅ 「アーミー」と呼ばれるファンクラブ文化があり、\n"
-        "　リスナーさんとの絆が深い\n"
-        "✅ ギフトが収入の中心で、イベントを頑張るほど伸びるタイプ\n\n"
-        "どれが合う？の目安：\n"
-        "🔹 イベントで勝負して駆け上がりたい → 17LIVE\n"
-        "🔹 コツコツ安定して積み上げたい → Pococha\n"
-        "🔹 拡散力で一気に伸ばしたい → TikTok LIVE\n\n"
-        "TAITAN PROは17LIVEの取り扱いも始めました。\n"
-        "どのアプリがあなたに合うか、「面談」で一緒に選びましょう😊"
     ),
     "ランク": (
         "【Pocochaのランクシステム】👑\n\n"
@@ -708,7 +691,7 @@ AUTO_REPLIES["特典"] = (
     "『ライバー新人期スタートダッシュガイド』\n"
     "最初の30日でやること（準備・初配信・御新規さん対応・ロードマップ）を\n"
     "全部まとめた非売品PDFです。\n"
-    "（Pococha・TikTok LIVE・17LIVEどれでも使えます）\n"
+    "（Pococha・TikTok LIVEどちらでも使えます）\n"
     f"▼ こちらから読めます\n{GUIDE_URL}\n\n"
     "読んで気になったことがあれば、そのまま聞いてくださいね。\n"
     "「面談」と送ってもらえれば、あなたに合わせた\n"
@@ -720,11 +703,6 @@ AUTO_REPLIES["ティックトック"] = AUTO_REPLIES["tiktok"]
 AUTO_REPLIES["てぃっくとっく"] = AUTO_REPLIES["tiktok"]
 AUTO_REPLIES["ポコチャ"] = AUTO_REPLIES["pococha"]
 AUTO_REPLIES["ぽこちゃ"] = AUTO_REPLIES["pococha"]
-# ※「17」単体は日時（17時など）に誤反応するのでキーワードにしない
-AUTO_REPLIES["17ライブ"] = AUTO_REPLIES["17live"]
-AUTO_REPLIES["１７ライブ"] = AUTO_REPLIES["17live"]
-AUTO_REPLIES["イチナナ"] = AUTO_REPLIES["17live"]
-AUTO_REPLIES["いちなな"] = AUTO_REPLIES["17live"]
 AUTO_REPLIES["ガイド"] = AUTO_REPLIES["特典"]
 AUTO_REPLIES["pdf"] = AUTO_REPLIES["特典"]
 AUTO_REPLIES["プレゼント"] = AUTO_REPLIES["特典"]
@@ -827,7 +805,7 @@ AGENCY_REPLIES = {
     ),
     "事務所": (
         "【TAITAN PROについて】🏢\n\n"
-        "Pococha・TikTok LIVE・17LIVE専門のライバー事務所です。\n\n"
+        "Pococha・TikTok LIVE専門のライバー事務所です。\n\n"
         "👑 代表は元Pococha Sランクライバー（Pococha歴4年）\n"
         "🏆 ミクチャ8,000人中ミスターコン1位\n"
         "🤝 所属ライバーはPococha・TikTok合わせて200名\n"
