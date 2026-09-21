@@ -132,6 +132,7 @@ X @taitan_LIVER の固定ポスト（tweet id `2037849449498837271`・2026-03-28
 別案：`たいたん☕️｜ライバー事務所TAITAN PRO代表`
 
 ### 自己紹介（bio・150字制限内／約136字）
+⚠️ **2026-09-21時点で実物は未反映（17LIVE入りのまま）。** ThreadsのAPIはプロフィール更新に対応しておらず、Chrome拡張からも `threads.com` / `threads.net` は `Navigation to this domain is not allowed` で開けない。**下のフェンスの文面をThreadsアプリ/Webのプロフィール編集に貼るのは手作業になる。**
 ```canonical:threads.bio
 元Pococha S帯｜ライバー事務所「TAITAN PRO」代表
 Pococha・TikTok LIVE対応／200名所属・還元率100%+α
@@ -155,6 +156,8 @@ https://lin.ee/xchCfdn
 **exit 1 にならない＝番犬は毎日鳴くだけで誰も直さない**状態が 2026-08-08 の投稿から続いていた
 （[[feedback_watchdog_autoclose]] の「直ったら閉じるまでセット」に反する）。
 新しい数字を作らず**数量表現ごと落として**閉じた。旧文面での投稿 media_id は `18138229861578260`。
+
+**2026-09-21：17LIVE撤去版を投稿済み（media_id `18073537076474875`）。** ⚠️ **固定はまだ。Threadsアプリでこの投稿の「…」→「固定する」を選ぶ必要がある**（固定APIが無いので自動化不可）。旧固定ポスト（17LIVE入り・media_id `18019248593879908`）は固定を外して削除する。
 
 **反映手順（文面を変えるとき）**：`social_pinned_publish.py` は下のフェンスを読むだけ（スクリプト側に文面は無い）。
 **このファイルを直したら** `gh workflow run social_pinned_publish.yml -f action=post-threads -f dry_run=false` を実行し、
