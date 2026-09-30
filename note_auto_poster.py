@@ -111,24 +111,44 @@ def get_hashtags_for_article(article_num):
         except ImportError:
             base_tags = ["ライバー", "ライブ配信", "副業", "Pococha"]
 
-    # Note検索で母集団が大きいタグを混ぜて露出を広げる
-    # 固有タグを先頭に残しつつ、10枠を汎用タグで埋める
-    import random as _random
-    general_pool = [
-        "副業", "お金の勉強", "仕事について話そう", "毎日note",
-        "働き方", "ビジネス", "スキルアップ", "キャリア",
-        "最近の学び", "在宅ワーク",
-    ]
-    existing = {t for t in base_tags}
-    extras = [t for t in general_pool if t not in existing]
-    _random.shuffle(extras)
+    return mix_native_tags(base_tags, seed=article_num)
 
-    merged = list(base_tags)
-    for t in extras:
-        if len(merged) >= 10:
+
+# noteのスキは「公開から1時間以内」に44%が付く＝新着タグフィードを回っている
+# note利用者（副業・仕事・学び系の書き手）が押している（2026-09-30 実測・直近75日66本）。
+# その人たちが見ているのは下のタグで、配信の内輪タグ（配信のコツ/継続/マネジメント…）ではない。
+# 以前は「10本に満たない分だけ」汎用タグで埋めていたので、HASHTAG_MAP を10本
+# 書き切った記事（#171以降）にはこの枠が1本も入らなくなっていた。
+NATIVE_TAG_SLOTS = 3
+NATIVE_TAGS_COMMON = ["最近の学び", "仕事について話そう", "キャリア", "お金の勉強"]
+NATIVE_TAGS_LIVER = ["在宅ワーク", "スマホ副業", "稼ぎ方"]   # 代理店記事には合わないので分ける
+# 枠を空けるときに先に落とす固有タグ（スキ中央値が1前後だったもの。左ほど先に落とす）
+LOW_VALUE_TAGS = ["毎日note", "継続", "配信のコツ", "独立", "マネジメント",
+                  "働き方", "ビジネス", "話し方", "メンタル", "初心者"]
+
+
+def mix_native_tags(tags, seed=None):
+    """固有タグ（検索・分類用）を先頭に残しつつ、NATIVE_TAG_SLOTS 本は必ず
+    note利用者が回遊しているタグにする。seed（記事番号）で選択を固定し、
+    poster と ensure_tags が同じ記事に別のタグを付けないようにする。"""
+    import random as _random
+    tags = [t for i, t in enumerate(tags) if t and t not in tags[:i]]
+    pool = list(NATIVE_TAGS_COMMON)
+    if not any("代理店" in t for t in tags):
+        pool += NATIVE_TAGS_LIVER
+    native = [t for t in tags if t in pool][:NATIVE_TAG_SLOTS]
+    topical = [t for t in tags if t not in native]
+    extras = [t for t in pool if t not in native]
+    _random.Random(seed).shuffle(extras)
+    native += extras[:NATIVE_TAG_SLOTS - len(native)]
+
+    room = 10 - len(native)
+    for low in LOW_VALUE_TAGS:
+        if len(topical) <= room:
             break
-        merged.append(t)
-    return merged[:10]
+        if low in topical:
+            topical.remove(low)
+    return topical[:room] + native
 
 
 def get_article_file(article_num):

@@ -312,7 +312,13 @@ def generate_hashtags(title, article_num=None):
             break
         if t not in merged:
             merged.append(t)
-    return merged[:TARGET_TAGS]
+    # トピック語を先頭に足したぶん、poster が確保した note回遊タグの枠が
+    # [:TARGET_TAGS] で切り落とされる（#182 で実際に発生）。最後にもう一度確保する。
+    try:
+        from note_auto_poster import mix_native_tags
+        return mix_native_tags(merged, seed=article_num)[:TARGET_TAGS]
+    except Exception:
+        return merged[:TARGET_TAGS]
 
 
 # ── Playwright UI でタグを付与（fetch-PUTは効かないため必須）──
