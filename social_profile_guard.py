@@ -573,6 +573,13 @@ def print_canon(canon, problems, warns=()):
               + (f"\n     → {w['hit']}" if w["hit"] else ""))
 
 
+# Threads bio を検査しない理由。正本 canonical:threads.bio の自己検査は続ける。
+THREADS_BIO_SUSPENDED = (
+    "2026-10-01 ユーザー判断で検査対象外。実物に17LIVEが残っているが、Threads APIは"
+    "プロフィール更新に非対応で手作業でしか直せず、直さないことにした。"
+    "再開するなら sources の Threads 行に bio を戻す")
+
+
 # fetch_x() が返すエラー文言の先頭。402 かどうかはここから読む。
 X_STATUS_RE = re.compile(r"^X API (\d{3})\b")
 
@@ -632,14 +639,18 @@ def main():
     sources = [
         ("X @taitan_LIVER", "x", fetch_x, "taitan_LIVER",
          ["name", "bio", "link"], ["bio", "pinned"]),
+        # Threads の bio は 2026-10-01 に走査対象から外した（THREADS_BIO_SUSPENDED）。
+        # APIで更新できず手作業でしか直せない17LIVE残りを、ユーザー判断で直さないことにした。
+        # 外すのは bio だけで、name の突合とトークンの別アカウント検知は続ける。
         ("Threads @taitanblog", "threads", fetch_threads, "taitanblog",
-         ["name", "bio"], ["bio"]),
+         ["name"], []),
         # 事務所IG @taitan_pro7 は 2026-09-16 に走査対象から外した
         # （[[project_ig_retired]]。アカウント消滅＋IG自動化の恒久停止）。
     ]
 
-    # 402（X）のようにループ中で足すものがあるので、ここで用意しておく
-    suspended = []
+    # 402（X）のようにループ中で足すものがあるので、ここで用意しておく。
+    # 意図的に外した項目も「見ていない」ことは同じなので、毎ラン別枠に出す。
+    suspended = [{"media": "Threads @taitanblog / bio", "reason": THREADS_BIO_SUSPENDED}]
 
     for label, key, fetch, want_user, cmp_fields, scan_fields in sources:
         live, err = fetch()
