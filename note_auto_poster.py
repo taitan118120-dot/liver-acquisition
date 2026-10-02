@@ -212,6 +212,24 @@ def get_unpublished_queue():
     return queue
 
 
+# 記事末のフォロー依頼。2026-10-02時点でフォロワー30人・173本で、本文のどこにも
+# フォローを頼む一文が無かった。外部スキの主はnote利用者（新着タグ経由）なので、
+# 読み終えたその人にフォローを頼む。LINE導線が主なのでLINE CTAの後ろ＝最末尾に置く。
+FOLLOW_ASK_MARK = "noteのフォロー"
+FOLLOW_ASK = (
+    "---\n\n"
+    "📝 この記事が役に立ったら、**noteのフォロー**をお願いします。"
+    "ライブ配信で伸びるためのコツと、事務所運営の現場の話を続けて書いていきます。"
+    "フォローしておくと、新しい記事がタイムラインに届きます。"
+)
+
+
+def add_follow_ask(body):
+    if FOLLOW_ASK_MARK in body:
+        return body
+    return body.rstrip() + "\n\n" + FOLLOW_ASK
+
+
 def format_body_for_note(body):
     try:
         sys.path.insert(0, BASE_DIR)
@@ -220,7 +238,7 @@ def format_body_for_note(body):
         body = format_for_note(body)
     except ImportError:
         pass
-    return body.strip()
+    return add_follow_ask(body.strip())
 
 
 def log_result(article_num, title, url, success, error_msg=""):
