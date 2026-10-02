@@ -44,11 +44,32 @@ REPLACEMENTS = [
 ]
 
 
+# 2026-10-02 ユーザー確定: 所属300名・提携20代理店に増加（表示名も追従）。
+REPLACEMENTS += [
+    ("＠200名所属", "＠300名所属"),
+    ("@200名所属", "@300名所属"),
+]
+
+# 自己紹介の正本（2026-10-02）。note の自己紹介は140文字上限で、旧文（117字）に
+# 「何を書いているか・フォローすると何が届くか」を足すと超えるので全体を書き直した。
+# 「毎日更新」は note_daily_post.yml の毎日cronが根拠。止めたらここも直す。
+PROFILE_MAX = 140
+PROFILE = ("ポコチャ元S帯・ミクチャミスターコンGP（8千人の頂点）。"
+           "所属300名・20の配信代理店と提携するライブ配信事務所の代表。"
+           "Pococha・TikTok LIVEで伸びる配信のコツと、事務所運営のリアルを毎日更新中。"
+           "フォローすると新着がタイムラインに届きます📝")
+assert len(PROFILE) <= PROFILE_MAX, len(PROFILE)
+
+
 def transform(text: str) -> str:
     out = text
     for old, new in REPLACEMENTS:
         out = out.replace(old, new)
     return out
+
+
+def transform_profile(text: str) -> str:
+    return PROFILE
 
 
 def fetch_current():
@@ -106,7 +127,7 @@ def main():
     if args.show:
         return 0
 
-    new_nick, new_profile = transform(nickname), transform(profile)
+    new_nick, new_profile = transform(nickname), transform_profile(profile)
     print("\n── 変換後 ──")
     print("nickname:", new_nick)
     print("profile :", new_profile)
