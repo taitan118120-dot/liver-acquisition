@@ -42,7 +42,9 @@ permissions:
 jobs:
   threads-post:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    # 早着した回は枠の開始まで最大5時間半 sleep する（threads_slot.WAIT_LOOKAHEAD_MIN）。
+    # ホストランナーの上限6時間に収まるように取る。
+    timeout-minutes: 355
     steps:
       # ゲート判定までは履歴を引かない。30分おきに起動するので、150MB超の
       # パックを毎回フルcloneすると無駄が大きい。通過した回だけ unshallow する。
@@ -70,6 +72,18 @@ jobs:
         if: steps.gate.outputs.should_post != 'true'
         shell: bash
         run: echo "${{ steps.gate.outputs.reason }} → 今回は投稿しません"
+
+      # cron は30分おきでも実際の起動は3〜5時間おきに間引かれるので、枠の手前に
+      # 来た回はここで枠の開始まで待つ。待たないと night 枠(1時間50分)は半分の日で
+      # 素通りされる（2026-09-20〜10-02 は13日中7日 night 欠損）。
+      # 待っている間に起動した回は concurrency で後ろに並び、こちらが投稿した後に
+      # 「枠消化済み」で抜けるので二重投稿にはならない。
+      - name: 枠の開始まで待機（早着した回のみ）
+        if: steps.gate.outputs.should_post == 'true' && steps.gate.outputs.wait_sec != '' && steps.gate.outputs.wait_sec != '0'
+        shell: bash
+        run: |
+          echo "${{ steps.gate.outputs.wait_sec }}秒待機します"
+          sleep ${{ steps.gate.outputs.wait_sec }}
 
       - uses: actions/setup-python@v6
         if: steps.gate.outputs.should_post == 'true'

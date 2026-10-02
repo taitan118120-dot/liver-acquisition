@@ -233,7 +233,15 @@ def _recent_angles(posts, window=MIX_WINDOW):
     return [p["angle"] for p in done[-window:]]
 
 
-def _pick_by_mix(candidates, posts):
+# 枠ごとに優先する型。9/10以降の実測（中央views）は
+#   night: story 118 / agency 22   morning: story 33 / agency 12
+# で、いちばん伸びる型をいちばん伸びる枠に置いたときの差が最も大きい。
+# night を story に固定すると story は1日1本＝約5割になり、残りの
+# morning を下の不足計算に任せれば TARGET_MIX にほぼ収まる。
+SLOT_PREFERRED_ANGLE = {"night": "story"}
+
+
+def _pick_by_mix(candidates, posts, slot=None):
     """TARGET_MIX から最も不足している型を選ぶ。同じ型の中ではキュー順（＝FIFO）。
 
     以前はキュー全体を素通しのFIFOで消化していた。生成側の配分をstory主体に
@@ -248,6 +256,11 @@ def _pick_by_mix(candidates, posts):
     known = {a: v for a, v in by_angle.items() if a in TARGET_MIX}
     if not known:
         return candidates[0]  # angle不明（手動投入など）はFIFOのまま
+
+    pref = SLOT_PREFERRED_ANGLE.get(slot or "")
+    if pref in known:
+        print(f"  [MIX] {slot}枠は {pref} を優先")
+        return known[pref][0]
 
     recent = _recent_angles(posts)
     total = len(recent) + 1  # これから出す1本を含めた分母で評価する
@@ -283,6 +296,7 @@ def cmd_next(dry_run=False, require_reply_link=False, slot_gate=False):
     （ゲートを通さずに --next を直叩きすると1日3本目が出てしまう）。
     """
     posts = _load_posts()
+    slot = None
     if slot_gate:
         try:
             from threads_slot import decide
@@ -331,7 +345,7 @@ def cmd_next(dry_run=False, require_reply_link=False, slot_gate=False):
     if blocked:
         print(f"  [BLOCKED] 計{len(blocked)}本を投稿対象から除外しました")
 
-    target = _pick_by_mix(candidates, posts) if candidates else None
+    target = _pick_by_mix(candidates, posts, slot) if candidates else None
 
     if target is None:
         if blocked and not require_reply_link:

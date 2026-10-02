@@ -54,6 +54,21 @@ SLOTS = {
 # 出しすぎないための最後の歯止め。
 MAX_PER_DAY = 2
 
+# ■ 早着なら待つ（2026-10-02 追加）
+# cron は30分おき(1日48回)に置いているが、GitHub は高頻度 schedule を間引くので
+# 実際に起動するのは1日4〜7回・3〜5時間おきだった。幅1時間50分の night 枠は
+# この間隔だと素通りされ、9/20〜10/2 の13日で night 枠に出せたのは6日だけ。
+# しかも 9/10以降の実測は night の story 中央118views / morning の story 33 と
+# 夜のほうが3倍以上強い ＝ いちばん効く枠ばかり取りこぼしていた。
+# 対策: 枠の開始前 WAIT_LOOKAHEAD_MIN 以内に起動した回は、ジョブ内で
+# WAIT_TARGET まで sleep してから投稿する（PUBLICリポなので待ち時間も無料）。
+# ホストランナーのジョブ上限は6時間なので、待ちは5時間半までに抑える。
+WAIT_TARGET = {
+    "morning": "09:05",  # 9時台 中央43 / 10時台 26
+    "night": "22:00",    # 22時台 中央64 / 21時台 25
+}
+WAIT_LOOKAHEAD_MIN = 330
+
 
 def jst_now():
     return datetime.now(timezone.utc).astimezone(JST)
@@ -140,6 +155,30 @@ def decide(posts=None, now_jst=None):
     return True, slot, f"{stamp} は {slot} 枠（本日{len(done)}本投稿済み）"
 
 
+def plan_wait(posts=None, now_jst=None):
+    """枠外に起動した回が「待てば次の枠に間に合う」なら (slot, 待ち秒数) を返す。
+
+    待つ対象は、今日まだ消化していない枠のうち開始前 WAIT_LOOKAHEAD_MIN 以内の
+    もの。日付をまたぐ待ち（23:40以降→翌朝）は、翌朝の判定が「今日」基準で
+    ずれるので扱わない（00:00以降に起動した回が拾う）。
+    """
+    posts = load_posts() if posts is None else posts
+    now_jst = now_jst or jst_now()
+    done = posted_today(posts, now_jst)
+    if len(done) >= MAX_PER_DAY:
+        return None, 0
+    used = {s for s, _dt in done}
+    for slot, target in WAIT_TARGET.items():
+        if slot in used:
+            continue
+        hh, mm = map(int, target.split(":"))
+        at = now_jst.replace(hour=hh, minute=mm, second=0, microsecond=0)
+        wait = (at - now_jst).total_seconds()
+        if 0 < wait <= WAIT_LOOKAHEAD_MIN * 60:
+            return slot, int(wait)
+    return None, 0
+
+
 def main():
     ap = argparse.ArgumentParser(description="Threads 投稿ウィンドウ判定")
     ap.add_argument("--check", action="store_true", help="判定結果を表示")
@@ -147,7 +186,14 @@ def main():
                     help="GITHUB_OUTPUT に should_post / slot を書く")
     ap.parse_args()
 
-    should, slot, reason = decide()
+    posts = load_posts()
+    should, slot, reason = decide(posts)
+    wait_sec = 0
+    if not should and slot is None:
+        wslot, wait_sec = plan_wait(posts)
+        if wslot:
+            should, slot = True, wslot
+            reason += f" → {wslot}枠の {WAIT_TARGET[wslot]} まで {wait_sec // 60}分待って投稿"
     print(f"[GATE] should_post={str(should).lower()} slot={slot or '-'} :: {reason}")
 
     out = os.environ.get("GITHUB_OUTPUT")
@@ -155,6 +201,7 @@ def main():
         with open(out, "a", encoding="utf-8") as f:
             f.write(f"should_post={str(should).lower()}\n")
             f.write(f"slot={slot or ''}\n")
+            f.write(f"wait_sec={wait_sec}\n")
             f.write(f"reason={reason}\n")
 
 

@@ -381,6 +381,23 @@ def _slot_report(rows, recent_n=30):
     else:
         print("  → 着弾時刻は狙いどおり")
 
+    # 「出た投稿が枠内か」だけ見ていると、枠そのものを取りこぼした日が見えない。
+    # 2026-09-20〜10-02 は night 欠損が13日中7日あったのに、上の判定は
+    # 「狙いどおり」と出し続けていた。枠ごとの充足日数も出す。
+    days = 14
+    last = dated[-1][0].date()
+    filled = defaultdict(set)
+    for dt, _r in dated:
+        s = slot_of(dt)
+        if s and (last - dt.date()).days < days:
+            filled[s].add(dt.date())
+    miss = {s: days - len(filled[s]) for s in SLOTS}
+    print(f"  直近{days}日の枠充足: " + " / ".join(
+        f"{s} {days - m}/{days}日" for s, m in miss.items()))
+    if any(m > days * 0.2 for m in miss.values()):
+        print("  → 要是正: 枠を取りこぼしている。Actions の実起動間隔と"
+              " threads_slot.WAIT_LOOKAHEAD_MIN を確認する")
+
 
 def report(rows):
     rows = [r for r in rows if r["views"] > 0]
