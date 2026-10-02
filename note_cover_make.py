@@ -436,7 +436,7 @@ def build(num, regenerate_bg=False, seed=None):
     tx = margin + 96
     draw.text((tx, badge_y + 8), "TAITAN PRO", font=font(32), fill=WHITE,
               stroke_width=4, stroke_fill=(6, 9, 20))
-    draw.text((tx, badge_y + 48), "所属200名のライバー事務所", font=font(24), fill=SUB,
+    draw.text((tx, badge_y + 48), "所属300名のライバー事務所", font=font(24), fill=SUB,
               stroke_width=4, stroke_fill=(6, 9, 20))
 
     out = output_path(num)

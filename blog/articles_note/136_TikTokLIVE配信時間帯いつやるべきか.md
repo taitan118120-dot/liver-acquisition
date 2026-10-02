@@ -125,7 +125,7 @@ TikTok は動画から人が流れてくるプラットフォームです。**�
 ## 関連記事
 
 - [TikTok LIVE 収益化完全ガイド｜条件・ギフト換金率・月収目安・他アプリ比較](https://note.com/taitan_118/n/nadf7bf475ea9)
-- [TikTok LIVE フォロワー1000人を集める方法｜事務所200名の実データ全公開](https://note.com/taitan_118/n/ndc2f493ebdde)
+- [TikTok LIVE フォロワー1000人を集める方法｜TikTok配信ライバー約50名の実データ全公開](https://note.com/taitan_118/n/ndc2f493ebdde)
 - [ライブ配信のゴールデンタイム完全ガイド｜「リスナーさんが集まる時間帯」を全公開](https://note.com/taitan_118/n/ne31d02263e2f)
 
 ---
@@ -139,7 +139,7 @@ TikTok は動画から人が流れてくるプラットフォームです。**�
 | ノルマ | なし |
 | 対象 | 未経験OK・副業OK・顔出しなしOK |
 | サポート | 専属マネージャーがマンツーマン |
-| 所属ライバー数 | 200名（Pococha・TikTok合わせて） |
+| 所属ライバー数 | 300名（Pococha・TikTok合わせて） |
 
 ---
 

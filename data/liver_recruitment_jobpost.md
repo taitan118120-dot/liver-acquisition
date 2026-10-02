@@ -6,7 +6,7 @@
 応募導線：公式LINE `https://lin.ee/xchCfdn`（または beginner LP → LINE）
 受け皿LP：https://taitan-pro-lp.netlify.app/beginner/
 
-> ⚠️ 使ってよい数字は確定ファクトのみ（還元率100%+α／所属200名（Pococha・TikTok合わせて）／対応は Pococha・TikTok LIVE）。
+> ⚠️ 使ってよい数字は確定ファクトのみ（還元率100%+α／所属300名（Pococha・TikTok合わせて）／対応は Pococha・TikTok LIVE）。
 > ※2026-09-20に17LIVEの取り扱いを終了。対応プラットフォームは Pococha・TikTok LIVE の2つだけ。
 > 「必ず月◯万」「絶対稼げる」等の断定・誇大は求人媒体規約でもNG。出来高（ギフト報酬）であることを正直に書く。
 
@@ -33,7 +33,7 @@
 
 ### TAITAN PRO の特徴
 - **還元率100%+α**
-- **所属ライバー200名**（Pococha・TikTok）。未経験スタートの所属者も多数
+- **所属ライバー300名**（Pococha・TikTok）。未経験スタートの所属者も多数
 - **代表は元Pococha Sランク**。現役目線で「伸びる配信」を具体的にサポート
 - マニュアル・ツール・1on1サポート完備。一人で抱え込まずに始められます
 
