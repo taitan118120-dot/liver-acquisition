@@ -255,14 +255,23 @@ def fetch_bg(num, seed, retries=5):
     raise RuntimeError("背景画像を取得できませんでした")
 
 
+def strip_watermark(img, ratio=0.08):
+    """Pollinations が右下に焼き込む「pollinations.ai」の透かしを下端ごと落とす。
+
+    nologo=true が効かなくなり（2026-10 確認）、focus_crop の左右反転で
+    左下に鏡文字として出ていた。下端 8% を切れば透かしの帯ごと消える。
+    """
+    return img.crop((0, 0, img.width, int(img.height * (1 - ratio))))
+
+
 def ensure_bg(num, regenerate=False, seed=None):
     os.makedirs(BG_DIR, exist_ok=True)
     path = os.path.join(BG_DIR, f"{num:02d}.jpg")
     if os.path.exists(path) and not regenerate:
-        return Image.open(path).convert("RGB")
+        return strip_watermark(Image.open(path).convert("RGB"))
     img = fetch_bg(num, seed if seed is not None else 1000 + num)
     img.save(path, "JPEG", quality=88, optimize=True)
-    return img
+    return strip_watermark(img)
 
 
 # ── 合成 ──────────────────────────────────────────────
