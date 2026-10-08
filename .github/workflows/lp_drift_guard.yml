@@ -18,8 +18,16 @@ name: LPドリフト番犬
 # 動作: 毎日1回 lp_drift_guard.py を実行し、
 #   - 4ページ（beginner/agency/liver/sidejob）を2サイトから取得して突合
 #   - -targets の実物に確定ファクト違反（facts_patterns.py が正本）が無いか走査
+#   - 両サイトの / と各ページの表示素材（同一オリジンの CSS/JS/画像）が200か確認（2026-10-08 追加）
 #   - ドリフト/違反があればランを赤にし、Issueを作成/更新して通知
 #   - **そのページが実際に一致に戻ったことを確認してから** Issueを自動クローズする
+#
+# 【2026-10-08 追加】表示素材チェック。lp/netlify.toml の / → /beginner/index.html が
+# status=200 の書き換えだったため、トップでは相対 style.css が /style.css を見て404になり、
+# 2026-07-20〜10-08 ずっとCSSなしの素のHTMLで表示されていた。HTMLは200なので
+# link_guard（URLの生死）も、本文突合（/beginner/ 等）も緑のままだった。
+# 素材の404は本文ドリフトとは直し方が違う（netlify.toml・相対パスの問題）ので、
+# Issueは別タイトルで立て、別マーカーで復旧判定する。
 
 on:
   schedule:
@@ -44,9 +52,13 @@ jobs:
       - name: 依存パッケージインストール
         run: pip install requests
 
-      - name: 2サイトのLP本文を突合
+      - name: 2サイトのLP本文を突合＋表示素材を確認
         id: guard
-        run: python3 lp_drift_guard.py
+        # data/ にはリポジトリにコミット済みの古いレポートがある。スクリプトが途中で
+        # 落ちたときにそれを読んで「直った」と判定しないよう、先に消してから走らせる。
+        run: |
+          rm -f data/lp_drift_guard_report.json
+          python3 lp_drift_guard.py
 
       - name: 検知 → Issue通知
         if: failure()
@@ -54,11 +66,62 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const title = 'LP本文ドリフト検知（LPドリフト番犬）';
-            let report = {verified: [], drift: [], violations: [], pages: []};
+            const guard = require('./.github/scripts/guard_comment.js');
+            let report = null;
             try {
               report = JSON.parse(fs.readFileSync('data/lp_drift_guard_report.json', 'utf8'));
             } catch (e) {}
+
+            // ── 表示素材の404（2026-10-08 追加）: 本文ドリフトとは別Issue ──
+            const broken = (report && report.assets_broken) || [];
+            if (broken.length) {
+              const aTitle = 'LP表示素材の404検知（LPドリフト番犬）';
+              const aLines = broken.map(b =>
+                b.kind === 'page'
+                  ? `- \`${b.entry}\` — ${b.reason}`
+                  : `- \`${b.entry}\`（最終URL ${b.final_url}）— ${b.kind}: \`${b.asset}\` が ${b.reason}`
+              ).join('\n');
+              const entries = [...new Set(broken.map(b => b.entry))];
+              const aMarker = `<!-- lp-drift-guard-assets: ${entries.join(',')} -->`;
+              const aBody = [
+                '## LP表示素材の404検知',
+                '',
+                '公開LPのHTML自体は返っていますが、ページが読むCSS/JS/画像が取得できません。',
+                '**訪問者にはレイアウト崩れ（CSSなしの素のHTML等）で見えています。**',
+                '',
+                `確認できた入口: ${(report.asset_verified || []).length}/${(report.asset_entries || []).length}`,
+                '',
+                '## 取得できない素材',
+                aLines,
+                '',
+                '## よくある原因と対処',
+                '- **`lp/netlify.toml` の書き換え（status=200）**: URLが元のまま別ディレクトリのHTMLを返すと、',
+                '  相対パスの素材が違う場所に解決される（2026-07〜10 のトップ崩れはこれ）。リダイレクト（301）にする。',
+                '- **素材ファイルの削除・改名**: HTML側の参照を直すか、ファイルを戻す。',
+                '- **-targets だけ壊れている**: 手動デプロイ漏れ。`./scripts/lp_targets_deploy.sh`',
+                '- 「Content-Type が text/html」: 素材のパスがページにリダイレクト／書き換えされている。',
+                '',
+                '直したら `python3 lp_drift_guard.py` がローカルで緑になることを確認してください。',
+                '次回のランが、上記の入口を実際に取得して素材が全部200に戻ったことを確認してから自動クローズします。',
+                '',
+                '---',
+                '_このIssueは `.github/workflows/lp_drift_guard.yml` により自動生成されました。_',
+                aMarker,
+              ].join('\n');
+              await guard.notify({
+                github, context, title: aTitle, body: aBody,
+                recomment: `再検知: ${new Date().toISOString()}\n\n${aLines}\n\n${aMarker}`,
+              });
+            }
+
+            // ── 本文ドリフト／確定ファクト違反 ──
+            // レポート自体が無い（スクリプトが落ちた）ときもこちらで鳴く（従来どおり）。
+            const hasDrift = !report
+              || (report.drift || []).length > 0
+              || (report.violations || []).length > 0;
+            if (!hasDrift) return;
+            report = report || {verified: [], drift: [], violations: [], pages: []};
+            const title = 'LP本文ドリフト検知（LPドリフト番犬）';
 
             const driftLines = (report.drift || []).map(d =>
               `- \`/${d.page}/\` — ${d.lines}行が食い違い\n\n` +
@@ -131,59 +194,29 @@ jobs:
 
             // 同じドリフトが直るまでは毎ラン赤になる。そのたびに同内容のコメントを積むと
             // メール通知だけが毎日増えるので、内容が変わったときだけ鳴く（赤は維持）。
-            const guard = require('./.github/scripts/guard_comment.js');
             await guard.notify({
               github, context, title, body,
               recomment: `再検知: ${new Date().toISOString()}\n\n${driftLines || ngLines}\n\n${marker}`,
             });
 
-      - name: ドリフト解消 → Issueを自動クローズ
+      - name: 復旧確認 → Issueを自動クローズ
         # ⚠️ 「緑だった」だけでは閉じない（[[feedback_watchdog_autoclose]]）。
         # これは差分型の番犬なので、緑には2つの意味がありうる:
-        #   (a) 2サイトの本文が実際に一致した
-        #   (b) そもそも突合できていない（取得失敗・PAGES から消えた・ページが増えた）
+        #   (a) 2サイトの本文が実際に一致した／素材が実際に全部200だった
+        #   (b) そもそも確認できていない（取得失敗・PAGES から消えた・ページが増えた）
         # (b) で閉じると「直っていないのに鳴きやんだ」になる。lp_drift_guard.py 側は
-        # 取得失敗を必ず赤にしてあるが、ここでも Issue に埋めた lp-drift-guard-pages
-        # マーカーを読み、**そのページが report.verified に載っていて、かつ drift にも
-        # violations にも出ていない**ことを確認できたときだけ閉じる。
-        if: success()
+        # 取得失敗を必ず赤にしてあるが、ここでも Issue に埋めたマーカーを読み、
+        # **その対象が verified 側に載っていて、かつ不良側に出ていない**ことを確認できたときだけ閉じる。
+        #
+        # always() にしているのは、2本のIssueの片方だけが直ったケースのため
+        # （例: 素材は直ったがドリフトはまだ → ランは赤でも素材Issueは閉じてよい）。
+        # 判定はレポートの中身だけで行い、ランの色には依存しない。レポートは実行前に
+        # 消しているので、スクリプトが落ちたランでは何も閉じない。
+        if: always()
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const title = 'LP本文ドリフト検知（LPドリフト番犬）';
-            const issues = await github.paginate(github.rest.issues.listForRepo, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-              per_page: 100,
-            });
-            const match = issues.find(i => i.title === title);
-            if (!match) return;
-
-            // 本文と全コメントからマーカーを集める（再検知でページが増えることがある）。
-            const comments = await github.paginate(github.rest.issues.listComments, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: match.number,
-              per_page: 100,
-            });
-            const texts = [match.body || '', ...comments.map(c => c.body || '')];
-            const re = /<!-- lp-drift-guard-pages: ([^>]*) -->/g;
-            const wanted = new Set();
-            for (const t of texts) {
-              for (const m of t.matchAll(re)) {
-                for (const p of m[1].split(',').map(s => s.trim()).filter(Boolean)) {
-                  wanted.add(p);
-                }
-              }
-            }
-            if (wanted.size === 0) {
-              // マーカーの無い（手動作成・旧形式の）Issueは機械判定できないので触らない。
-              core.info('復旧判定用のマーカーが無いIssueなので自動クローズしません。');
-              return;
-            }
-
             let report;
             try {
               report = JSON.parse(fs.readFileSync('data/lp_drift_guard_report.json', 'utf8'));
@@ -191,33 +224,84 @@ jobs:
               core.info(`レポートを読めませんでした（${e.message}）。自動クローズしません。`);
               return;
             }
-            const verified = new Set(report.verified || []);
-            const stillBad = new Set([
-              ...(report.drift || []).map(d => d.page),
-              ...(report.violations || []).map(v => v.page),
-            ]);
-            const unresolved = [...wanted].filter(p => !verified.has(p) || stillBad.has(p));
-            if (unresolved.length) {
-              core.info(`未確認/未復旧のページがあるので閉じません: ${unresolved.join(', ')}`);
-              return;
-            }
-
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            await github.rest.issues.createComment({
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: match.number,
-              body: [
-                `復旧を確認: ${new Date().toISOString()} のランで、食い違っていた ${wanted.size} ページ`
-                + `（${[...wanted].map(p => '`/' + p + '/`').join(', ')}）を2サイトから実際に取得し、`
-                + `本文一致・確定ファクト違反なしでした。自動クローズします。`,
-                '',
-                `- ラン: ${runUrl}`,
-              ].join('\n'),
+              state: 'open',
+              per_page: 100,
             });
-            await github.rest.issues.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: match.number,
-              state: 'closed',
-            });
+
+            const targets = [
+              {
+                title: 'LP本文ドリフト検知（LPドリフト番犬）',
+                markerName: 'lp-drift-guard-pages',
+                verified: new Set(report.verified || []),
+                stillBad: new Set([
+                  ...(report.drift || []).map(d => d.page),
+                  ...(report.violations || []).map(v => v.page),
+                ]),
+                closing: (w) => `食い違っていた ${w.length} ページ`
+                  + `（${w.map(p => '`/' + p + '/`').join(', ')}）を2サイトから実際に取得し、`
+                  + `本文一致・確定ファクト違反なしでした。自動クローズします。`,
+              },
+              {
+                title: 'LP表示素材の404検知（LPドリフト番犬）',
+                markerName: 'lp-drift-guard-assets',
+                verified: new Set(report.asset_verified || []),
+                stillBad: new Set((report.assets_broken || []).map(b => b.entry)),
+                closing: (w) => `素材が取得できなかった ${w.length} 入口`
+                  + `（${w.map(p => '`' + p + '`').join(', ')}）を実際に取得し、`
+                  + `同一オリジンの CSS/JS/画像 がすべて200でした。自動クローズします。`,
+              },
+            ];
+
+            for (const t of targets) {
+              const match = issues.find(i => i.title === t.title);
+              if (!match) continue;
+
+              // 本文と全コメントからマーカーを集める（再検知で対象が増えることがある）。
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: match.number,
+                per_page: 100,
+              });
+              const texts = [match.body || '', ...comments.map(c => c.body || '')];
+              const re = new RegExp(`<!-- ${t.markerName}: ([^>]*) -->`, 'g');
+              const wanted = new Set();
+              for (const tx of texts) {
+                for (const m of tx.matchAll(re)) {
+                  for (const p of m[1].split(',').map(s => s.trim()).filter(Boolean)) {
+                    wanted.add(p);
+                  }
+                }
+              }
+              if (wanted.size === 0) {
+                // マーカーの無い（手動作成・旧形式の）Issueは機械判定できないので触らない。
+                core.info(`#${match.number}: 復旧判定用のマーカーが無いので自動クローズしません。`);
+                continue;
+              }
+              const unresolved = [...wanted].filter(p => !t.verified.has(p) || t.stillBad.has(p));
+              if (unresolved.length) {
+                core.info(`#${match.number}: 未確認/未復旧があるので閉じません: ${unresolved.join(', ')}`);
+                continue;
+              }
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: match.number,
+                body: [
+                  `復旧を確認: ${new Date().toISOString()} のランで、${t.closing([...wanted])}`,
+                  '',
+                  `- ラン: ${runUrl}`,
+                ].join('\n'),
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: match.number,
+                state: 'closed',
+              });
+            }
