@@ -8,10 +8,16 @@
   # そのため ref が使えないときは必ずビルドする（非0で終わる）ようガードを付ける。
   ignore = '[ -n "$CACHED_COMMIT_REF" ] && git cat-file -e "$CACHED_COMMIT_REF^{commit}" 2>/dev/null && git diff --quiet "$CACHED_COMMIT_REF" "$COMMIT_REF" -- .'
 
+# トップ（/）は /beginner/ へ 301 で飛ばす。status = 200 の書き換えにしてはいけない。
+# beginner/index.html は style.css / script.js を相対パスで読むので、URLが / のままだと
+# /style.css を取りに行って404になり、素のHTML（巨大なLINEアイコン）で表示される。
+# 2026-07-20 の beginner 全面リニューアルで自前CSSになって以降、トップから来た人
+# （公式LINE・求人媒体の「Webから応募」など）にはずっと崩れて見えていた。2026-10-08 修正。
+# クエリ（utm）は Netlify のリダイレクトがそのまま引き継ぐ。
 [[redirects]]
   from = "/"
-  to = "/beginner/index.html"
-  status = 200
+  to = "/beginner/"
+  status = 301
 
 [[headers]]
   for = "/shared/*"
