@@ -14,7 +14,10 @@ note_set_eyecatch.set_eyecatch の検証は「eyecatch が uploads/images を含
 使い方:
   python3 note_cover_refresh.py 215:n1234abcd 214:n5678efgh ...
   python3 note_cover_refresh.py --dry-run 215:n1234abcd
+  python3 note_cover_refresh.py --force 166:n757225e527ab   # 差し替え済みの記事をもう一度差し替える
 ログ: data/note_cover_refresh_log.json（成功済みの key は再実行時にスキップ＝再開可能）
+  ※スキップは key 単位なので、一度差し替えた記事のカバーを作り直して再度上げるときは
+    --force が要る（無いと「未完了 0 本」で何もせず終わる。2026-10-09 #166/#168-#170 で実際に発生）
 """
 import json
 import os
@@ -98,6 +101,7 @@ def refresh_one(num, key, log):
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     dry = "--dry-run" in sys.argv
+    force = "--force" in sys.argv
     pairs = []
     for a in args:
         n, k = a.split(":", 1)
@@ -110,7 +114,7 @@ def main():
         print(f"カバー画像が無い: {missing}")
         return 1
     log = load_log()
-    todo = [(n, k) for n, k in pairs if not log.get(k, {}).get("ok")]
+    todo = [(n, k) for n, k in pairs if force or not log.get(k, {}).get("ok")]
     print(f"対象 {len(pairs)} 本 / 未完了 {len(todo)} 本")
     if dry:
         for n, k in todo:
