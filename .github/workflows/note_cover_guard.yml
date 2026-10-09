@@ -16,6 +16,11 @@ name: Noteカバー画像 番犬
 # 【2026-08-07 追加】自動クローズがなかったため、link_guard の Issue #5 は
 # 直後に修正済みだったのに18日間オープンのまま放置され、通知が形骸化していた。
 # 番犬は「鳴く」だけでなく「鳴きやむ」ところまでが仕組み。
+#
+# 【2026-10-09 追加】カバー下部バッジの「所属◯名」も照合する。カバーPNGに画像として
+# 焼き込まれるため、2026-10-02 に 200名→300名へ更新したあとも公開51本＋在庫19本が
+# 「所属200名」のままだった（テキストを見る番犬では見えない）。ローカルは毎回、
+# 公開中のeyecatchは schedule / workflow_dispatch のときだけダウンロードして照合する。
 
 on:
   push:
@@ -23,7 +28,10 @@ on:
       - 'blog/articles_note/**'
       - 'blog/images/**'
       - 'note_cover_guard.py'
+      - 'note_cover_badge.py'
       - 'note_set_eyecatch.py'
+      - 'facts_patterns.py'
+      - 'data/note_cover_badge_ref.json'
   pull_request:
     paths:
       - 'blog/articles_note/**'
@@ -39,13 +47,16 @@ permissions:
 jobs:
   cover-guard:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
 
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
+      # バッジ照合（note_cover_badge.py）が Pillow を使う
+      - run: pip install pillow
 
       - name: カバー画像の存在を照合
         id: guard
@@ -74,6 +85,14 @@ jobs:
             const pubLines = (report.published_missing || []).map(m =>
               `- \`${m.key}\` (${m.published_at}) ${m.title}`
             ).join('\n');
+            const staleLines = (report.stale_local || []).map(m =>
+              `- #${m.num} \`${m.image}\`（「${m.worst_char}」がずれ ${m.worst_iou}）`
+            ).join('\n');
+            const pubStaleLines = (report.published_stale || []).map(m =>
+              `- #${m.num} \`${m.key}\` ${m.title}`
+            ).join('\n');
+            const staleNums = (report.stale_local || []).map(m => m.num).join(' ');
+            const pubPairs = (report.published_stale || []).filter(m => m.num).map(m => `${m.num}:${m.key}`).join(' ');
             const body = [
               '## Noteカバー画像 番犬 検知',
               '',
@@ -87,6 +106,15 @@ jobs:
               '## 公開済みだがアイキャッチが空の記事',
               pubLines || '(なし)',
               '',
+              `## バッジ文言（${report.badge_text || ''}）が古いカバー（ローカル）`,
+              staleLines || '(なし)',
+              staleNums ? `\n→ \`python3 note_cover_make.py ${staleNums} --no-bg\`（macで）` : '',
+              '',
+              '## バッジ文言が古いアイキャッチ（公開中）',
+              pubStaleLines || '(なし)',
+              pubPairs ? `\n→ ローカルを作り直してから \`python3 note_cover_refresh.py ${pubPairs}\`` : '',
+              '',
+              report.badge_ref_problem ? `## バッジ照合ができない\n${report.badge_ref_problem}\n→ macで \`python3 note_cover_make.py --ref-only\`\n` : '',
               '## 対処',
               '1. `python3 note_cover_make.py {番号}` でカバーを作る',
               '   （写真＋大きな見出しの合成。文字だけのカードは禁止）',
@@ -103,7 +131,7 @@ jobs:
             const guard = require('./.github/scripts/guard_comment.js');
             await guard.notify({
               github, context, title, body,
-              recomment: `再検知: ${new Date().toISOString()}\n\n${lines}\n${pubLines}`,
+              recomment: `再検知: ${new Date().toISOString()}\n\n${lines}\n${pubLines}\n${staleLines}\n${pubStaleLines}\n${report.badge_ref_problem || ''}`,
             });
 
       - name: 欠落解消 → Issueを自動クローズ
@@ -141,7 +169,7 @@ jobs:
               repo: context.repo.repo,
               issue_number: match.number,
               body: [
-                `復旧を確認: ${new Date().toISOString()} のランで ${scope} にカバー画像が揃っていました（missing=0）。自動クローズします。`,
+                `復旧を確認: ${new Date().toISOString()} のランで ${scope} にカバー画像が揃い、バッジ文言も最新でした（missing=0 / stale=0）。自動クローズします。`,
                 '',
                 `- ラン: ${runUrl}`,
               ].join('\n'),

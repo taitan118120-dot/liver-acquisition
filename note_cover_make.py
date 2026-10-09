@@ -23,6 +23,7 @@ Note記事のアイキャッチ（サムネイル）を「一目で内容が分�
   python3 note_cover_make.py --missing       # blog/images に未生成の記事だけ
   python3 note_cover_make.py 137 --no-bg     # 背景を作り直さずキャッシュだけ使う
   python3 note_cover_make.py 137 --bg-seed 5 # 背景の絵を引き直す
+  python3 note_cover_make.py --ref-only      # 番犬用のバッジ基準だけ書き出す
 
 出力: blog/images/{番号}_{slug}.png（既存ファイル名を維持して上書き）
 """
@@ -37,6 +38,9 @@ from io import BytesIO
 
 import requests
 from PIL import Image, ImageDraw, ImageEnhance, ImageFont
+
+import note_cover_badge
+from facts_patterns import NOTE_COVER_BADGE
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ARTICLES_DIR = os.path.join(BASE_DIR, "blog", "articles_note")
@@ -442,15 +446,33 @@ def build(num, regenerate_bg=False, seed=None):
     except Exception as e:
         print(f"    ロゴ合成スキップ: {e}")
 
-    tx = margin + 96
-    draw.text((tx, badge_y + 8), "TAITAN PRO", font=font(32), fill=WHITE,
-              stroke_width=4, stroke_fill=(6, 9, 20))
-    draw.text((tx, badge_y + 48), "所属300名のライバー事務所", font=font(24), fill=SUB,
-              stroke_width=4, stroke_fill=(6, 9, 20))
+    draw_badge_text(draw, margin, badge_y)
 
     out = output_path(num)
     canvas.convert("RGB").save(out, "PNG", optimize=True)
     return out, kicker, lines
+
+
+def badge_lines(margin=64, badge_y=H - 108):
+    """下部バッジの2行。事務所名は facts_patterns.NOTE_COVER_BADGE が正本
+    （ここに数字を直書きすると、ファクト更新で直し漏れたまま焼き込まれる）。"""
+    tx = margin + 96
+    return [("title", "TAITAN PRO", (tx, badge_y + 8), font(32), WHITE),
+            ("badge", NOTE_COVER_BADGE, (tx, badge_y + 48), font(24), SUB)]
+
+
+def draw_badge_text(draw, margin=64, badge_y=H - 108):
+    for _, text, xy, fnt, color in badge_lines(margin, badge_y):
+        draw.text(xy, text, font=fnt, fill=color,
+                  stroke_width=4, stroke_fill=(6, 9, 20))
+
+
+def write_badge_ref():
+    """番犬（note_cover_guard）が照合に使う基準を書き出す。CIにはヒラギノが無く
+    基準を描けないので、カバーを作る mac 側で毎回作ってコミットする。"""
+    canvas = Image.new("RGB", (W, H), (10, 12, 20))
+    draw_badge_text(ImageDraw.Draw(canvas))
+    note_cover_badge.write_ref(note_cover_badge.build_ref(canvas, badge_lines(), (W, H)))
 
 
 def missing_numbers():
@@ -472,7 +494,16 @@ def main():
     ap.add_argument("--regen-bg", action="store_true", help="背景を作り直す")
     ap.add_argument("--no-bg", action="store_true", help="背景キャッシュのみ使う（生成しない）")
     ap.add_argument("--bg-seed", type=int, help="背景のseedを指定して絵を引き直す")
+    ap.add_argument("--ref-only", action="store_true",
+                    help="番犬用のバッジ基準(data/note_cover_badge_ref.json)だけ書き出す")
     args = ap.parse_args()
+
+    # バッジ文言（facts_patterns.NOTE_COVER_BADGE）を変えたら基準も必ず変わるよう、
+    # カバーを作るたびに書き出す（内容が同じなら差分は出ない）。
+    write_badge_ref()
+    if args.ref_only:
+        print(f"✓ {os.path.relpath(note_cover_badge.REF_PATH, BASE_DIR)}")
+        return 0
 
     nums = args.nums or (missing_numbers() if args.missing else [])
     if not nums:

@@ -41,6 +41,12 @@ import re
 # 公式LINE。増やしたらここと link_guard.py の LINE_ALLOWED を両方直す。
 LINE_ALLOWED = "https://lin.ee/xchCfdn"
 
+# Noteカバー下部バッジの事務所名。カバーPNGに**画像として焼き込まれる**ので、
+# ここを変えたら note_cover_make.py で全カバーを作り直し、公開済みは
+# note_cover_refresh.py で差し替える（変えないと note_cover_guard が赤になる）。
+# 所属数を変えるときは下の COMMON_NG_PATTERNS の「所属数」も同時に直すこと。
+NOTE_COVER_BADGE = "所属300名のライバー事務所"
+
 # ── 出典なしの割合統計 ────────────────────────────────────────
 # 2系統で当てる（片方だけだと必ず取りこぼす）
 #   ① 割合語 × 離脱/成功語の近接 …「9割が消える」「10人に1人も成功しない」型
