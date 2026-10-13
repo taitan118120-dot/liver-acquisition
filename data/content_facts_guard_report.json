@@ -217,6 +217,11 @@
    "hit": "確実に"
   },
   {
+   "where": "blog/articles_note/235_代理店担当ライバーの配信時間が決まらないとき.md",
+   "reason": "断定・保証表現",
+   "hit": "確実に"
+  },
+  {
    "where": "blog/articles_note/23_ライブ配信市場将来性.md",
    "reason": "取扱外プラットフォーム",
    "hit": "17LIVE"
@@ -313,11 +318,6 @@
   },
   {
    "where": "blog/articles_note/36_ライバーコラボ配信.md",
-   "reason": "取扱外プラットフォーム",
-   "hit": "17LIVE"
-  },
-  {
-   "where": "blog/articles_note/37_ライバー月収平均2026.md",
    "reason": "取扱外プラットフォーム",
    "hit": "17LIVE"
   },
@@ -803,9 +803,39 @@
    "blog/articles_note/203_代理店担当ライバーへの連絡頻度.md",
    "blog/articles_note/204_代理店初配信前に連絡が途絶えたとき.md",
    "blog/articles_note/205_代理店担当ライバーのイベント参加の支え方.md",
+   "blog/articles_note/206_ライブ配信の照明の当て方位置と色.md",
+   "blog/articles_note/207_ライバーマネージャーは大変仕事内容と線の引き方.md",
+   "blog/articles_note/208_ライバーのプロフィール自己紹介文の書き方テンプレ.md",
+   "blog/articles_note/209_スマホ副業は怪しい安全な副業の見分け方.md",
    "blog/articles_note/20_ライバー配信ネタ.md",
+   "blog/articles_note/210_ライバー事務所の立ち上げ資金何にかかり何にかからないか.md",
+   "blog/articles_note/211_投げ銭とは仕組みともらう側が知っておくこと.md",
+   "blog/articles_note/212_話すのが苦手でもライブ配信はできる人見知り口下手.md",
+   "blog/articles_note/213_代理店スカウトで誰に声をかけるか基準の持ち方.md",
+   "blog/articles_note/214_ライバーは稼げるって嘘稼げないと言われる理由.md",
+   "blog/articles_note/215_ライバーとは仕事内容と収入の仕組み.md",
+   "blog/articles_note/216_代理店担当ライバー育成最初の1ヶ月で教えること.md",
+   "blog/articles_note/217_ライブ配信の背景の作り方部屋の生活感を消す.md",
+   "blog/articles_note/218_応援される人の特徴ライブ配信の現場から.md",
+   "blog/articles_note/219_配信でスマホが熱くなる落ちるときの対策.md",
    "blog/articles_note/21_ライバー伸びない原因.md",
+   "blog/articles_note/220_代理店担当ライバーに他事務所から声がかかったとき.md",
+   "blog/articles_note/221_発信しても反応がない日の過ごし方.md",
+   "blog/articles_note/222_配信の生活音を消す方法家族の声やエアコン.md",
+   "blog/articles_note/223_ライブ配信のアンチコメント受け止め方とブロックの基準.md",
+   "blog/articles_note/224_代理店担当ライバー同士を比べない伝え方.md",
+   "blog/articles_note/225_話し方を鍛えたい人にライブ配信が効く理由.md",
+   "blog/articles_note/226_ライブ配信用語集枠御新規さんROM常連さん.md",
+   "blog/articles_note/227_ライバーに向いている人向いていない人.md",
+   "blog/articles_note/228_配信で喉が痛い声が枯れるときのケア.md",
+   "blog/articles_note/229_ライブ配信でBGM音楽を流していい著作権.md",
    "blog/articles_note/22_30代ライバー.md",
+   "blog/articles_note/230_TikTokLIVEで何を話す初見さんが多い枠の話題.md",
+   "blog/articles_note/231_一人のリスナーさんに頼りきりの枠応援が偏ったとき.md",
+   "blog/articles_note/232_ライバーの恋愛恋人はバレたらダメ.md",
+   "blog/articles_note/233_代理店スカウトに返事が来たあと最初の1往復.md",
+   "blog/articles_note/234_代理店担当ライバーから身バレつきまといの相談を受けたとき.md",
+   "blog/articles_note/235_代理店担当ライバーの配信時間が決まらないとき.md",
    "blog/articles_note/23_ライブ配信市場将来性.md",
    "blog/articles_note/24_ライバー事務所代理店.md",
    "blog/articles_note/25_ライバーマネージャー.md",
