@@ -210,7 +210,7 @@ def html_source_to_text(src):
 
     ファイルではなく**取得してきたHTML**にも同じ物差しを当てられるよう、
     html_to_text からパス依存を切り離してある。
-    lp_drift_guard.py が「公開中の -targets のHTML」に対してこれを使う。
+    （旧 lp_drift_guard.py が「公開中の -targets のHTML」に使っていた。-targets は 2026-10-14 に削除）
     """
     # <head> ごと落とす。<title> は紙面に出ないので PDF 突合のノイズになる
     src = re.sub(r"(?is)<head\b.*?</head>", " ", src)

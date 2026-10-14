@@ -69,9 +69,21 @@ curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/
 求人原稿・`job_generator.py`・`scripts/lp_targets_deploy.sh` と一緒に **Netlify のサイトごと削除した**。
 Google広告・公式LINE・Note・SNS はすべて `taitan-pro-lp.netlify.app` を指す。**公開先はメイン1つだけ**。
 
-2つのサイトを突合していた `lp_drift_guard.py`（LPドリフト番犬）はワークフローを止めてある
-（`gh workflow disable`・ファイルは残置）。メイン側の CSS/JS/画像 の404チェックもこの番犬が
-担っていたので、**今はメインLPの表示崩れを見張るものが無い**。
+2つのサイトを突合していた `lp_drift_guard.py`（LPドリフト番犬）も撤去した。
+
+### 番犬（LP表示番犬）
+
+`lp_asset_guard.py`（`.github/workflows/lp_asset_guard.yml` で毎日 JST 9:35）が、
+`/` と各ページについて**リダイレクト追従後の最終URL基準で**同一オリジンの CSS/JS/画像 が
+全部 200（かつ正しい Content-Type）かを見る。旧LPドリフト番犬の素材チェック（2026-10-08 追加）を
+メイン1サイト向けに切り出したもの。
+`netlify.toml` で status=200 の書き換えを入れると、URLが元のまま別ディレクトリのHTMLが返り、
+相対パスの素材が404になる（2026-07-20〜10-08 にトップがCSSなしで表示されていた原因）。
+壊れると Issue「LP表示素材の404検知（LP表示番犬）」で鳴き、素材が200に戻ると自動クローズする。
+
+```sh
+python3 lp_asset_guard.py
+```
 
 ## shared/img 素材一覧（写真 / イラストの区別）
 
