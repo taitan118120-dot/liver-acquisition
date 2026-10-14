@@ -76,9 +76,6 @@ CONTENT_GLOBS = [
     "templates/*.txt",          # dm_sender.py がファイル直読みする本番テンプレ
     "liver_app/db.py",          # _DEFAULT_*_TEMPLATE にLPのURLが埋まっている
     "x_app/db.py",              # 同上（X版）
-    # 求人原稿（応募者が踏むリンク。生成済み原稿とテンプレの両方を見る）
-    "job_posts/templates/*.txt",
-    "job_posts/*/*.md",
     # ブログ記事（生成側テンプレと生成済み記事の両方）
     # 2026-08-12: blog/generate_articles.py が実在しないアンカー
     # https://taitan-pro-lp.netlify.app/#apply を長期間埋め込んでおり（cecb291で解消済み）、

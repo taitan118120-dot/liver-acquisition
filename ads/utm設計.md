@@ -207,6 +207,8 @@ LINE直リンクは §1-1 のとおり計測できないので、**LPリンク�
 
 ### 3-4. 求人媒体（Indeed / Wantedly / engage）
 
+> 🗑️ **2026-10-14 に求人原稿と `job_generator.py` を削除した**（3媒体とも掲載0件のまま）。以下は当時の記録。
+
 `job_generator.py` の `LP_URLS` に反映済み（2026-08-10）。
 
 `…/{target}/?utm_source={indeed|wantedly|engage}&utm_medium=job&utm_campaign=job_{target}`
