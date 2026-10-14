@@ -69,7 +69,7 @@ curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/
 | サイト | デプロイ | 何が見に来るか |
 | --- | --- | --- |
 | `taitan-pro-lp.netlify.app` | main への push で**自動** | 公式LINE・Note・SNS |
-| `taitan-pro-lp-targets.netlify.app` | **手動 zip デプロイ** | 求人媒体（`job_posts/indeed/*.md` / `job_posts/engage/*.md`）・`ads/` の遷移先 |
+| `taitan-pro-lp-targets.netlify.app` | **手動 zip デプロイ** | `job_generator.py` の `LP_URLS`（求人原稿の遷移先）。Indeed・engage の原稿は掲載しないので 2026-10-14 に削除、Google広告はメイン側を指す |
 
 **`lp/` を直したら -targets にも配ること。** 自動デプロイされるのは main 側だけなので、
 忘れると**応募者が見る面だけが古いまま**になる。2026-08-24 の「面談」→「お話しするとき」

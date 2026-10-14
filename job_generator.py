@@ -6,10 +6,10 @@ Indeed / Wantedly / Engage 向けの求人原稿を自動生成。
 
 使い方:
   python3 job_generator.py --all              # 全原稿一括生成
-  python3 job_generator.py --platform indeed   # Indeed用のみ
+  python3 job_generator.py --platform wantedly # Wantedly用のみ
   python3 job_generator.py --dry-run --platform wantedly --target beginner
   python3 job_generator.py --status            # 掲載状況確認
-  python3 job_generator.py --register indeed beginner "https://..."
+  python3 job_generator.py --register wantedly beginner "https://..."
 """
 
 import argparse
@@ -23,7 +23,7 @@ TEMPLATE_DIR = os.path.join(BASE_DIR, "job_posts", "templates")
 OUTPUT_DIR = os.path.join(BASE_DIR, "job_posts")
 TRACKER_PATH = os.path.join(BASE_DIR, "data", "job_tracker.csv")
 
-PLATFORMS = ["indeed", "wantedly", "engage"]
+PLATFORMS = ["wantedly"]  # Indeed・engage は掲載しないので 2026-10-14 に削除
 TARGETS = ["beginner", "liver", "sidejob", "partner"]
 
 LINE_URL = "https://lin.ee/xchCfdn"
@@ -486,7 +486,7 @@ def show_status():
     rows = load_tracker()
     if not rows:
         print("掲載データなし。--register で URL を登録してください。")
-        print(f"\n例: python3 {sys.argv[0]} --register indeed beginner \"https://...\"")
+        print(f"\n例: python3 {sys.argv[0]} --register wantedly beginner \"https://...\"")
         return
 
     print(f"\n{'プラットフォーム':<14} {'ターゲット':<12} {'状態':<8} {'最終更新':<12} URL")
@@ -529,7 +529,7 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="ファイル出力せずターミナルにプレビュー")
     parser.add_argument("--status", action="store_true", help="掲載状況を表示")
     parser.add_argument("--register", nargs=3, metavar=("PLATFORM", "TARGET", "URL"),
-                        help="掲載URLを登録 例: --register indeed beginner https://...")
+                        help="掲載URLを登録 例: --register wantedly beginner https://...")
     args = parser.parse_args()
 
     if args.status:
