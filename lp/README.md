@@ -62,46 +62,16 @@ curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/
   -d '{"clear_cache": true}' "https://api.netlify.com/api/v1/sites/$SITE/builds"
 ```
 
-## もう1つの公開サイト: taitan-pro-lp-targets（手動デプロイ）
+## 旧 -targets サイト（2026-10-14 削除）
 
-同じ `lp/` が**2つのサイト**に配られている。
+以前は同じ `lp/` を手動zipで `taitan-pro-lp-targets.netlify.app` にも配っていたが、
+遷移元が未掲載の求人原稿（Indeed・Wantedly・engage）だけで誰も来ていなかったため、
+求人原稿・`job_generator.py`・`scripts/lp_targets_deploy.sh` と一緒に **Netlify のサイトごと削除した**。
+Google広告・公式LINE・Note・SNS はすべて `taitan-pro-lp.netlify.app` を指す。**公開先はメイン1つだけ**。
 
-| サイト | デプロイ | 何が見に来るか |
-| --- | --- | --- |
-| `taitan-pro-lp.netlify.app` | main への push で**自動** | 公式LINE・Note・SNS |
-| `taitan-pro-lp-targets.netlify.app` | **手動 zip デプロイ** | **誰も来ない**。唯一の遷移元だった求人原稿（Indeed・Wantedly・engage）は未掲載のまま 2026-10-14 に `job_generator.py` ごと削除。Google広告はメイン側を指す |
-
-**`lp/` を直したら -targets にも配ること。** 自動デプロイされるのは main 側だけなので、
-忘れると**応募者が見る面だけが古いまま**になる。2026-08-24 の「面談」→「お話しするとき」
-置換（4392b4f）は、2026-09-11 まで -targets に反映されておらず、`/beginner/` で7箇所・
-`/agency/` で6箇所が古いままだった。
-
-```sh
-./scripts/lp_targets_deploy.sh
-```
-
-zip → アップロード → `state:"ready"` まで待機 → `lp_drift_guard.py` で突合、までやる。
-（POST のレスポンスは `state:"uploaded"` で返る。ready を待たずに検証すると古い本文を読む）
-
-### 番犬
-
-`lp_drift_guard.py`（`.github/workflows/lp_drift_guard.yml` で毎日 JST 9:35）が
-4ページを両サイトから取得して本文を突合し、ついでに -targets の実物へ確定ファクトの
-禁止パターンを当てる。ドリフトがあれば Issue で鳴き、直すと自動クローズする。
-
-あわせて、両サイトの `/` と各ページについて**リダイレクト追従後の最終URL基準で**
-同一オリジンの CSS/JS/画像 が全部 200（かつ正しい Content-Type）かも見る（2026-10-08 追加）。
-`netlify.toml` で status=200 の書き換えを入れると、URLが元のまま別ディレクトリのHTMLが返り、
-相対パスの素材が404になる（2026-07-20〜10-08 にトップがCSSなしで表示されていた原因）。
-こちらは別タイトルの Issue「LP表示素材の404検知」で鳴き、素材が200に戻ると自動クローズする。
-
-```sh
-python3 lp_drift_guard.py            # 手元で突合
-python3 lp_drift_guard.py --verbose  # 差分を全部出す
-```
-
-監視対象のページは `lp/*/index.html` の実体から自動で拾う（`MIN_PAGES` の4ページを下限に
-union する）ので、LPを増やしても番犬への追加忘れは起きない。
+2つのサイトを突合していた `lp_drift_guard.py`（LPドリフト番犬）はワークフローを止めてある
+（`gh workflow disable`・ファイルは残置）。メイン側の CSS/JS/画像 の404チェックもこの番犬が
+担っていたので、**今はメインLPの表示崩れを見張るものが無い**。
 
 ## shared/img 素材一覧（写真 / イラストの区別）
 

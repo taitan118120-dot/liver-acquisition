@@ -101,7 +101,6 @@ SKIP_DOMAINS = (
 # 自分で中身を管理しているサイトだけに限る。他所のSPAはHTMLにidが出ないため誤検知源。
 FRAGMENT_CHECK_DOMAINS = (
     "taitan-pro-lp.netlify.app",
-    "taitan-pro-lp-targets.netlify.app",
 )
 
 # ── 稼働中のGoogle広告サイトリンクの着地先（2026-08-11 追加）──
