@@ -173,11 +173,12 @@ def link_agency_rich_menu(user_id):
 
 
 def notify_admin(text):
-    """管理者に通知（ADMIN_USER_ID 未設定ならログのみ）"""
-    if ADMIN_USER_ID:
-        send_line_message(ADMIN_USER_ID, text)
-    else:
-        print(f"[NOTIFY] (admin未設定) {text[:100]}")
+    """管理者向けの通知はRenderのログに残すだけで、LINEには送らない
+
+    友だち追加・面談希望などの通知は一切いらないとのこと（2026-10-15）。
+    相手とのやりとりは公式LINEのチャット画面、状況は管理コマンド「一覧」で見る。
+    """
+    print(f"[NOTIFY] {text[:200]}")
 
 
 # --- ステップ配信（永続化対応）---
@@ -812,7 +813,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
         self.end_headers()
-        self.wfile.write(b"TAITAN PRO LINE Bot is running (v31-quiet-admin)")
+        self.wfile.write(b"TAITAN PRO LINE Bot is running (v32-no-admin-notify)")
 
     def do_POST(self):
         content_length = int(self.headers.get("Content-Length", 0))
