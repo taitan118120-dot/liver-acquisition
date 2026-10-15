@@ -318,13 +318,7 @@ def _send_step_if_active(user_id, step_name):
             _, armed = release_meeting_flow(
                 user_id, "no_reply_after_reminder", mark_step=SLOT_RELEASE_STEP
             )
-            notify_admin(
-                "🕗 打診から1週間、日程のお返事がありません\n"
-                f"ID: {user_id[:8]}\n\n"
-                "面談の打診状態を解除して、通常のフォロー配信に戻しました。\n"
-                + _armed_summary(armed) + "\n\n"
-                "個別に声をかけるなら、このLINEチャットからどうぞ。"
-            )
+            print(f"[STEP] Released stale offer for {user_id[:8]}... ({_armed_summary(armed)})")
             return
         if step_name == SLOT_REMINDER_STEP:
             # 日程の聞き直しは逆に「面談フローに入ったまま止まっている人」が対象。
@@ -547,11 +541,6 @@ def sweep_stale_meeting_offers():
         return
 
     print(f"[SWEEP] Released {len(released)} stale meeting offers")
-    notify_admin(
-        "🧹 打診したまま止まっていた方を通常配信に戻しました\n"
-        + "\n".join(f"・{uid[:8]}（このあと{n}通）" for uid, n in released)
-        + "\n\n面談の打診フラグが下りたので、フォロー配信が再開します。"
-    )
 
 
 def restore_pending_steps():
@@ -823,7 +812,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
         self.end_headers()
-        self.wfile.write(b"TAITAN PRO LINE Bot is running (v30-headcount-300-agency-20)")
+        self.wfile.write(b"TAITAN PRO LINE Bot is running (v31-quiet-admin)")
 
     def do_POST(self):
         content_length = int(self.headers.get("Content-Length", 0))
@@ -889,15 +878,9 @@ class WebhookHandler(BaseHTTPRequestHandler):
                 # ステップ配信スケジュール
                 schedule_step_messages(user_id)
 
-                # 管理者に即時通知（Botだけが知っているリードを作らない）
-                name = get_display_name(user_id)
-                notify_admin(
-                    "🆕 新しい友だちが追加されました\n"
-                    f"名前: {name or '(取得失敗)'}\n"
-                    f"ID: {user_id[:8]}\n\n"
-                    "welcomeを送信し、ライバー希望か代理店希望かを質問済みです。\n"
-                    "返答が来たら種別に合った特典PDFを自動で送ります。"
-                )
+                # 管理者へのLINE通知はしない（お知らせだけの通知は不要とのこと・2026-10-15）。
+                # 誰が追加したかは管理コマンド「一覧」で見られる。
+                print(f"[FOLLOW] 新しい友だち: {user_id[:8]}...")
 
             elif event_type == "message":
                 msg = event.get("message", {})
@@ -937,13 +920,6 @@ class WebhookHandler(BaseHTTPRequestHandler):
                     # ウェルカムはpushで送信（この後の返信でreply_tokenを使うため）
                     send_line_message(user_id, STEP_MESSAGES["welcome"]["text"])
                     schedule_step_messages(user_id)
-                    name = get_display_name(user_id)
-                    notify_admin(
-                        "🆕 新しい友だちを回収しました（follow未受信→初回メッセージで登録）\n"
-                        f"名前: {name or '(取得失敗)'}\n"
-                        f"ID: {user_id[:8]}\n\n"
-                        "welcomeを今送信しました（ライバー希望か代理店希望かを質問中）。"
-                    )
 
                 # 最終受信時刻を記録（フォローアップの「会話中スキップ」判定に使う）
                 if user_id and user_id != ADMIN_USER_ID and user_id in users:
@@ -978,14 +954,6 @@ class WebhookHandler(BaseHTTPRequestHandler):
                             users[user_id] = user_data
                             save_json(USERS_FILE, users)
                         reply_line_message(reply_token, INTENT_REPLIES[intent], user_id)
-                        name = get_display_name(user_id)
-                        notify_admin(
-                            "🙋 希望の種別が分かりました\n"
-                            f"名前: {name or '(取得失敗)'}\n"
-                            f"ID: {user_id[:8]}\n"
-                            f"希望: {INTENT_LABELS[intent]}\n\n"
-                            "種別に合わせた特典PDFと案内は自動送信済みです。"
-                        )
                         continue
 
                 # 流入元の記録（まだ未記録のユーザーのみ。初回返答を判定）
@@ -1019,15 +987,6 @@ class WebhookHandler(BaseHTTPRequestHandler):
                         if offered_now:
                             schedule_slot_reminder(user_id)
                         reply_line_message(reply_token, replies, user_id)
-                        name = get_display_name(user_id)
-                        notify_admin(
-                            "📍 流入元が分かりました\n"
-                            f"名前: {name or '(取得失敗)'}\n"
-                            f"ID: {user_id[:8]}\n"
-                            f"流入元: {source}"
-                            + ("\n\n続けてLINE通話の日程を打診しました（返答待ち）。"
-                               if offered_now else "")
-                        )
                         continue
 
                 # 面談の日程候補への返答待ち
