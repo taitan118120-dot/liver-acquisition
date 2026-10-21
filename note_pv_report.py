@@ -21,8 +21,10 @@ API は連打しない（ページ間 1.2秒）。
 import argparse
 import csv
 import datetime
+import glob
 import json
 import os
+import re
 import statistics
 import sys
 import time
@@ -304,6 +306,75 @@ def analyze(rows):
     zero = [r for r in mature if r["pv_monthly"] == 0]
     print(f"  月間PV 0 の記事: {len(zero)}本 / {len(mature)}本")
 
+    recent_cohort(rows)
+
+
+# 直近コホートで見る「タイトルの型」。全期間の集計は4月公開の古い記事が支配するので、
+# 次に書く記事の型を決めるにはここを見る（2026-10-21 実測で【ライバー代理店】冠 0.50 /
+# それ以外 0.75、前半に「？」1.03 / それ以外 0.63）。
+TITLE_TYPES = [
+    ("【ライバー代理店】冠", lambda t: t.startswith("【ライバー代理店】")),
+    ("代理店・事務所系", lambda t: any(w in t for w in ("代理店", "事務所", "スカウト", "マネージャー"))),
+    ("【Pococha】冠", lambda t: t.startswith("【Pococha】")),
+    ("前半に「？」", lambda t: "？" in t.split("｜")[0]),
+]
+RECENT_DAYS = 60
+RECENT_MIN_AGE = 7
+
+
+def recent_cohort(rows):
+    rs = [r for r in rows if RECENT_MIN_AGE <= r["days_since"] <= RECENT_DAYS]
+    if len(rs) < 4:
+        return
+    print(f"\n── 直近{RECENT_DAYS}日の公開分（経過{RECENT_MIN_AGE}日以上 {len(rs)}本）"
+          f"・次に書く型はここで決める " + "─" * 6)
+    for name, f in TITLE_TYPES:
+        hit = [r["pv_per_day_all"] for r in rs if f(r["title"])]
+        miss = [r["pv_per_day_all"] for r in rs if not f(r["title"])]
+        if len(hit) < 2 or len(miss) < 2:
+            continue
+        print(f"  {name:14s} 該当{len(hit):3d} PV/日中央 {statistics.median(hit):.2f}"
+              f"  ／ 非該当{len(miss):3d} {statistics.median(miss):.2f}")
+    srt = sorted(rs, key=lambda r: -r["pv_per_day_all"])
+    for label, part in (("上位8", srt[:8]), ("下位8", srt[-8:])):
+        print(f"  [{label}]")
+        for r in part:
+            print(f"    {r['pv_per_day_all']:5.2f}/日 {r['days_since']:3d}日 {r['title'][:50]}")
+
+
+def trend(cur_path=None):
+    """data/note_pv_*.csv を日付順に並べ、計測間の PV/日 を出す。
+
+    月間PVは30日ローリング窓なので増減の判断に使えない。増減は
+    「全期間PVの差分 ÷ 経過日数」で見る（2026-09-15/09-20 に同じ誤読が2回起きた）。
+    各区間で、伸びのうち新記事（前回計測に無かった記事）の分も出す。
+    """
+    paths = sorted(glob.glob(os.path.join(DATA_DIR, "note_pv_[0-9]*.csv")))
+    if cur_path and os.path.abspath(cur_path) not in map(os.path.abspath, paths):
+        paths.append(cur_path)
+    snaps = []
+    for p in paths:
+        m = re.search(r"(\d{8})", os.path.basename(p))
+        if not m:
+            continue
+        d = datetime.datetime.strptime(m.group(1), "%Y%m%d").date()
+        snaps.append((d, {r["key"]: r for r in load_csv(p)}))
+    snaps.sort(key=lambda s: s[0])
+    if len(snaps) < 2:
+        return
+    print("\n── 計測間のPV/日（増減はこれで見る。月間PVは見ない） " + "─" * 12)
+    for (d0, a), (d1, b) in zip(snaps, snaps[1:]):
+        days = (d1 - d0).days
+        if days <= 0:
+            continue
+        gain = sum(r["pv_all"] for r in b.values()) - sum(r["pv_all"] for r in a.values())
+        new = [k for k in b if k not in a]
+        new_pv = sum(b[k]["pv_all"] for k in new)
+        weekly = sum(r["pv_weekly"] for r in b.values())
+        share = new_pv / gain * 100 if gain > 0 else 0
+        print(f"  {d0:%m/%d}→{d1:%m/%d} {days:3d}日  PV/日 {gain / days:6.1f}"
+              f"  週間 {weekly:4d}  新記事{len(new):2d}本の寄与 {share:4.1f}%")
+
 
 def main():
     ap = argparse.ArgumentParser()
@@ -314,6 +385,7 @@ def main():
 
     if args.analyze:
         analyze(load_csv(args.analyze))
+        trend(args.analyze)
         return
 
     cookies = load_cookies()
@@ -332,6 +404,7 @@ def main():
     if not args.fetch_only:
         print()
         analyze(rows)
+        trend(out)
 
 
 if __name__ == "__main__":
