@@ -85,6 +85,16 @@ BG_STYLE = (
 
 # 記事テーマ→背景プロンプトの手がかり（タイトルに含まれる語で拾う）
 BG_HINTS = [
+    # 2026-10-22 補充 #237-246（在宅の仕事・副業・40/50/60代・マネージャー）
+    ("家でできる仕事", "a tidy home workspace by a window, a laptop, a smartphone on a stand and a notebook on a wooden desk, a houseplant, soft daylight"),
+    ("夜だけできる", "a desk at night in a quiet apartment, a smartphone on a small tripod and a desk lamp glowing warmly, a cup of tea, blurred city lights through the window"),
+    ("副業禁止", "a closed ring binder and a smartphone on a home desk beside a cup of coffee and a pen, calm evening lamp light"),
+    ("50代女性", "a calm living room with a smartphone on a stand on a low wooden table, a cup of tea, reading glasses and a small flower vase, soft afternoon light"),
+    ("40代から在宅", "a home desk in the evening, a smartphone on a stand, a closed laptop, a wristwatch and a mug, warm lamp light"),
+    ("60代から", "a japanese style room with a low wooden table, a smartphone on a small stand, a teapot and two cups, a potted plant, soft natural light"),
+    ("マネージャーの求人", "a home office desk with a laptop, a smartphone, headphones and an open planner, bright morning light through the window"),
+    ("スカウトDM", "a smartphone lying face up on a wooden desk beside an open notebook, a pen and a coffee cup, warm afternoon light"),
+    ("副業でできる", "a home desk in the evening with a laptop, a smartphone, a paper weekly planner and a cup of coffee, warm lamp light"),
     ("新人期間", "a smartphone on a small tripod on a wooden desk, an open notebook with a pen and a paper calendar beside it, a mug of coffee, morning sunlight through the window"),
     ("しんどい", "a quiet living room in the evening, a warm mug on a low table, a folded blanket on the sofa, a small lamp glowing softly"),
     ("顔出しなし", "a desk microphone and headphones on a wooden desk, a smartphone beside them, warm desk lamp light, dark cozy room at night"),
