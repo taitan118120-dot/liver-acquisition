@@ -144,6 +144,23 @@ MONEY_FLOOR = 15
 #     クロスリンクより前にある限り誤って免除されることはない
 AGENCY_WORD = re.compile(r"代理店")
 
+# 2026-10-22: backward-only だと **タイトル1行** が漏れる。公開記事 #47 ndb58de31b4de
+# 「「月5万円の在宅副業」で5個失敗した私が、最終的にライバー代理店に落ち着いた話」は
+# 月5万＝在宅副業の目標額で、主語は代理店業（代理店パートナーの副業レンジ 月3〜10万は
+# 確定値）なのに、「代理店」が金額の**後ろ**にあるので免除されず、
+# note_internal_links_publish.related_html が新記事の公開ごとに WARN を出していた。
+# 後ろ側は文書全体ではなく **同じ文の中（。！？改行まで）** だけを見る。
+# lp/beginner 等のページ末尾クロスリンクの「代理店」で収入セクションが免除されないように。
+_SENTENCE_END = re.compile(r"[。！？!?\n]")
+
+
+def _is_agency_amount(text, start, end):
+    """その金額が代理店パートナーの報酬の話なら True（ライバー本人の収入とは別軸）。"""
+    if AGENCY_WORD.search(text[:start]):
+        return True
+    m = _SENTENCE_END.search(text, end)
+    return bool(AGENCY_WORD.search(text[end: m.start() if m else len(text)]))
+
 # 2026-09-04: 下限15万は「ライバー本人の収入」が主語のときの話。ところが節税・
 # 資産形成ネタでは**制度の上限額や積立額**がそのまま「月◯万」で出てくるので、
 # 代理店報酬とまったく同じ理屈で誤検知する。実測（instagram/ig_posts.json の
@@ -508,7 +525,7 @@ def money_violations(text, strict=False):
         except ValueError:
             continue
         if amount < MONEY_FLOOR:
-            if AGENCY_WORD.search(text[:m.start()]):
+            if _is_agency_amount(text, m.start(), m.end()):
                 continue  # 代理店パートナーの報酬はライバー本人の収入と別軸（確定値）
             if _is_non_income_amount(text, m.start(), m.end()):
                 continue  # 掛金・積立額など、収入の主張ではない金額
@@ -528,7 +545,7 @@ def money_violations(text, strict=False):
             man = _to_man(m.group(1), m.group(2))
             if man >= MONEY_FLOOR:
                 continue
-            if AGENCY_WORD.search(text[:m.start()]):
+            if _is_agency_amount(text, m.start(), m.end()):
                 continue  # 代理店パートナーの報酬は別軸（確定値）
             if _is_non_income_amount(text, m.start(), m.end()):
                 continue  # 掛金・積立額など、収入の主張ではない金額
