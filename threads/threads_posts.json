@@ -3108,5 +3108,115 @@
     "reply_control": "everyone",
     "posted": false,
     "created_at": "2026-10-17T00:06:44"
+  },
+  {
+    "text": "「配信のネタがない」は、ネタの問題じゃない。\nリスナーさんに質問していないだけ。\n聞けば、話は向こうから出てくる。",
+    "angle": "story",
+    "topic": "配信のネタ切れは、リスナーさんに質問していないだけ",
+    "tags": [],
+    "link": null,
+    "reply_control": "everyone",
+    "posted": false,
+    "created_at": "2026-10-24T12:27:41",
+    "source": "manual"
+  },
+  {
+    "text": "休む日を先に決めている人のほうが、結局たくさん配信している。\n休みが決まっていないと、毎日が「やるかやらないか」の勝負になるから。",
+    "angle": "story",
+    "topic": "休む日を先に決める人のほうが、結局たくさん配信している",
+    "tags": [],
+    "link": null,
+    "reply_control": "everyone",
+    "posted": false,
+    "created_at": "2026-10-24T12:27:41",
+    "source": "manual"
+  },
+  {
+    "text": "枠の最後に次回の時間を言うだけで、来てくれる人は変わる。\n「次いつ？」が分からなければ、予定に入れようがないから。",
+    "angle": "story",
+    "topic": "次回の配信時間を告知しないのは損",
+    "tags": [],
+    "link": null,
+    "reply_control": "everyone",
+    "posted": false,
+    "created_at": "2026-10-24T12:27:41",
+    "source": "manual"
+  },
+  {
+    "text": "投げ銭をお願いしない人のほうが、結果的に応援される。\nお願いされると、リスナーさんは身構える。\n楽しい時間が先、応援は後からついてくる。",
+    "angle": "story",
+    "topic": "投げ銭をお願いしない人のほうが応援される",
+    "tags": [],
+    "link": null,
+    "reply_control": "everyone",
+    "posted": false,
+    "created_at": "2026-10-24T12:27:41",
+    "source": "manual"
+  },
+  {
+    "text": "きついコメントに、全部答えなくていい。\n1人に引っ張られると、残りの全員が置いていかれる。\n枠の空気を守るのも配信者の仕事だ。",
+    "angle": "story",
+    "topic": "きついコメントに全部答えなくていい",
+    "tags": [],
+    "link": null,
+    "reply_control": "everyone",
+    "posted": false,
+    "created_at": "2026-10-24T12:27:41",
+    "source": "manual"
+  },
+  {
+    "text": "「伸びたら楽しくなる」は、順番が逆。\n楽しそうな枠に、人が集まる。\n数字が先に来ることは、まずない。",
+    "angle": "story",
+    "topic": "伸びたら楽しくなる、は順番が逆",
+    "tags": [],
+    "link": null,
+    "reply_control": "everyone",
+    "posted": false,
+    "created_at": "2026-10-24T12:27:41",
+    "source": "manual"
+  },
+  {
+    "text": "配信の振り返りは、反省会にしないほうが続く。\nダメだった所より、良かった一言を1つメモする。\n次の配信で、それをもう一回やるだけ。",
+    "angle": "story",
+    "topic": "配信の振り返りは反省会にしないほうが続く",
+    "tags": [],
+    "link": null,
+    "reply_control": "everyone",
+    "posted": false,
+    "created_at": "2026-10-24T12:27:41",
+    "source": "manual"
+  },
+  {
+    "text": "紹介した子の初配信には、最初から最後まで枠にいたほうがいい。\n誰もいない画面に話し続けるのが、いちばん心が折れるから。\n1人でも名前を呼べる相手がいれば、2回目につながる。",
+    "angle": "agency",
+    "topic": "紹介した子の初配信には最初から最後まで枠にいる",
+    "tags": [],
+    "link": null,
+    "reply_control": "everyone",
+    "posted": false,
+    "created_at": "2026-10-24T12:27:41",
+    "source": "manual"
+  },
+  {
+    "text": "声をかける相手を選ぶとき、見るのはフォロワー数じゃない。\n自分の発信に、続けて反応をくれているかどうか。\n続けられる人かは、そこにいちばん出る。",
+    "angle": "agency",
+    "topic": "声をかける相手はフォロワー数でなく、続けて反応をくれるかで見る",
+    "tags": [],
+    "link": null,
+    "reply_control": "everyone",
+    "posted": false,
+    "created_at": "2026-10-24T12:27:41",
+    "source": "manual"
+  },
+  {
+    "text": "代理店の仕事は、紹介した瞬間がスタートだと思う。\n所属してから配信が習慣になるまでの最初の1か月、隣にいられるか。\n報酬が積み上がるかどうかも、結局そこで決まる。",
+    "angle": "agency",
+    "topic": "紹介して終わりにした人は続かない。所属後の最初の1ヶ月が全部という話",
+    "tags": [],
+    "link": null,
+    "reply_control": "everyone",
+    "posted": false,
+    "created_at": "2026-10-24T12:27:41",
+    "source": "manual"
   }
 ]
