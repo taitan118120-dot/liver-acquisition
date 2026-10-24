@@ -181,6 +181,24 @@ def notify_admin(text):
     print(f"[NOTIFY] {text[:200]}")
 
 
+def notify_new_friend(user_id, recovered=False):
+    """公式LINEへの流入（新しい友だち）だけは管理者のLINEに知らせる（2026-10-24）
+
+    面談希望・要返信などそれ以外の通知は、引き続き notify_admin でログのみ。
+    """
+    name = get_display_name(user_id)
+    text = (
+        "🆕 公式LINEに新しい友だちが追加されました\n"
+        f"名前: {name or '(取得失敗)'}\n"
+        f"ID: {user_id[:8]}"
+        + ("\n（友だち追加の受信漏れを初回メッセージで回収）" if recovered else "")
+    )
+    if ADMIN_USER_ID:
+        send_line_message(ADMIN_USER_ID, text)
+    else:
+        print(f"[NOTIFY] (admin未設定) {text[:200]}")
+
+
 # --- ステップ配信（永続化対応）---
 SCHEDULE_FILE = os.path.join(DATA_DIR, "step_schedule.json")
 
@@ -813,7 +831,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
         self.end_headers()
-        self.wfile.write(b"TAITAN PRO LINE Bot is running (v32-no-admin-notify)")
+        self.wfile.write(b"TAITAN PRO LINE Bot is running (v33-notify-new-friend)")
 
     def do_POST(self):
         content_length = int(self.headers.get("Content-Length", 0))
@@ -879,9 +897,8 @@ class WebhookHandler(BaseHTTPRequestHandler):
                 # ステップ配信スケジュール
                 schedule_step_messages(user_id)
 
-                # 管理者へのLINE通知はしない（お知らせだけの通知は不要とのこと・2026-10-15）。
-                # 誰が追加したかは管理コマンド「一覧」で見られる。
-                print(f"[FOLLOW] 新しい友だち: {user_id[:8]}...")
+                # 流入（友だち追加）だけは管理者のLINEに通知する
+                notify_new_friend(user_id)
 
             elif event_type == "message":
                 msg = event.get("message", {})
@@ -921,6 +938,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
                     # ウェルカムはpushで送信（この後の返信でreply_tokenを使うため）
                     send_line_message(user_id, STEP_MESSAGES["welcome"]["text"])
                     schedule_step_messages(user_id)
+                    notify_new_friend(user_id, recovered=True)
 
                 # 最終受信時刻を記録（フォローアップの「会話中スキップ」判定に使う）
                 if user_id and user_id != ADMIN_USER_ID and user_id in users:
