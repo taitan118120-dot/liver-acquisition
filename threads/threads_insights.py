@@ -41,7 +41,7 @@ FIELDS = [
     "media_id", "timestamp", "permalink",
     "views", "likes", "replies", "reposts", "quotes", "shares",
     "engagements", "eng_rate",
-    "angle", "style", "has_link", "has_cta_reply", "text_len", "hook", "text",
+    "angle", "style", "has_link", "has_cta_reply", "cta_ab", "text_len", "hook", "text",
 ]
 
 # 本文からの型判定（生成プロンプト側の型に対応）
@@ -137,8 +137,37 @@ def fetch_account(token, user_id):
     return None
 
 
-def save_account(followers):
-    """フォロワー数を日次1行で追記する（同じ日は上書き）。"""
+def fetch_link_clicks(token, user_id, days=7):
+    """直近 days 日の投稿内リンクのクリック数を (全リンク合計, LINE分) で返す。
+
+    2026-10-24 追加。「LINEが全く増えない」を調べたとき、Threads から LINE へ
+    何人飛んだかを示す数字がどこにも無く、views と LINE 追加の間が丸ごと見えなかった。
+    CTA返信のリンクカードのクリックはここに入る（bio のリンクは入らない）。
+    """
+    now = int(datetime.now(timezone.utc).timestamp())
+    data = _get(
+        f"{GRAPH_BASE}/{user_id}/threads_insights",
+        {"metric": "clicks", "since": now - days * 86400, "until": now,
+         "access_token": token},
+    )
+    for row in data.get("data", []):
+        if row.get("name") != "clicks":
+            continue
+        links = row.get("link_total_values") or []
+        total = sum(int(x.get("value") or 0) for x in links)
+        line = sum(int(x.get("value") or 0) for x in links
+                   if "lin.ee" in (x.get("link_url") or "")
+                   or "line.me" in (x.get("link_url") or ""))
+        return total, line
+    print(f"  [WARN] clicks 取得失敗: {json.dumps(data, ensure_ascii=False)[:200]}")
+    return None, None
+
+
+ACCOUNT_FIELDS = ["date", "followers", "link_clicks_7d", "line_clicks_7d"]
+
+
+def save_account(followers, clicks=(None, None)):
+    """フォロワー数とリンククリック数を日次1行で追記する（同じ日は上書き）。"""
     if followers is None:
         return
     today = datetime.now(timezone.utc).astimezone(
@@ -153,10 +182,13 @@ def save_account(followers):
         except (OSError, ValueError):
             pass
     prev = sorted(rows)[-1] if rows else None
-    rows[today] = {"date": today, "followers": followers}
+    rows[today] = {"date": today, "followers": followers,
+                   "link_clicks_7d": "" if clicks[0] is None else clicks[0],
+                   "line_clicks_7d": "" if clicks[1] is None else clicks[1]}
     os.makedirs(os.path.dirname(ACCOUNT_CSV), exist_ok=True)
     with open(ACCOUNT_CSV, "w", encoding="utf-8", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=["date", "followers"])
+        w = csv.DictWriter(f, fieldnames=ACCOUNT_FIELDS, restval="",
+                           extrasaction="ignore")
         w.writeheader()
         for d in sorted(rows):
             w.writerow(rows[d])
@@ -167,6 +199,8 @@ def save_account(followers):
         except (ValueError, KeyError):
             delta = ""
     print(f"[OK] フォロワー数 {followers} を記録{delta}")
+    if clicks[0] is not None:
+        print(f"[OK] 直近7日のリンククリック {clicks[0]}（うちLINE {clicks[1]}）")
 
 
 def _queue_index():
@@ -185,6 +219,8 @@ def _queue_index():
                         # これが無いと新方式の投稿が全部「リンクなし」に潰れて比較できない。
                         "has_link": bool(p.get("link")),
                         "has_cta_reply": bool(p.get("reply_link")),
+                        # night枠storyのCTA返信A/B（threads_poster._attach_cta）。cta / control
+                        "cta_ab": p.get("cta_ab", ""),
                     }
     except Exception:
         pass
@@ -238,6 +274,7 @@ def build_rows(token, user_id, limit):
             "style": classify_style(text),
             "has_link": int(q.get("has_link", False)),
             "has_cta_reply": int(q.get("has_cta_reply", False)),
+            "cta_ab": q.get("cta_ab", ""),
             "text_len": len(text),
             "hook": classify_hook(text),
             "text": text.replace("\n", "\\n"),
@@ -399,6 +436,28 @@ def _slot_report(rows, recent_n=30):
               " threads_slot.WAIT_LOOKAHEAD_MIN を確認する")
 
 
+def _cta_report(rows):
+    """CTA返信が本投稿のviewsを落とすかの検証（night枠storyの日替わりA/B）。
+
+    2026-10-24 に CTA を liver/agency 毎回＋night story 隔日へ増やした。
+    story は最大のリーチ源なので、落ちているならここで分かるようにする。
+    """
+    ab = defaultdict(list)
+    for r in rows:
+        if r.get("cta_ab") in ("cta", "control"):
+            ab[r["cta_ab"]].append(r["views"])
+    if not ab:
+        return
+    print("\n■ night story のCTA返信A/B（同じ枠で付けた日・付けない日）")
+    for k, label in (("cta", "CTA返信あり"), ("control", "CTA返信なし")):
+        v = sorted(ab.get(k, []))
+        if v:
+            print(f"  {label:<10} n={len(v):>3}  中央views {v[len(v)//2]:>5}  "
+                  f"平均 {sum(v)/len(v):>7.1f}")
+    if min(len(ab.get("cta", [])), len(ab.get("control", []))) < 8:
+        print("  → まだ各8本未満。判断は保留")
+
+
 def report(rows):
     rows = [r for r in rows if r["views"] > 0]
     if not rows:
@@ -445,6 +504,8 @@ def report(rows):
         if v:
             print(f"  {k:<10} n={len(v):>3}  平均views {_avg(v,'views'):>7}  平均👍{_avg(v,'likes'):>5}")
 
+    _cta_report(rows)
+
     print("\n■ リンク有無別（キューに記録があるものだけ）")
     known = [r for r in rows if r.get("angle")]
     for flag, label in ((1, "リンクあり"), (0, "リンクなし")):
@@ -466,7 +527,7 @@ def main():
 
     token = _env("THREADS_ACCESS_TOKEN")
     user_id = _env("THREADS_USER_ID")
-    save_account(fetch_account(token, user_id))
+    save_account(fetch_account(token, user_id), fetch_link_clicks(token, user_id))
     rows = build_rows(token, user_id, args.limit)
     if not rows:
         print("[ERROR] 取得0件")

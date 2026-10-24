@@ -104,20 +104,56 @@ TARGET_MIX = {"story": 0.50, "liver": 0.10, "agency": 0.40}
 AGENCY_MAX_SHARE = 0.45   # 代理店は多くても45%まで
 AGENCY_MIN_TOTAL = 3      # 3本以上まとめて作るときは最低1本は代理店を入れる
 
-# リンク付き投稿はリーチが半分以下になる（実測）。6本に1本だけに絞る。
-LINK_EVERY = 6
-
 # 本文の上限。実測で300字超は平均15viewsまで落ちるので、上限自体を厳しくする。
 MAX_LEN = 260
 STORY_MAX_LEN = 110
 
-# CTAは本文ではなく本投稿への返信に置く（本文リンクはリーチを半減させるため）。
-LEAD_MAGNET_LINE = "新人期の30日でやることを全部まとめたPDF、LINEの友だち追加で配ってます。"
-# 2026-08-11: 代理店側もLPではなくLINE（特典PDF）へ直接繋ぐ。
+# ── CTA（特典PDF→LINE友だち追加）の文面。付けるかどうかは投稿時に
+#    threads_poster._attach_cta() が決める。ここは文面の正本だけを持つ ──
+# 2026-10-24 見直し。旧方式は生成時に「バッチ内の通し番号が6の倍数の非story」に
+# だけCTAを付けていたが、カウンタの元にしていた p["link"] が本文リンク廃止で
+# 常にNoneになり、実際は各生成バッチの先頭1本だけにしか付いていなかった。
+# 8/7〜10/24で11本（月3本・約11本に1本）。しかも付いたのはviewsの低いagencyばかりで、
+# CTA返信を見た人は月に数人規模＝LINE追加が0なのは計算どおりだった。
+# 一方インサイト（9/24〜10/23）では閲覧者2,288人のうち2,271人(99%)がフォロワー外。
+# フィードで1本だけ見て去る人がほとんどなので、bio頼みでは届かない。
+# 本文にURLは入れない（リーチ半減の実測は変わらない）。
+#   CTA_POINTERS … 本文末に足す1行（URLなし）。「リンクは返信に」と知らせる
+#   CTA_REPLIES  … 本投稿への返信として出す文面（LINE_URL のリンクカード付き）
+# 中身はPDFの章立て（lead_magnet/*_starter_guide.html）に実在するものだけを書く。
 # [[feedback_leadmagnet_first]] CTAは特典PDF経由のLINE登録を最優先にする方針。
-AGENCY_CTA_LINE = (
-    "代理店パートナーの仕事の中身をまとめたPDF、LINEの友だち追加で配ってます。"
-)
+CTA_POINTERS = {
+    "liver": [
+        "新人の最初の30日でやることは、無料のPDFにまとめてる。リンクは返信に置いておくね。",
+        "初配信の準備から30日のロードマップまで、PDFにまとめた。欲しい人は返信のリンクからどうぞ。",
+        "伸び悩んだときの切り分け方も、新人向けのPDFに入れてる。リンクは返信に。",
+    ],
+    "agency": [
+        "代理店パートナーの仕事の中身は、無料のPDFにまとめてる。リンクは返信に置いておくね。",
+        "出会い方・伝え方・所属後のフォローまで、PDFにまとめた。欲しい人は返信のリンクからどうぞ。",
+        "最初の30日に何をするかも、代理店パートナー向けのPDFに入れてる。リンクは返信に。",
+    ],
+}
+CTA_REPLIES = {
+    "liver": [
+        "『ライバー新人期スタートダッシュガイド』\n"
+        "配信前の準備・初配信のやり方・リスナーさんに常連になってもらう基本・30日ロードマップを"
+        "1冊にまとめました。LINEの友だち追加で無料で届きます👇",
+        "配信を始める前の準備から、伸び悩んだときの「3つの切り分け」、毎日のチェックリストまで"
+        "入れたPDFです。LINEの友だち追加ですぐ受け取れます👇",
+        "新人期にやりがちなNG集も入れた『ライバー新人期スタートダッシュガイド』、"
+        "LINEの友だち追加で無料配布しています👇",
+    ],
+    "agency": [
+        "『ライバー代理店パートナー スタートガイド』\n"
+        "仕事の全体像・出会い方・話を聞いてもらえる伝え方・所属後のフォローまで1冊にまとめました。"
+        "LINEの友だち追加で無料で届きます👇",
+        "報酬がどう積み上がるのか、最初の30日に何をするのか。"
+        "代理店パートナー向けのPDFをLINEの友だち追加で配っています👇",
+        "未経験の人がつまずくNG集と、毎週のチェックリスト付き。"
+        "代理店パートナー向けのガイドをLINEの友だち追加で無料配布しています👇",
+    ],
+}
 
 # 2026-08-10: FACTS が「月10万円未満は禁止」と教えていたのに、_violations() の
 # 下限は15万だった。AIは「月12万」を安全だと思って書き、毎回検品で落ちる。
@@ -663,7 +699,6 @@ def generate(total, angle_filter=None):
     posts = _load_posts()
     existing = {p.get("text", "").strip() for p in posts}
     # リンク間隔は「これまでに投入した本数」ではなくキュー全体で数える
-    link_counter = sum(1 for p in posts if p.get("link"))
 
     plan = {angle_filter: total} if angle_filter else _mix(total)
     new_items = []
@@ -715,25 +750,13 @@ def generate(total, angle_filter=None):
         for p in ONCE_PER_BATCH:
             if re.search(p, text):
                 quota[p] -= 1
-        entry = {}
-        # 本文にはリンクを付けない（リーチが半減する）。
-        # storyは完全にノーCTA。それ以外はLINK_EVERY本に1本だけ、
-        # 本投稿への「返信」としてCTAを出す（本投稿のリーチを落とさない）。
-        if angle != "story" and (added + link_counter) % LINK_EVERY == 0:
-            if angle == "agency":
-                entry["reply_link"] = LINE_URL
-                entry["reply_text"] = AGENCY_CTA_LINE
-            else:
-                entry["reply_link"] = LINE_URL
-                entry["reply_text"] = LEAD_MAGNET_LINE
-            link_counter += 1
+        # CTAはここでは付けない（投稿時に threads_poster._attach_cta() が付ける）。
         posts.append({
             "text": text,
             "angle": angle,
             "topic": topic,
             "tags": [],
             "link": None,
-            **entry,
             "reply_control": "everyone",
             "posted": False,
             "created_at": datetime.now().isoformat(timespec="seconds"),

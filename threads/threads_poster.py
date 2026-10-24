@@ -53,7 +53,10 @@ MAX_LEN = 500
 try:
     sys.path.insert(0, SCRIPT_DIR)
     from threads_content import TARGET_MIX, _violations as _fact_violations
+    from threads_content import CTA_POINTERS, CTA_REPLIES, LINE_URL
 except Exception:
+    # CTAは無しで投稿を続ける（導線が欠けるだけで配信は止めない）
+    CTA_POINTERS, CTA_REPLIES, LINE_URL = {}, {}, ""
     # threads_content.TARGET_MIX のフォールバック。向こうを変えたらここも直す
     TARGET_MIX = {"story": 0.50, "liver": 0.20, "agency": 0.30}
     # 検品モジュールが読めないときは検品なしで投稿を続ける（fail-open）。
@@ -241,6 +244,56 @@ def _recent_angles(posts, window=MIX_WINDOW):
 SLOT_PREFERRED_ANGLE = {"night": "story"}
 
 
+# CTA（特典PDF→LINE友だち追加）をどの投稿に付けるか。2026-10-24 見直し。
+# 以前は生成時の付与ロジックが壊れていて、約11本に1本（月3本）しか出ていなかった
+# （経緯は threads_content.CTA_POINTERS の上）。投稿する1本が決まった時点でここが決める。
+#   liver / agency … 毎回。本文末にURLなしの1行（CTA_POINTERS）＋返信にリンク。
+#                    もともと宣伝寄りの型なので導線を出し惜しむ理由がない
+#   story          … STORY_CTA_SLOT 枠だけ、日付の偶奇で返信リンクを付ける（本文はいじらない）。
+#                    storyは最大のリーチ源。CTA返信が本投稿のviewsを落とすかは
+#                    n=8 の弱い兆候（CTA付きagency 中央23.5 / なし42）しか無いので、
+#                    同じ枠で付けた日・付けない日を交互に作り、threads_insights で比べる
+STORY_CTA_SLOT = "night"
+
+
+def _attach_cta(target, posts, slot=None, today=None):
+    """投稿する1本にCTAを付ける（target を書き換える）。"""
+    if (target.get("reply_link") or "").strip():
+        return  # 手動で付けたCTAはそのまま
+    angle = target.get("angle") or ""
+    group = "agency" if angle == "agency" else "liver"
+    if angle == "story":
+        if slot != STORY_CTA_SLOT:
+            return
+        today = today or datetime.now(JST).date()
+        target["cta_ab"] = "control" if today.toordinal() % 2 else "cta"
+        if target["cta_ab"] == "control":
+            return
+    elif angle not in ("liver", "agency"):
+        return
+    replies = CTA_REPLIES.get(group) or []
+    if not replies or not LINE_URL:
+        return
+    # 同じ文面が続くとスパム判定が怖いので、これまでに出した本数で順に回す
+    n = sum(1 for p in posts if p.get("posted") and p.get("cta_group") == group)
+    target["reply_link"] = LINE_URL
+    target["reply_text"] = replies[n % len(replies)]
+    target["cta_group"] = group
+    pointers = CTA_POINTERS.get(group) or []
+    if angle != "story" and pointers:
+        target["cta_pointer"] = pointers[n % len(pointers)]
+
+
+def _body(target):
+    """実際に公開する本文。キューの text はそのまま残し、CTAの1行は公開時に足す
+    （text を書き換えると --audit が投稿済み分を長すぎで毎回NGに数える）。"""
+    text = (target.get("text") or "").strip()
+    pointer = (target.get("cta_pointer") or "").strip()
+    if pointer and len(text) + len(pointer) + 2 <= MAX_LEN:
+        return f"{text}\n\n{pointer}"
+    return text
+
+
 def _pick_by_mix(candidates, posts, slot=None):
     """TARGET_MIX から最も不足している型を選ぶ。同じ型の中ではキュー順（＝FIFO）。
 
@@ -287,7 +340,8 @@ def cmd_next(dry_run=False, require_reply_link=False, slot_gate=False):
     違反1本のせいで配信を止めると1日2回の配信そのものが欠けるので、
     落とすのは「その1本」だけにして、次に良い型の1本を代わりに出す。
 
-    require_reply_link=True のときは reply_link を持つ投稿だけを対象にする。
+    require_reply_link=True のときは reply_link を持つ投稿（と、投稿時に
+    _attach_cta() でCTAが付く liver/agency）だけを対象にする。
     CTA返信(reply_to_id)の動作確認を、通常の順番待ちをせずに1本試すための入口。
 
     slot_gate=True のときは threads_slot の投稿ウィンドウ(JST)を見て、
@@ -325,10 +379,11 @@ def cmd_next(dry_run=False, require_reply_link=False, slot_gate=False):
             continue
         if p.get("posted"):
             continue
-        if _text_hash(text) in done:
+        if _text_hash(text) in done or _text_hash(_body(p)) in done:
             p["posted"] = True  # ログ上は投稿済み、フラグを同期
             continue
-        if require_reply_link and not (p.get("reply_link") or "").strip():
+        if require_reply_link and not ((p.get("reply_link") or "").strip()
+                                       or p.get("angle") in ("liver", "agency")):
             continue
         # 確定ファクト違反は投稿対象から外す。キューからは消さない（後で
         # 直せる形で残す）が、選択肢には入れないので世には出ない。
@@ -363,10 +418,11 @@ def cmd_next(dry_run=False, require_reply_link=False, slot_gate=False):
         _save_posts(posts)
         return 0
 
+    _attach_cta(target, posts, slot)
     media_id = post_text(
         token,
         user_id,
-        target["text"],
+        _body(target),
         link=target.get("link"),
         reply_control=target.get("reply_control", "everyone"),
         dry_run=dry_run,
