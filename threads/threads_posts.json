@@ -3133,9 +3133,12 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
+    "posted": true,
     "created_at": "2026-10-24T12:27:41",
-    "source": "manual"
+    "source": "manual",
+    "cta_ab": "control",
+    "posted_at": "2026-10-26T22:36:17+09:00",
+    "media_id": "18122341498940307"
   },
   {
     "text": "休む日を先に決めている人のほうが、結局たくさん配信している。\n休みが決まっていないと、毎日が「やるかやらないか」の勝負になるから。",
