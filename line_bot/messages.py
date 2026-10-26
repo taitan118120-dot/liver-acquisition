@@ -266,9 +266,17 @@ INTENT_OPTIONS = {
         "1", "①", "1番", "ライバー", "配信したい", "配信を始め", "始めたい",
         "演者", "配信者", "デビュー",
     ],
+    # 「代理店」「パートナー」単体はリッチメニューのボタン名（＝送信されるキーワード）。
+    # 単体や部分一致で代理店希望と判定すると、①②③に答える前にメニューの「代理店」を
+    # 押しただけの人が代理店希望に確定し、メニューまで差し替わっていた（2026-10-26）。
+    # 「今の代理店から移籍したい」「スカウトされて」もライバー側の言い方なので、
+    # 代理店をやりたい意思が読める言い回しだけを並べる。
     "agency": [
-        "2", "②", "2番", "代理店", "パートナー", "スカウト", "事務所側",
-        "マネージャー側", "育てる側",
+        "2", "②", "2番", "代理店パートナー", "代理店として", "代理店をやりたい",
+        "代理店やりたい", "代理店になりたい", "代理店をやってみたい", "代理店希望",
+        "代理店を始め", "代理店始め",
+        "代理店に興味", "パートナーとして", "パートナー希望", "事務所側",
+        "マネージャー側", "育てる側", "スカウトする側", "スカウトしたい",
     ],
     "both": [
         "3", "③", "3番", "両方", "まだ決め", "決めてない", "決めていない",
@@ -283,6 +291,26 @@ INTENT_LABELS = {
 }
 
 
+_NUMBER_TOKEN_RE = re.compile(r"^(?:\d|[①-⑳])$")
+_SHORT_ASCII_RE = re.compile(r"^[a-z]{1,2}$")
+
+
+def _option_in(word, t):
+    """選択肢の語 word が返答 t に含まれるか（部分一致の判定）
+
+    番号は「先頭にあって、すぐ後ろに数字が続かない」ときだけ当たりにする。
+    素朴な部分一致だと「20代です」「21時なら」に 2 が当たって、
+    ①②③／①〜⑧の回答として記録されてしまう。
+    "x" "ai" "ig" のような短い英字は、単語として現れたときだけ当たりにする。
+    """
+    w = word.lower()
+    if _NUMBER_TOKEN_RE.match(w):
+        return t.startswith(w) and not t[len(w):len(w) + 1].isdigit()
+    if _SHORT_ASCII_RE.match(w):
+        return re.search(rf"(?<![a-z]){re.escape(w)}(?![a-z])", t) is not None
+    return w in t
+
+
 def find_intent(text):
     """welcome への返答から希望の種別を判定。なければ None。"""
     t = text.strip().lower()
@@ -290,9 +318,11 @@ def find_intent(text):
         for w in words:
             if t == w.lower():
                 return key
-    for key, words in INTENT_OPTIONS.items():
-        for w in words:
-            if w.lower() in t:
+    # 部分一致は「両方」→「代理店」→「ライバー」の順に見る。
+    # ライバー側の「始めたい」は「代理店を始めたい」にも含まれるため後回しにする。
+    for key in ("both", "agency", "liver"):
+        for w in INTENT_OPTIONS[key]:
+            if _option_in(w, t):
                 return key
     return None
 
@@ -497,7 +527,7 @@ def find_source(text):
     # 次に部分一致
     for label, keys in SOURCE_OPTIONS.items():
         for k in keys:
-            if k.lower() in t:
+            if _option_in(k, t):
                 return label
     return None
 
