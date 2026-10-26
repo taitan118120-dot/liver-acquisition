@@ -9,6 +9,9 @@
     python3 profile_icon.py     # assets/line_profile_icon.jpg を生成
 
 生成した画像は LINE Official Account Manager の「プロフィール画像」に手動でアップする。
+アップ時の「写真を編集」は初期の切り抜き枠が中央80%しかないので、
+**枠を画像の四隅いっぱいまで広げてから OK** を押すこと（そのままだと余白が削られ T・O が欠ける）。
+変更後1時間は再変更できない。
 """
 
 import os
