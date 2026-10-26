@@ -24,7 +24,8 @@ from config import (
 )
 from messages import (
     STEP_MESSAGES, AUTO_REPLIES, AGENCY_REPLIES, DEFAULT_REPLY, source_thanks,
-    find_source, make_meeting_offer, parse_slot_choice, MEETING_BOOKED,
+    find_source, make_meeting_offer, classify_slot_reply, meeting_booked,
+    SLOT_QUESTION_REPLY,
     find_intent, INTENT_LABELS, INTENT_REPLIES, meeting_intro, step_text,
     slot_reprompt, MANUAL_FOLLOW_REPLY,
 )
@@ -831,7 +832,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
         self.end_headers()
-        self.wfile.write(b"TAITAN PRO LINE Bot is running (v34-menu-tap-not-intent)")
+        self.wfile.write(b"TAITAN PRO LINE Bot is running (v35-short-intent-slot-echo)")
 
     def do_POST(self):
         content_length = int(self.headers.get("Content-Length", 0))
@@ -1010,8 +1011,14 @@ class WebhookHandler(BaseHTTPRequestHandler):
 
                 # 面談の日程候補への返答待ち
                 if user_data.get("awaiting_slot"):
-                    slot = parse_slot_choice(text)
-                    if slot:
+                    has_keyword = bool(find_auto_reply(text, user_data.get("intent")))
+                    kind = classify_slot_reply(text, has_keyword)
+                    if kind == "question":
+                        # 日時の相談には答えて、具体的な日時をもう一度聞く（受付はまだ）
+                        reply_line_message(reply_token, SLOT_QUESTION_REPLY, user_id)
+                        continue
+                    if kind == "slot":
+                        slot = text.strip()
                         user_data["awaiting_slot"] = False
                         user_data["meeting_scheduled"] = True
                         user_data["meeting_slot"] = slot
@@ -1020,7 +1027,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
                         users[user_id] = user_data
                         save_json(USERS_FILE, users)
                         cancel_user_steps(user_id)
-                        reply_line_message(reply_token, MEETING_BOOKED.format(slot=slot), user_id)
+                        reply_line_message(reply_token, meeting_booked(slot), user_id)
                         name = get_display_name(user_id)
                         notify_admin(
                             "📅 面談希望が入りました！\n"
@@ -1040,7 +1047,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
                     # ただし「収入」等のキーワード質問はBotがそのまま答えられるので通知しない。
                     # （アンケート直後に日程を打診するようになり awaiting_slot の期間が
                     #   長くなったため、これが無いと質問のたびに管理者通知が飛ぶ）
-                    if not find_auto_reply(text, user_data.get("intent")):
+                    if not has_keyword:
                         notify_manual_needed(user_id, text, "日程の質問への自由文返信")
                     # → 下のキーワード応答／日程の案内し直しにそのまま流す
 
