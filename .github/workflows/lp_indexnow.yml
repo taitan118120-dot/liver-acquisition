@@ -1,0 +1,36 @@
+name: LP検索エンジン通知（IndexNow）
+
+# lp/ に変更が push されたら、Netlify のデプロイを待ってから lp_indexnow.py で
+# sitemap.xml の全URLを IndexNow（Bing ほか）へ通知する。背景は lp_indexnow.py の冒頭を参照。
+# Google は IndexNow 非対応なので Search Console 側のサイトマップ送信で別途カバーする。
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'lp/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  indexnow:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 依存パッケージインストール
+        run: pip install requests
+
+      - name: Netlify のデプロイ完了を待つ
+        if: github.event_name == 'push'
+        run: sleep 180
+
+      - name: IndexNow へ通知
+        run: python lp_indexnow.py
