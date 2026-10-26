@@ -3210,9 +3210,16 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
+    "posted": true,
     "created_at": "2026-10-24T12:27:41",
-    "source": "manual"
+    "source": "manual",
+    "reply_link": "https://lin.ee/xchCfdn",
+    "reply_text": "報酬がどう積み上がるのか、最初の30日に何をするのか。代理店パートナー向けのPDFをLINEの友だち追加で配っています👇",
+    "cta_group": "agency",
+    "cta_pointer": "出会い方・伝え方・所属後のフォローまで、PDFにまとめた。欲しい人は返信のリンクからどうぞ。",
+    "posted_at": "2026-10-26T09:05:21+09:00",
+    "media_id": "18675636238032560",
+    "reply_media_id": "18154154068579667"
   },
   {
     "text": "声をかける相手を選ぶとき、見るのはフォロワー数じゃない。\n自分の発信に、続けて反応をくれているかどうか。\n続けられる人かは、そこにいちばん出る。",
