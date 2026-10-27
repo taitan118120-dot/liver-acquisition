@@ -3147,9 +3147,16 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
+    "posted": true,
     "created_at": "2026-10-24T12:27:41",
-    "source": "manual"
+    "source": "manual",
+    "cta_ab": "cta",
+    "reply_link": "https://lin.ee/xchCfdn",
+    "reply_text": "配信を始める前の準備から、伸び悩んだときの「3つの切り分け」、毎日のチェックリストまで入れたPDFです。LINEの友だち追加ですぐ受け取れます👇",
+    "cta_group": "liver",
+    "posted_at": "2026-10-27T22:00:24+09:00",
+    "media_id": "18098216327551470",
+    "reply_media_id": "17877825483610263"
   },
   {
     "text": "枠の最後に次回の時間を言うだけで、来てくれる人は変わる。\n「次いつ？」が分からなければ、予定に入れようがないから。",
