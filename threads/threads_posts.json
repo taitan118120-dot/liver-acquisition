@@ -3165,9 +3165,12 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
+    "posted": true,
     "created_at": "2026-10-24T12:27:41",
-    "source": "manual"
+    "source": "manual",
+    "cta_ab": "control",
+    "posted_at": "2026-10-28T22:00:24+09:00",
+    "media_id": "18109631180227967"
   },
   {
     "text": "投げ銭をお願いしない人のほうが、結果的に応援される。\nお願いされると、リスナーさんは身構える。\n楽しい時間が先、応援は後からついてくる。",
