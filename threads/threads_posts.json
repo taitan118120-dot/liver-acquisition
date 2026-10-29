@@ -3192,9 +3192,16 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
+    "posted": true,
     "created_at": "2026-10-24T12:27:41",
-    "source": "manual"
+    "source": "manual",
+    "cta_ab": "cta",
+    "reply_link": "https://lin.ee/xchCfdn",
+    "reply_text": "新人期にやりがちなNG集も入れた『ライバー新人期スタートダッシュガイド』、LINEの友だち追加で無料配布しています👇",
+    "cta_group": "liver",
+    "posted_at": "2026-10-29T23:20:22+09:00",
+    "media_id": "18417678001087991",
+    "reply_media_id": "18037248494662612"
   },
   {
     "text": "「伸びたら楽しくなる」は、順番が逆。\n楽しそうな枠に、人が集まる。\n数字が先に来ることは、まずない。",
