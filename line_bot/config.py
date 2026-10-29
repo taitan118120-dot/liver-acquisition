@@ -56,3 +56,12 @@ RESUME_FIRST_DELAY = 24 * 3600
 # slot_release の予約はこの機能より後の打診にしか入らないため、
 # それ以前から止まったままの人を app.py の sweep_stale_meeting_offers() が拾う。
 OFFER_STALE_DAYS = 7
+
+# 自動配信（followup_* / slot_reminder）を送ってよい時間帯（時、Asia/Tokyo）。
+# 配信は「友だち追加と同じ時刻の◯日後」に予約されるため、深夜に追加した人には
+# 深夜に通知が鳴っていた（2026-10-29 本番: 自動配信110通中36通が22〜8時着、
+# 朝4時に追加→3日後の朝4時着→その朝ブロック、の実例あり）。
+# この枠の外に当たった配信は、次の SEND_START_HOUR ちょうどへ後ろ倒しする。
+# 相手の返事への reply（会話中の応答）は対象外＝いつでも即返す。
+SEND_START_HOUR = 9
+SEND_END_HOUR = 21

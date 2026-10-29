@@ -21,6 +21,7 @@ from urllib.error import HTTPError
 from config import (
     LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN, STEP_DELAYS, ADMIN_USER_ID,
     RICH_MENU_ID_AGENCY, STEP_NOT_ON_FOLLOW, RESUME_FIRST_DELAY, OFFER_STALE_DAYS,
+    SEND_START_HOUR, SEND_END_HOUR,
 )
 from messages import (
     STEP_MESSAGES, AUTO_REPLIES, AGENCY_REPLIES, DEFAULT_REPLY, source_thanks,
@@ -28,6 +29,7 @@ from messages import (
     SLOT_QUESTION_REPLY,
     find_intent, INTENT_LABELS, INTENT_REPLIES, meeting_intro, step_text,
     slot_reprompt, MANUAL_FOLLOW_REPLY,
+    slot_quick_reply, SLOT_CHAT_TEXT, SLOT_DECLINE_TEXT, SLOT_CHAT_REPLY, SLOT_DECLINE_REPLY,
 )
 import rich_menu
 import state_sync
@@ -68,7 +70,15 @@ def log_message(user_id, direction, text):
 
 
 # --- LINE API ---
-def send_line_message(user_id, text):
+def _text_messages(texts, quick_reply=None):
+    """送信用のメッセージ配列。ボタン（quickReply）は最後の吹き出しにだけ付ける"""
+    messages = [{"type": "text", "text": t} for t in texts]
+    if quick_reply and messages:
+        messages[-1]["quickReply"] = quick_reply
+    return messages
+
+
+def send_line_message(user_id, text, quick_reply=None):
     """LINE Messaging APIでプッシュメッセージを送信"""
     url = "https://api.line.me/v2/bot/message/push"
     headers = {
@@ -77,7 +87,7 @@ def send_line_message(user_id, text):
     }
     body = json.dumps({
         "to": user_id,
-        "messages": [{"type": "text", "text": text}],
+        "messages": _text_messages([text], quick_reply),
     }).encode("utf-8")
 
     req = Request(url, data=body, headers=headers, method="POST")
@@ -89,10 +99,11 @@ def send_line_message(user_id, text):
         print(f"[ERROR] send failed: {e.code} {e.read().decode()}")
 
 
-def reply_line_message(reply_token, texts, user_id="unknown"):
+def reply_line_message(reply_token, texts, user_id="unknown", quick_reply=None):
     """LINE Messaging APIでリプライメッセージを送信（str または list、最大5通）"""
     if isinstance(texts, str):
         texts = [texts]
+    texts = texts[:5]
     url = "https://api.line.me/v2/bot/message/reply"
     headers = {
         "Content-Type": "application/json",
@@ -100,7 +111,7 @@ def reply_line_message(reply_token, texts, user_id="unknown"):
     }
     body = json.dumps({
         "replyToken": reply_token,
-        "messages": [{"type": "text", "text": t} for t in texts[:5]],
+        "messages": _text_messages(texts, quick_reply),
     }).encode("utf-8")
 
     req = Request(url, data=body, headers=headers, method="POST")
@@ -203,6 +214,45 @@ def notify_new_friend(user_id, recovered=False):
 # --- ステップ配信（永続化対応）---
 SCHEDULE_FILE = os.path.join(DATA_DIR, "step_schedule.json")
 
+
+def in_send_hours(dt):
+    """自動配信を送ってよい時間帯か（SEND_START_HOUR〜SEND_END_HOUR）"""
+    return SEND_START_HOUR <= dt.hour < SEND_END_HOUR
+
+
+def next_send_time(dt):
+    """dt が深夜・早朝なら、次の送信可能時刻（SEND_START_HOUR ちょうど）に後ろ倒しする
+
+    前倒しはしない。予定より早く届くと「1日後」「打診の2日後」の間隔が縮むため。
+    """
+    if in_send_hours(dt):
+        return dt
+    nxt = dt.replace(hour=SEND_START_HOUR, minute=0, second=0, microsecond=0)
+    if dt.hour >= SEND_END_HOUR:
+        nxt += timedelta(days=1)
+    return nxt
+
+
+def _defer_step(user_id, step_name, send_at):
+    """配信予定を send_at に付け替えて、その時刻に起こし直す"""
+    schedules = load_json(SCHEDULE_FILE, [])
+    schedules = [
+        s for s in schedules
+        if not (s["user_id"] == user_id and s["step"] == step_name)
+    ]
+    schedules.append({
+        "user_id": user_id,
+        "step": step_name,
+        "send_at": send_at.isoformat(),
+    })
+    save_json(SCHEDULE_FILE, schedules)
+    t = threading.Timer(
+        max(0, (send_at - datetime.now()).total_seconds()),
+        _send_step_if_active, args=[user_id, step_name],
+    )
+    t.daemon = True
+    t.start()
+
 # 日程の聞き直し。他のステップと送信条件が逆で、
 # 「面談を打診したのに日程が返ってきていない人」だけに送る。
 SLOT_REMINDER_STEP = "slot_reminder"
@@ -246,7 +296,7 @@ def _rearm_followups(user_id, user):
     base = now + timedelta(seconds=RESUME_FIRST_DELAY - STEP_DELAYS[pending[0]])
     armed = []
     for step in pending:
-        send_at = base + timedelta(seconds=STEP_DELAYS[step])
+        send_at = next_send_time(base + timedelta(seconds=STEP_DELAYS[step]))
         schedules.append({
             "user_id": user_id,
             "step": step,
@@ -372,11 +422,21 @@ def _send_step_if_active(user_id, step_name):
             print(f"[STEP] Skipped '{step_name}' for {user_id[:8]}... (already sent)")
             _remove_schedule(user_id, step_name)
             return
+        # 深夜・早朝に当たったら送らずに朝へ回す。予約時にも後ろ倒ししているが、
+        # 再起動で期限切れの予約がまとめて起きたとき（restore_pending_steps）や、
+        # この仕組みより前に積まれた予約はここでしか止められない。
+        now = datetime.now()
+        if not in_send_hours(now):
+            send_at = next_send_time(now)
+            _defer_step(user_id, step_name, send_at)
+            print(f"[STEP] Deferred '{step_name}' for {user_id[:8]}... to {send_at} (quiet hours)")
+            return
         text = step_text(step_name, user.get("intent"))
         if not text:
             _remove_schedule(user_id, step_name)
             return
-        send_line_message(user_id, text)
+        quick_reply = slot_quick_reply() if step_name == SLOT_REMINDER_STEP else None
+        send_line_message(user_id, text, quick_reply)
         # step_sent を記録
         if user_id in users:
             sent = users[user_id].get("step_sent", [])
@@ -431,7 +491,8 @@ def schedule_step_messages(user_id):
         if not msg:
             continue
 
-        send_at = (now + timedelta(seconds=delay)).isoformat()
+        send_dt = next_send_time(now + timedelta(seconds=delay))
+        send_at = send_dt.isoformat()
         schedules.append({
             "user_id": user_id,
             "step": step_name,
@@ -439,7 +500,9 @@ def schedule_step_messages(user_id):
         })
 
         # Timer もセット（サーバーが落ちなければTimerで送信）
-        t = threading.Timer(delay, _send_step_if_active, args=[user_id, step_name])
+        t = threading.Timer(
+            (send_dt - now).total_seconds(), _send_step_if_active, args=[user_id, step_name]
+        )
         t.daemon = True
         t.start()
         print(f"[STEP] Scheduled '{step_name}' for {user_id[:8]}... at {send_at}")
@@ -465,8 +528,9 @@ def schedule_slot_reminder(user_id):
     if any(s["user_id"] == user_id and s["step"] == SLOT_REMINDER_STEP for s in schedules):
         return
 
-    delay = STEP_DELAYS[SLOT_REMINDER_STEP]
-    send_at = (datetime.now() + timedelta(seconds=delay)).isoformat()
+    now = datetime.now()
+    send_dt = next_send_time(now + timedelta(seconds=STEP_DELAYS[SLOT_REMINDER_STEP]))
+    send_at = send_dt.isoformat()
     schedules.append({
         "user_id": user_id,
         "step": SLOT_REMINDER_STEP,
@@ -474,7 +538,10 @@ def schedule_slot_reminder(user_id):
     })
     save_json(SCHEDULE_FILE, schedules)
 
-    t = threading.Timer(delay, _send_step_if_active, args=[user_id, SLOT_REMINDER_STEP])
+    t = threading.Timer(
+        (send_dt - now).total_seconds(), _send_step_if_active,
+        args=[user_id, SLOT_REMINDER_STEP],
+    )
     t.daemon = True
     t.start()
     print(f"[STEP] Scheduled '{SLOT_REMINDER_STEP}' for {user_id[:8]}... at {send_at}")
@@ -832,7 +899,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
         self.end_headers()
-        self.wfile.write(b"TAITAN PRO LINE Bot is running (v35-short-intent-slot-echo)")
+        self.wfile.write(b"TAITAN PRO LINE Bot is running (v36-quiet-hours-slot-buttons)")
 
     def do_POST(self):
         content_length = int(self.headers.get("Content-Length", 0))
@@ -1006,8 +1073,36 @@ class WebhookHandler(BaseHTTPRequestHandler):
                         save_json(USERS_FILE, users)
                         if offered_now:
                             schedule_slot_reminder(user_id)
-                        reply_line_message(reply_token, replies, user_id)
+                        reply_line_message(
+                            reply_token, replies, user_id,
+                            slot_quick_reply() if offered_now else None,
+                        )
                         continue
+
+                # 日程ボタンの「チャットで相談したい」「今回は見送ります」
+                # （日時のボタンは下の日程判定でそのまま受け付ける）
+                in_offer = user_data.get("awaiting_slot") or user_data.get("meeting_offered")
+                if in_offer and text.strip() == SLOT_CHAT_TEXT:
+                    # 通話の打診は取り下げて通常配信に戻す。質問はこのあと自由に送ってもらう
+                    release_meeting_flow(user_id, "chose_chat")
+                    users = load_json(USERS_FILE)
+                    if user_id in users:
+                        users[user_id]["chose_chat_at"] = datetime.now().isoformat()
+                        save_json(USERS_FILE, users)
+                    reply_line_message(reply_token, SLOT_CHAT_REPLY, user_id)
+                    print(f"[MEETING] {user_id[:8]}... -> チャット希望")
+                    continue
+                if in_offer and text.strip() == SLOT_DECLINE_TEXT:
+                    # ブロックの代わりの出口。以後の自動配信は予約ごと取り消して送らない
+                    cancel_user_steps(user_id)
+                    user_data["awaiting_slot"] = False
+                    user_data["meeting_offered"] = False
+                    user_data["meeting_declined_at"] = datetime.now().isoformat()
+                    users[user_id] = user_data
+                    save_json(USERS_FILE, users)
+                    reply_line_message(reply_token, SLOT_DECLINE_REPLY, user_id)
+                    print(f"[MEETING] {user_id[:8]}... -> 見送り（自動配信停止）")
+                    continue
 
                 # 面談の日程候補への返答待ち
                 if user_data.get("awaiting_slot"):
@@ -1062,7 +1157,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
                     users[user_id] = user_data
                     save_json(USERS_FILE, users)
                     schedule_slot_reminder(user_id)
-                    reply_line_message(reply_token, offer, user_id)
+                    reply_line_message(reply_token, offer, user_id, slot_quick_reply())
                     continue
 
                 # キーワード自動応答
@@ -1073,7 +1168,9 @@ class WebhookHandler(BaseHTTPRequestHandler):
                     replies = [auto_reply]
                     # 2つ目の質問に答えたタイミングで日程も打診（質問だけで離脱させない）
                     offered_now = False
-                    if count >= 2 and not user_data.get("meeting_offered"):
+                    # ボタンで「チャットで」「見送り」を選んだ人には、こちらから打診し直さない
+                    declined = user_data.get("chose_chat_at") or user_data.get("meeting_declined_at")
+                    if count >= 2 and not user_data.get("meeting_offered") and not declined:
                         offer = make_meeting_offer(
                             meeting_intro(user_data.get("intent"), nudge=True)
                         )
@@ -1086,7 +1183,10 @@ class WebhookHandler(BaseHTTPRequestHandler):
                     save_json(USERS_FILE, users)
                     if offered_now:
                         schedule_slot_reminder(user_id)
-                    reply_line_message(reply_token, replies, user_id)
+                    reply_line_message(
+                        reply_token, replies, user_id,
+                        slot_quick_reply() if offered_now else None,
+                    )
                 else:
                     # 日程を聞いたあとの自由回答（日時でもキーワードでもない）
                     # → 個別の相談・返事の可能性が高い。担当に知らせたうえで、
@@ -1101,10 +1201,11 @@ class WebhookHandler(BaseHTTPRequestHandler):
                         users[user_id] = user_data
                         save_json(USERS_FILE, users)
                         if count == 1:
-                            reply = slot_reprompt()
+                            reply_line_message(
+                                reply_token, slot_reprompt(), user_id, slot_quick_reply()
+                            )
                         else:
-                            reply = MANUAL_FOLLOW_REPLY
-                        reply_line_message(reply_token, reply, user_id)
+                            reply_line_message(reply_token, MANUAL_FOLLOW_REPLY, user_id)
                         continue
                     # DEFAULT_REPLY は初回メッセージ時のみ送信
                     if not user_data.get("default_replied"):
