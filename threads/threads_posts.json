@@ -3179,9 +3179,11 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
+    "posted": true,
     "created_at": "2026-10-24T12:27:41",
-    "source": "manual"
+    "source": "manual",
+    "posted_at": "2026-10-29T09:05:29+09:00",
+    "media_id": "18099988175532177"
   },
   {
     "text": "きついコメントに、全部答えなくていい。\n1人に引っ張られると、残りの全員が置いていかれる。\n枠の空気を守るのも配信者の仕事だ。",
