@@ -305,6 +305,10 @@ SLOT_REMINDER_STEP = "slot_reminder"
 # followup_* が全部スキップされるため、打診に返事をしなかった人が永久に無音になっていた。
 SLOT_RELEASE_STEP = "slot_release"
 
+# 特典を渡すときに「明日、この中のいちばん大事なところを届ける」と予告している配信。
+# 予告した約束なので、面談の打診中（日程の返事待ち）の人にも送る。
+PROMISED_STEP = "followup_1day"
+
 # 解除後に組み直す対象。STEP_DELAYS の順序ではなく、遅い順に並べ替えて使う。
 FOLLOWUP_STEPS = sorted(
     (s for s in STEP_DELAYS if s.startswith("followup_")),
@@ -444,7 +448,8 @@ def _send_step_if_active(user_id, step_name):
         # 面談フローに入った人（日程提示済み）には送らない。
         # 番号選択を通らずチャット手動調整→LINE通話で面談済みになるケースがあり、
         # その場合 auto_paused が立たないまま「その後いかがですか？」が飛んでしまう
-        elif user.get("meeting_offered") or user.get("awaiting_slot"):
+        # ただし特典のときに予告した1日後の配信（PROMISED_STEP）だけは約束なので送る。
+        elif (user.get("meeting_offered") or user.get("awaiting_slot")) and step_name != PROMISED_STEP:
             print(f"[STEP] Skipped '{step_name}' for {user_id[:8]}... (meeting flow)")
             _remove_schedule(user_id, step_name)
             return
@@ -474,7 +479,7 @@ def _send_step_if_active(user_id, step_name):
             _defer_step(user_id, step_name, send_at)
             print(f"[STEP] Deferred '{step_name}' for {user_id[:8]}... to {send_at} (quiet hours)")
             return
-        text = step_text(step_name, user.get("intent"))
+        text = step_text(step_name, user.get("intent"), user.get("intent_asked", False))
         if not text:
             _remove_schedule(user_id, step_name)
             return
@@ -943,7 +948,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "text/plain")
         self.end_headers()
         self.wfile.write(
-            "TAITAN PRO LINE Bot is running (v36.1-quick-reply-selfcheck) "
+            "TAITAN PRO LINE Bot is running (v37-gift-preview-content-followups) "
             f"quick_reply={QUICK_REPLY_CHECK}".encode("utf-8")
         )
 

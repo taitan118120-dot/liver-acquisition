@@ -30,6 +30,7 @@ RICH_MENU_ID_AGENCY = os.environ.get("RICH_MENU_ID_AGENCY", "")
 # _send_step_if_active のガード（unfollowed / auto_paused / meeting_scheduled /
 # meeting_offered / awaiting_slot / 直近12時間の会話）は followup_* に等しく効くので、
 # 面談フローに入った人・会話が生きている人には届かない。増やしても追い打ちにはならない。
+# 例外は followup_1day：特典を渡すときに予告した中身なので、面談の打診中（日程待ち）でも送る。
 # followup_* はここから先を足さないこと（7日後の文面が「これで最後」と明言している）。
 # ※ slot_reminder / slot_release だけは友だち追加時ではなく「面談を打診した時点」から数え、
 #    送信条件も逆（打診済みで日程が返ってきていない人だけ）。
@@ -38,8 +39,8 @@ RICH_MENU_ID_AGENCY = os.environ.get("RICH_MENU_ID_AGENCY", "")
 #    打診に返事をしなかった人もここの3通を（1日ずつ後ろにずれた形で）受け取る。
 STEP_DELAYS = {
     "welcome": 0,                    # 即時
-    "followup_1day": 24 * 3600,      # 24時間後：特典PDFの感想うかがい＋小さな質問の呼び水
-    "followup_3day": 3 * 24 * 3600,  # 3日後：PDFの中身に触れて具体的な質問を促す
+    "followup_1day": 24 * 3600,      # 24時間後：特典のときに予告した「いちばん大事なところ」を届ける
+    "followup_3day": 3 * 24 * 3600,  # 3日後：ガイドの中身をもう1つ届ける
     "followup_7day": 7 * 24 * 3600,  # 7日後：「今は迷い中でも大丈夫」で軽く締める（最終）
     "slot_reminder": 2 * 24 * 3600,  # 面談打診の2日後に1回だけ日程を聞き直す
     "slot_release": 5 * 24 * 3600,   # 聞き直しの5日後（＝打診の7日後）に面談フラグを下ろす
