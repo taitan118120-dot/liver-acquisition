@@ -123,6 +123,49 @@ def reply_line_message(reply_token, texts, user_id="unknown", quick_reply=None):
         print(f"[ERROR] reply failed: {e.code} {e.read().decode()}")
 
 
+# 日程ボタン付きの吹き出しを、LINE公式の検証API（送信はしない・通数にも数えない）に
+# 通した結果。ヘルスチェックに出すので、トークンの無い手元からも curl で確認できる。
+# 形式が不正だと打診の吹き出しごと送れなくなるため、起動のたびに確かめる。
+QUICK_REPLY_CHECK = "pending"
+
+
+def validate_quick_reply_payloads():
+    """打診・聞き直しの実際の吹き出し（ボタン付き）をLINEの検証APIにかける"""
+    global QUICK_REPLY_CHECK
+    from messages import STEP_MESSAGES_AGENCY
+    morning = datetime.now().replace(hour=10)   # 「今日の夜」あり
+    evening = datetime.now().replace(hour=20)   # 「今日の夜」なし
+    batches = [
+        _text_messages(
+            [source_thanks("liver"), make_meeting_offer(meeting_intro("liver", nudge=True))],
+            slot_quick_reply(morning),
+        ),
+        _text_messages(
+            [make_meeting_offer(meeting_intro("agency"))], slot_quick_reply(evening)
+        ),
+        _text_messages([step_text("slot_reminder", "liver")], slot_quick_reply(morning)),
+        _text_messages([STEP_MESSAGES_AGENCY["slot_reminder"]["text"]], slot_quick_reply(evening)),
+        _text_messages([slot_reprompt()], slot_quick_reply(morning)),
+    ]
+    url = "https://api.line.me/v2/bot/message/validate/push"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {LINE_CHANNEL_ACCESS_TOKEN}",
+    }
+    try:
+        for msgs in batches:
+            body = json.dumps({"messages": msgs}).encode("utf-8")
+            urlopen(Request(url, data=body, headers=headers, method="POST"), timeout=20)
+        QUICK_REPLY_CHECK = "ok"
+    except HTTPError as e:
+        QUICK_REPLY_CHECK = f"ng-{e.code}"
+        print(f"[ERROR] quick reply validate failed: {e.code} {e.read().decode()[:300]}")
+    except Exception as e:
+        QUICK_REPLY_CHECK = "error"
+        print(f"[ERROR] quick reply validate failed: {e}")
+    print(f"[CHECK] quick reply payloads: {QUICK_REPLY_CHECK}")
+
+
 def get_display_name(user_id):
     """LINEプロフィールから表示名を取得（失敗時は空文字）"""
     url = f"https://api.line.me/v2/bot/profile/{user_id}"
@@ -899,7 +942,10 @@ class WebhookHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
         self.end_headers()
-        self.wfile.write(b"TAITAN PRO LINE Bot is running (v36-quiet-hours-slot-buttons)")
+        self.wfile.write(
+            "TAITAN PRO LINE Bot is running (v36.1-quick-reply-selfcheck) "
+            f"quick_reply={QUICK_REPLY_CHECK}".encode("utf-8")
+        )
 
     def do_POST(self):
         content_length = int(self.headers.get("Content-Length", 0))
@@ -1275,6 +1321,9 @@ def main():
 
     # 打診したまま止まっている人を通常配信に戻す（レガシー救済。復元の後に置くこと）
     sweep_stale_meeting_offers()
+
+    # 日程ボタンの形式をLINE公式の検証APIで確かめる（結果はヘルスチェックに出る）
+    threading.Thread(target=validate_quick_reply_payloads, daemon=True).start()
 
     # スリープ防止の自己ping
     start_self_keepalive()
