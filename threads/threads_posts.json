@@ -3210,9 +3210,11 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
+    "posted": true,
     "created_at": "2026-10-24T12:27:41",
-    "source": "manual"
+    "source": "manual",
+    "posted_at": "2026-10-30T09:05:32+09:00",
+    "media_id": "17886542997690117"
   },
   {
     "text": "配信の振り返りは、反省会にしないほうが続く。\nダメだった所より、良かった一言を1つメモする。\n次の配信で、それをもう一回やるだけ。",
