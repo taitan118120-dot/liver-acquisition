@@ -3223,9 +3223,12 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
+    "posted": true,
     "created_at": "2026-10-24T12:27:41",
-    "source": "manual"
+    "source": "manual",
+    "cta_ab": "control",
+    "posted_at": "2026-10-30T21:56:20+09:00",
+    "media_id": "18497819092109008"
   },
   {
     "text": "紹介した子の初配信には、最初から最後まで枠にいたほうがいい。\n誰もいない画面に話し続けるのが、いちばん心が折れるから。\n1人でも名前を呼べる相手がいれば、2回目につながる。",
