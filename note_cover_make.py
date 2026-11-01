@@ -56,6 +56,7 @@ INK = (10, 14, 28)          # 左側パネルの下地
 WHITE = (255, 255, 255)
 MARK = (255, 226, 77)       # ハイライト（黄）
 SUB = (214, 222, 240)       # バッジの補足文字
+STAMP_RED = (226, 38, 54)   # 判子
 ACCENTS = {                 # kicker チップの色（プラットフォーム別）
     "Pococha": (255, 92, 138),
     "TikTok LIVE": (0, 224, 196),
@@ -85,6 +86,7 @@ BG_STYLE = (
 
 # 記事テーマ→背景プロンプトの手がかり（タイトルに含まれる語で拾う）
 BG_HINTS = [
+    ("一次店", "extreme close-up of a large golden padlock and heavy steel chain on top of a stack of paper documents beside a calculator, the padlock is the main subject and fills the right side of the frame, dark wooden desk, dramatic side light, high contrast, dark background"),
     # 2026-10-22 補充 #237-246（在宅の仕事・副業・40/50/60代・マネージャー）
     ("家でできる仕事", "a tidy home workspace by a window, a laptop, a smartphone on a stand and a notebook on a wooden desk, a houseplant, soft daylight"),
     ("夜だけできる", "a desk at night in a quiet apartment, a smartphone on a small tripod and a desk lamp glowing warmly, a cup of tea, blurred city lights through the window"),
@@ -377,6 +379,20 @@ def text_w(draw, s, f):
     return draw.textbbox((0, 0), s, font=f)[2]
 
 
+def draw_stamp(canvas, label):
+    """右上に赤い判子を傾けて重ねる（data/note_cover_text.json の stamp で指定）。"""
+    f = font(46)
+    tw = text_w(ImageDraw.Draw(canvas), label, f)
+    w, h = tw + 72, 104
+    layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer)
+    d.rounded_rectangle((3, 3, w - 4, h - 4), radius=16, fill=STAMP_RED + (255,),
+                        outline=WHITE + (255,), width=5)
+    d.text((w // 2, h // 2), label, font=f, fill=WHITE, anchor="mm")
+    layer = layer.rotate(-7, expand=True, resample=Image.BICUBIC)
+    canvas.alpha_composite(layer, (W - layer.width - 36, 40))
+
+
 def fit_size(lines, max_w, start=84, floor=46):
     """全行が max_w に収まる最大の文字サイズを返す。"""
     probe = Image.new("RGB", (10, 10))
@@ -413,6 +429,10 @@ def build(num, regenerate_bg=False, seed=None):
     margin = 64
     max_w = 720
 
+    spec = load_text_map().get(str(num)) or {}
+    if spec.get("stamp"):
+        draw_stamp(canvas, spec["stamp"])
+
     # kicker チップ
     kf = font(30)
     kw = text_w(draw, kicker, kf)
@@ -423,7 +443,7 @@ def build(num, regenerate_bg=False, seed=None):
               anchor="lm")
 
     # 見出し
-    size = fit_size(lines, max_w)
+    size = fit_size(lines, max_w, start=spec.get("font_start", 84))
     f = font(size)
     gap = int(size * 0.34)
     block_h = len(lines) * size + (len(lines) - 1) * gap
