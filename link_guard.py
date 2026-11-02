@@ -58,8 +58,6 @@ KNOWN_DEAD = ["lin.ee/816qtxyj"]
 # ── 読者の目に触れるコンテンツファイル ──
 CONTENT_GLOBS = [
     "blog/articles_note/*.md",
-    "posts/*.json",
-    "posts/*.txt",
     "threads/threads_posts.json",
     "lp/**/*.html",
     "line_bot/messages.py",
@@ -67,7 +65,7 @@ CONTENT_GLOBS = [
     "config.py",
     "note_article_generator.py",
     "threads/threads_content.py",
-    "cloud_post.py",
+    # X の投稿キュー posts/*.json と cloud_post.py は 2026-11-02 のX自動化撤去で削除した。
     # instagram/ig_posts.json と ig_viral_generator.py は 2026-09-16 のIG恒久停止で
     # 走査対象から外した（[[project_ig_retired]]）。投稿される経路がもう無い。
     # DMテンプレ（見込み客に直接送られる＝最も目に触れるコンテンツ）

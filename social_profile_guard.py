@@ -25,7 +25,7 @@
      従来は NG_PATTERNS を実物にしか当てていなかったので、正本自体が違反を含んでいても
      それを実物へ反映するまで誰も気づかなかった。
   4. 反映スクリプトの検査（2026-08-09 追加）— 実物へ書き込む側
-     （x_profile_update.py / social_pinned_publish.py）が、文面を正本から読んでいるか。
+     （social_pinned_publish.py）が、文面を正本から読んでいるか。
      以前は正本と同じ文字列をスクリプトにも手書きでコピーしていて、
      docstring の「必ず両方を直すこと」だけが担保だった＝片方だけ直しても誰も気づかない。
      → 埋め込みを撤去して正本読み込みに一本化し、**戻したら赤くなる**ようにした（audit_consumers）。
@@ -52,10 +52,14 @@
            ＝ Secrets 切れ・トークン失効で番犬が「緑のまま何も見ていない」状態に
            なるのを防ぐ。ローカルはトークンが無いのが普通なので既定は SKIP のまま。
   - 手動 = IG @taitanblog は個人アカウントで Graph API が使えない。
-           自動取得できないので毎回チェック項目として出力するだけ（赤にはしない）
+           X @taitan_LIVER は 2026-11-02 にX自動化を撤去して取得手段が無い。
+           どちらも毎回チェック項目として出力するだけ（赤にはしない）
 
   ※ 事務所IG @taitan_pro7 の走査は 2026-09-16 に撤去した（[[project_ig_retired]]）。
     アカウントが消滅してIG自動化を恒久停止したため、取りに行く先も直す先も無い。
+  ※ X @taitan_LIVER の実物取得（fetch_x）は 2026-11-02 に撤去した（x_content/RETIRED.md）。
+    APIクレジット切れ（402）で9/15から取れておらず、X自動化を全部撤去した。
+    アカウント自体は残っているので、正本 canonical:x.* の自己スキャンは続ける。
 
 使い方:
   python3 social_profile_guard.py          # 全媒体（取得できない媒体は SKIP）
@@ -71,7 +75,6 @@
   手順例・旧文面・エラーログを正本のどこに置いても値には影響しない。
 
 必要な環境変数（GitHub Secrets から注入）:
-  TWITTER_BEARER_TOKEN                        X
   THREADS_ACCESS_TOKEN                        Threads
 
 レポートは data/social_profile_guard_report.json に保存される。
@@ -102,7 +105,6 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 REPORT_FILE = os.path.join(BASE_DIR, "data", "social_profile_guard_report.json")
 CANON_FILE = os.path.join(BASE_DIR, "marketing", "social_profiles.md")
 
-X_USERNAME = "taitan_LIVER"
 THREADS_GRAPH = "https://graph.threads.net/v1.0"
 
 # ── 撤去済み事務所IGハンドルの検知 ──────────────────────────────
@@ -304,11 +306,10 @@ def audit_canonical(canon):
 #     (c) import — 実際に読める値が正本と **1文字単位で** 一致するか
 #         norm() は使わない。空白の差も「片方だけ直した」の兆候なので潰さない
 CONSUMERS = [
-    ("x_profile_update.py", "x_profile_update",
-     [("NAME", "x", "name"), ("DESCRIPTION", "x", "bio"), ("URL", "x", "link")]),
     ("social_pinned_publish.py", "social_pinned_publish",
-     [("X_PINNED_TEXT", "x", "pinned"), ("THREADS_PINNED_TEXT", "threads", "pinned")]),
+     [("THREADS_PINNED_TEXT", "threads", "pinned")]),
     # ig_profile_update.py は 2026-09-16 のIG撤去で削除した（[[project_ig_retired]]）
+    # x_profile_update.py は 2026-11-02 のX自動化撤去で削除した（x_content/RETIRED.md）
 ]
 
 
@@ -461,55 +462,6 @@ def norm(s):
 
 
 # ── 実物の取得 ────────────────────────────────────────────────
-def fetch_x():
-    token = os.environ.get("TWITTER_BEARER_TOKEN", "").strip()
-    if not token:
-        return None, "TWITTER_BEARER_TOKEN 未設定"
-    r = requests.get(
-        f"https://api.x.com/2/users/by/username/{X_USERNAME}",
-        params={
-            "user.fields": "username,name,description,url,entities,pinned_tweet_id",
-            "expansions": "pinned_tweet_id",
-            "tweet.fields": "text,created_at",
-        },
-        headers={"Authorization": f"Bearer {token}"},
-        timeout=30,
-    )
-    if r.status_code != 200:
-        # ⚠️ この文言は credits_depleted_reason() が 402 の判定に使っている。
-        #    書式（先頭の "X API <status>:"）を変えるならあちらも一緒に直すこと。
-        return None, f"X API {r.status_code}: {r.text[:200]}"
-    d = r.json()
-    u = d.get("data") or {}
-    pinned = (d.get("includes", {}).get("tweets") or [{}])[0]
-    # ⚠️ pinned_tweet_id が data に入っていても includes が空で返ることがある（実測）。
-    #    expansions を当てにせず、id で単体取得にフォールバックする。
-    pinned_id = u.get("pinned_tweet_id") or ""
-    if not pinned.get("text") and pinned_id:
-        t = requests.get(f"https://api.x.com/2/tweets/{pinned_id}",
-                         params={"tweet.fields": "text,created_at"},
-                         headers={"Authorization": f"Bearer {token}"}, timeout=30)
-        if t.status_code == 200:
-            pinned = t.json().get("data") or {}
-    if not pinned.get("text"):
-        # 固定ポストはこの番犬の主目的。取れないなら黙って素通りさせず必ず可視化する
-        print(f"  ⚠️ X: 固定ポストが取得できませんでした "
-              f"（pinned_tweet_id={pinned_id!r} / includes={sorted(d.get('includes', {}))}）")
-    # url は t.co なので entities から実URLを取る
-    link = u.get("url", "")
-    for e in (u.get("entities", {}).get("url", {}).get("urls") or []):
-        if e.get("expanded_url"):
-            link = e["expanded_url"]
-    return {
-        "username": u.get("username", ""),
-        "name": u.get("name", ""),
-        "bio": u.get("description", ""),
-        "link": link,
-        "pinned": pinned.get("text", ""),
-        "pinned_id": u.get("pinned_tweet_id", ""),
-    }, None
-
-
 def fetch_threads():
     token = os.environ.get("THREADS_ACCESS_TOKEN", "").strip()
     if not token:
@@ -580,36 +532,6 @@ THREADS_BIO_SUSPENDED = (
     "再開するなら sources の Threads 行に bio を戻す")
 
 
-# fetch_x() が返すエラー文言の先頭。402 かどうかはここから読む。
-X_STATUS_RE = re.compile(r"^X API (\d{3})\b")
-
-
-def credits_depleted_reason(key, err):
-    """X APIのクレジット枯渇(402)なら停止理由の文字列、それ以外は None。
-
-    402 は「課金しないと絶対に直らない／課金したら次のランで勝手に直る」種類の
-    エラーで、コード側でできることが1つも無い。2026-08-23から3週間以上、この番犬は
-    それだけを理由に毎日赤になっていて、X/Threadsの本物の赤を埋める側に回っていた。
-
-    だから 402 のときだけ suspended 枠に回す（別枠で毎ラン表示するが赤にはしない）。
-    **手動フラグで止めるのではなく実際の応答を見て降格する**ので、クレジットが
-    戻った回は自動的に通常検査へ復帰する（フラグの戻し忘れという死角が生まれない）。
-
-    降格するのは 402 だけ。401（トークン失効）・Secrets未設定・別アカウント参照など
-    「取れるはずのものが取れない＝死角」は従来どおり --require-live で赤にする。
-    """
-    if key != "x":
-        return None
-    reason = getattr(config, "X_API_CREDITS_DEPLETED_SUSPENDED", "")
-    if not reason:
-        # 空に戻された＝「402でも赤くしたい」という判断。降格しない
-        return None
-    m = X_STATUS_RE.match(err or "")
-    if not m or m.group(1) != "402":
-        return None
-    return f"{reason}｜今回の応答: {err[:120]}"
-
-
 def require_live_enabled(argv=None):
     """--require-live / PROFILE_GUARD_REQUIRE_LIVE が有効か。
 
@@ -637,8 +559,6 @@ def main():
 
     # (表示名, 正本キー, 取得関数, 期待username, 突合フィールド, 走査フィールド)
     sources = [
-        ("X @taitan_LIVER", "x", fetch_x, "taitan_LIVER",
-         ["name", "bio", "link"], ["bio", "pinned"]),
         # Threads の bio は 2026-10-01 に走査対象から外した（THREADS_BIO_SUSPENDED）。
         # APIで更新できず手作業でしか直せない17LIVE残りを、ユーザー判断で直さないことにした。
         # 外すのは bio だけで、name の突合とトークンの別アカウント検知は続ける。
@@ -646,24 +566,15 @@ def main():
          ["name"], []),
         # 事務所IG @taitan_pro7 は 2026-09-16 に走査対象から外した
         # （[[project_ig_retired]]。アカウント消滅＋IG自動化の恒久停止）。
+        # X @taitan_LIVER は 2026-11-02 に外した（X自動化撤去。手動チェック枠へ）。
     ]
 
-    # 402（X）のようにループ中で足すものがあるので、ここで用意しておく。
     # 意図的に外した項目も「見ていない」ことは同じなので、毎ラン別枠に出す。
     suspended = [{"media": "Threads @taitanblog / bio", "reason": THREADS_BIO_SUSPENDED}]
 
     for label, key, fetch, want_user, cmp_fields, scan_fields in sources:
         live, err = fetch()
         if err:
-            # クレジット枯渇(402)だけは skipped ではなく suspended へ。
-            # skipped に入れると --require-live が赤にするが、あれは「取れるはずの
-            # ものが取れない＝死角」の検知で、課金でしか直らないと分かっている状態に
-            # 毎日鳴らしても Threads の本物の赤を埋めるだけになる。
-            depleted = credits_depleted_reason(key, err)
-            if depleted:
-                suspended.append({"media": label, "reason": depleted})
-                print(f"  ⏸ {label}: {depleted}")
-                continue
             skipped.append({"media": label, "reason": err})
             print(f"  {'❌' if require_live else '⏭ '} {label}: {err}"
                   + ("（--require-live なので赤にします）" if require_live else ""))
@@ -697,7 +608,8 @@ def main():
     # 自動取得できない媒体は毎回チェックリストとして出すだけ（赤にはしない）
     manual = [
         "IG @taitanblog（個人アカウント／Graph API 対象外）: 表示名・bio・リンク・ハイライト名",
-        "X / Threads の「固定」状態そのもの（固定APIが存在しないため自動判定不可）",
+        "X @taitan_LIVER（2026-11-02にX自動化を撤去・API取得なし）: 表示名・bio・URL欄・固定ポストを正本 canonical:x.* と目視で突合",
+        "Threads の「固定」状態そのもの（固定APIが存在しないため自動判定不可）",
     ]
 
     # 同じ媒体が「トークン無し」と「固定ポストが取れない」で二重に入りうるので、

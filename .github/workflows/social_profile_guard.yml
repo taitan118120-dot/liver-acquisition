@@ -21,7 +21,7 @@ name: プロフィール番犬
 #       * 期待する媒体・項目が全部読めているか（取りこぼし検知）
 #       * 正本の値に確定ファクト違反が無いか（自己スキャン）
 #   - 反映スクリプト側も検査する（2026-08-09追加）:
-#       x_profile_update.py / social_pinned_publish.py が文面を正本から読んでいるか。
+#       social_pinned_publish.py が文面を正本から読んでいるか。
 #       以前は正本と同じ文字列を手書きでコピーしていて、担保は docstring の
 #       「必ず両方を直すこと」だけ＝片方だけ直しても CI は緑のままだった。
 #       埋め込みを撤去して一本化し、リテラルに戻すと赤くなるようにした。
@@ -40,12 +40,11 @@ name: プロフィール番犬
 #   --require-live の赤は「取れるはずのものが取れない＝死角」を捕まえる仕掛けなので
 #   恒久的に外さない。ただし直す当てが無い赤を鳴らし続けるのも同じ死角を作る
 #   （本物の赤が埋もれる）。そこで2種類だけ suspended として別枠に出す:
-#     - X … クレジット枯渇 402 を受けた回だけ（config.X_API_CREDITS_DEPLETED_SUSPENDED）
 #     - Threads の bio … 2026-10-01 ユーザー判断で常時（THREADS_BIO_SUSPENDED。
 #       17LIVE残りを手作業で直さないと決めた。name の突合は継続）
 #   赤にはしないが、毎ラン「停止中の媒体」として表示し、Issue本文にも載せる。
-#   X は手動フラグではなく実際の402応答を見て降格するので、課金が戻れば自動で
-#   通常検査に復帰する。401・Secrets切れなどは従来どおり赤。
+#   （X は 402 の回だけここに降格していたが、2026-11-02 にX自動化を撤去して
+#    実物取得ごと外した。いまは「自動判定できない項目」に目視チェックとして出る）
 #   （IG @taitan_pro7 もここに居たが、2026-09-16 の恒久停止で媒体ごと撤去した
 #    ＝停止中ですらなく、走査対象そのものが無い。[[project_ig_retired]]）
 
@@ -75,7 +74,6 @@ jobs:
       - name: プロフィール・固定ポスト走査
         id: guard
         env:
-          TWITTER_BEARER_TOKEN: ${{ secrets.TWITTER_BEARER_TOKEN }}
           THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
         # --require-live: 1媒体でも取得できなかったら赤にする。
         # CI は Secrets が揃っている前提なので、取得できない＝Secrets切れ／トークン失効。
@@ -129,7 +127,7 @@ jobs:
               '印の付け忘れ・キーのタイポ・二重定義・正本に書かれた確定ファクト違反がここに出ます。',
               '',
               'あわせて **反映スクリプトが文面を正本から読んでいるか** も見ます。',
-              '`x_profile_update.py` / `social_pinned_publish.py` の定数に文字列リテラルを',
+              '`social_pinned_publish.py` の定数に文字列リテラルを',
               '書き戻すと（＝正本のコピーを持つと）ここが赤くなります。直すのは正本1箇所だけです。',
               '',
               'さらに **公開テキストを作る側**（`threads/threads_content.py`）が',
@@ -154,7 +152,7 @@ jobs:
               '## 停止中の媒体（意図的に走査対象から外している＝このランでは見ていない）',
               '停止中の媒体は「違反が無い」のではなく **検査していない** 媒体です。',
               '未取得と違って意図的なので赤にはしませんが、死角であることは変わりません。',
-              '条件は `config.py`（`X_API_CREDITS_DEPLETED_SUSPENDED`）のコメントにあります。',
+              '条件は `social_profile_guard.py`（`THREADS_BIO_SUSPENDED`）のコメントにあります。',
               '',
               pLines || '(なし)',
               '',
@@ -163,9 +161,8 @@ jobs:
               '',
               '## 対処',
               '1. 正本は `marketing/social_profiles.md`。**実物と正本の両方**を正しい状態に揃える',
-              '2. X の bio/表示名/URL欄は正本を直して `gh workflow run x_profile_update.yml`',
-              '   （スクリプト側に文面は埋め込まれていない。直すのは正本1箇所だけ）',
-              '3. X / Threads の固定ポスト本文は `gh workflow run social_pinned_publish.yml`',
+              '2. X は2026-11-02にX自動化を撤去したので、bio/表示名/URL欄/固定ポストはXアプリで手動更新',
+              '3. Threads の固定ポスト本文は `gh workflow run social_pinned_publish.yml`',
               '   （**固定/固定解除のAPIは存在しない**ので、固定操作だけはアプリで手動）',
               '4. 正本を直したら `python3 social_profile_guard.py --local` で',
               '   全媒体の name / bio / link / pinned が意図どおり読めているか確認する',

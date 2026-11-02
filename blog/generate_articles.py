@@ -12,7 +12,6 @@ from datetime import datetime
 
 BLOG_DIR = os.path.dirname(__file__)
 ARTICLES_DIR = os.path.join(BLOG_DIR, "articles")
-POSTS_FILE = os.path.join(os.path.dirname(BLOG_DIR), "posts", "twitter_posts.json")
 
 # SEO記事テンプレート
 ARTICLE_TEMPLATE = """---

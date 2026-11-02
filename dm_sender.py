@@ -60,7 +60,7 @@ def personalize_dm(template, lead):
 def get_unsent_leads(platform=None):
     """DM未送信のリードを取得"""
     if not os.path.exists(config.LEADS_CSV):
-        print("leads.csv が見つかりません。先に lead_finder.py を実行してください。")
+        print("leads.csv が見つかりません。先にリードを leads.csv に用意してください。")
         return []
 
     leads = []

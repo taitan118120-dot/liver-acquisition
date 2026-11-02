@@ -1,6 +1,6 @@
 name: 生成キュー確定ファクト番犬
 
-# X (posts/twitter_posts.json) と Threads (threads/threads_posts.json) の
+# Threads (threads/threads_posts.json) の
 # **未投稿キュー**に、確定ファクト違反の投稿が残っていないかを毎週見る番犬。
 #
 # 背景（2026-09-04）: posts/twitter_posts.json に確定ファクト違反の投稿が5本
@@ -11,28 +11,24 @@ name: 生成キュー確定ファクト番犬
 #   同じ構造は Threads の _violations() にもある（基準を後から厳しくした分が
 #   既存キューに残る）。
 #
-# x_purge_violations.yml は **公開済みポスト**（タイムライン）を走査する別物で、
-# 未投稿キューはスコープ外。だからキュー側にはこの番犬が要る。
-#
 # 動作: queue_facts_guard.py を実行し、
-#   - X / Threads それぞれの未投稿分を、各媒体の正本の検品にかける
-#     （X = x_post_guard.details() / Threads = threads_content._violations()）
+#   - Threads の未投稿分を threads_content._violations() の検品にかける
 #   - 1件でも違反が残っていればランを赤にし、Issue を作成/更新して通知する
 #   - 全部0件に戻ったら、その Issue を自動クローズする（他の番犬と同じ型）
 #
 # 2026-09-05 に Instagram を足したが、2026-09-16 に外した（[[project_ig_retired]]）。
 # IG自動投稿は恒久停止して ig_poster.py ごと撤去したので、「弾かれて一生投稿されない
 # キュー」という概念自体が無くなった（instagram/ig_posts.json は記録として残るだけ）。
+# X も 2026-11-02 に外した（X自動化を全部撤去。x_content/RETIRED.md）。
+# キュー posts/twitter_posts.json と検品 x_post_guard.py ごと削除してある。
 
 on:
   schedule:
     - cron: '15 3 * * 1'   # 毎週月曜 JST 12:15（他ワークフローの cron と重ならない枠）
   push:
     paths:
-      - 'posts/twitter_posts.json'
       - 'threads/threads_posts.json'
       - 'queue_facts_guard.py'
-      - 'x_post_guard.py'
       - 'threads/threads_content.py'
       - 'facts_patterns.py'
   workflow_dispatch:
@@ -52,7 +48,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      # x_post_guard / threads_content / facts_patterns は標準ライブラリだけで動く。
+      # threads_content / facts_patterns は標準ライブラリだけで動く。
       # （requests を入れていたのは IG候補判定の ig_poster のためで、
       #  2026-09-16 のIG撤去で不要になった）
       - name: 未投稿キューを走査
@@ -66,7 +62,7 @@ jobs:
           script: |
             const fs = require('fs');
             const title = '生成キューに確定ファクト違反（生成キュー確定ファクト番犬）';
-            let report = {total_violations: 0, x: {}, threads: {}};
+            let report = {total_violations: 0, threads: {}};
             try {
               report = JSON.parse(fs.readFileSync('data/queue_facts_guard_report.json', 'utf8'));
             } catch (e) {}
@@ -83,12 +79,10 @@ jobs:
               '## 生成キュー確定ファクト番犬 検知',
               '',
               '未投稿キューに確定ファクト違反の投稿が残っています。',
-              '`cloud_post.py` / `threads_content.py` は投稿直前（または生成時）に',
+              '`threads_content.py` は投稿直前（または生成時）に',
               'これらを候補から除外するので、**直さない限り在庫に数えられるだけで',
               '一生投稿されません**（「見えない欠品」）。',
               '在庫を「キュー本数 − 投稿済み数」で見積もると、その分だけ水増しされます。',
-              '',
-              section('X', report.x || {}),
               '',
               section('Threads', report.threads || {}),
               '',
@@ -106,11 +100,10 @@ jobs:
             // 違反が残り続けるあいだ毎ラン同じ内容を貼ると通知が形骸化するので、
             // 内容（違反の顔ぶれ）が変わったときだけ鳴く。赤は維持される。
             const guard = require('./.github/scripts/guard_comment.js');
-            const xIds = (report.x?.violations || []).map(v => v.id).join(',');
             const thIds = (report.threads?.violations || []).map(v => `#${v.idx}`).join(',');
             await guard.notify({
               github, context, title, body,
-              recomment: `再検知: ${new Date().toISOString()}\nX: ${xIds || 'なし'}\nThreads: ${thIds || 'なし'}`,
+              recomment: `再検知: ${new Date().toISOString()}\nThreads: ${thIds || 'なし'}`,
             });
 
       - name: 違反解消 → Issueを自動クローズ

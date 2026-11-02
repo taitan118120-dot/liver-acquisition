@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """queue_facts_guard.py — 生成キューの「見えない欠品」番犬
 ========================================================
-X (`posts/twitter_posts.json`) と Threads (`threads/threads_posts.json`) の
+Threads (`threads/threads_posts.json`) の
 **まだ投稿していない**キューに、確定ファクト違反の投稿が残っていないかを毎週見る。
 
 背景（2026-09-04）:
@@ -15,18 +15,19 @@ X (`posts/twitter_posts.json`) と Threads (`threads/threads_posts.json`) の
   違反を弾いてからキューに入れるが、**基準を後から厳しくした分**は
   既存のキューに残る（cloud_post.py と同じ「生成時ゲートだけでは既存分が素通り」）。
 
-  x_purge_violations.yml は **公開済みポスト**（タイムライン）を見る別物で、
-  未投稿のキューはスコープ外。だからキュー側にはこの番犬が要る。
-
 2026-09-05 に Instagram を走査対象へ足したが、2026-09-16 に外した
 （[[project_ig_retired]]）。@taitan_pro7 の消滅でIG自動投稿を恒久停止し、
 ig_poster.py ごと撤去したため、IGには「一生投稿されないキュー」という概念が
 無くなった（instagram/ig_posts.json は記録として残してあるだけで、
 投稿する側がもう居ない）。再開するなら投稿経路を作り直す時に一緒に戻す。
 
+X も 2026-11-02 に外した。X APIのクレジット切れ（402）で9/15から投稿が止まっていて、
+ユーザー判断でX自動化を全部撤去した（x_content/RETIRED.md）。キュー
+posts/twitter_posts.json も検品の正本 x_post_guard.py も一緒に削除したので、
+いまの対象は Threads だけ。
+
 動作:
   各キューの未投稿分だけを、それぞれの正本の検品にかける:
-    - X         … x_post_guard.details()      （data/recent_post_ids.txt に無い分）
     - Threads   … threads_content._violations()（"posted" が真でない分）
   1件でも違反が残っていれば exit 1 で赤くし、Issue で通知する。
   全部0件に戻ったら Issue は自動クローズされる
@@ -48,42 +49,6 @@ REPORT_FILE = os.path.join(BASE_DIR, "data", "queue_facts_guard_report.json")
 
 def _rel(path):
     return os.path.relpath(path, BASE_DIR)
-
-
-def scan_x():
-    """X キューの未投稿分を x_post_guard の検品にかける。
-
-    「未投稿」の判定は cloud_post.py と同じ: data/recent_post_ids.txt に
-    ID が無い分。違反投稿は recent_ids に入らないので、ここに残り続ける。
-    """
-    sys.path.insert(0, BASE_DIR)
-    import x_post_guard
-
-    with open(x_post_guard.POSTS_FILE, encoding="utf-8") as f:
-        posts = json.load(f)
-    recent = x_post_guard._load_recent_ids()
-
-    unposted = 0
-    bad = []
-    for p in posts:
-        pid = p.get("id", "?")
-        if pid in recent or p.get("posted"):
-            continue
-        unposted += 1
-        d = x_post_guard.details(x_post_guard.post_body(p))
-        if not d:
-            continue
-        bad.append({
-            "id": pid,
-            "head": x_post_guard.post_body(p).split("\n")[0][:60],
-            "labels": [lbl for lbl, _hit in d],
-        })
-    return {
-        "file": _rel(x_post_guard.POSTS_FILE),
-        "queue_total": len(posts),
-        "unposted": unposted,
-        "violations": bad,
-    }
 
 
 def scan_threads():
@@ -132,13 +97,11 @@ def main():
     ap.add_argument("--json", action="store_true", help="レポートJSONを書き出す")
     args = ap.parse_args()
 
-    x = scan_x()
     threads = scan_threads()
-    total = len(x["violations"]) + len(threads["violations"])
+    total = len(threads["violations"])
 
     report = {
         "total_violations": total,
-        "x": x,
         "threads": threads,
     }
     if args.json:
@@ -147,7 +110,6 @@ def main():
             json.dump(report, f, ensure_ascii=False, indent=1)
         print(f"→ {_rel(REPORT_FILE)} に保存\n")
 
-    _print_section("X", x)
     _print_section("Threads", threads)
 
     if total:
