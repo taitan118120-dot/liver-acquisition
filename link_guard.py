@@ -176,6 +176,7 @@ SKIP_EXACT = {
 }
 
 URL_RE = re.compile(r"https?://[^\s\"'<>\\){}\]｝】、。」「『』（）【　]+")
+_JSONLD_ID_RE = re.compile(r'"@id"\s*:\s*"[^"]*"')
 _URL_CHARS_RE = re.compile(r"[^\s\"'<>\\){}\]｝】、。」「『』（）【　]+")
 
 
@@ -220,6 +221,9 @@ def extract_repo_urls():
             rel = os.path.relpath(fp, BASE_DIR)
             if any(part in rel for part in EXCLUDE_PATH_PARTS):
                 continue
+            # 構造化データ(JSON-LD)の "@id" はノード識別子でありリンクではない
+            # （例: https://…/#organization）。読者が踏まないので検査対象外。
+            text = _JSONLD_ID_RE.sub("", text)
             for m in _find_urls(text):
                 url = _clean(m)
                 # f-string分割等で途切れた断片は除外（実URLはランタイム構築側で取得）
