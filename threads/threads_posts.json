@@ -3340,8 +3340,15 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
-    "created_at": "2026-11-06T13:01:07"
+    "posted": true,
+    "created_at": "2026-11-06T13:01:07",
+    "cta_ab": "cta",
+    "reply_link": "https://lin.ee/xchCfdn",
+    "reply_text": "『ライバー新人期スタートダッシュガイド』\n配信前の準備・初配信のやり方・リスナーさんに常連になってもらう基本・30日ロードマップを1冊にまとめました。LINEの友だち追加で無料で届きます👇",
+    "cta_group": "liver",
+    "posted_at": "2026-11-08T22:00:25+09:00",
+    "media_id": "18133174297838732",
+    "reply_media_id": "18136069981787578"
   },
   {
     "text": "配信は「やる気があれば続く」は、正直嘘だ。\n続く人はみんな、曜日と時間を決めて配信する。仕組みが意思を支える。",
