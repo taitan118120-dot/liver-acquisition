@@ -3442,7 +3442,14 @@
     "tags": [],
     "link": null,
     "reply_control": "everyone",
-    "posted": false,
-    "created_at": "2026-11-09T00:05:30"
+    "posted": true,
+    "created_at": "2026-11-09T00:05:30",
+    "reply_link": "https://lin.ee/xchCfdn",
+    "reply_text": "未経験の人がつまずくNG集と、毎週のチェックリスト付き。代理店パートナー向けのガイドをLINEの友だち追加で無料配布しています👇",
+    "cta_group": "agency",
+    "cta_pointer": "最初の30日に何をするかも、代理店パートナー向けのPDFに入れてる。リンクは返信に。",
+    "posted_at": "2026-11-12T09:05:30+09:00",
+    "media_id": "17997375077840171",
+    "reply_media_id": "18375341398210428"
   }
 ]
