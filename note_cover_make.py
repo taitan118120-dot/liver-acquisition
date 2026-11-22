@@ -86,6 +86,16 @@ BG_STYLE = (
 
 # 記事テーマ→背景プロンプトの手がかり（タイトルに含まれる語で拾う）
 BG_HINTS = [
+    # 2026-11-22 補充 #279-288（タイトル語で拾う。汎用語「顔出しなし」「TikTok」「代理店」より先に置く）
+    ("辞める理由", "close-up of a warm mug of tea and a closed notebook on a wooden desk by a window, a small potted plant behind them, the mug is the main subject on the right side, soft evening light"),
+    ("ライバー育成", "close-up of an open spiral notebook with a handwritten checklist and a pen lying on it, a smartphone on a small stand behind it, bright wooden desk, the notebook is the main subject on the right side, morning sunlight"),
+    ("ガチ恋", "close-up of a single red rose lying on a plain wooden table, no paper, no card, no text, no letters, the rose is the main subject on the right side, soft warm evening light, shallow depth of field"),
+    ("カメラの位置", "close-up of a smartphone mounted on a small black tripod at eye level on a wooden desk, a round ring light glowing behind it, the smartphone and tripod are the main subject on the right side, warm cozy room"),
+    ("スカウト代行", "close-up of a stack of white envelopes tied with string next to a laptop and a smartphone on an office desk, the envelopes are the main subject on the right side, morning light"),
+    ("モデレーター", "close-up of a smartphone standing on a small desk stand next to a pair of over-ear headphones and a small potted plant, clean modern desk, the smartphone is the main subject on the right side, cool blue evening light"),
+    ("初見さん", "close-up of a smartphone on a stand on a wooden desk next to a small potted flower and a cup of coffee, a warm welcoming desk lamp, the smartphone is the main subject on the right side, cozy evening light"),
+    ("1on1", "two coffee cups facing each other on a wooden table with an open notebook and a pen between them, the cups are the main subject on the right side, warm afternoon window light"),
+    ("マスク", "close-up of a white face mask lying on a wooden desk next to a smartphone on a stand and a small desk microphone, the mask is the main subject on the right side, warm lamp light, cozy room at night"),
     ("一次店", "extreme close-up of a large golden padlock and heavy steel chain on top of a stack of paper documents beside a calculator, the padlock is the main subject and fills the right side of the frame, dark wooden desk, dramatic side light, high contrast, dark background"),
     # 2026-10-22 補充 #237-246（在宅の仕事・副業・40/50/60代・マネージャー）
     ("家でできる仕事", "a tidy home workspace by a window, a laptop, a smartphone on a stand and a notebook on a wooden desk, a houseplant, soft daylight"),
