@@ -10,6 +10,19 @@ Note記事のアイキャッチ（サムネイル）を「一目で内容が分�
   の合成にする。文字だけのカード（背景が単色/グラデ）は従来どおり禁止。
   人物写真は「顔が怖い」というユーザー判断で不採用（AI生成の顔は不気味の谷に落ちる）。
 
+レイアウト（2026-11-22 改定「目立つカバー」）:
+  旧版は写真全面＋左を紺で暗く落とす形だったが、背景が茶系の机・マグばかりで
+  タイムラインに並ぶと全部同じに見え、色も沈んでいた。PV上位のカバーに共通するのは
+  「彩度の高い色」と「一目で分かる主役」。そこで
+    左＝カテゴリ色のベタパネル（斜めカット＋黄色ライン）に特大見出し
+    右＝主役の写る写真（彩度を上げる）
+  の分割にした。見出しは白文字＋太い縁取り＋影、ハイライト行は黄色ベタ帯に黒文字。
+  パネル色は kicker ごと（PANEL_COLORS）。note_cover_text.json の "color": [r,g,b] で上書きできる。
+  写真は斜めカットより右の枠に主役を据えて切り出す。主役を外したら同じJSONの
+  "focus"（元画像での主役の横位置0..1）と "zoom"（既定1.12）で直す。
+  写真が右4割に入るので「背景が単色で文字だけのカード」には当たらない。
+  下部バッジは位置・色・大きさを変えていない（note_cover_guard が画素位置で照合するため）。
+
 背景画像:
   Pollinations.ai（無料・Google APIの予算を使わない）で1本ずつ生成し
   blog/images/bg/{番号}.jpg にキャッシュする。once生成したら使い回す。
@@ -63,6 +76,18 @@ ACCENTS = {                 # kicker チップの色（プラットフォーム�
     "代理店": (167, 139, 250),
     "_default": (79, 195, 247),
 }
+# 左パネルの色（kicker別）。黄色はハイライト帯と潰し合うので使わない。
+PANEL_COLORS = {
+    "Pococha": (236, 64, 122),
+    "TikTok LIVE": (0, 172, 193),
+    "代理店": (98, 54, 196),
+    "用語解説": (33, 118, 230),
+    "配信のコツ": (245, 110, 30),
+    "続け方": (0, 150, 110),
+    "顔出しなし": (63, 81, 181),
+    "_default": (229, 57, 53),
+}
+PANEL_TOP_X, PANEL_BOTTOM_X = 830, 730   # 斜めカットの境目（上端・下端のx）
 
 FONT_CANDIDATES = [
     "/System/Library/Fonts/ヒラギノ角ゴシック W8.ttc",
@@ -403,72 +428,120 @@ def draw_stamp(canvas, label):
     canvas.alpha_composite(layer, (W - layer.width - 36, 40))
 
 
-def fit_size(lines, max_w, start=84, floor=46):
-    """全行が max_w に収まる最大の文字サイズを返す。"""
-    probe = Image.new("RGB", (10, 10))
-    d = ImageDraw.Draw(probe)
+def photo_window(img, zoom=1.12, focus=None):
+    """写真の見える部分（x = PANEL_BOTTOM_X より右）に主役が収まるよう切り出して W×H に置く。
+
+    写真全面を縮めて右に寄せる（focus_crop）と、見える幅が全体の4割しかないので
+    主役（リングライト・カップ等）が斜めの境目で切れる。高さ基準で拡大し、
+    「見える枠」の幅だけを主役中心で切り出して右端に貼る。左はパネルで隠れる。
+    """
+    if focus is None:  # 主役の位置をエッジ量で推定（外すことがあるので検品で確認する）
+        focus = subject_x(img)
+        if focus < 0.5:  # 主役が左 → 反転（静物は反転しても違和感が無い）
+            img = img.transpose(Image.FLIP_LEFT_RIGHT)
+            focus = 1.0 - focus
+    view_w = W - PANEL_BOTTOM_X + 40
+    scale = max(H / img.height, view_w / img.width) * zoom
+    sw, sh = int(img.width * scale), int(img.height * scale)
+    big = img.resize((sw, sh), Image.LANCZOS)
+    left = max(0, min(sw - view_w, int(focus * sw - view_w / 2)))
+    top = max(0, (sh - H) // 2)
+    out = Image.new("RGB", (W, H), INK)
+    out.paste(big.crop((left, top, left + view_w, top + H)), (W - view_w, 0))
+    return out
+
+
+def panel_edge(y):
+    """斜めカットの境目の x（y の位置）。"""
+    return PANEL_TOP_X + (PANEL_BOTTOM_X - PANEL_TOP_X) * y / H
+
+
+def layout_headline(draw, lines, top, bottom, margin, start=128, floor=48):
+    """見出しが「上下の枠」と「斜めの境目」の両方に収まる最大サイズで、各行の y を返す。"""
     size = start
-    while size > floor:
+    while True:
         f = font(size)
-        if all(text_w(d, ln, f) <= max_w for ln in lines):
-            return size
+        gap = int(size * 0.22)
+        pad = int(size * 0.16)           # ハイライト帯のはみ出し
+        block_h = len(lines) * size + (len(lines) - 1) * gap
+        y0 = top + (bottom - top - block_h) // 2
+        ys = [y0 + i * (size + gap) for i in range(len(lines))]
+        fits = block_h <= bottom - top and all(
+            margin + text_w(draw, ln, f) + pad + 34 <= panel_edge(y + size + pad)
+            for ln, y in zip(lines, ys))
+        if fits or size <= floor:
+            return size, f, ys
         size -= 2
-    return floor
 
 
 def build(num, regenerate_bg=False, seed=None):
     kicker, lines, hi = resolve_text(num)
-    bg = focus_crop(ensure_bg(num, regenerate_bg, seed), W, H)
-    bg = ImageEnhance.Brightness(bg).enhance(0.9)
+    spec = load_text_map().get(str(num)) or {}
+    color = tuple(spec.get("color") or PANEL_COLORS.get(kicker, PANEL_COLORS["_default"]))
 
+    # 右の写真：見えている枠（斜めカットより右）の真ん中に主役を据え、彩度を上げる
+    # 主役の位置を外したときは note_cover_text.json の "focus"（元画像での横位置0..1）と
+    # "zoom" で直す（例: #284 は鉢植えが 0.74 にあるのに推定が 0.47 で壁を映していた）
+    bg = photo_window(ensure_bg(num, regenerate_bg, seed),
+                      zoom=spec.get("zoom", 1.12), focus=spec.get("focus"))
+    bg = ImageEnhance.Color(bg).enhance(1.3)
+    bg = ImageEnhance.Contrast(bg).enhance(1.08)
     canvas = bg.convert("RGBA")
 
-    # 左half を暗く落として文字を読ませる（右の人物は残す）
+    # 左のカテゴリ色パネル（上→下へわずかに濃くして平板に見えないようにする）
+    panel = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    pd = ImageDraw.Draw(panel)
+    for y in range(H):
+        k = 1.0 - 0.16 * (y / H)
+        pd.line([(0, y), (int(panel_edge(y)), y)],
+                fill=tuple(int(c * k) for c in color) + (255,))
+    pd.line([(PANEL_TOP_X + 10, 0), (PANEL_BOTTOM_X + 10, H)], fill=MARK + (255,), width=12)
+    canvas = Image.alpha_composite(canvas, panel)
+
+    # 下端を締める（バッジの可読性と、番犬の画素照合の下地を暗く保つ）
     shade = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     sd = ImageDraw.Draw(shade)
-    for x in range(W):
-        t = min(max((x - 40) / (W * 0.72), 0.0), 1.0)
-        sd.line([(x, 0), (x, H)], fill=INK + (int(238 * (1 - t) ** 1.35),))
-    # 下端も少し締める（バッジの可読性）
     for y in range(H - 150, H):
         t = (y - (H - 150)) / 150
-        sd.line([(0, y), (W, y)], fill=INK + (int(120 * t),))
+        sd.line([(0, y), (W, y)], fill=INK + (int(150 * t),))
     canvas = Image.alpha_composite(canvas, shade)
     draw = ImageDraw.Draw(canvas)
 
     margin = 64
-    max_w = 720
 
-    spec = load_text_map().get(str(num)) or {}
     if spec.get("stamp"):
         draw_stamp(canvas, spec["stamp"])
+        draw = ImageDraw.Draw(canvas)
 
-    # kicker チップ
-    kf = font(30)
+    # kicker チップ（白地にパネル色の文字）
+    kf = font(34)
     kw = text_w(draw, kicker, kf)
-    chip = (margin, 60, margin + kw + 44, 60 + 54)
-    accent = ACCENTS.get(kicker, ACCENTS["_default"])
-    draw.rounded_rectangle(chip, radius=27, fill=accent + (255,))
-    draw.text((margin + 22, 60 + 27), kicker, font=kf, fill=(12, 16, 30),
-              anchor="lm")
+    draw.rounded_rectangle((margin, 46, margin + kw + 48, 46 + 60), radius=30, fill=WHITE + (255,))
+    draw.text((margin + 24, 46 + 30), kicker, font=kf, fill=color, anchor="lm")
 
-    # 見出し
-    size = fit_size(lines, max_w, start=spec.get("font_start", 84))
-    f = font(size)
-    gap = int(size * 0.34)
-    block_h = len(lines) * size + (len(lines) - 1) * gap
-    y = max(150, (H - 120 - block_h) // 2 + 30)
-    for i, line in enumerate(lines):
-        color = MARK if i == hi else WHITE
-        if i == hi:  # ハイライト行は黄色の下線マーカーも敷く
-            lw = text_w(draw, line, f)
-            bar_top = y + int(size * 0.86)
-            draw.rounded_rectangle(
-                (margin - 6, bar_top, margin + lw + 10, bar_top + int(size * 0.20)),
-                radius=int(size * 0.10), fill=MARK + (90,))
-        draw.text((margin, y), line, font=f, fill=color,
-                  stroke_width=max(5, size // 14), stroke_fill=(6, 9, 20))
-        y += size + gap
+    # 見出し：白文字＋太い縁取り＋影。ハイライト行は黄色ベタ帯に黒文字
+    size, f, ys = layout_headline(draw, lines, 128, H - 128, margin,
+                                  start=spec.get("font_start", 128))
+    stroke = max(5, size // 15)
+    shadow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    shd = ImageDraw.Draw(shadow)
+    for i, (line, y) in enumerate(zip(lines, ys)):
+        if i != hi:
+            shd.text((margin + 5, y + 6), line, font=f, fill=(0, 0, 0, 140),
+                     stroke_width=stroke, stroke_fill=(0, 0, 0, 140))
+    from PIL import ImageFilter
+    canvas = Image.alpha_composite(canvas, shadow.filter(ImageFilter.GaussianBlur(4)))
+    draw = ImageDraw.Draw(canvas)
+    for i, (line, y) in enumerate(zip(lines, ys)):
+        if i == hi:
+            bb = draw.textbbox((margin, y), line, font=f)
+            pad = int(size * 0.16)
+            draw.rounded_rectangle((bb[0] - pad, bb[1] - pad, bb[2] + pad, bb[3] + pad),
+                                   radius=int(size * 0.12), fill=MARK + (255,))
+            draw.text((margin, y), line, font=f, fill=INK)
+        else:
+            draw.text((margin, y), line, font=f, fill=WHITE,
+                      stroke_width=stroke, stroke_fill=INK)
 
     # 下部バッジ（ロゴ＋事務所名）
     badge_y = H - 108
