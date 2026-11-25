@@ -28,6 +28,7 @@ import sys
 import time
 
 import note_tag_guard as g
+from note_publish_core import matched_ua
 
 SETTINGS_URL = "https://note.com/settings/profile"
 API_ME = "https://note.com/api/v2/current_user"
@@ -86,7 +87,7 @@ def save_via_ui(nickname: str, profile: str):
     calls = []
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
-        ctx = browser.new_context(user_agent=g.UA, locale="ja-JP",
+        ctx = browser.new_context(user_agent=matched_ua(browser, g.UA), locale="ja-JP",
                                   viewport={"width": 1280, "height": 1600},
                                   bypass_csp=True)
         ctx.add_cookies(g._load_pw_cookies())

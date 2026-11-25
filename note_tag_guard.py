@@ -42,6 +42,8 @@ import sys
 import time
 from pathlib import Path
 
+from note_publish_core import matched_ua
+
 BASE = Path(__file__).resolve().parent
 COOKIE_FILE = BASE / "note_cookies.json"
 CREATOR = "taitan_118"
@@ -379,8 +381,7 @@ def _fix_keys(jobs):
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
         ctx = browser.new_context(
-            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-                       "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+            user_agent=matched_ua(browser),
             locale="ja-JP", viewport={"width": 1280, "height": 1400})
         ctx.add_cookies(_load_pw_cookies())
         page = ctx.new_page()

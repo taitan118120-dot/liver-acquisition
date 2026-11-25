@@ -19,6 +19,7 @@ import sys
 import time
 
 import note_keys_registry
+from note_publish_core import matched_ua
 from note_cta_publish import NOTE_API, UA, chrome_cookies, get_note, req_session
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -77,7 +78,7 @@ def unpublish_one(key, dry_run=False):
             headless=True,
             args=["--no-sandbox", "--disable-blink-features=AutomationControlled"],
         )
-        ctx = browser.new_context(user_agent=UA, locale="ja-JP",
+        ctx = browser.new_context(user_agent=matched_ua(browser, UA), locale="ja-JP",
                                   viewport={"width": 1400, "height": 900})
         ctx.add_cookies(chrome_cookies())
         page = ctx.new_page()

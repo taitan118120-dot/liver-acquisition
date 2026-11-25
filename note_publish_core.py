@@ -14,6 +14,7 @@ browser_cookie3 が入っていないため、このモジュールからは絶�
   publish_via_editor(page, note_id, key, title, body, tags, ...)  # 3段まとめて実行
   editor_browser(cookies, ...)                                     # browser生成のcontextmanager
 """
+import re
 import time
 from contextlib import contextmanager
 
@@ -23,6 +24,22 @@ NOTE_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
            "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
 
 EDITOR_BASE = "https://editor.note.com"
+
+
+def matched_ua(browser, ua=NOTE_UA):
+    """playwright の browser に渡す UA を、実際の Chromium のメジャー版に揃えて返す。
+
+    2026-11-24 から note.com の CloudFront が「UA は Chrome/131 なのに
+    sec-ch-ua（ブラウザが自動で付ける実バージョン=Chromium 145 等）と食い違う」
+    アクセスを 403 "Request blocked" で弾くようになった。editor.note.com の画面自体は
+    開けるが、画面内の current_user が 403→未ログイン扱いでログインページへ飛ばされ、
+    タグ付与（公開に進む）とカバー設定（画像を追加）が両方とも無言で失敗した。
+    requests は sec-ch-ua を送らないので固定UAのままで問題ない。playwright だけこれを通す。
+    CI は毎回 playwright 最新を入れるので、版数は固定せず browser.version から取る。"""
+    major = (getattr(browser, "version", "") or "").split(".")[0]
+    if not major.isdigit():
+        return ua
+    return re.sub(r"Chrome/\d+(\.\d+){3}", f"Chrome/{major}.0.0.0", ua)
 
 # PUT /v1/text_notes/{id} は「公開する」ためのエンドポイントで、status に draft は取れない。
 # draft を渡すと params 検証で必ず 422
@@ -83,7 +100,7 @@ def editor_browser(cookies, *, user_agent=NOTE_UA, headless=True, bypass_csp=Fal
             headless=headless,
             args=["--no-sandbox", "--disable-blink-features=AutomationControlled"])
         try:
-            ctx_kwargs = {"user_agent": user_agent, "locale": "ja-JP",
+            ctx_kwargs = {"user_agent": matched_ua(browser, user_agent), "locale": "ja-JP",
                           "viewport": {"width": 1400, "height": 900}}
             if bypass_csp:
                 ctx_kwargs["bypass_csp"] = True

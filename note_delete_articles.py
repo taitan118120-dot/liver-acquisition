@@ -16,6 +16,7 @@ import time
 from urllib.parse import unquote
 
 import note_keys_registry
+from note_publish_core import matched_ua
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -48,8 +49,7 @@ def delete_one(note_key, headless=True):
             args=["--no-sandbox", "--disable-blink-features=AutomationControlled"],
         )
         ctx = browser.new_context(
-            user_agent=("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"),
+            user_agent=matched_ua(browser),
             locale="ja-JP",
             viewport={"width": 1400, "height": 900},
         )

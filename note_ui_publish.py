@@ -9,6 +9,7 @@ desired_tags はバックアップの hashtag_notes から取得。
 import sys, json, time
 import requests, browser_cookie3
 from note_cta_transform import transform
+from note_publish_core import matched_ua
 
 NOTE_API="https://note.com/api"
 UA=("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -40,7 +41,7 @@ def update(key, desired_tags, change_body=False, shot=None):
         new_body=transform(key,d["body"])
     with sync_playwright() as p:
         browser=p.chromium.launch(headless=True,args=["--no-sandbox","--disable-blink-features=AutomationControlled"])
-        ctx=browser.new_context(user_agent=UA,locale="ja-JP",viewport={"width":1280,"height":1500})
+        ctx=browser.new_context(user_agent=matched_ua(browser, UA),locale="ja-JP",viewport={"width":1280,"height":1500})
         ctx.add_cookies(chrome_cookies())
         page=ctx.new_page()
         # body差し替え（draft_save）

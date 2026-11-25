@@ -37,7 +37,7 @@ from datetime import datetime
 
 # 公開の3段（draft_save → reCAPTCHA verifications → PUT）は全スクリプト共通。
 # note_publish_core は browser_cookie3 に依存しないので GitHub Actions でも import できる。
-from note_publish_core import (NOTE_API_BASE, NOTE_UA,
+from note_publish_core import (NOTE_API_BASE, NOTE_UA, matched_ua,
                                NotePublishError, editor_browser, publish_via_editor)
 
 # 公開キー台帳 data/published_note_keys.json の読み書き。標準ライブラリだけで動くので
@@ -466,8 +466,7 @@ def _playwright_ui_login(email, password, headless=True):
         )
         ctx = browser.new_context(
             viewport={"width": 1400, "height": 900},
-            user_agent=("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"),
+            user_agent=matched_ua(browser),
             locale="ja-JP",
         )
         ctx.add_init_script(
@@ -731,8 +730,7 @@ def _playwright_full_post(title, body_html, hashtags, publish=True):
             args=["--no-sandbox", "--disable-blink-features=AutomationControlled"],
         )
         ctx = browser.new_context(
-            user_agent=("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"),
+            user_agent=matched_ua(browser),
             locale="ja-JP",
             viewport={"width": 1400, "height": 900},
         )
