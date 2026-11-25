@@ -1,0 +1,56 @@
+name: Noteアイキャッチ修復
+
+# カバー番犬が「公開済みだがアイキャッチが空」を出したときの修復用（手動実行）。
+# 以前はmacで `python3 note_set_eyecatch.py` を回す前提だったが、mac側のCookieは
+# 壊れやすい（2026-11-25時点で _ga しか入っていなかった）。CIのSecretで直す。
+# 失敗時は data/login_diag/ のスクショ（エディタが何を表示していたか）をArtifactで回収する。
+
+on:
+  workflow_dispatch:
+    inputs:
+      pairs:
+        description: '「番号 note_key」を空白区切りで並べる（例: 286 nd9be90a671c2 285 n36db27421429）'
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  fix-eyecatch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Playwrightブラウザをキャッシュ
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-v1
+
+      - name: 依存パッケージインストール
+        run: |
+          pip install requests playwright
+          playwright install --with-deps chromium
+
+      - name: アイキャッチを設定
+        env:
+          NOTE_COOKIES_JSON: ${{ secrets.NOTE_COOKIES_JSON }}
+          PAIRS: ${{ github.event.inputs.pairs }}
+        run: python note_set_eyecatch.py $PAIRS
+
+      - name: 診断情報をアップロード
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: eyecatch-diag-${{ github.run_id }}
+          path: data/login_diag/
+          if-no-files-found: ignore
+          retention-days: 7

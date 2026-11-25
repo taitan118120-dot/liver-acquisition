@@ -64,6 +64,70 @@ def load_cookies():
     return pw_cookies
 
 
+DIAG_DIR = os.path.join(BASE_DIR, "data", "login_diag")
+
+
+def _save_diag(page, article_num, tag):
+    """失敗時の画面を data/login_diag/ に残す（CIはここをArtifactで回収する）。
+    以前は /tmp に書いていたため、CIで「ボタンが見つからない」が出ても
+    何の画面だったのか（ログイン画面か・UI変更か）を誰も確認できなかった。"""
+    try:
+        os.makedirs(DIAG_DIR, exist_ok=True)
+        base = os.path.join(DIAG_DIR, f"eyecatch_{article_num}_{tag}")
+        with open(base + ".html", "w", encoding="utf-8") as f:
+            f.write(page.content())
+        page.screenshot(path=base + ".png", full_page=True)
+        print(f"  [PW] 診断を保存: {os.path.relpath(base, BASE_DIR)}.png/.html")
+    except Exception as e:
+        print(f"  [PW] 診断保存失敗: {str(e)[:80]}")
+
+
+def _png_size(path):
+    import struct
+    with open(path, "rb") as f:
+        head = f.read(24)
+    if head[:8] != b"\x89PNG\r\n\x1a\n":
+        return None
+    return struct.unpack(">II", head[16:24])
+
+
+def upload_eyecatch_api(article_num, note_key):
+    """エディタUIを使わず、エディタ自身が叩くアップロードAPIへ直接送る（UI失敗時の予備）。
+    UIのセレクタ変更やエディタ側のログインリダイレクトの影響を受けない。
+    成否は呼び出し側で公開APIの eyecatch を見て判定する（ここでは送るだけ）。"""
+    import requests
+    image_path = resolve_image(article_num)
+    if not image_path:
+        return {"ok": False, "reason": f"画像見つからず: #{article_num}"}
+    s = requests.Session()
+    for c in load_cookies():
+        s.cookies.set(c["name"], c["value"], domain=c["domain"], path=c["path"])
+    s.headers.update({
+        "User-Agent": ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                       "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"),
+        "X-Requested-With": "XMLHttpRequest",
+        "Origin": "https://editor.note.com",
+        "Referer": f"https://editor.note.com/notes/{note_key}/edit/",
+    })
+    try:
+        r = s.get(f"https://note.com/api/v3/notes/{note_key}?draft=true", timeout=20)
+        note_id = (r.json().get("data") or {}).get("id") if r.ok else None
+    except Exception as e:
+        return {"ok": False, "reason": f"note_id取得失敗: {str(e)[:80]}"}
+    if not note_id:
+        return {"ok": False, "reason": f"note_id取得失敗: HTTP {r.status_code}"}
+    size = _png_size(image_path) or (1280, 670)
+    with open(image_path, "rb") as f:
+        r = s.post("https://note.com/api/v1/image_upload/note_eyecatch",
+                   data={"note_id": str(note_id), "width": str(size[0]), "height": str(size[1])},
+                   files={"file": (os.path.basename(image_path), f, "image/png")},
+                   timeout=60)
+    print(f"  [API] note_eyecatch upload: HTTP {r.status_code} {r.text[:160]}")
+    if not r.ok:
+        return {"ok": False, "reason": f"API upload HTTP {r.status_code}"}
+    return {"ok": True}
+
+
 def _verify_eyecatch(ctx, note_key, tries=6, wait=5):
     """draft API（editorと同じデータ源。公開APIより反映が速い）でeyecatchを確認する。
     editorページ内の相対fetchは editor.note.com に飛んで常に404だったため、
@@ -110,7 +174,26 @@ def _verify_eyecatch_public(note_key, tries=5, wait=10):
 
 
 def set_eyecatch(article_num, note_key, headless=True):
-    """1記事のアイキャッチを設定。
+    """1記事のアイキャッチを設定。UIで駄目ならアップロードAPIを直接叩く。
+    どちらの経路でも、成功は draft/公開API の eyecatch で確認できたときだけ。"""
+    r = _set_eyecatch_ui(article_num, note_key, headless=headless)
+    if r.get("ok") and r.get("eyecatch_url"):
+        return r
+    print(f"  [API] UI経路で設定できず（{r.get('reason') or r.get('note')}）→ アップロードAPIで再試行")
+    try:
+        a = upload_eyecatch_api(article_num, note_key)
+    except Exception as e:
+        a = {"ok": False, "reason": f"例外: {str(e)[:100]}"}
+    if a.get("ok"):
+        ec = _verify_eyecatch_public(note_key)
+        if ec:
+            return {"ok": True, "eyecatch_url": ec, "via": "api"}
+        a = {"ok": False, "reason": "API送信は通ったが公開APIでeyecatch未確認"}
+    return {"ok": False, "reason": f"UI: {r.get('reason') or r.get('note')} / API: {a.get('reason')}"}
+
+
+def _set_eyecatch_ui(article_num, note_key, headless=True):
+    """1記事のアイキャッチをエディタUIで設定。
 
     フロー:
       1. /notes/{key}/edit を開く
@@ -162,6 +245,14 @@ def set_eyecatch(article_num, note_key, headless=True):
         except Exception:
             pass
         time.sleep(3)
+        print(f"  [PW] 到達URL: {page.url}")
+
+        # Cookieがeditor側で通らないと note.com/login へ飛ばされ、以降の
+        # セレクタが全部空振りして「UI変更の可能性」と誤診される（2026-11-24/25）。
+        if "/login" in page.url:
+            _save_diag(page, article_num, "login_redirect")
+            browser.close()
+            return {"ok": False, "reason": "editorがログイン画面へリダイレクト（Cookieがeditorで無効）"}
 
         # 既にアイキャッチが設定済みの場合、「画像を追加」ボタンは出ない。
         # 先に既存カバーの削除ボタン（figure の兄弟）を押して未設定状態に戻す。
@@ -263,13 +354,9 @@ def set_eyecatch(article_num, note_key, headless=True):
             print(f"  [PW] 強制表示後 file_input数: {cnt}")
 
         if cnt == 0:
-            # ヒントログ + HTML スナップショット保存
-            html = page.content()
-            with open(f"/tmp/note_edit_{article_num}.html", "w", encoding="utf-8") as f:
-                f.write(html)
-            page.screenshot(path=f"/tmp/note_edit_{article_num}.png", full_page=True)
+            _save_diag(page, article_num, "no_button")
             browser.close()
-            return {"ok": False, "reason": "file input見つからず", "saved_html": f"/tmp/note_edit_{article_num}.html"}
+            return {"ok": False, "reason": "見出し画像ボタン/file inputが見つからず"}
 
         # 全 file input にトライ
         success_idx = -1
@@ -349,7 +436,10 @@ def main():
     for num, key, r in results:
         status = "✅" if r.get("ok") else "❌"
         info = r.get("eyecatch_url") or r.get("reason") or ""
-        print(f"  #{num} {key}: {status} {info[:80]}")
+        print(f"  #{num} {key}: {status} {info[:120]}")
+    # 「URL未確認」も失敗扱い。CIの修復ワークフローで赤くして気づけるようにする。
+    if not all(r.get("ok") and r.get("eyecatch_url") for _, _, r in results):
+        sys.exit(1)
 
 
 if __name__ == "__main__":
