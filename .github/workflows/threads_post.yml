@@ -120,7 +120,30 @@ jobs:
           if [ "$UNPOSTED" -lt 4 ]; then
             # 生成後に機械検品で落とす分があるので、必要数より多めに要求する
             echo "キュー残りわずか → 生成"
-            python threads/threads_content.py --gen 14
+            GEN_OUT=$(python threads/threads_content.py --gen 14 2>&1)
+            echo "$GEN_OUT"
+            AFTER=$(python -c "import json;d=json.load(open('threads/threads_posts.json'));print(sum(1 for p in d if not p.get('posted')))" 2>/dev/null || echo 0)
+            # 2026-11-13〜25: Gemini の前払いクレジット切れ（402 RESOURCE_EXHAUSTED）で
+            # 補充が毎回0本になり、キュー0のまま「success」で12日間1本も出ていなかった。
+            # ウォッチドッグは30時間後に「止まった」とは言えても原因までは出せないので、
+            # 補充に失敗した事実はここで注釈とサマリに残す。
+            if [ "$AFTER" -le "$UNPOSTED" ]; then
+              if echo "$GEN_OUT" | grep -q "prepayment credits are depleted"; then
+                CAUSE="Gemini APIの前払いクレジット切れ（402 RESOURCE_EXHAUSTED）。AI Studio でチャージが必要"
+              else
+                CAUSE="Gemini生成が0本（このステップの [WARN]/[DROP] を確認）"
+              fi
+              if [ "$AFTER" -eq 0 ]; then
+                echo "::error::Threadsキューが空のまま補充できませんでした: $CAUSE"
+              else
+                echo "::warning::Threadsキュー補充に失敗（残り${AFTER}本）: $CAUSE"
+              fi
+              {
+                echo "## ❌ Threadsキュー補充失敗（未投稿 ${AFTER}本）"
+                echo ""
+                echo "$CAUSE"
+              } >> "$GITHUB_STEP_SUMMARY"
+            fi
           fi
           echo "--- キュー検品 ---"
           # 検品の結果でジョブを落とさない。落とすと1日2回の配信が丸ごと欠けるうえ、
