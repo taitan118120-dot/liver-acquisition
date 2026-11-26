@@ -250,3 +250,4 @@ waiting for navigation to ""re.compile('/notes/[^/]+/edit')"" until 'load'
   3. 出力されたJSONをコピー
   4. GitHub → Settings → Secrets and variables → Actions →
      `NOTE_COOKIES_JSON` を New/Update で登録",2026-11-26T04:55:38.813526
+     `NOTE_COOKIES_JSON` を New/Update で登録",2026-11-26T04:57:09.645120
