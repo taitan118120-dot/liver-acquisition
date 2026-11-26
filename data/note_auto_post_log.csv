@@ -243,11 +243,5 @@ waiting for navigation to ""re.compile('/notes/[^/]+/edit')"" until 'load'
 287,ライブ配信でマスクはあり？｜マスク配信のメリット・気をつけること・顔出しなしとの違い【2026年版】,https://note.com/taitan_118/n/n254f398149cf,True,HTTP経由で公開,2026-11-23T03:41:14.020207
 286,ライバーマネージャーの1on1は何を話す？｜担当ライバーと定期的に話す5つのことと、聞き方の型【20,https://note.com/taitan_118/n/nd9be90a671c2,True,HTTP経由で公開,2026-11-24T06:55:09.003099
 285,初見さんとは？｜ライブ配信の「初見さん」の意味と、初めて来た人への挨拶・最初の一言【2026年版】,https://note.com/taitan_118/n/n36db27421429,True,HTTP経由で公開,2026-11-25T05:22:54.116350
-284,TikTok LIVEのモデレーターとは？｜できること・設定の流れ・誰に頼むかと頼むときの伝え方【2,,False,"NOTE_COOKIES_JSONが無効または失効（Cookieは通常1〜3ヶ月で失効）
-  対処手順:
-  1. ローカルで `python note_export_cookies.py` を実行
-  2. ブラウザが開くので手動ログイン（CAPTCHAがあれば解く）
-  3. 出力されたJSONをコピー
-  4. GitHub → Settings → Secrets and variables → Actions →
-     `NOTE_COOKIES_JSON` を New/Update で登録",2026-11-26T04:55:38.813526
-     `NOTE_COOKIES_JSON` を New/Update で登録",2026-11-26T04:57:09.645120
+284,TikTok LIVEのモデレーターとは？｜できること・設定の流れ・誰に頼むかと頼むときの伝え方【2,,False,NOTE_COOKIES_JSONが無効または失効（Cookieは通常1〜3ヶ月で失効） / 対処手順: / 1. ローカルで `python note_export_cookies.py` を実行 / 2. ブラウザが開くので手動ログイン（CAPTCHAがあれば解く） / 3. 出力されたJSONをコピー / 4. GitHub → Settings → Secrets and variables → Actions → / `NOTE_COOKIES_JSON` を New/Update で登録,2026-11-26T04:55:38.813526
+284,TikTok LIVEのモデレーターとは？｜できること・設定の流れ・誰に頼むかと頼むときの伝え方【2,,False,NOTE_COOKIES_JSONが無効または失効（Cookieは通常1〜3ヶ月で失効） / 対処手順: / 1. ローカルで `python note_export_cookies.py` を実行 / 2. ブラウザが開くので手動ログイン（CAPTCHAがあれば解く） / 3. 出力されたJSONをコピー / 4. GitHub → Settings → Secrets and variables → Actions → / `NOTE_COOKIES_JSON` を New/Update で登録,2026-11-26T04:57:09.645120

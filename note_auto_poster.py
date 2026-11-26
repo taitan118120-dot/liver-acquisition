@@ -248,7 +248,13 @@ def log_result(article_num, title, url, success, error_msg=""):
         writer = csv.writer(f)
         if not file_exists:
             writer.writerow(["article_num", "title", "url", "success", "error", "posted_at"])
-        writer.writerow([article_num, title[:50], url or "", success, error_msg, datetime.now().isoformat()])
+        # エラー文は1行に潰す。複数行のまま書くと、.gitattributes の merge=union
+        # （auto_retry の2回目と1回目の追記を両方残す）が行単位で合成するため、
+        # 引用符の閉じ側だけが重複してCSVが壊れる（2026-11-26 #284で発生）。
+        error_one_line = " / ".join(
+            ln.strip() for ln in str(error_msg or "").splitlines() if ln.strip()
+        )
+        writer.writerow([article_num, title[:50], url or "", success, error_one_line, datetime.now().isoformat()])
 
 
 def mark_as_published(article_num):
